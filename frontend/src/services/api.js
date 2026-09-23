@@ -1320,6 +1320,22 @@ export const api = {
     return found;
   },
 
+  async getRegistrationsByAuid(auid) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/registrations/auid/${encodeURIComponent(auid)}`);
+      if (res.ok) return await res.json();
+    } catch (err) {
+      console.warn("Backend unavailable, fetching from local storage:", err.message);
+    }
+    const list = getLocalRegistrations();
+    const clean = (auid || "").trim().toLowerCase();
+    const found = list.filter(r => 
+      (r.auid && r.auid.toLowerCase() === clean) ||
+      (r.usn && r.usn.toLowerCase() === clean)
+    );
+    return found;
+  },
+
   async verifyPass(code) {
     try {
       const res = await fetch(`${API_BASE_URL}/checkin/verify/${encodeURIComponent(code)}`);
