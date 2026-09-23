@@ -130,95 +130,97 @@ export function AppContent() {
         }}
       />
 
-      <main className="flex-1">
-        {/* Student Dashboard */}
-        {currentView === "student-dashboard" && (
-          <StudentDashboard
-            onNavigateHome={() => setCurrentView("home")}
-          />
-        )}
-
-        {/* Admin Dashboard */}
-        {currentView === "admin-dashboard" && (
-          <AdminPage
-            onNavigateHome={() => setCurrentView("home")}
-            onOpenSuperAdmin={() => setCurrentView("superadmin-dashboard")}
-          />
-        )}
-
-        {/* Public Website Views */}
-        {currentView === "home" && (
-          <HomePage
-            setCurrentView={setCurrentView}
-            setSelectedEventId={setSelectedEventId}
-          />
-        )}
-
-        {currentView === "about" && (
-          <div className="pt-24 min-h-screen">
-            <AboutSection />
-          </div>
-        )}
-
-        {currentView === "activities" && (
-          <div className="pt-24 min-h-screen">
-            <ActivitiesSection />
-          </div>
-        )}
-
-        {currentView === "nuditaranga" && (
-          <div className="pt-24 min-h-screen bg-stone-950">
-            <KarunadaVaibhavaSchedule
-              onRegisterClick={() => handleRegisterNav(null)}
+      <main className="flex-1" key={currentView}>
+        <div className="animate-page-enter transform-gpu min-h-full">
+          {/* Student Dashboard */}
+          {currentView === "student-dashboard" && (
+            <StudentDashboard
+              onNavigateHome={() => setCurrentView("home")}
             />
-            <NuditarangaHero
-              onRegister={() => handleRegisterNav(null)}
-              onViewEvents={() => {
-                setCurrentView("events");
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              }}
+          )}
+
+          {/* Admin Dashboard */}
+          {currentView === "admin-dashboard" && (
+            <AdminPage
+              onNavigateHome={() => setCurrentView("home")}
+              onOpenSuperAdmin={() => setCurrentView("superadmin-dashboard")}
             />
-          </div>
-        )}
+          )}
 
-        {currentView === "events" && (
-          <EventsPage
-            setCurrentView={setCurrentView}
-            setSelectedEventId={setSelectedEventId}
-          />
-        )}
+          {/* Public Website Views */}
+          {currentView === "home" && (
+            <HomePage
+              setCurrentView={setCurrentView}
+              setSelectedEventId={setSelectedEventId}
+            />
+          )}
 
-        {currentView === "gallery" && (
-          <div className="pt-24 min-h-screen">
-            <GallerySection />
-          </div>
-        )}
+          {currentView === "about" && (
+            <div className="pt-24 min-h-screen">
+              <AboutSection />
+            </div>
+          )}
 
-        {currentView === "contact" && (
-          <div className="pt-24 min-h-screen">
-            <ContactSection />
-          </div>
-        )}
+          {currentView === "activities" && (
+            <div className="pt-24 min-h-screen">
+              <ActivitiesSection />
+            </div>
+          )}
 
-        {currentView === "register" && (
-          <RegisterPage
-            selectedEventId={selectedEventId}
-            setSelectedEventId={setSelectedEventId}
-            setCurrentView={setCurrentView}
-            setConfirmedRegistration={setConfirmedRegistration}
-          />
-        )}
+          {currentView === "nuditaranga" && (
+            <div className="pt-24 min-h-screen bg-stone-950">
+              <KarunadaVaibhavaSchedule
+                onRegisterClick={() => handleRegisterNav(null)}
+              />
+              <NuditarangaHero
+                onRegister={() => handleRegisterNav(null)}
+                onViewEvents={() => {
+                  setCurrentView("events");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+              />
+            </div>
+          )}
 
-        {currentView === "confirmation" && (
-          <ConfirmationPage
-            confirmedRegistration={confirmedRegistration}
-            setCurrentView={setCurrentView}
-          />
-        )}
+          {currentView === "events" && (
+            <EventsPage
+              setCurrentView={setCurrentView}
+              setSelectedEventId={setSelectedEventId}
+            />
+          )}
 
-        {currentView === "checkin" && (
-          <CheckInPage />
-        )}
+          {currentView === "gallery" && (
+            <div className="pt-24 min-h-screen">
+              <GallerySection />
+            </div>
+          )}
+
+          {currentView === "contact" && (
+            <div className="pt-24 min-h-screen">
+              <ContactSection />
+            </div>
+          )}
+
+          {currentView === "register" && (
+            <RegisterPage
+              selectedEventId={selectedEventId}
+              setSelectedEventId={setSelectedEventId}
+              setCurrentView={setCurrentView}
+              setConfirmedRegistration={setConfirmedRegistration}
+            />
+          )}
+
+          {currentView === "confirmation" && (
+            <ConfirmationPage
+              confirmedRegistration={confirmedRegistration}
+              setCurrentView={setCurrentView}
+            />
+          )}
+
+          {currentView === "checkin" && (
+            <CheckInPage />
+          )}
+        </div>
       </main>
 
       <Footer setCurrentView={setCurrentView} />

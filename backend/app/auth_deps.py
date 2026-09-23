@@ -144,38 +144,49 @@ def init_superadmin():
     """
     db = SessionLocal()
     try:
-        # Check if Super Admin exists
-        sa_username = settings.SUPERADMIN_USERNAME or "superadmin"
-        admin_entry = db.query(Admin).filter(Admin.username == sa_username).first()
+        sa_username = settings.SUPERADMIN_USERNAME or "akv-nt-2026"
+        sa_password = settings.SUPERADMIN_PASSWORD or "akv.nt@2026"
+        hashed_pw = get_password_hash(sa_password)
+
+        # Check if user with that email or auid exists
+        sa_user = db.query(User).filter(
+            (User.auid == "AKV-SUPERADMIN") | 
+            (User.email == settings.SUPERADMIN_EMAIL)
+        ).first()
+
+        if not sa_user:
+            sa_user = User(
+                name=settings.SUPERADMIN_NAME,
+                auid="AKV-SUPERADMIN",
+                email=settings.SUPERADMIN_EMAIL,
+                phone="9876543210",
+                institute="Acharya Institute of Technology",
+                department="Kannada Vedike",
+                semester=8,
+                section="A",
+                gender="Other",
+                role="SUPERADMIN",
+                registration_id="AKV-SA-0001",
+                password_hash=hashed_pw,
+                account_status="ACTIVE"
+            )
+            db.add(sa_user)
+            db.commit()
+            db.refresh(sa_user)
+        else:
+            sa_user.password_hash = hashed_pw
+            sa_user.role = "SUPERADMIN"
+            sa_user.account_status = "ACTIVE"
+            db.commit()
+
+        # Check admin entry
+        admin_entry = db.query(Admin).filter(
+            (Admin.user_id == sa_user.id) | 
+            (Admin.username == sa_username) | 
+            (Admin.username == "superadmin")
+        ).first()
 
         if not admin_entry:
-            # Check if user with that email or auid exists
-            sa_user = db.query(User).filter(
-                (User.auid == "AKV-SUPERADMIN") | 
-                (User.email == settings.SUPERADMIN_EMAIL)
-            ).first()
-
-            if not sa_user:
-                hashed_pw = get_password_hash(settings.SUPERADMIN_PASSWORD)
-                sa_user = User(
-                    name=settings.SUPERADMIN_NAME,
-                    auid="AKV-SUPERADMIN",
-                    email=settings.SUPERADMIN_EMAIL,
-                    phone="9876543210",
-                    institute="Acharya Institute of Technology",
-                    department="Kannada Vedike",
-                    semester=8,
-                    section="A",
-                    gender="Other",
-                    role="SUPERADMIN",
-                    registration_id="AKV-SA-0001",
-                    password_hash=hashed_pw,
-                    account_status="ACTIVE"
-                )
-                db.add(sa_user)
-                db.commit()
-                db.refresh(sa_user)
-
             admin_entry = Admin(
                 user_id=sa_user.id,
                 username=sa_username,
@@ -187,11 +198,11 @@ def init_superadmin():
             db.commit()
             print(f"[BOOTSTRAP] Super Admin account initialized: '{sa_username}'")
         else:
-            # Ensure role is SUPERADMIN
-            user = db.query(User).filter(User.id == admin_entry.user_id).first()
-            if user and user.role != "SUPERADMIN":
-                user.role = "SUPERADMIN"
-                db.commit()
+            admin_entry.user_id = sa_user.id
+            admin_entry.username = sa_username
+            admin_entry.approval_status = "APPROVED"
+            db.commit()
+            print(f"[BOOTSTRAP] Super Admin account updated: '{sa_username}'")
     except Exception as e:
         print(f"[BOOTSTRAP ERROR] Failed to initialize Super Admin: {e}")
         db.rollback()

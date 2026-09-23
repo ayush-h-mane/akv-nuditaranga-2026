@@ -22,10 +22,10 @@ export const EventCard = ({ event, onOpenRules, onRegister }) => {
   };
 
   return (
-    <div className="group relative bg-white rounded-3xl border border-stone-200/80 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col justify-between hover:border-amber-300">
+    <div className="group relative bg-white rounded-3xl border border-stone-200/80 shadow-sm hover:shadow-xl hover:border-amber-300 transition-[transform,box-shadow,border-color] duration-300 cubic-bezier(0.16,1,0.3,1) transform-gpu will-change-transform hover:-translate-y-1.5 overflow-hidden flex flex-col justify-between">
       
       {/* Top Banner Accent */}
-      <div className="h-1.5 w-full bg-gradient-to-r from-kar-red via-kar-yellow to-amber-500 transform group-hover:scale-x-105 transition-transform" />
+      <div className="h-1.5 w-full bg-gradient-to-r from-kar-red via-kar-yellow to-amber-500 transform group-hover:scale-x-105 transition-transform duration-300 ease-out" />
 
       <div className="p-6 flex-1 flex flex-col">
         {/* Badges Row */}
@@ -96,7 +96,7 @@ export const EventCard = ({ event, onOpenRules, onRegister }) => {
           </div>
           <div className="w-full h-1.5 bg-stone-100 rounded-full overflow-hidden">
             <div 
-              className={`h-full transition-all duration-500 ${isFull ? "bg-red-500" : "bg-gradient-to-r from-kar-red to-kar-yellow"}`}
+              className={`h-full transition-[width] duration-700 cubic-bezier(0.16,1,0.3,1) ${isFull ? "bg-red-500" : "bg-gradient-to-r from-kar-red to-kar-yellow"}`}
               style={{ width: `${percentFilled}%` }}
             />
           </div>
@@ -107,7 +107,7 @@ export const EventCard = ({ event, onOpenRules, onRegister }) => {
       <div className="p-4 bg-stone-50/80 border-t border-stone-100 flex items-center justify-between gap-2">
         <button
           onClick={() => onOpenRules(event)}
-          className="flex-1 py-2 px-3 rounded-xl text-xs font-bold text-stone-700 hover:text-stone-900 hover:bg-stone-200/70 transition-colors flex items-center justify-center gap-1.5"
+          className="flex-1 py-2 px-3 rounded-xl text-xs font-bold text-stone-700 hover:text-stone-900 hover:bg-stone-200/80 active:scale-95 transition-all duration-150 flex items-center justify-center gap-1.5"
         >
           <BookOpen className="w-3.5 h-3.5" />
           <span>{t("events.rulesBtn")}</span>
@@ -116,10 +116,10 @@ export const EventCard = ({ event, onOpenRules, onRegister }) => {
         <button
           disabled={isFull}
           onClick={() => onRegister(event.id)}
-          className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold text-white shadow transition-all flex items-center justify-center gap-1.5 ${
+          className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold text-white shadow transition-all duration-150 flex items-center justify-center gap-1.5 ${
             isFull
               ? "bg-stone-300 cursor-not-allowed text-stone-500"
-              : "bg-gradient-to-r from-kar-red to-kar-yellow hover:shadow-md active:scale-95"
+              : "bg-gradient-to-r from-kar-red to-kar-yellow hover:shadow-md hover:brightness-105 active:scale-95"
           }`}
         >
           <span>{isFull ? t("events.fullBadge") : t("events.registerBtn")}</span>

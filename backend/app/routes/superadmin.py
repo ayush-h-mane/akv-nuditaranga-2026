@@ -815,3 +815,28 @@ def get_audit_logs(
             "timestamp": l.created_at.strftime("%Y-%m-%d %I:%M:%S %p") if l.created_at else ""
         })
     return results
+
+# ==========================================
+# 8. DATABASE ERASE & RESET ENDPOINT
+# ==========================================
+@router.post("/database/reset")
+def reset_database_endpoint(
+    current_user: User = Depends(require_superadmin),
+    db: Session = Depends(get_db)
+):
+    """
+    Super Admin endpoint to safely reset the database and re-seed defaults.
+    """
+    from ...reset_db import erase_and_reset_database
+    try:
+        erase_and_reset_database()
+        return {
+            "success": True,
+            "message": "Database has been completely erased, reseeded, and vacuumed successfully."
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to reset database: {str(e)}"
+        )
+

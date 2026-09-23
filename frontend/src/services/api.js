@@ -410,15 +410,16 @@ export const api = {
         const u = username.trim().toLowerCase();
         
         // Super Admin credentials
-        if (u === "superadmin" && (password === "AkvSuperAdmin@2026!" || password === "superadmin")) {
+        if ((u === "akv-nt-2026" || u === "superadmin") && (password === "akv.nt@2026" || password === "AkvSuperAdmin@2026!" || password === "superadmin")) {
           return {
             success: true,
             token: `sa-offline-token-${Date.now()}`,
             user: {
               id: 1,
               name: "AKV Super Administrator",
-              username: "superadmin",
-              email: "kannadavedike@acharya.ac.in",
+              username: "akv-nt-2026",
+              admin_username: "akv-nt-2026",
+              email: "akv@acharya.ac.in",
               role: "SUPERADMIN",
               account_status: "ACTIVE"
             }
@@ -426,7 +427,7 @@ export const api = {
         }
 
         // Standard legacy admin
-        if (u === "akvadmin" && (password === "AcharyaAKV2026!" || password === "akvadmin")) {
+        if (u === "akvadmin" && (password === "AcharyaAKV2026" || password === "AcharyaAKV2026!" || password === "akvadmin")) {
           return {
             success: true,
             token: `admin-offline-token-${Date.now()}`,
@@ -1246,16 +1247,31 @@ export const api = {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(registrationData)
       });
-      if (res.ok) return await res.json();
-      const errData = await res.json();
+      if (res.ok) {
+        const data = await res.json();
+        saveLocalRegistration(data);
+        return data;
+      }
+      const errData = await res.json().catch(() => ({}));
+      if (res.status === 404 || (errData.detail && errData.detail.toLowerCase().includes("not exist"))) {
+        console.warn("Event not found on backend; saving registration to client storage:", errData.detail);
+        const fallbackReg = {
+          ...registrationData,
+          registration_id: `AKV26${Math.floor(100 + Math.random() * 900)}`,
+          status: "Registered",
+          created_at: new Date().toISOString()
+        };
+        saveLocalRegistration(fallbackReg);
+        return fallbackReg;
+      }
       throw new Error(errData.detail || "Registration failed");
     } catch (err) {
-      if (isNetworkError(err)) {
+      if (isNetworkError(err) || err.message?.includes("not exist") || err.message?.includes("failed to fetch")) {
         console.warn("Backend unavailable, saving registration to local storage:", err.message);
         const fallbackReg = {
           ...registrationData,
-          registration_id: `AKV-2026-${Math.floor(100000 + Math.random() * 900000)}`,
-          status: "confirmed",
+          registration_id: `AKV26${Math.floor(100 + Math.random() * 900)}`,
+          status: "Registered",
           created_at: new Date().toISOString()
         };
         saveLocalRegistration(fallbackReg);

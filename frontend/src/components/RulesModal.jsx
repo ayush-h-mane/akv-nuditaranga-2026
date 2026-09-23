@@ -12,9 +12,12 @@ export const RulesModal = ({ event, isOpen, onClose, onRegister }) => {
   const rulesList = rulesText.split("\n").filter(r => r.trim().length > 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-[backdropFade_0.2s_ease-out_forwards] transition-opacity"
+      onClick={onClose}
+    >
       <div 
-        className="relative w-full max-w-xl bg-white rounded-3xl shadow-2xl border border-amber-200 overflow-hidden"
+        className="relative w-full max-w-xl bg-white rounded-3xl shadow-2xl border border-amber-200 overflow-hidden transform-gpu will-change-transform animate-[modalEnter_0.28s_cubic-bezier(0.16,1,0.3,1)_forwards]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header Ribbon */}
@@ -40,14 +43,15 @@ export const RulesModal = ({ event, isOpen, onClose, onRegister }) => {
 
           <button
             onClick={onClose}
-            className="p-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-600 transition-colors"
+            className="p-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-600 transition-all duration-150 hover:scale-105 active:scale-95"
+            aria-label="Close rules"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 max-h-[60vh] overflow-y-auto space-y-4 text-sm text-stone-700 font-kannada">
+        <div className="p-6 max-h-[60vh] overflow-y-auto overscroll-contain space-y-4 text-sm text-stone-700 font-kannada scroll-smooth">
           {/* Timing & Venue */}
           <div className="grid grid-cols-2 gap-3 p-3.5 rounded-2xl bg-amber-50/60 border border-amber-200/50 text-xs">
             <div className="flex items-center gap-2">
@@ -77,7 +81,7 @@ export const RulesModal = ({ event, isOpen, onClose, onRegister }) => {
             </h4>
             <div className="space-y-2">
               {rulesList.map((rule, idx) => (
-                <div key={idx} className="flex items-start gap-2.5 bg-stone-50 p-2.5 rounded-xl">
+                <div key={idx} className="flex items-start gap-2.5 bg-stone-50 p-2.5 rounded-xl transition-colors hover:bg-amber-50/40">
                   <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
                   <span className="leading-relaxed text-stone-800">{rule}</span>
                 </div>
@@ -96,7 +100,7 @@ export const RulesModal = ({ event, isOpen, onClose, onRegister }) => {
         <div className="p-4 bg-stone-50 border-t border-stone-100 flex items-center justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-xl text-xs font-bold text-stone-600 hover:bg-stone-200 transition-colors"
+            className="px-4 py-2 rounded-xl text-xs font-bold text-stone-600 hover:bg-stone-200 transition-all duration-150 active:scale-95"
           >
             {t("rulesModal.close")}
           </button>
@@ -105,7 +109,7 @@ export const RulesModal = ({ event, isOpen, onClose, onRegister }) => {
               onClose();
               if (onRegister) onRegister(event.id);
             }}
-            className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-kar-red to-kar-yellow shadow-md hover:shadow-lg transition-all"
+            className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-kar-red to-kar-yellow shadow-md hover:shadow-lg hover:brightness-105 transition-all duration-150 active:scale-95"
           >
             {t("rulesModal.understood")}
           </button>

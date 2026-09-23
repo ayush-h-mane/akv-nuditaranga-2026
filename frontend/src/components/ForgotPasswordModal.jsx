@@ -48,8 +48,14 @@ export const ForgotPasswordModal = ({ isOpen, onClose, onOpenResetView }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-amber-200 overflow-hidden">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-[backdropFade_0.2s_ease-out_forwards] transition-opacity"
+      onClick={onClose}
+    >
+      <div 
+        className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full border border-amber-200 overflow-hidden transform-gpu will-change-transform animate-[modalEnter_0.28s_cubic-bezier(0.16,1,0.3,1)_forwards]"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="bg-gradient-to-r from-kar-red to-red-600 px-6 py-4 text-white flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -58,7 +64,8 @@ export const ForgotPasswordModal = ({ isOpen, onClose, onOpenResetView }) => {
           </div>
           <button 
             onClick={onClose} 
-            className="p-1 rounded-lg hover:bg-white/20 transition-colors"
+            className="p-1 rounded-lg hover:bg-white/20 transition-all duration-150 active:scale-95"
+            aria-label="Close modal"
           >
             <X className="w-5 h-5" />
           </button>
@@ -139,14 +146,14 @@ export const ForgotPasswordModal = ({ isOpen, onClose, onOpenResetView }) => {
                 <button
                   type="button"
                   onClick={onClose}
-                  className="flex-1 py-2.5 px-4 rounded-xl border border-stone-300 font-bold text-sm text-stone-700 hover:bg-stone-50 transition-colors"
+                  className="flex-1 py-2.5 px-4 rounded-xl border border-stone-300 font-bold text-sm text-stone-700 hover:bg-stone-50 active:scale-95 transition-all duration-150"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-kar-red to-red-600 text-white font-extrabold text-sm shadow-md hover:shadow-lg transition-all disabled:opacity-50"
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-kar-red to-red-600 text-white font-extrabold text-sm shadow-md hover:shadow-lg hover:brightness-105 active:scale-95 transition-all duration-150 disabled:opacity-50"
                 >
                   {loading ? "Verifying..." : "Send Reset Link"}
                 </button>

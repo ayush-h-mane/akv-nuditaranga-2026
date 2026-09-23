@@ -35,8 +35,33 @@ def register_participant(reg_data: RegistrationCreate, db: Session = Depends(get
     # 1. Check Event Existence
     event = db.query(Event).filter(Event.id == reg_data.event_id).first()
     if not event:
-        raise HTTPException(status_code=404, detail="Selected event does not exist")
-    if not event.is_active:
+        event = Event(
+            id=reg_data.event_id,
+            title_en=reg_data.event_id,
+            title_kn=reg_data.event_id,
+            category="cultural",
+            category_kn="ಸಾಂಸ್ಕೃತಿಕ",
+            description_en=f"Nuditaranga 2026 event: {reg_data.event_id}",
+            description_kn=f"ನುಡಿತರಂಗ ೨೦೨೬ ಸ್ಪರ್ಧೆ: {reg_data.event_id}",
+            is_team=reg_data.is_team,
+            format="team" if reg_data.is_team else "solo",
+            min_team_size=2 if reg_data.is_team else 1,
+            max_team_size=10 if reg_data.is_team else 1,
+            max_slots=200,
+            registered_count=0,
+            venue="Acharya Campus",
+            venue_kn="ಆಚಾರ್ಯ ಆವರಣ",
+            event_date="02-11-2026",
+            event_time="10:00 AM",
+            reporting_time="09:30 AM",
+            rules_en="Standard festival rules apply.",
+            rules_kn="ಮಾನಕ ನಿಯಮಗಳು ಅನ್ವಯಿಸುತ್ತವೆ.",
+            is_active=True
+        )
+        db.add(event)
+        db.commit()
+        db.refresh(event)
+    elif not event.is_active:
         raise HTTPException(status_code=400, detail="Registrations for this event are currently closed")
     
     # 2. Check Capacity

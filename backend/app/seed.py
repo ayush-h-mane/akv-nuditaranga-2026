@@ -4,8 +4,52 @@ import datetime
 import json
 
 INITIAL_EVENTS = [
-    # Initial competition events list cleared as requested.
-    # Add new event definitions here or via the Admin Portal whenever ready.
+    {
+        "id": "AKV-NT-01",
+        "title_en": "Kala Ranga",
+        "title_kn": "ಕಲಾ ರಂಗ",
+        "category": "traditional",
+        "category_kn": "ಜಾನಪದ & ಸಾಂಪ್ರದಾಯಿಕ",
+        "description_en": "It is an open stage event where participant can show case their talent in any form.",
+        "description_kn": "ಇದು ಮುಕ್ತ ವೇದಿಕೆಯ ಕಾರ್ಯಕ್ರಮವಾಗಿದ್ದು, ಇದರಲ್ಲಿ ಭಾಗವಹಿಸುವವರು ತಮ್ಮ ಪ್ರತಿಭೆಯನ್ನು ಯಾವುದೇ ರೂಪದಲ್ಲಿ ಪ್ರದರ್ಶಿಸಬಹುದು.",
+        "is_team": True,
+        "min_team_size": 2,
+        "max_team_size": 20,
+        "max_slots": 50,
+        "registered_count": 0,
+        "venue": "Oya junction",
+        "venue_kn": "ಓಯಾ ಜಂಕ್ಷನ್",
+        "event_date": "02-11-2026",
+        "event_time": "02:00 PM",
+        "reporting_time": "01:30 PM",
+        "rules_en": "1. Follow all instructions given by event coordinators.\n2. Decisions of the judges will be final and binding.\n3. Originality and cultural authenticity are prioritized.",
+        "rules_kn": "೧. ಆಯೋಜಕರ ಸೂಚನೆಗಳನ್ನು ಕಡ್ಡಾಯವಾಗಿ ಪಾಲಿಸಬೇಕು.\n೨. ತೀರ್ಪುಗಾರರ ತೀರ್ಮಾನವೇ ಅಂತಿಮವಾಗಿರುತ್ತದೆ.\n೩. ಕನ್ನಡತನ, ಸಂಸ್ಕೃತಿ ಮತ್ತು ಸ್ವಂತಿಕೆಗೆ ಆದ್ಯತೆ ನೀಡಲಾಗುವುದು.",
+        "format": "solo",
+        "is_active": True
+    },
+    {
+        "id": "AKV-NT-02",
+        "title_en": "Yakshagana & Drama",
+        "title_kn": "ಯಕ್ಷಗಾನ ಮತ್ತು ನಾಟಕ",
+        "category": "cultural",
+        "category_kn": "ಸಾಂಸ್ಕೃತಿಕ",
+        "description_en": "Traditional coastal Karnataka theatrical dance performance",
+        "description_kn": "ಕರಾವಳಿ ಕರ್ನಾಟಕದ ಪಾರಂಪರಿಕ ನೃತ್ಯ ನಾಟಕ",
+        "is_team": False,
+        "min_team_size": 1,
+        "max_team_size": 15,
+        "max_slots": 30,
+        "registered_count": 0,
+        "venue": "Open Air Theatre, Acharya",
+        "venue_kn": "ಬಯಲು ರಂಗಮಂದಿರ, ಆಚಾರ್ಯ",
+        "event_date": "November 02, 2026",
+        "event_time": "02:00 PM - 05:00 PM",
+        "reporting_time": "01:30 PM",
+        "rules_en": "1. Max 15 members per troupe.",
+        "rules_kn": "೧. ಪ್ರತಿ ತಂಡಕ್ಕೆ ಗರಿಷ್ಠ ೧೫ ಸದಸ್ಯರು.",
+        "format": "group",
+        "is_active": True
+    }
 ]
 
 INITIAL_ACTIVITIES = [

@@ -15,7 +15,7 @@ venv/
 # Databases
 *.db
 *.db-journal
-*.backup
+*.backup*
 
 # Node / Frontend
 node_modules/

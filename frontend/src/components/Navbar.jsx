@@ -77,7 +77,7 @@ export const Navbar = ({ currentView, setCurrentView, onOpenAuthTab }) => {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      className={`fixed top-0 left-0 right-0 z-50 transition-[background-color,backdrop-filter,box-shadow,padding,border-color] duration-300 ease-out transform-gpu ${
         scrolled
           ? "bg-white/95 backdrop-blur-md shadow-md border-b border-amber-100 py-2.5"
           : "bg-white/85 backdrop-blur-sm border-b border-transparent py-3 sm:py-4"
@@ -88,7 +88,7 @@ export const Navbar = ({ currentView, setCurrentView, onOpenAuthTab }) => {
         {/* Brand Logo & Name */}
         <div 
           onClick={() => handleNavClick("home")} 
-          className="flex items-center gap-2 sm:gap-3 cursor-pointer group shrink-0"
+          className="flex items-center gap-2 sm:gap-3 cursor-pointer group shrink-0 active:scale-98 transition-transform duration-150"
         >
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <img
