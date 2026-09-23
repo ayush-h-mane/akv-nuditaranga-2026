@@ -5,7 +5,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "Acharya Kannada Vedike (AKV) API"
     APP_VERSION: str = "2.0.0"
     API_PREFIX: str = "/api"
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./akv_fest.db")
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:////tmp/akv_fest.db" if os.environ.get("VERCEL") else "sqlite:///./akv_fest.db")
     
     # JWT & Security
     SECRET_KEY: str = os.getenv("JWT_SECRET", "akv-kannada-vedike-nuditaranga-secret-2026")
