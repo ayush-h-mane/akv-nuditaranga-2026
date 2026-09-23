@@ -4,23 +4,29 @@ from typing import Optional
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
 from .config import settings
 from .database import get_db, SessionLocal
 from .models import User, Admin
 
-# Password Hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+import bcrypt
 
+# Password Hashing via direct bcrypt (safe across all bcrypt versions and platforms)
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    if not hashed_password:
+    if not hashed_password or not plain_password:
         return False
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        pw_bytes = plain_password[:72].encode("utf-8")
+        hash_bytes = hashed_password.encode("utf-8")
+        return bcrypt.checkpw(pw_bytes, hash_bytes)
+    except Exception:
+        return False
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    pw_bytes = (password or "")[:72].encode("utf-8")
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(pw_bytes, salt).decode("utf-8")
 
 # JWT Security
 security = HTTPBearer(auto_error=False)
