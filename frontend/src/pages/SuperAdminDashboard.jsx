@@ -59,7 +59,8 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
   const [editAttendance, setEditAttendance] = useState(null);
   const [markAttendanceModal, setMarkAttendanceModal] = useState(false);
   const [markData, setMarkData] = useState({ volunteer_user_id: "", date: new Date().toISOString().split("T")[0], status: "PRESENT", notes: "" });
-  const [eventModal, setEventModal] = useState(null); // null or "new"
+  const [eventModal, setEventModal] = useState(null); // null, "new", or "edit"
+  const [editEvent, setEditEvent] = useState(null);
   const [newEvent, setNewEvent] = useState({
     title_en: "",
     title_kn: "",
@@ -277,6 +278,15 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
     }
   };
 
+  const categoryMapping = {
+    cultural: "ಸಾಂಸ್ಕೃತಿಕ",
+    traditional: "ಜಾನಪದ & ಸಾಂಪ್ರದಾಯಿಕ",
+    literary: "ಸಾಹಿತ್ಯ",
+    fine_arts: "ಲಲಿತಕಲೆ",
+    theatre: "ರಂಗಭೂಮಿ",
+    music: "ಸಂಗೀತ"
+  };
+
   const handleCreateEventSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -286,6 +296,40 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
       loadEvents();
     } catch (err) {
       notify("error", err.message || "Failed to create event");
+    }
+  };
+
+  const handleEditEventSubmit = async (e) => {
+    e.preventDefault();
+    if (!editEvent || !editEvent.id) return;
+    try {
+      await api.updateEvent(editEvent.id, {
+        title_en: editEvent.title_en,
+        title_kn: editEvent.title_kn,
+        category: editEvent.category,
+        category_kn: editEvent.category_kn || categoryMapping[editEvent.category] || "ಸಾಂಸ್ಕೃತಿಕ",
+        description_en: editEvent.description_en,
+        description_kn: editEvent.description_kn,
+        venue: editEvent.venue,
+        venue_kn: editEvent.venue_kn,
+        event_date: editEvent.event_date,
+        event_time: editEvent.event_time,
+        reporting_time: editEvent.reporting_time,
+        max_slots: parseInt(editEvent.max_slots) || 50,
+        format: editEvent.format,
+        is_team: Boolean(editEvent.is_team),
+        min_team_size: parseInt(editEvent.min_team_size) || (editEvent.is_team ? 2 : 1),
+        max_team_size: parseInt(editEvent.max_team_size) || (editEvent.is_team ? 15 : 1),
+        rules_en: editEvent.rules_en,
+        rules_kn: editEvent.rules_kn,
+        is_active: Boolean(editEvent.is_active)
+      });
+      notify("success", `Event '${editEvent.title_en}' updated successfully.`);
+      setEventModal(null);
+      setEditEvent(null);
+      loadEvents();
+    } catch (err) {
+      notify("error", err.message || "Failed to update event");
     }
   };
 
@@ -1008,22 +1052,37 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
                     <div className="pt-3 border-t border-stone-200 flex items-center justify-end gap-2">
                       <button
+                        type="button"
+                        onClick={() => {
+                          setEditEvent({ ...ev });
+                          setEventModal("edit");
+                        }}
+                        className="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100 flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                        title="Edit Event Details"
+                      >
+                        <Pencil className="w-3.5 h-3.5 text-amber-700" />
+                        <span>Edit</span>
+                      </button>
+                      <button
+                        type="button"
                         onClick={async () => {
                           await api.updateEvent(ev.id, { is_active: !ev.is_active });
                           loadEvents();
                         }}
-                        className="px-2.5 py-1 rounded-lg text-xs font-bold border border-stone-300 hover:bg-stone-100"
+                        className="px-2.5 py-1 rounded-lg text-xs font-bold border border-stone-300 hover:bg-stone-100 transition-colors cursor-pointer"
                       >
                         {ev.is_active ? "Close Registrations" : "Re-open"}
                       </button>
                       <button
+                        type="button"
                         onClick={async () => {
                           if (window.confirm(`Delete event '${ev.title_en}'?`)) {
                             await api.deleteEvent(ev.id);
                             loadEvents();
                           }
                         }}
-                        className="p-1.5 text-stone-400 hover:text-red-600"
+                        className="p-1.5 text-stone-400 hover:text-red-600 transition-colors cursor-pointer"
+                        title="Delete Event"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -1452,6 +1511,284 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                   className="flex-1 py-2.5 rounded-xl bg-kar-red hover:bg-red-700 text-white font-bold shadow-md transition-colors"
                 >
                   Create Event
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Existing Event Modal */}
+      {eventModal === "edit" && editEvent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 border border-stone-200 shadow-2xl my-8 max-h-[90vh] overflow-y-auto animate-fade-in">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center">
+                  <Pencil className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-stone-900">Edit Fest Event</h3>
+                  <p className="text-[11px] font-mono text-stone-500 font-bold">{editEvent.id}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setEventModal(null);
+                  setEditEvent(null);
+                }}
+                className="p-1.5 text-stone-400 hover:text-stone-700 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleEditEventSubmit} className="space-y-3.5 text-xs pt-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-stone-700 uppercase">Title (English)</label>
+                  <input
+                    type="text"
+                    required
+                    value={editEvent.title_en || ""}
+                    onChange={(e) => setEditEvent({ ...editEvent, title_en: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 font-semibold"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-stone-700 uppercase">Title (ಕನ್ನಡ)</label>
+                  <input
+                    type="text"
+                    required
+                    value={editEvent.title_kn || ""}
+                    onChange={(e) => setEditEvent({ ...editEvent, title_kn: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 font-kannada font-bold text-amber-900"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-stone-700 uppercase">Category</label>
+                  <select
+                    value={editEvent.category || "cultural"}
+                    onChange={(e) => {
+                      const cat = e.target.value;
+                      setEditEvent({
+                        ...editEvent,
+                        category: cat,
+                        category_kn: categoryMapping[cat] || editEvent.category_kn
+                      });
+                    }}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 bg-white font-medium"
+                  >
+                    <option value="cultural">Cultural (ಸಾಂಸ್ಕೃತಿಕ)</option>
+                    <option value="traditional">Traditional (ಜಾನಪದ & ಸಾಂಪ್ರದಾಯಿಕ)</option>
+                    <option value="literary">Literary (ಸಾಹಿತ್ಯ)</option>
+                    <option value="fine_arts">Fine Arts (ಲಲಿತಕಲೆ)</option>
+                    <option value="theatre">Theatre (ರಂಗಭೂಮಿ)</option>
+                    <option value="music">Music (ಸಂಗೀತ)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="font-bold text-stone-700 uppercase">Format</label>
+                  <select
+                    value={editEvent.format || (editEvent.is_team ? "group" : "solo")}
+                    onChange={(e) => {
+                      const fmt = e.target.value;
+                      const isTeam = fmt !== "solo";
+                      setEditEvent({
+                        ...editEvent,
+                        format: fmt,
+                        is_team: isTeam,
+                        min_team_size: isTeam ? (editEvent.min_team_size > 1 ? editEvent.min_team_size : 2) : 1,
+                        max_team_size: isTeam ? (editEvent.max_team_size > 1 ? editEvent.max_team_size : 15) : 1
+                      });
+                    }}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 bg-white font-medium"
+                  >
+                    <option value="solo">Solo (ಏಕವ್ಯಕ್ತಿ)</option>
+                    <option value="duet">Duet (ಇಬ್ಬರು)</option>
+                    <option value="group">Group / Team (ತಂಡ)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Team Size configuration if team/group event */}
+              {editEvent.is_team && (
+                <div className="grid grid-cols-2 gap-3 p-3 rounded-2xl bg-amber-50/70 border border-amber-200">
+                  <div>
+                    <label className="font-bold text-amber-950 uppercase text-[10px]">Min Team Members</label>
+                    <input
+                      type="number"
+                      min="2"
+                      max="50"
+                      value={editEvent.min_team_size || 2}
+                      onChange={(e) => setEditEvent({ ...editEvent, min_team_size: parseInt(e.target.value) || 2 })}
+                      className="w-full px-3 py-1.5 rounded-xl border border-amber-300 bg-white mt-1 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-amber-950 uppercase text-[10px]">Max Team Members</label>
+                    <input
+                      type="number"
+                      min="2"
+                      max="100"
+                      value={editEvent.max_team_size || 15}
+                      onChange={(e) => setEditEvent({ ...editEvent, max_team_size: parseInt(e.target.value) || 15 })}
+                      className="w-full px-3 py-1.5 rounded-xl border border-amber-300 bg-white mt-1 text-xs"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-stone-700 uppercase">Date</label>
+                  <input
+                    type="text"
+                    required
+                    value={editEvent.event_date || ""}
+                    onChange={(e) => setEditEvent({ ...editEvent, event_date: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-stone-700 uppercase">Time</label>
+                  <input
+                    type="text"
+                    required
+                    value={editEvent.event_time || ""}
+                    onChange={(e) => setEditEvent({ ...editEvent, event_time: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-stone-700 uppercase">Reporting Time</label>
+                  <input
+                    type="text"
+                    value={editEvent.reporting_time || ""}
+                    onChange={(e) => setEditEvent({ ...editEvent, reporting_time: e.target.value })}
+                    placeholder="e.g. 09:30 AM"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-stone-700 uppercase">Max Slots Capacity</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="1000"
+                    required
+                    value={editEvent.max_slots || 50}
+                    onChange={(e) => setEditEvent({ ...editEvent, max_slots: parseInt(e.target.value) || 50 })}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-stone-700 uppercase">Venue (English)</label>
+                  <input
+                    type="text"
+                    required
+                    value={editEvent.venue || ""}
+                    onChange={(e) => setEditEvent({ ...editEvent, venue: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-stone-700 uppercase">Venue (ಕನ್ನಡ)</label>
+                  <input
+                    type="text"
+                    value={editEvent.venue_kn || ""}
+                    onChange={(e) => setEditEvent({ ...editEvent, venue_kn: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 font-kannada"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-stone-700 uppercase">Description (English)</label>
+                <textarea
+                  rows="2"
+                  value={editEvent.description_en || ""}
+                  onChange={(e) => setEditEvent({ ...editEvent, description_en: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-stone-700 uppercase">Description (ಕನ್ನಡ)</label>
+                <textarea
+                  rows="2"
+                  value={editEvent.description_kn || ""}
+                  onChange={(e) => setEditEvent({ ...editEvent, description_kn: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 font-kannada"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-stone-700 uppercase">Rules & Guidelines (English)</label>
+                <textarea
+                  rows="3"
+                  value={editEvent.rules_en || ""}
+                  onChange={(e) => setEditEvent({ ...editEvent, rules_en: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 font-mono text-[11px]"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-stone-700 uppercase">Rules & Guidelines (ಕನ್ನಡ)</label>
+                <textarea
+                  rows="3"
+                  value={editEvent.rules_kn || ""}
+                  onChange={(e) => setEditEvent({ ...editEvent, rules_kn: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 font-kannada text-[11px]"
+                />
+              </div>
+
+              {/* Active / Closed Status Toggle */}
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-stone-100 border border-stone-200">
+                <div>
+                  <span className="font-bold text-stone-800 block text-xs">Event Registration Status</span>
+                  <span className="text-[11px] text-stone-500">Allow or freeze new student registrations</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditEvent({ ...editEvent, is_active: !editEvent.is_active })}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer ${
+                    editEvent.is_active 
+                      ? "bg-emerald-600 text-white" 
+                      : "bg-red-600 text-white"
+                  }`}
+                >
+                  {editEvent.is_active ? "Registration Open" : "Registration Closed"}
+                </button>
+              </div>
+
+              <div className="flex items-center gap-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEventModal(null);
+                    setEditEvent(null);
+                  }}
+                  className="flex-1 py-2.5 rounded-xl border border-stone-300 font-bold hover:bg-stone-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-kar-red to-red-600 hover:from-red-700 hover:to-red-800 text-white font-bold shadow-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Save Changes</span>
                 </button>
               </div>
             </form>

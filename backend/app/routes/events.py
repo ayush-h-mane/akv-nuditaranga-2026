@@ -2,7 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from ..database import get_db
-from ..models import Event, Registration, CheckInLog
+from ..models import Event, Registration, CheckInLog, AuditLog
 from ..schemas import EventOut, EventCreate, EventUpdate
 
 router = APIRouter(prefix="/events", tags=["Events"])
@@ -75,6 +75,20 @@ def update_event(event_id: str, event_update: EventUpdate, db: Session = Depends
     for key, value in update_data.items():
         setattr(event, key, value)
     
+    # Audit log entry
+    try:
+        log = AuditLog(
+            actor_name="Super Administrator",
+            action="EVENT_UPDATED",
+            target_type="EVENT",
+            target_id=event_id,
+            previous_value=None,
+            new_value=f"Updated event details for {event.title_en} ({event_id})"
+        )
+        db.add(log)
+    except Exception:
+        pass
+
     db.commit()
     db.refresh(event)
     return event
@@ -92,6 +106,20 @@ def delete_event(event_id: str, db: Session = Depends(get_db)):
         db.query(CheckInLog).filter(CheckInLog.registration_id.in_(reg_ids)).delete(synchronize_session=False)
     db.query(Registration).filter(Registration.event_id == event_id).delete(synchronize_session=False)
     
+    # Audit log entry
+    try:
+        log = AuditLog(
+            actor_name="Super Administrator",
+            action="EVENT_DELETED",
+            target_type="EVENT",
+            target_id=event_id,
+            previous_value=f"Title: {event.title_en}",
+            new_value="Deleted from festival events"
+        )
+        db.add(log)
+    except Exception:
+        pass
+
     db.delete(event)
     db.commit()
     return {"success": True, "message": f"Event '{event.title_en}' deleted successfully"}
