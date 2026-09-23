@@ -43,7 +43,7 @@ export const HeroSection = ({ onExploreNuditaranga, onKnowAbout }) => {
         {/* Top Campus Badge */}
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-extrabold bg-white border border-amber-300/80 text-amber-900 shadow-sm mb-4 animate-fade-in">
           <span className="w-2 h-2 rounded-full bg-kar-red animate-ping" />
-          <span>{lang === "kn" ? "ಆಚಾರ್ಯ ಇನ್‌ಸ್ಟಿಟ್ಯೂಟ್ಸ್ • ಅಧಿಕೃತ ಕನ್ನಡ ವೇದಿಕೆ" : "Acharya Institutes • Official Kannada Vedike"}</span>
+          <span>{lang === "kn" ? "ಆಚಾರ್ಯ ಇನ್‌ಸ್ಟಿಟ್ಯೂಟ್ಸ್ • ಆಚಾರ್ಯ ಕನ್ನಡ ವೇದಿಕೆ" : "Acharya Institutes • Acharya Kannada Vedike"}</span>
         </div>
 
         {/* Main Headings */}

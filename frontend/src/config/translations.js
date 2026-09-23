@@ -13,7 +13,7 @@ export const translations = {
       registerNow: "ಈಗಲೇ ನೋಂದಾಯಿಸಿ"
     },
     hero: {
-      tag: "ಆಚಾರ್ಯ ತಾಂತ್ರಿಕ ಮಹಾವಿದ್ಯಾಲಯದ ಅಧಿಕೃತ ಕನ್ನಡ ವೇದಿಕೆ",
+      tag: "ಆಚಾರ್ಯ ತಾಂತ್ರಿಕ ಮಹಾವಿದ್ಯಾಲಯದ ಆಚಾರ್ಯ ಕನ್ನಡ ವೇದಿಕೆ",
       title1: "ಆಚಾರ್ಯ ಕನ್ನಡ ವೇದಿಕೆ",
       subtitle: "ಕನ್ನಡದ ಕಂಪು • ಸಂಸ್ಕೃತಿಯ ಸೊಬಗು • ಪ್ರತಿಭೆಯ ಅನಾವರಣ",
       description: "ಆಚಾರ್ಯ ಕ್ಯಾಂಪಸ್‌ನಲ್ಲಿ ಕನ್ನಡ ಭಾಷೆ, ಸಾಹಿತ್ಯ, ಕಲೆ ಮತ್ತು ಸಾಂಸ್ಕೃತಿಕ ಪರಂಪರೆಯನ್ನು ಎತ್ತಿಹಿಡಿಯುವ ಪ್ರಮುಖ ವಿದ್ಯಾರ್ಥಿ ಸಾಂಸ್ಕೃತಿಕ ವೇದಿಕೆ.",
@@ -247,7 +247,7 @@ export const translations = {
       registerNow: "Register Now"
     },
     hero: {
-      tag: "Official Kannada Cultural Platform of Acharya Institute of Technology",
+      tag: "Acharya Kannada Vedike • Cultural Platform of Acharya Institute of Technology",
       title1: "ACHARYA KANNADA VEDIKE",
       subtitle: "Fragrance of Kannada • Elegance of Culture • Unveiling of Talent",
       description: "A premier student cultural community committed to preserving, cherishing, and elevating the rich linguistic heritage, arts, and folklore of Karnataka at Acharya Campus.",
