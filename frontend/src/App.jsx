@@ -29,8 +29,8 @@ import { ContactSection } from "./sections/ContactSection";
 export function AppContent() {
   const { user, role, loading } = useAuth();
   
-  // Mandatory Application Entry Point: First screen must be the Authentication Portal
-  const [currentView, setCurrentView] = useState("auth"); 
+  // Application Entry Point: Default to public website home
+  const [currentView, setCurrentView] = useState("home"); 
   const [authInitialTab, setAuthInitialTab] = useState("student-login");
   const [resetToken, setResetToken] = useState("");
   
@@ -152,6 +152,11 @@ export function AppContent() {
             <HomePage
               setCurrentView={setCurrentView}
               setSelectedEventId={setSelectedEventId}
+              onOpenAuthTab={(tab) => {
+                setAuthInitialTab(tab);
+                setCurrentView("auth");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
             />
           )}
 

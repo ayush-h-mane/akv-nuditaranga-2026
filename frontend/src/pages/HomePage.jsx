@@ -9,7 +9,7 @@ import { GallerySection } from "../sections/GallerySection";
 import { InstagramSection } from "../sections/InstagramSection";
 import { ContactSection } from "../sections/ContactSection";
 
-export const HomePage = ({ setCurrentView, setSelectedEventId }) => {
+export const HomePage = ({ setCurrentView, setSelectedEventId, onOpenAuthTab }) => {
   const handleRegisterFromHome = (eventId = null) => {
     if (eventId) {
       setSelectedEventId(eventId);
@@ -39,6 +39,8 @@ export const HomePage = ({ setCurrentView, setSelectedEventId }) => {
       <HeroSection
         onExploreNuditaranga={handleExploreNuditaranga}
         onKnowAbout={handleKnowAbout}
+        onOpenAuthTab={onOpenAuthTab}
+        setCurrentView={setCurrentView}
       />
       <KarunadaVaibhavaSchedule
         onRegisterClick={() => handleRegisterFromHome(null)}
