@@ -1,27 +1,47 @@
 import React, { useState } from "react";
 import { useLanguage } from "../context/LanguageContext";
 import { api } from "../services/api";
-import { QRScanner } from "../components/QRScanner";
+import { CameraQRScanner } from "../components/CameraQRScanner";
 import { formatKannadaStatus, toKannadaDigits } from "../utils/kannadaUtils";
-import { CheckCircle2, UserCheck, AlertTriangle, Clock, MapPin, RefreshCw, XCircle } from "lucide-react";
+import { CheckCircle2, UserCheck, AlertTriangle, Clock, MapPin, RefreshCw, XCircle, Search, Camera } from "lucide-react";
 
 export const CheckInPage = () => {
   const { lang, t } = useLanguage();
   const [activeReg, setActiveReg] = useState(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
+  const [mode, setMode] = useState("camera"); // "camera" | "manual"
+  const [manualInput, setManualInput] = useState("");
 
   const handleScanOrSearch = async (id) => {
+    if (!id || !id.trim()) return;
     setLoading(true);
     setMessage(null);
     try {
-      const data = await api.getRegistration(id);
+      // Decode potential JSON if passed raw
+      let cleanId = id.trim();
+      try {
+        if (cleanId.startsWith("{") && cleanId.endsWith("}")) {
+          const parsed = JSON.parse(cleanId);
+          cleanId = parsed.reg_id || parsed.auid || parsed.usn || cleanId;
+        }
+      } catch (e) {}
+
+      const data = await api.getRegistration(cleanId);
       setActiveReg(data);
     } catch (err) {
       setMessage({ type: "error", text: err.message || (lang === "kn" ? "ನೋಂದಣಿ ಮಾಹಿತಿ ಕಂಡುಬಂದಿಲ್ಲ." : "Registration not found.") });
       setActiveReg(null);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleManualSubmit = (e) => {
+    e.preventDefault();
+    if (manualInput.trim()) {
+      handleScanOrSearch(manualInput.trim());
+      setManualInput("");
     }
   };
 
@@ -73,9 +93,70 @@ export const CheckInPage = () => {
           </div>
         )}
 
-        {/* QR Scanner Component */}
-        <div className="mb-8">
-          <QRScanner onScanSuccess={handleScanOrSearch} />
+        {/* Mode Switcher */}
+        <div className="max-w-md mx-auto mb-6 flex bg-stone-200/70 p-1 rounded-2xl border border-stone-300">
+          <button
+            type="button"
+            onClick={() => setMode("camera")}
+            className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+              mode === "camera"
+                ? "bg-white text-kar-red shadow-sm"
+                : "text-stone-600 hover:text-stone-900"
+            }`}
+          >
+            <Camera className="w-3.5 h-3.5" />
+            <span>{lang === "kn" ? "ಕ್ಯಾಮೆರಾ ಕ್ಯೂಆರ್ ಸ್ಕ್ಯಾನರ್" : "Camera QR Scanner"}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("manual")}
+            className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+              mode === "manual"
+                ? "bg-white text-kar-red shadow-sm"
+                : "text-stone-600 hover:text-stone-900"
+            }`}
+          >
+            <Search className="w-3.5 h-3.5" />
+            <span>{lang === "kn" ? "ಕೈಯಾರೆ ಐಡಿ ನಮೂದು" : "Manual ID Search"}</span>
+          </button>
+        </div>
+
+        {/* Scanner or Manual Search View */}
+        <div className="max-w-xl mx-auto mb-8">
+          {mode === "camera" ? (
+            <div className="bg-white rounded-3xl border border-stone-200 shadow-xl p-6">
+              <CameraQRScanner 
+                onScanSuccess={(scannedId) => handleScanOrSearch(scannedId)}
+                isLoading={loading}
+                autoStart={false}
+              />
+            </div>
+          ) : (
+            <form onSubmit={handleManualSubmit} className="bg-white rounded-3xl border border-stone-200 shadow-xl p-6">
+              <label className="text-xs font-bold text-stone-700 block mb-2">
+                {lang === "kn" ? "ನೋಂದಣಿ ಐಡಿ / AUID / USN ನಮೂದಿಸಿ" : "Enter Registration Pass ID / AUID / USN"}
+              </label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                  <input
+                    type="text"
+                    value={manualInput}
+                    onChange={(e) => setManualInput(e.target.value)}
+                    placeholder="e.g. AKV26001 or AIT22CS001"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-stone-300 text-xs sm:text-sm font-mono focus:outline-none focus:ring-2 focus:ring-kar-red/20 focus:border-kar-red"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading || !manualInput.trim()}
+                  className="px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-stone-900 hover:bg-stone-800 disabled:opacity-50 shadow transition-colors"
+                >
+                  {lang === "kn" ? "ಹುಡುಕಿ" : "Search"}
+                </button>
+              </div>
+            </form>
+          )}
         </div>
 
         {/* Loading Indicator */}

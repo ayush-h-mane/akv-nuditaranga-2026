@@ -22,8 +22,11 @@ import {
   Compass, 
   Lock,
   ArrowRight,
-  ShieldAlert
+  ShieldAlert,
+  Camera,
+  Scan
 } from "lucide-react";
+import { CameraQRScanner } from "../components/CameraQRScanner";
 
 export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
   const { user, role, logout } = useAuth();
@@ -42,6 +45,7 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
   const [checkinResult, setCheckinResult] = useState(null);
   const [checkinLoading, setCheckinLoading] = useState(false);
   const [checkinError, setCheckinError] = useState("");
+  const [checkinMode, setCheckinMode] = useState("camera"); // "camera" or "manual"
 
   const [feedback, setFeedback] = useState({ type: "", text: "" });
 
@@ -111,18 +115,21 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
   };
 
   // Participant Check-in Handler
-  const handleCheckInSubmit = async (e) => {
-    e.preventDefault();
-    if (!checkinId.trim()) return;
+  const handleCheckInSubmit = async (eOrId) => {
+    if (eOrId && typeof eOrId === "object" && eOrId.preventDefault) {
+      eOrId.preventDefault();
+    }
+    const targetId = (typeof eOrId === "string" ? eOrId : checkinId).trim();
+    if (!targetId) return;
 
     setCheckinLoading(true);
     setCheckinError("");
     setCheckinResult(null);
 
     try {
-      const res = await api.checkIn(checkinId.trim(), user?.name || "Fest Admin");
+      const res = await api.checkIn(targetId, user?.name || "Fest Admin");
       setCheckinResult(res);
-      notify("success", `Participant ${res.full_name} checked in!`);
+      notify("success", `Participant ${res.full_name || targetId} checked in!`);
       setCheckinId("");
     } catch (err) {
       setCheckinError(err.message || "Check-in failed. Please verify ID.");
@@ -430,60 +437,134 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
         {/* TAB 2: PARTICIPANT CHECK-IN DESK                     */}
         {/* ==================================================== */}
         {activeTab === "checkin" && (
-          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-stone-200 shadow-xs space-y-6 max-w-xl mx-auto">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-stone-200 shadow-xl space-y-6 max-w-xl mx-auto">
             <div className="text-center space-y-1">
               <div className="w-12 h-12 mx-auto rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
                 <UserCheck className="w-6 h-6" />
               </div>
               <h3 className="font-extrabold text-lg text-stone-900">Event Check-In Desk</h3>
               <p className="text-xs text-stone-500">
-                Scan or enter student Registration Pass ID or AUID / USN to check them in.
+                Scan attendee digital pass QR code via camera or enter Registration Pass ID / AUID.
               </p>
             </div>
 
+            {/* Check-In Mode Switcher */}
+            <div className="flex bg-stone-100 p-1 rounded-2xl border border-stone-200 shadow-inner">
+              <button
+                type="button"
+                onClick={() => setCheckinMode("camera")}
+                className={`flex-1 py-2 px-3 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 ${
+                  checkinMode === "camera"
+                    ? "bg-white text-kar-red shadow-xs border border-stone-200/50"
+                    : "text-stone-600 hover:text-stone-900"
+                }`}
+              >
+                <Camera className="w-3.5 h-3.5" />
+                <span>Camera QR Scanner</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCheckinMode("manual")}
+                className={`flex-1 py-2 px-3 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 ${
+                  checkinMode === "manual"
+                    ? "bg-white text-kar-red shadow-xs border border-stone-200/50"
+                    : "text-stone-600 hover:text-stone-900"
+                }`}
+              >
+                <Search className="w-3.5 h-3.5" />
+                <span>Manual ID Entry</span>
+              </button>
+            </div>
+
             {checkinError && (
-              <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs font-semibold flex items-center gap-2">
+              <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs font-semibold flex items-center gap-2 animate-shake">
                 <AlertCircle className="w-4 h-4 shrink-0 text-kar-red" />
                 <span>{checkinError}</span>
               </div>
             )}
 
-            <form onSubmit={handleCheckInSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                  Registration ID / AUID / USN
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={checkinId}
-                  onChange={(e) => setCheckinId(e.target.value.toUpperCase())}
-                  placeholder="e.g. AKV26001 or AIT22CS001"
-                  className="w-full px-4 py-3 rounded-2xl border border-stone-300 text-sm font-mono uppercase focus:ring-2 focus:ring-kar-red"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={checkinLoading}
-                className="w-full py-3 rounded-2xl bg-gradient-to-r from-kar-red to-red-600 text-white font-extrabold text-sm shadow-md hover:shadow-lg transition-all disabled:opacity-50"
-              >
-                {checkinLoading ? "Verifying Pass..." : "Verify & Check-In Attendee"}
-              </button>
-            </form>
-
+            {/* Success Card when pass is checked in */}
             {checkinResult && (
-              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-2 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="font-extrabold text-emerald-900 text-sm">{checkinResult.full_name}</span>
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 font-extrabold text-[10px]">
-                    {checkinResult.status}
+              <div className="p-5 bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-300 rounded-2xl space-y-3 text-xs animate-fade-in shadow-md">
+                <div className="flex items-center justify-between border-b border-emerald-200/60 pb-2">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                    <div>
+                      <h4 className="font-extrabold text-emerald-950 text-sm">{checkinResult.full_name || "Verified Attendee"}</h4>
+                      <p className="text-[10px] text-emerald-700">Attendance marked successfully</p>
+                    </div>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full bg-emerald-200/80 text-emerald-900 font-extrabold text-[11px] tracking-wide">
+                    {checkinResult.status || "Checked In"}
                   </span>
                 </div>
-                <p className="font-mono text-stone-600">ID: <strong>{checkinResult.registration_id}</strong> • AUID: <strong>{checkinResult.effective_auid}</strong></p>
-                <p className="text-stone-600">Event: <strong>{checkinResult.event?.title_en || checkinResult.event_id}</strong></p>
-                <p className="text-stone-500">Department: {checkinResult.department}</p>
+
+                <div className="grid grid-cols-2 gap-2 text-stone-700 pt-1">
+                  <div>
+                    <span className="text-[10px] text-stone-500 uppercase font-bold block">Registration ID</span>
+                    <strong className="font-mono text-stone-900">{checkinResult.registration_id}</strong>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-stone-500 uppercase font-bold block">AUID / USN</span>
+                    <strong className="font-mono text-stone-900">{checkinResult.effective_auid || checkinResult.auid || checkinResult.usn || "N/A"}</strong>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-stone-500 uppercase font-bold block">Event</span>
+                    <strong className="text-stone-900">{checkinResult.event?.title_en || checkinResult.event_id || "Festival Pass"}</strong>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-stone-500 uppercase font-bold block">Department</span>
+                    <strong className="text-stone-900">{checkinResult.department || "Acharya"}</strong>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setCheckinResult(null)}
+                  className="w-full mt-2 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+                >
+                  <Scan className="w-3.5 h-3.5" />
+                  <span>Scan Next Attendee</span>
+                </button>
               </div>
+            )}
+
+            {/* Mode A: Camera Scanner */}
+            {checkinMode === "camera" && (
+              <div className="space-y-3">
+                <CameraQRScanner
+                  onScanSuccess={(scannedId) => handleCheckInSubmit(scannedId)}
+                  isLoading={checkinLoading}
+                  autoStart={false}
+                />
+              </div>
+            )}
+
+            {/* Mode B: Manual Search */}
+            {checkinMode === "manual" && (
+              <form onSubmit={handleCheckInSubmit} className="space-y-4 animate-fade-in">
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                    Registration ID / AUID / USN
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={checkinId}
+                    onChange={(e) => setCheckinId(e.target.value.toUpperCase())}
+                    placeholder="e.g. AKV26001 or AIT22CS001"
+                    className="w-full px-4 py-3 rounded-2xl border border-stone-300 text-sm font-mono uppercase focus:ring-2 focus:ring-kar-red"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={checkinLoading}
+                  className="w-full py-3 rounded-2xl bg-gradient-to-r from-kar-red to-red-600 text-white font-extrabold text-sm shadow-md hover:shadow-lg transition-all disabled:opacity-50"
+                >
+                  {checkinLoading ? "Verifying Pass..." : "Verify & Check-In Attendee"}
+                </button>
+              </form>
             )}
           </div>
         )}
