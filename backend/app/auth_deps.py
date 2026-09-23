@@ -195,14 +195,95 @@ def init_superadmin():
                 approved_at=datetime.datetime.utcnow()
             )
             db.add(admin_entry)
+        # Provision primary coordinator admin: ayush_h_mane
+        admin_pw = settings.ADMIN_PASSWORD or "AcharyaAKV2026"
+        admin_hash = get_password_hash(admin_pw)
+        
+        ayush_user = db.query(User).filter(
+            (User.auid == "ADM-AYUSH") | 
+            (User.email == "ayush@acharya.ac.in") |
+            (User.email == "ayushh.22.beai@acharya.ac.in")
+        ).first()
+
+        if not ayush_user:
+            ayush_user = User(
+                name="Ayush H Mane",
+                auid="ADM-AYUSH",
+                email="ayush@acharya.ac.in",
+                phone="9876543211",
+                institute="Acharya Institute of Technology",
+                department="Computer Science & Engineering",
+                semester=6,
+                section="A",
+                gender="Male",
+                role="ADMIN",
+                registration_id="AKV-ADM-0001",
+                password_hash=admin_hash,
+                account_status="ACTIVE"
+            )
+            db.add(ayush_user)
             db.commit()
-            print(f"[BOOTSTRAP] Super Admin account initialized: '{sa_username}'")
+            db.refresh(ayush_user)
         else:
-            admin_entry.user_id = sa_user.id
-            admin_entry.username = sa_username
-            admin_entry.approval_status = "APPROVED"
+            ayush_user.password_hash = admin_hash
+            ayush_user.role = "ADMIN"
+            ayush_user.account_status = "ACTIVE"
             db.commit()
-            print(f"[BOOTSTRAP] Super Admin account updated: '{sa_username}'")
+
+        adm = db.query(Admin).filter(
+            (Admin.username == "ayush_h_mane") | 
+            (Admin.user_id == ayush_user.id)
+        ).first()
+        if not adm:
+            adm = Admin(
+                user_id=ayush_user.id,
+                username="ayush_h_mane",
+                approval_status="APPROVED",
+                approved_by="SYSTEM_BOOTSTRAP",
+                approved_at=datetime.datetime.utcnow()
+            )
+            db.add(adm)
+        else:
+            adm.approval_status = "APPROVED"
+            adm.username = "ayush_h_mane"
+            adm.user_id = ayush_user.id
+        db.commit()
+
+        # Provision legacy admin: akvadmin
+        legacy_user = db.query(User).filter(User.auid == "ADM-AKVADMIN").first()
+        if not legacy_user:
+            legacy_user = User(
+                name="Prof. Basavaraj (Cultural Lead)",
+                auid="ADM-AKVADMIN",
+                email="akvadmin@acharya.ac.in",
+                phone="9876543212",
+                institute="Acharya Institute of Technology",
+                department="Kannada Vedike",
+                semester=8,
+                section="A",
+                gender="Male",
+                role="ADMIN",
+                registration_id="AKV-ADM-0002",
+                password_hash=admin_hash,
+                account_status="ACTIVE"
+            )
+            db.add(legacy_user)
+            db.commit()
+            db.refresh(legacy_user)
+
+        legacy_admin = db.query(Admin).filter(Admin.username == "akvadmin").first()
+        if not legacy_admin:
+            legacy_admin = Admin(
+                user_id=legacy_user.id,
+                username="akvadmin",
+                approval_status="APPROVED",
+                approved_by="SYSTEM_BOOTSTRAP",
+                approved_at=datetime.datetime.utcnow()
+            )
+            db.add(legacy_admin)
+            db.commit()
+
+        print(f"[BOOTSTRAP] Administrator accounts initialized: ayush_h_mane, akvadmin")
     except Exception as e:
         print(f"[BOOTSTRAP ERROR] Failed to initialize Super Admin: {e}")
         db.rollback()
