@@ -69,35 +69,39 @@ import json
 class RegistrationCreate(BaseModel):
     event_id: str
     full_name: str = Field(..., min_length=2, max_length=100)
-    auid: str = Field(..., min_length=3, max_length=30)
+    auid: Optional[str] = None
     usn: Optional[str] = None
-    institute: str = Field(..., min_length=2, max_length=150)
+    institute: str = Field("Acharya Institute of Technology", min_length=2, max_length=150)
     department: str = Field(..., min_length=2, max_length=100)
-    semester: int = Field(..., ge=1, le=8)
-    section: str = Field(..., min_length=1, max_length=10)
+    semester: int = Field(6, ge=1, le=8)
+    section: str = Field("A", min_length=1, max_length=10)
     email: EmailStr
     phone: str = Field(..., min_length=10, max_length=15)
-    gender: str
+    gender: str = Field("Other")
     is_team: bool = False
     team_name: Optional[str] = None
     team_members: Optional[List[TeamMemberSchema]] = []
 
-    @field_validator("auid")
+    @field_validator("auid", mode="before")
     @classmethod
-    def validate_auid(cls, v: str) -> str:
-        cleaned = v.strip().upper()
-        if not re.match(r"^[0-9A-Z\-]{3,30}$", cleaned):
-            raise ValueError("AUID must contain 3 to 30 valid alphanumeric characters (e.g., AIT22BE123)")
+    def validate_auid(cls, v, info):
+        if not v:
+            usn_val = info.data.get("usn")
+            if usn_val:
+                return str(usn_val).strip().upper()
+            return "GUEST"
+        cleaned = str(v).strip().upper()
         return cleaned
 
     @field_validator("usn", mode="before")
     @classmethod
     def validate_usn(cls, v, info):
-        if not v and "auid" in info.data:
-            return info.data["auid"]
-        if isinstance(v, str) and v.strip():
-            return v.strip().upper()
-        return None
+        if not v:
+            auid_val = info.data.get("auid")
+            if auid_val:
+                return str(auid_val).strip().upper()
+            return "GUEST"
+        return str(v).strip().upper()
 
     @field_validator("phone")
     @classmethod

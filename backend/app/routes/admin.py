@@ -205,6 +205,8 @@ def mark_volunteer_attendance(
     return {
         "success": True,
         "message": f"Marked {volunteer.name} as {status_val} for {today_str}.",
+        "status": record.status,
+        "check_in_time": record.check_in_time.strftime("%I:%M %p") if record.check_in_time else None,
         "attendance": {
             "id": record.id,
             "volunteer_user_id": volunteer.id,

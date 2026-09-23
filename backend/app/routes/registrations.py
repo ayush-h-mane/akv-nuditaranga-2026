@@ -117,6 +117,17 @@ def register_participant(reg_data: RegistrationCreate, db: Session = Depends(get
     db.refresh(new_reg)
     return new_reg
 
+@router.get("/auid/{auid}", response_model=List[RegistrationOut])
+def get_registrations_by_auid(auid: str, db: Session = Depends(get_db)):
+    clean_auid = auid.strip().lower()
+    regs = db.query(Registration).filter(
+        (func.lower(Registration.auid) == clean_auid) |
+        (func.lower(Registration.usn) == clean_auid)
+    ).order_by(Registration.created_at.desc()).all()
+    if not regs:
+        raise HTTPException(status_code=404, detail="No passes found for this AUID/USN")
+    return regs
+
 @router.get("/{registration_id}", response_model=RegistrationOut)
 def get_registration(registration_id: str, db: Session = Depends(get_db)):
     clean_id = registration_id.strip().lower()

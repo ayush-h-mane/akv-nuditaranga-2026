@@ -161,6 +161,7 @@ class CheckInLog(Base):
     registration_id = Column(String, index=True, nullable=False)
     action = Column(String, nullable=False)
     agent = Column(String, nullable=True)
+    notes = Column(Text, nullable=True)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
 
 
