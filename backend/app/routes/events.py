@@ -63,6 +63,22 @@ def create_event(event_in: EventCreate, db: Session = Depends(get_db)):
     db.add(new_event)
     db.commit()
     db.refresh(new_event)
+
+    # Audit log entry
+    try:
+        log = AuditLog(
+            actor_name="Super Administrator",
+            action="EVENT_CREATED",
+            target_type="EVENT",
+            target_id=event_id,
+            previous_value=None,
+            new_value=f"Created new event {new_event.title_en} ({event_id}) [Format: {new_event.format}]"
+        )
+        db.add(log)
+        db.commit()
+    except Exception:
+        pass
+
     return new_event
 
 @router.put("/{event_id}", response_model=EventOut)

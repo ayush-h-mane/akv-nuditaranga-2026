@@ -75,6 +75,9 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
     reporting_time: "09:30 AM",
     max_slots: 50,
     format: "solo",
+    is_team: false,
+    min_team_size: 1,
+    max_team_size: 1,
     rules_en: "1. Respect all event time limits.\n2. Judge decisions are final.",
     rules_kn: "೧. ಸಮಯ ಮಿತಿಯನ್ನು ಪಾಲಿಸಬೇಕು.\n೨. ತೀರ್ಪುಗಾರರ ತೀರ್ಮಾನವೇ ಅಂತಿಮ."
   });
@@ -290,9 +293,40 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
   const handleCreateEventSubmit = async (e) => {
     e.preventDefault();
     try {
-      await api.createEvent(newEvent);
+      const isTeam = newEvent.format === "group" || newEvent.format === "both" || newEvent.format === "duet";
+      const payload = {
+        ...newEvent,
+        is_team: isTeam,
+        min_team_size: newEvent.format === "solo" ? 1 : (newEvent.format === "duet" ? 2 : (parseInt(newEvent.min_team_size) || (newEvent.format === "both" ? 1 : 2))),
+        max_team_size: newEvent.format === "solo" ? 1 : (newEvent.format === "duet" ? 2 : (parseInt(newEvent.max_team_size) || 15)),
+        category_kn: categoryMapping[newEvent.category] || newEvent.category_kn || "ಸಾಂಸ್ಕೃತಿಕ",
+        venue_kn: newEvent.venue_kn || newEvent.venue,
+        description_kn: newEvent.description_kn || newEvent.description_en,
+        rules_kn: newEvent.rules_kn || newEvent.rules_en
+      };
+      await api.createEvent(payload);
       notify("success", `Event '${newEvent.title_en}' created successfully.`);
       setEventModal(null);
+      setNewEvent({
+        title_en: "",
+        title_kn: "",
+        category: "cultural",
+        category_kn: "ಸಾಂಸ್ಕೃತಿಕ",
+        description_en: "",
+        description_kn: "",
+        venue: "Main Auditorium, Acharya IT",
+        venue_kn: "ಮುಖ್ಯ ಸಭಾಂಗಣ, ಆಚಾರ್ಯ ಐ.ಟಿ",
+        event_date: "November 01, 2026",
+        event_time: "10:00 AM - 01:00 PM",
+        reporting_time: "09:30 AM",
+        max_slots: 50,
+        format: "solo",
+        is_team: false,
+        min_team_size: 1,
+        max_team_size: 1,
+        rules_en: "1. Respect all event time limits.\n2. Judge decisions are final.",
+        rules_kn: "೧. ಸಮಯ ಮಿತಿಯನ್ನು ಪಾಲಿಸಬೇಕು.\n೨. ತೀರ್ಪುಗಾರರ ತೀರ್ಮಾನವೇ ಅಂತಿಮ."
+      });
       loadEvents();
     } catch (err) {
       notify("error", err.message || "Failed to create event");
@@ -303,6 +337,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
     e.preventDefault();
     if (!editEvent || !editEvent.id) return;
     try {
+      const isTeam = editEvent.format === "group" || editEvent.format === "both" || editEvent.format === "duet" || Boolean(editEvent.is_team);
       await api.updateEvent(editEvent.id, {
         title_en: editEvent.title_en,
         title_kn: editEvent.title_kn,
@@ -317,9 +352,9 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
         reporting_time: editEvent.reporting_time,
         max_slots: parseInt(editEvent.max_slots) || 50,
         format: editEvent.format,
-        is_team: Boolean(editEvent.is_team),
-        min_team_size: parseInt(editEvent.min_team_size) || (editEvent.is_team ? 2 : 1),
-        max_team_size: parseInt(editEvent.max_team_size) || (editEvent.is_team ? 15 : 1),
+        is_team: isTeam,
+        min_team_size: editEvent.format === "solo" ? 1 : (editEvent.format === "duet" ? 2 : (parseInt(editEvent.min_team_size) || (editEvent.format === "both" ? 1 : 2))),
+        max_team_size: editEvent.format === "solo" ? 1 : (editEvent.format === "duet" ? 2 : (parseInt(editEvent.max_team_size) || 15)),
         rules_en: editEvent.rules_en,
         rules_kn: editEvent.rules_kn,
         is_active: Boolean(editEvent.is_active)
@@ -1048,6 +1083,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                       <p>Venue: <strong>{ev.venue}</strong></p>
                       <p>Date & Time: <strong>{ev.event_date} ({ev.event_time})</strong></p>
                       <p>Capacity: <strong>{ev.registered_count} / {ev.max_slots} slots</strong></p>
+                      <p>Format: <strong className="uppercase text-amber-900">{ev.format === "both" ? "Both (Solo & Group)" : (ev.format || (ev.is_team ? "Group" : "Solo"))}</strong> {ev.is_team && `(${ev.min_team_size || (ev.format === "both" ? 1 : 2)}-${ev.max_team_size || 15} members)`}</p>
                     </div>
 
                     <div className="pt-3 border-t border-stone-200 flex items-center justify-end gap-2">
@@ -1416,15 +1452,61 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                   <label className="font-bold text-stone-700 uppercase">Format</label>
                   <select
                     value={newEvent.format}
-                    onChange={(e) => setNewEvent({ ...newEvent, format: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 bg-white"
+                    onChange={(e) => {
+                      const fmt = e.target.value;
+                      const isTeam = fmt !== "solo";
+                      setNewEvent({
+                        ...newEvent,
+                        format: fmt,
+                        is_team: isTeam,
+                        min_team_size: fmt === "duet" ? 2 : (fmt === "both" ? 1 : (isTeam ? 2 : 1)),
+                        max_team_size: fmt === "duet" ? 2 : (isTeam ? 15 : 1)
+                      });
+                    }}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 bg-white font-medium"
                   >
                     <option value="solo">Solo</option>
+                    <option value="group">Group</option>
+                    <option value="both">Both (Solo & Group)</option>
                     <option value="duet">Duet</option>
-                    <option value="group">Group / Team</option>
                   </select>
                 </div>
               </div>
+
+              {/* Team Size configuration if team/group/both event */}
+              {(newEvent.format === "group" || newEvent.format === "both") && (
+                <div className="grid grid-cols-2 gap-3 p-3 rounded-2xl bg-amber-50/70 border border-amber-200">
+                  <div>
+                    <label className="font-bold text-amber-950 uppercase text-[10px]">
+                      {newEvent.format === "both" ? "Min Team Members (for Group)" : "Min Team Members"}
+                    </label>
+                    <input
+                      type="number"
+                      min={newEvent.format === "both" ? "1" : "2"}
+                      max="50"
+                      value={newEvent.min_team_size || (newEvent.format === "both" ? 1 : 2)}
+                      onChange={(e) => setNewEvent({ ...newEvent, min_team_size: parseInt(e.target.value) || 1 })}
+                      className="w-full px-3 py-1.5 rounded-xl border border-amber-300 bg-white mt-1 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-amber-950 uppercase text-[10px]">Max Team Members</label>
+                    <input
+                      type="number"
+                      min="2"
+                      max="100"
+                      value={newEvent.max_team_size || 15}
+                      onChange={(e) => setNewEvent({ ...newEvent, max_team_size: parseInt(e.target.value) || 15 })}
+                      className="w-full px-3 py-1.5 rounded-xl border border-amber-300 bg-white mt-1 text-xs"
+                    />
+                  </div>
+                  {newEvent.format === "both" && (
+                    <p className="col-span-2 text-[10px] text-amber-800 font-semibold italic">
+                      * Allows participants to register either individually (Solo) or as a Team/Group.
+                    </p>
+                  )}
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
@@ -1602,30 +1684,33 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                         ...editEvent,
                         format: fmt,
                         is_team: isTeam,
-                        min_team_size: isTeam ? (editEvent.min_team_size > 1 ? editEvent.min_team_size : 2) : 1,
-                        max_team_size: isTeam ? (editEvent.max_team_size > 1 ? editEvent.max_team_size : 15) : 1
+                        min_team_size: fmt === "duet" ? 2 : (fmt === "both" ? 1 : (isTeam ? (editEvent.min_team_size > 1 ? editEvent.min_team_size : 2) : 1)),
+                        max_team_size: fmt === "duet" ? 2 : (isTeam ? (editEvent.max_team_size > 1 ? editEvent.max_team_size : 15) : 1)
                       });
                     }}
                     className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 bg-white font-medium"
                   >
-                    <option value="solo">Solo (ಏಕವ್ಯಕ್ತಿ)</option>
-                    <option value="duet">Duet (ಇಬ್ಬರು)</option>
-                    <option value="group">Group / Team (ತಂಡ)</option>
+                    <option value="solo">Solo</option>
+                    <option value="group">Group</option>
+                    <option value="both">Both (Solo & Group)</option>
+                    <option value="duet">Duet</option>
                   </select>
                 </div>
               </div>
 
-              {/* Team Size configuration if team/group event */}
-              {editEvent.is_team && (
+              {/* Team Size configuration if team/group/both event */}
+              {(editEvent.format === "group" || editEvent.format === "both" || (editEvent.is_team && editEvent.format !== "duet")) && (
                 <div className="grid grid-cols-2 gap-3 p-3 rounded-2xl bg-amber-50/70 border border-amber-200">
                   <div>
-                    <label className="font-bold text-amber-950 uppercase text-[10px]">Min Team Members</label>
+                    <label className="font-bold text-amber-950 uppercase text-[10px]">
+                      {editEvent.format === "both" ? "Min Team Members (for Group)" : "Min Team Members"}
+                    </label>
                     <input
                       type="number"
-                      min="2"
+                      min={editEvent.format === "both" ? "1" : "2"}
                       max="50"
-                      value={editEvent.min_team_size || 2}
-                      onChange={(e) => setEditEvent({ ...editEvent, min_team_size: parseInt(e.target.value) || 2 })}
+                      value={editEvent.min_team_size || (editEvent.format === "both" ? 1 : 2)}
+                      onChange={(e) => setEditEvent({ ...editEvent, min_team_size: parseInt(e.target.value) || 1 })}
                       className="w-full px-3 py-1.5 rounded-xl border border-amber-300 bg-white mt-1 text-xs"
                     />
                   </div>
@@ -1640,6 +1725,11 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                       className="w-full px-3 py-1.5 rounded-xl border border-amber-300 bg-white mt-1 text-xs"
                     />
                   </div>
+                  {editEvent.format === "both" && (
+                    <p className="col-span-2 text-[10px] text-amber-800 font-semibold italic">
+                      * Allows participants to register either individually (Solo) or as a Team/Group.
+                    </p>
+                  )}
                 </div>
               )}
 
