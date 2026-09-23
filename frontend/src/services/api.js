@@ -1239,7 +1239,7 @@ export const api = {
     return { success: true };
   },
 
-  async register(registrationData) {
+  async createRegistration(registrationData) {
     try {
       const res = await fetch(`${API_BASE_URL}/registrations`, {
         method: "POST",
@@ -1263,6 +1263,28 @@ export const api = {
       }
       throw err;
     }
+  },
+
+  async register(registrationData) {
+    return this.createRegistration(registrationData);
+  },
+
+  async getRegistration(registrationId) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/registrations/${encodeURIComponent(registrationId)}`);
+      if (res.ok) return await res.json();
+    } catch (err) {
+      console.warn("Backend unavailable, fetching from local storage:", err.message);
+    }
+    const list = getLocalRegistrations();
+    const clean = (registrationId || "").trim().toLowerCase();
+    const found = list.find(r => 
+      (r.registration_id && r.registration_id.toLowerCase() === clean) ||
+      (r.auid && r.auid.toLowerCase() === clean) ||
+      (r.usn && r.usn.toLowerCase() === clean)
+    );
+    if (!found) throw new Error("Registration not found");
+    return found;
   },
 
   async verifyPass(code) {
