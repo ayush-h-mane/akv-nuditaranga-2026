@@ -20,7 +20,8 @@
     "Configured 3 official Super Admin credentials (akvntkvsa1, akvntkvsa2, akvntkvsa3) with on-demand database provisioning and offline fallback.",
     "Relocated Superadmin portal access from regular login tabs into a new Portal Settings & Directory modal.",
     "Updated Developer (Ayush H Mane - Full-Stack Developer, AIML Engineer, portfolio) and Secretary (Priyanka S Reddy - Event Coordinator) official directory contacts.",
-    "Removed all demo credentials and autofill helper cards from Student, Admin, and Super Admin login views."
+    "Removed all demo credentials and autofill helper cards from Student, Admin, and Super Admin login views.",
+    "Removed the duplicate hero authentication bar from the homepage hero section."
   ],
   "history": [
     {

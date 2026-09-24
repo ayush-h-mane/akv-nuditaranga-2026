@@ -38,14 +38,14 @@ export const PortalSettingsModal = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in text-left">
-      <div 
+      <div
         className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-stone-200 overflow-hidden transform transition-all animate-scale-up max-h-[92vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
         <div className="bg-gradient-to-r from-stone-900 via-neutral-900 to-amber-950 text-white p-5 relative overflow-hidden shrink-0 border-b border-amber-500/20">
           <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl transform translate-x-8 -translate-y-8" />
-          
+
           <div className="flex items-center justify-between relative z-10">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-400 shadow-inner">
@@ -85,7 +85,7 @@ export const PortalSettingsModal = ({
           {/* ==================================================== */}
           <div className="p-4 rounded-2xl bg-gradient-to-br from-stone-900 via-neutral-900 to-stone-950 text-white border border-amber-500/30 shadow-lg relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-40 h-40 bg-amber-500/10 rounded-full blur-3xl" />
-            
+
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
@@ -147,7 +147,7 @@ export const PortalSettingsModal = ({
                       Ayush H Mane
                     </h5>
                     <p className="text-[11px] text-stone-500 font-medium">
-                      Full-Stack Developer • AIML Engineer
+                      Lead Systems Architect & Developer
                     </p>
                   </div>
                 </div>
