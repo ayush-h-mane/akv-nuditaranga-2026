@@ -305,15 +305,7 @@ def login_student(payload: StudentLoginRequest, db: Session = Depends(get_db)):
     clean_pw = payload.password.strip()
     pw_matches = (
         verify_password(payload.password, user.password_hash) or
-        verify_password(clean_pw, user.password_hash) or
-        payload.password == settings.SUPERADMIN_PASSWORD or
-        clean_pw == settings.SUPERADMIN_PASSWORD or
-        payload.password == settings.ADMIN_PASSWORD or
-        clean_pw == settings.ADMIN_PASSWORD or
-        ((payload.password == "Password123!" or clean_pw == "Password123!") and user.role in ["VOLUNTEER", "PARTICIPANT", "SPECTATOR", "STUDENT"] and (user.auid in ["AIT22CS001", "AIT22IS045", "1AY23CS199"] or verify_password("Password123!", user.password_hash))) or
-        payload.password in ["AcharyaAKV2026", "AcharyaAKV2026!", "akv.nt@2026", "AkvSuperAdmin@2026!", "superadmin"] or
-        clean_pw in ["AcharyaAKV2026", "AcharyaAKV2026!", "akv.nt@2026", "AkvSuperAdmin@2026!", "superadmin"] or
-        (clean_email in ["ayush_h_mane", "ayush_01", "ayush", "akvadmin", "ayush@acharya.ac.in", "akvadmin@acharya.ac.in"] and len(clean_pw) >= 6)
+        verify_password(clean_pw, user.password_hash)
     )
 
     if not pw_matches:
@@ -649,19 +641,9 @@ def login_admin(payload: AdminLoginRequest, db: Session = Depends(get_db)):
     ).first()
 
     if not admin_entry:
-        if clean_uname in ["ayush", "ayush_01", "ayush_h_mane"]:
-            admin_entry = db.query(Admin).filter(
-                or_(
-                    func.lower(Admin.username) == "ayush_h_mane",
-                    func.lower(Admin.username) == "ayush"
-                )
-            ).first()
-        elif clean_uname == "akvadmin":
-            admin_entry = db.query(Admin).filter(func.lower(Admin.username) == "akvadmin").first()
-        else:
-            admin_entry = db.query(Admin).filter(func.lower(Admin.username) == clean_uname).first()
+        admin_entry = db.query(Admin).filter(func.lower(Admin.username) == clean_uname).first()
 
-    # 3. If not an admin, check if a student entered their credentials in the admin form
+    # 3. If not an admin, check if a registered student entered their credentials in the admin form
     if not admin_entry:
         student_match = db.query(User).filter(
             or_(
@@ -671,10 +653,8 @@ def login_admin(payload: AdminLoginRequest, db: Session = Depends(get_db)):
             )
         ).first()
         if student_match:
-            stud_pws = ["Password123!", "Password@123", "Pass@123", "Password123", "AcharyaAKV2026", "akv.nt@2026"]
             if (verify_password(payload.password, student_match.password_hash) or
-                verify_password(clean_pw, student_match.password_hash) or
-                payload.password in stud_pws or clean_pw in stud_pws):
+                verify_password(clean_pw, student_match.password_hash)):
                 token = create_access_token({"sub": str(student_match.id), "role": student_match.role})
                 return {
                     "success": True,
@@ -689,17 +669,9 @@ def login_admin(payload: AdminLoginRequest, db: Session = Depends(get_db)):
             detail="Invalid admin username or password."
         )
 
-    admin_passwords = ["AcharyaAKV2026", "AcharyaAKV2026!", "akv.nt@2026", "AkvSuperAdmin@2026!", "superadmin", "akvadmin"]
     pw_matches = (
         verify_password(payload.password, admin_entry.user.password_hash) or
-        verify_password(clean_pw, admin_entry.user.password_hash) or
-        payload.password == settings.ADMIN_PASSWORD or
-        clean_pw == settings.ADMIN_PASSWORD or
-        payload.password == settings.SUPERADMIN_PASSWORD or
-        clean_pw == settings.SUPERADMIN_PASSWORD or
-        payload.password in admin_passwords or
-        clean_pw in admin_passwords or
-        (clean_uname in ["ayush_h_mane", "ayush_01", "ayush", "akvadmin", "ayush@acharya.ac.in", "akvadmin@acharya.ac.in"] and len(clean_pw) >= 6)
+        verify_password(clean_pw, admin_entry.user.password_hash)
     )
     if not pw_matches:
         raise HTTPException(

@@ -211,14 +211,12 @@ export const api = {
 
         // 1. Transparently check if user entered Admin or Superadmin credentials in Student tab
         if (
+          lowerId === "akvntkvsa1" ||
+          lowerId === "akvntkvsa2" ||
+          lowerId === "akvntkvsa3" ||
           lowerId === "akv-nt-2026" ||
           lowerId === "superadmin" ||
-          lowerId === "akv@acharya.ac.in" ||
-          lowerId === "ayush_h_mane" ||
-          lowerId === "ayush" ||
-          lowerId === "akvadmin" ||
-          lowerId === "ayush@acharya.ac.in" ||
-          lowerId === "akvadmin@acharya.ac.in"
+          lowerId === "akv@acharya.ac.in"
         ) {
           return this.adminLogin(cleanId, password);
         }
@@ -231,44 +229,12 @@ export const api = {
           u.phone === cleanId
         );
 
-        // 3. Fallback auto-provision for offline demo student IDs
-        if (!user && (upperId.includes("CS") || upperId.includes("IS") || upperId.length >= 5)) {
-          user = {
-            id: Date.now(),
-            name: "Acharya Student",
-            auid: upperId,
-            email: lowerId.includes("@") ? lowerId : `${upperId.toLowerCase()}@acharya.ac.in`,
-            phone: "9845012345",
-            institute: "Acharya Institute of Technology",
-            department: "Computer Science & Engineering",
-            semester: 6,
-            section: "A",
-            gender: "Male",
-            role: "PARTICIPANT",
-            registration_id: `AKV-2026-${Math.floor(100000 + Math.random() * 900000)}`,
-            account_status: "ACTIVE",
-            password: password
-          };
-          users.push(user);
-          saveLocalUsers(users);
-        }
-
         if (!user) {
           throw new Error("Invalid AUID, email, or password.");
         }
 
         const cleanPw = (password || "").trim();
-        const validStudentPass = [
-          user.password,
-          "Password123!",
-          "Password@123",
-          "Pass@123",
-          "Password123",
-          "UpdatedPassword@2026",
-          "NewSecretPass@2026"
-        ].filter(Boolean);
-
-        if (user.password && !validStudentPass.includes(password) && !validStudentPass.includes(cleanPw)) {
+        if (user.password && user.password !== password && user.password !== cleanPw) {
           throw new Error("Invalid AUID, email, or password.");
         }
 
@@ -437,47 +403,6 @@ export const api = {
               admin_username: "akv-nt-2026",
               email: "akv@acharya.ac.in",
               role: "SUPERADMIN",
-              account_status: "ACTIVE"
-            }
-          };
-        }
-
-        // Coordinator Admin: Ayush H Mane
-        const ayushPasswords = ["AcharyaAKV2026", "AcharyaAKV2026!", "akv.nt@2026"];
-        if (
-          (u === "ayush_h_mane" || u === "ayush_01" || u === "ayush" || u === "adm-ayush" || u === "ayush@acharya.ac.in") &&
-          (ayushPasswords.includes(password) || ayushPasswords.includes(cleanPw) || cleanPw.length >= 6)
-        ) {
-          return {
-            success: true,
-            token: `admin-offline-token-${Date.now()}`,
-            user: {
-              id: 3,
-              name: "Ayush H Mane",
-              username: "ayush_h_mane",
-              email: "ayush@acharya.ac.in",
-              role: "ADMIN",
-              admin_status: "APPROVED",
-              account_status: "ACTIVE"
-            }
-          };
-        }
-
-        // Standard legacy admin: akvadmin
-        if (
-          (u === "akvadmin" || u === "adm-akvadmin" || u === "akvadmin@acharya.ac.in") &&
-          (password === "AcharyaAKV2026" || password === "AcharyaAKV2026!" || password === "akvadmin" || cleanPw === "AcharyaAKV2026" || cleanPw === "AcharyaAKV2026!" || cleanPw.length >= 6)
-        ) {
-          return {
-            success: true,
-            token: `admin-offline-token-${Date.now()}`,
-            user: {
-              id: 2,
-              name: "Prof. Basavaraj (Cultural Lead)",
-              username: "akvadmin",
-              email: "akvadmin@acharya.ac.in",
-              role: "ADMIN",
-              admin_status: "APPROVED",
               account_status: "ACTIVE"
             }
           };

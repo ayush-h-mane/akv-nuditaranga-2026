@@ -4,7 +4,9 @@
   "status": "STAGED_DEVELOPMENT",
   "active_branch": "develop",
   "production_branch": "main",
-  "pending_changes": [],
+  "pending_changes": [
+    "Erased all legacy mock and demo account profiles across backend, database, and frontend fallback; retained only official SuperAdmin accounts."
+  ],
   "history": [
     {
       "version": "2.1.0",
