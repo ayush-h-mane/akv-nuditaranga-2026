@@ -147,7 +147,7 @@ export const PortalSettingsModal = ({
                       Ayush H Mane
                     </h5>
                     <p className="text-[11px] text-stone-500 font-medium">
-                      Developer AIML Engineer
+                      Full-Stack Developer • AIML Engineer
                     </p>
                   </div>
                 </div>

@@ -350,20 +350,9 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
           <div className="bg-gradient-to-r from-kar-red via-red-600 to-kar-yellow p-6 text-white text-center relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl transform translate-x-10 -translate-y-10" />
             
-            <div className="flex items-center justify-between mb-2">
-              <span className="inline-block px-3 py-1 rounded-full text-[11px] font-extrabold tracking-widest uppercase bg-black/25 text-amber-200 border border-white/20">
-                AUTHENTICATION PORTAL
-              </span>
-              <button
-                type="button"
-                onClick={() => setShowSettingsModal(true)}
-                className="group flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold tracking-wider bg-black/30 hover:bg-black/50 text-amber-200 hover:text-white border border-white/20 transition-all shadow-xs cursor-pointer active:scale-95"
-                title="Portal Settings, Super Admin Access & Contacts"
-              >
-                <Settings className="w-3.5 h-3.5 text-amber-300 group-hover:rotate-90 transition-transform" />
-                <span>Settings</span>
-              </button>
-            </div>
+            <span className="inline-block px-3 py-1 rounded-full text-[11px] font-extrabold tracking-widest uppercase bg-black/25 text-amber-200 border border-white/20 mb-2">
+              AUTHENTICATION PORTAL
+            </span>
 
             <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
               ನುಡಿತರಂಗ ೨೦೨೬

@@ -22,7 +22,8 @@
     "Updated Developer (Ayush H Mane - Full-Stack Developer, AIML Engineer, portfolio) and Secretary (Priyanka S Reddy - Event Coordinator) official directory contacts.",
     "Removed all demo credentials and autofill helper cards from Student, Admin, and Super Admin login views.",
     "Removed the duplicate hero authentication bar from the homepage hero section.",
-    "Renamed navbar portal action button to 'Login/Register'."
+    "Renamed navbar portal action button to 'Login/Register'.",
+    "Removed redundant Settings button from the AuthPortal card header banner while retaining directory access in the top navbar."
   ],
   "history": [
     {
