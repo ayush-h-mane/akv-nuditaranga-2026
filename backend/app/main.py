@@ -15,7 +15,8 @@ from .routes import (
     auth,
     student,
     superadmin,
-    reels
+    reels,
+    attendance
 )
 
 # Ensure schema integrity and automatic migrations for SQLite and PostgreSQL
@@ -146,6 +147,7 @@ app.include_router(checkin.router, prefix=settings.API_PREFIX)
 app.include_router(activities.router, prefix=settings.API_PREFIX)
 app.include_router(gallery.router, prefix=settings.API_PREFIX)
 app.include_router(reels.router, prefix=settings.API_PREFIX)
+app.include_router(attendance.router, prefix=settings.API_PREFIX)
 
 @app.get("/api/health")
 def health_check():

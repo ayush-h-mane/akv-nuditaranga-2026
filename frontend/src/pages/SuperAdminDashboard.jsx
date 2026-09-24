@@ -35,7 +35,12 @@ import {
   Heart,
   ExternalLink,
   History,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Lock,
+  Unlock,
+  RotateCcw,
+  CheckCheck,
+  CheckSquare
 } from "lucide-react";
 import { EventImageUpload } from "../components/EventImageUpload";
 
@@ -88,6 +93,34 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
   const [attendanceDateFilter, setAttendanceDateFilter] = useState("");
   const [attendanceDeptFilter, setAttendanceDeptFilter] = useState("all");
   const [auditActionFilter, setAuditActionFilter] = useState("all");
+
+  // Official Multi-Day Attendance State (v2.1.2)
+  const [attendanceConfigDates, setAttendanceConfigDates] = useState([]);
+  const [selectedOfficialDate, setSelectedOfficialDate] = useState("");
+  const [officialAttendanceRoster, setOfficialAttendanceRoster] = useState([]);
+  const [officialAttendanceSession, setOfficialAttendanceSession] = useState({
+    is_submitted: false,
+    submitted_at: null,
+    submitted_by: null,
+    is_unlocked: false
+  });
+  const [officialAttendanceSummary, setOfficialAttendanceSummary] = useState({
+    total_participants: 0,
+    checked_in: 0,
+    completed: 0,
+    not_marked: 0,
+    is_submitted: false
+  });
+  const [attendanceSearchQuery, setAttendanceSearchQuery] = useState("");
+  const [attendanceAkvDeptFilter, setAttendanceAkvDeptFilter] = useState("all");
+  const [attendanceStatusFilter, setAttendanceStatusFilter] = useState("all");
+  const [attendanceAuditLogs, setAttendanceAuditLogs] = useState([]);
+  const [activeAuditTab, setActiveAuditTab] = useState("attendance"); // "attendance" or "security"
+  const [editRecordModal, setEditRecordModal] = useState(null);
+  const [unlockModal, setUnlockModal] = useState(null);
+  const [resetModal, setResetModal] = useState(null);
+  const [attendanceActionLoading, setAttendanceActionLoading] = useState(false);
+  const [officialExportLoading, setOfficialExportLoading] = useState(false);
 
   // Modals & Edit States
   const [editStudent, setEditStudent] = useState(null);
@@ -164,7 +197,54 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
     }
   };
 
-  const loadAttendance = async () => {
+  const loadOfficialAttendance = async (dateOverride = null) => {
+    try {
+      setAttendanceActionLoading(true);
+      let activeDate = dateOverride || selectedOfficialDate;
+      if (!activeDate) {
+        const datesRes = await api.getAttendanceConfigDates();
+        if (datesRes && datesRes.dates) {
+          setAttendanceConfigDates(datesRes.dates);
+          const todayItem = datesRes.dates.find(d => d.is_today);
+          activeDate = todayItem ? todayItem.date : (datesRes.current_date || datesRes.dates[0]?.date || "");
+          setSelectedOfficialDate(activeDate);
+        }
+      }
+      if (!activeDate) return;
+
+      const res = await api.getAttendance({
+        date: activeDate,
+        search: attendanceSearchQuery,
+        department: attendanceDeptFilter !== "all" ? attendanceDeptFilter : "",
+        akv_dept: attendanceAkvDeptFilter !== "all" ? attendanceAkvDeptFilter : "",
+        status_filter: attendanceStatusFilter !== "all" ? attendanceStatusFilter : ""
+      });
+
+      if (res && res.success) {
+        setOfficialAttendanceRoster(res.participants || []);
+        setOfficialAttendanceSession(res.session || {
+          is_submitted: false,
+          submitted_at: null,
+          submitted_by: null,
+          is_unlocked: false
+        });
+        setOfficialAttendanceSummary(res.summary || {
+          total_participants: res.participants?.length || 0,
+          checked_in: 0,
+          completed: 0,
+          not_marked: 0,
+          is_submitted: false
+        });
+      }
+    } catch (err) {
+      console.error("Superadmin attendance loading error:", err);
+    } finally {
+      setAttendanceActionLoading(false);
+    }
+  };
+
+  const loadAttendance = async (dateOverride = null) => {
+    loadOfficialAttendance(dateOverride);
     try {
       const data = await api.getSuperAdminAttendance({
         date: attendanceDateFilter || "all",
@@ -187,10 +267,12 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
   const loadAuditLogs = async () => {
     try {
-      const data = await api.getAuditLogs({
-        action: auditActionFilter !== "all" ? auditActionFilter : ""
-      });
-      setAuditLogs(data);
+      const [generalLogs, attendanceAuditRes] = await Promise.all([
+        api.getAuditLogs({ action: auditActionFilter !== "all" ? auditActionFilter : "" }).catch(() => []),
+        api.getAttendanceAudit().catch(() => ({ audit_logs: [] }))
+      ]);
+      setAuditLogs(generalLogs || []);
+      setAttendanceAuditLogs(attendanceAuditRes?.audit_logs || []);
     } catch (e) {
       console.error(e);
     }
@@ -440,6 +522,88 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
       loadAttendance();
     } catch (err) {
       notify("error", err.message);
+    }
+  };
+
+  // Official Multi-Day Attendance Action Handlers (v2.1.2)
+  const handleSuperAdminCheckIn = async (participantUserId) => {
+    try {
+      const res = await api.markAttendanceCheckIn(participantUserId, selectedOfficialDate);
+      notify("success", res.message || "Check-In recorded in IST.");
+      loadOfficialAttendance();
+    } catch (err) {
+      notify("error", err.message || "Check-In failed.");
+    }
+  };
+
+  const handleSuperAdminCheckOut = async (participantUserId) => {
+    try {
+      const res = await api.markAttendanceCheckOut(participantUserId, selectedOfficialDate);
+      notify("success", res.message || "Check-Out recorded in IST.");
+      loadOfficialAttendance();
+    } catch (err) {
+      notify("error", err.message || "Check-Out failed.");
+    }
+  };
+
+  const handleSaveOfficialAttendanceEdit = async (e) => {
+    e.preventDefault();
+    if (!editRecordModal?.record_id) return;
+    try {
+      await api.editAttendanceRecord(editRecordModal.record_id, {
+        check_in_time: editRecordModal.check_in_time || null,
+        check_out_time: editRecordModal.check_out_time || null,
+        reason: editRecordModal.reason || "Superadmin correction"
+      });
+      notify("success", "Attendance times updated and logged to audit trail.");
+      setEditRecordModal(null);
+      loadOfficialAttendance();
+      loadAuditLogs();
+    } catch (err) {
+      notify("error", err.message || "Failed to update record.");
+    }
+  };
+
+  const handleConfirmReset = async (e) => {
+    e.preventDefault();
+    if (!resetModal?.record_id) return;
+    try {
+      await api.resetAttendanceRecord(resetModal.record_id, resetModal.reason || "Superadmin reset");
+      notify("success", "Attendance record reset to NOT MARKED.");
+      setResetModal(null);
+      loadOfficialAttendance();
+      loadAuditLogs();
+    } catch (err) {
+      notify("error", err.message || "Failed to reset record.");
+    }
+  };
+
+  const handleConfirmUnlock = async (e) => {
+    e.preventDefault();
+    if (!unlockModal?.date) return;
+    try {
+      await api.unlockAttendanceSession(unlockModal.date, unlockModal.reason || "Superadmin unlocked session");
+      notify("success", `Attendance for ${unlockModal.date} unlocked! Normal admins can now mark attendance.`);
+      setUnlockModal(null);
+      loadOfficialAttendance();
+      loadAuditLogs();
+    } catch (err) {
+      notify("error", err.message || "Failed to unlock session.");
+    }
+  };
+
+  const handleOfficialExcelExport = async () => {
+    setOfficialExportLoading(true);
+    try {
+      await api.exportOfficialAttendanceExcel({
+        department: attendanceDeptFilter !== "all" ? attendanceDeptFilter : "",
+        akv_dept: attendanceAkvDeptFilter !== "all" ? attendanceAkvDeptFilter : ""
+      });
+      notify("success", "Official Attendance Excel sheet downloaded!");
+    } catch (err) {
+      notify("error", err.message || "Failed to export Excel report.");
+    } finally {
+      setOfficialExportLoading(false);
     }
   };
 
@@ -1359,98 +1523,394 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
           )}
 
           {/* ==================================================== */}
-          {/* SECTION 5: DAILY ATTENDANCE OVERSIGHT & EDIT         */}
+          {/* SECTION 5: OFFICIAL ATTENDANCE OVERSIGHT & EDIT      */}
           {/* ==================================================== */}
           {activeSection === "attendance" && (
-            <div className="bg-white p-6 sm:p-7 rounded-3xl border border-stone-200 shadow-xs space-y-5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-100 pb-4">
+            <div className="bg-white p-6 sm:p-7 rounded-3xl border border-stone-200 shadow-xs space-y-6">
+              {/* Header & Controls */}
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-stone-100 pb-4">
                 <div>
-                  <h3 className="font-extrabold text-base text-stone-900">Complete Volunteer Daily Attendance</h3>
-                  <p className="text-xs text-stone-500">Super Admin oversight, manual corrections, and date-based filtering</p>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-extrabold text-base sm:text-lg text-stone-900 flex items-center gap-2">
+                      <Clock className="w-5 h-5 text-kar-red" />
+                      <span>Official Event Attendance — {selectedOfficialDate || "Select Date"}</span>
+                    </h3>
+                    {officialAttendanceSession.is_submitted ? (
+                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-red-100 text-red-800 border border-red-200 flex items-center gap-1">
+                        <Lock className="w-3 h-3" />
+                        <span>SUBMITTED & LOCKED</span>
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" />
+                        <span>OPEN FOR MARKING</span>
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-stone-500 mt-0.5">
+                    Superadmin controls: Indian Standard Time (IST) timestamps, edit check-in/out times, unlock submitted sessions, and audit logging.
+                  </p>
                 </div>
 
+                {/* Superadmin Actions: Export & Unlock */}
                 <div className="flex flex-wrap items-center gap-2">
-                  <select
-                    value={attendanceDateFilter}
-                    onChange={(e) => setAttendanceDateFilter(e.target.value)}
-                    className="py-1.5 px-3 rounded-xl border border-stone-300 text-xs bg-white font-bold"
+                  <button
+                    type="button"
+                    onClick={handleOfficialExcelExport}
+                    disabled={officialExportLoading}
+                    className="px-3.5 py-2 rounded-xl text-xs font-bold text-stone-700 bg-white border border-stone-300 hover:bg-stone-50 flex items-center gap-1.5 transition-all shadow-xs disabled:opacity-50 cursor-pointer"
                   >
-                    <option value="">All Dates</option>
-                    {attendanceData.available_dates.map((d) => (
-                      <option key={d} value={d}>{d}</option>
-                    ))}
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                    <span>{officialExportLoading ? "Exporting..." : "Export Attendance Excel"}</span>
+                  </button>
+
+                  {officialAttendanceSession.is_submitted && (
+                    <button
+                      type="button"
+                      onClick={() => setUnlockModal({ date: selectedOfficialDate, reason: "" })}
+                      className="px-3.5 py-2 rounded-xl text-xs font-extrabold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                    >
+                      <Unlock className="w-4 h-4 text-amber-700" />
+                      <span>Unlock Session</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Event Date Selector Pills */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                <span className="text-xs font-extrabold text-stone-400 uppercase tracking-wider whitespace-nowrap mr-1">
+                  Event Date:
+                </span>
+                {attendanceConfigDates.map((d) => (
+                  <button
+                    key={d.date}
+                    type="button"
+                    onClick={() => {
+                      setSelectedOfficialDate(d.date);
+                      loadOfficialAttendance(d.date);
+                    }}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
+                      selectedOfficialDate === d.date
+                        ? "bg-stone-900 text-white shadow-xs"
+                        : "bg-stone-100 text-stone-600 hover:bg-stone-200/80"
+                    }`}
+                  >
+                    <Calendar className="w-3.5 h-3.5 text-amber-400" />
+                    <span>{d.date_formatted || d.date}</span>
+                    {d.label && <span className="text-[10px] opacity-75 font-normal">({d.label})</span>}
+                    {d.is_today && (
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse ml-0.5" title="Today" />
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {/* Submission Status Banner */}
+              {officialAttendanceSession.is_submitted && (
+                <div className="p-4 bg-amber-50/90 border border-amber-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-950">
+                  <div className="flex items-start gap-2.5">
+                    <Lock className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-extrabold block text-sm">Attendance Submitted & Locked for Normal Admins</span>
+                      <span className="text-stone-600 mt-0.5 block">
+                        Submitted by <strong>{officialAttendanceSession.submitted_by || "Admin"}</strong> on{" "}
+                        <strong>{officialAttendanceSession.submitted_at_ist || officialAttendanceSession.submitted_at || "Recorded Time"}</strong>.
+                        Normal admins cannot modify. As Superadmin, you can edit times, reset records, or unlock this session.
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setUnlockModal({ date: selectedOfficialDate, reason: "" })}
+                    className="px-3.5 py-1.5 bg-amber-200 hover:bg-amber-300 text-amber-900 font-extrabold rounded-xl shrink-0 transition-colors flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Unlock className="w-3.5 h-3.5" />
+                    <span>Unlock For Admins</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Metrics Dashboard */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                <div className="bg-stone-50 p-3.5 rounded-2xl border border-stone-200">
+                  <span className="text-[10px] font-extrabold text-stone-400 uppercase tracking-wider block">
+                    Total Participants
+                  </span>
+                  <p className="text-xl font-extrabold text-stone-900 mt-1">
+                    {officialAttendanceSummary.total_participants}
+                  </p>
+                </div>
+
+                <div className="bg-emerald-50/60 p-3.5 rounded-2xl border border-emerald-100">
+                  <span className="text-[10px] font-extrabold text-emerald-700 uppercase tracking-wider block">
+                    Checked In
+                  </span>
+                  <p className="text-xl font-extrabold text-emerald-800 mt-1">
+                    {officialAttendanceSummary.checked_in}
+                  </p>
+                </div>
+
+                <div className="bg-blue-50/60 p-3.5 rounded-2xl border border-blue-100">
+                  <span className="text-[10px] font-extrabold text-blue-700 uppercase tracking-wider block">
+                    Completed
+                  </span>
+                  <p className="text-xl font-extrabold text-blue-800 mt-1">
+                    {officialAttendanceSummary.completed}
+                  </p>
+                </div>
+
+                <div className="bg-stone-100/60 p-3.5 rounded-2xl border border-stone-200">
+                  <span className="text-[10px] font-extrabold text-stone-500 uppercase tracking-wider block">
+                    Not Marked
+                  </span>
+                  <p className="text-xl font-extrabold text-stone-700 mt-1">
+                    {officialAttendanceSummary.not_marked}
+                  </p>
+                </div>
+
+                <div className={`p-3.5 rounded-2xl border ${
+                  officialAttendanceSession.is_submitted 
+                    ? "bg-red-50 border-red-200 text-red-900" 
+                    : "bg-amber-50 border-amber-200 text-amber-900"
+                }`}>
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider block">
+                    Attendance Status
+                  </span>
+                  <p className="text-sm font-extrabold mt-1.5 flex items-center gap-1.5">
+                    {officialAttendanceSession.is_submitted ? (
+                      <>
+                        <Lock className="w-3.5 h-3.5 text-kar-red" />
+                        <span>SUBMITTED</span>
+                      </>
+                    ) : (
+                      <>
+                        <Clock className="w-3.5 h-3.5 text-amber-600" />
+                        <span>OPEN FOR MARKING</span>
+                      </>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              {/* Filters */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-stone-100">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+                    <input
+                      type="text"
+                      placeholder="Search Reg ID, Name, AUID, Phone..."
+                      value={attendanceSearchQuery}
+                      onChange={(e) => setAttendanceSearchQuery(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && loadOfficialAttendance()}
+                      className="pl-8 pr-3 py-1.5 rounded-xl border border-stone-300 text-xs w-52 sm:w-64"
+                    />
+                  </div>
+
+                  <select
+                    value={attendanceDeptFilter}
+                    onChange={(e) => setAttendanceDeptFilter(e.target.value)}
+                    className="py-1.5 px-3 rounded-xl border border-stone-300 text-xs bg-white font-bold text-stone-700"
+                  >
+                    <option value="all">All Departments</option>
+                    <option value="Computer Science & Engineering">CSE</option>
+                    <option value="Information Science & Engineering">ISE</option>
+                    <option value="Electronics & Communication Engineering">ECE</option>
+                    <option value="Mechanical Engineering">ME</option>
+                    <option value="Civil Engineering">Civil</option>
+                    <option value="Artificial Intelligence & Machine Learning">AIML</option>
+                    <option value="Master of Computer Applications (MCA)">MCA</option>
+                    <option value="Master of Business Administration (MBA)">MBA</option>
+                  </select>
+
+                  <select
+                    value={attendanceAkvDeptFilter}
+                    onChange={(e) => setAttendanceAkvDeptFilter(e.target.value)}
+                    className="py-1.5 px-3 rounded-xl border border-stone-300 text-xs bg-white font-bold text-stone-700"
+                  >
+                    <option value="all">All AKV Depts</option>
+                    <option value="Promotion">Promotion</option>
+                    <option value="Stage">Stage</option>
+                    <option value="Hospitality">Hospitality</option>
+                    <option value="Discipline">Discipline</option>
+                    <option value="Cultural">Cultural</option>
+                    <option value="Technical">Technical</option>
+                  </select>
+
+                  <select
+                    value={attendanceStatusFilter}
+                    onChange={(e) => setAttendanceStatusFilter(e.target.value)}
+                    className="py-1.5 px-3 rounded-xl border border-stone-300 text-xs bg-white font-bold text-stone-700"
+                  >
+                    <option value="all">All Statuses</option>
+                    <option value="NOT_MARKED">Not Marked</option>
+                    <option value="CHECKED_IN">Checked In</option>
+                    <option value="COMPLETED">Completed</option>
                   </select>
 
                   <button
-                    onClick={() => setMarkAttendanceModal(true)}
-                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-kar-red to-red-600 text-white text-xs font-bold shadow-xs flex items-center gap-1"
+                    type="button"
+                    onClick={() => loadOfficialAttendance()}
+                    className="p-1.5 rounded-xl border border-stone-300 text-stone-600 hover:bg-stone-50 cursor-pointer"
+                    title="Refresh Roster"
                   >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Log Attendance</span>
+                    <RefreshCw className={`w-4 h-4 ${attendanceActionLoading ? "animate-spin" : ""}`} />
                   </button>
+                </div>
+
+                <div className="text-xs text-stone-500 font-medium">
+                  Showing <strong>{officialAttendanceRoster.length}</strong> participants
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-stone-200 text-stone-400 uppercase tracking-wider font-extrabold">
-                      <th className="py-3 px-3">Date</th>
-                      <th className="py-3 px-3">Volunteer</th>
-                      <th className="py-3 px-3">AUID</th>
-                      <th className="py-3 px-3">Department</th>
-                      <th className="py-3 px-3">Status</th>
-                      <th className="py-3 px-3">Check-In</th>
-                      <th className="py-3 px-3">Marked By</th>
-                      <th className="py-3 px-3 text-right">Edit</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-stone-100">
-                    {attendanceData.records.map((r) => (
-                      <tr key={r.id} className="hover:bg-stone-50/80">
-                        <td className="py-3 px-3 font-mono font-bold text-stone-800">
-                          {r.date}
-                        </td>
-                        <td className="py-3 px-3 font-bold text-stone-900">
-                          {r.volunteer_name}
-                        </td>
-                        <td className="py-3 px-3 font-mono text-stone-600">
-                          {r.auid}
-                        </td>
-                        <td className="py-3 px-3 text-stone-600">
-                          {r.department}
-                        </td>
-                        <td className="py-3 px-3">
-                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
-                            r.status === "PRESENT"
-                              ? "bg-emerald-100 text-emerald-800"
-                              : r.status === "ABSENT"
-                              ? "bg-red-100 text-red-800"
-                              : "bg-amber-100 text-amber-900"
-                          }`}>
-                            {r.status}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 text-stone-500 font-mono">
-                          {r.check_in_time}
-                        </td>
-                        <td className="py-3 px-3 text-stone-500">
-                          {r.marked_by}
-                        </td>
-                        <td className="py-3 px-3 text-right">
-                          <button
-                            onClick={() => setEditAttendance({ ...r })}
-                            className="p-1.5 rounded-lg border border-stone-200 text-stone-600 hover:text-kar-red"
-                            title="Edit Record"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
+              {/* Roster Table */}
+              {officialAttendanceRoster.length === 0 ? (
+                <div className="text-center py-12 space-y-2 bg-stone-50/50 rounded-2xl border border-stone-100">
+                  <Users className="w-9 h-9 text-stone-300 mx-auto" />
+                  <p className="text-sm font-bold text-stone-700">No participants found</p>
+                  <p className="text-xs text-stone-500">Try adjusting your filters or date selection.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto rounded-2xl border border-stone-200">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-stone-50 text-stone-400 uppercase tracking-wider font-extrabold border-b border-stone-200">
+                      <tr>
+                        <th className="py-3 px-3">Reg ID</th>
+                        <th className="py-3 px-3">Participant</th>
+                        <th className="py-3 px-3">AUID</th>
+                        <th className="py-3 px-3">Dept / AKV Dept</th>
+                        <th className="py-3 px-3">Check-In</th>
+                        <th className="py-3 px-3">Check-Out</th>
+                        <th className="py-3 px-3">Status</th>
+                        <th className="py-3 px-3 text-right">Superadmin Control</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-stone-100 bg-white">
+                      {officialAttendanceRoster.map((p) => (
+                        <tr key={p.user_id} className="hover:bg-stone-50/80 transition-colors">
+                          <td className="py-3 px-3 font-mono font-bold text-stone-900">
+                            {p.reg_id}
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className="font-bold text-stone-900 block">{p.name}</span>
+                            <span className="text-[11px] text-stone-400">{p.email}</span>
+                          </td>
+                          <td className="py-3 px-3 font-mono text-stone-700 font-semibold">
+                            {p.auid}
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className="font-medium text-stone-800 block truncate max-w-[140px]" title={p.department}>
+                              {p.department || "--"}
+                            </span>
+                            {p.akv_department && (
+                              <span className="text-[10px] text-amber-700 font-bold bg-amber-50 px-1.5 py-0.5 rounded">
+                                {p.akv_department}
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 px-3 font-mono font-semibold">
+                            {p.check_in_time ? (
+                              <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
+                                {p.check_in_time}
+                              </span>
+                            ) : (
+                              <span className="text-stone-300">--</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-3 font-mono font-semibold">
+                            {p.check_out_time ? (
+                              <span className="text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                                {p.check_out_time}
+                              </span>
+                            ) : (
+                              <span className="text-stone-300">--</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold ${
+                              p.status === "COMPLETED"
+                                ? "bg-blue-100 text-blue-800 border border-blue-200"
+                                : p.status === "CHECKED_IN"
+                                ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                : "bg-stone-100 text-stone-500"
+                            }`}>
+                              {p.status === "COMPLETED" && "COMPLETED"}
+                              {p.status === "CHECKED_IN" && "CHECKED IN"}
+                              {p.status === "NOT_MARKED" && "NOT MARKED"}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {/* Quick Mark controls for Superadmin */}
+                              {p.status === "NOT_MARKED" && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSuperAdminCheckIn(p.user_id)}
+                                  className="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs cursor-pointer"
+                                  title="Superadmin Check-In"
+                                >
+                                  Check In
+                                </button>
+                              )}
+                              {p.status === "CHECKED_IN" && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSuperAdminCheckOut(p.user_id)}
+                                  className="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-amber-500 hover:bg-amber-600 text-stone-950 shadow-xs cursor-pointer"
+                                  title="Superadmin Check-Out"
+                                >
+                                  Check Out
+                                </button>
+                              )}
+
+                              {/* Edit Modal Button */}
+                              {p.record_id && (
+                                <button
+                                  type="button"
+                                  onClick={() => setEditRecordModal({
+                                    record_id: p.record_id,
+                                    user_id: p.user_id,
+                                    name: p.name,
+                                    reg_id: p.reg_id,
+                                    auid: p.auid,
+                                    date: selectedOfficialDate,
+                                    check_in_time: p.check_in_time || "",
+                                    check_out_time: p.check_out_time || "",
+                                    reason: ""
+                                  })}
+                                  className="p-1.5 rounded-lg border border-stone-200 hover:bg-stone-100 text-stone-700 cursor-pointer"
+                                  title="Edit Timestamps"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+
+                              {/* Reset Button */}
+                              {p.record_id && (
+                                <button
+                                  type="button"
+                                  onClick={() => setResetModal({
+                                    record_id: p.record_id,
+                                    name: p.name,
+                                    auid: p.auid,
+                                    date: selectedOfficialDate,
+                                    reason: ""
+                                  })}
+                                  className="p-1.5 rounded-lg border border-stone-200 hover:bg-red-50 text-red-600 cursor-pointer"
+                                  title="Reset Record"
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 
@@ -1473,17 +1933,19 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                     <FileSpreadsheet className="w-6 h-6" />
                   </div>
                   <div>
-                    <h4 className="font-extrabold text-base text-stone-900">Volunteer Attendance Spreadsheet (.xlsx)</h4>
+                    <h4 className="font-extrabold text-base text-stone-900">Official Festival Attendance Workbook (.xlsx)</h4>
                     <p className="text-xs text-stone-600 mt-1 leading-relaxed">
-                      Formatted Microsoft Excel document with Karnataka Red header styling, bold columns, and status color highlights.
+                      Standardized committee format with bold headers, frozen top row, borders, and auto-adjusted columns. Generates Indian Standard Time (IST) Time In & Time Out columns for all event dates, Total Days Present calculation, and participant details.
                     </p>
                   </div>
                   <button
-                    onClick={() => api.exportAttendanceXlsx(attendanceDateFilter || "all")}
-                    className="w-full py-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs shadow-md flex items-center justify-center gap-2 transition-colors"
+                    type="button"
+                    onClick={handleOfficialExcelExport}
+                    disabled={officialExportLoading}
+                    className="w-full py-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs shadow-md flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
                   >
                     <Download className="w-4 h-4" />
-                    <span>Download Official XLSX Report</span>
+                    <span>{officialExportLoading ? "Generating Official Workbook..." : "Download Official XLSX Report"}</span>
                   </button>
                 </div>
 
@@ -1602,53 +2064,137 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
             <div className="bg-white p-6 sm:p-7 rounded-3xl border border-stone-200 shadow-xs space-y-5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-100 pb-4">
                 <div>
-                  <h3 className="font-extrabold text-base text-stone-900">Immutable Security Audit Trail</h3>
-                  <p className="text-xs text-stone-500">Complete log of all administrative actions, approvals, and attendance alterations</p>
+                  <h3 className="font-extrabold text-base text-stone-900">Immutable Security & Attendance Audit Trail</h3>
+                  <p className="text-xs text-stone-500">Official log of all attendance modifications, timestamp alterations, and security operations</p>
                 </div>
-                <button
-                  onClick={loadAuditLogs}
-                  className="p-2 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 self-start"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <div className="flex bg-stone-100 p-1 rounded-xl text-xs font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setActiveAuditTab("attendance")}
+                      className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${activeAuditTab === "attendance" ? "bg-white text-stone-900 shadow-xs" : "text-stone-500 hover:text-stone-800"}`}
+                    >
+                      Attendance Modifications ({attendanceAuditLogs.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveAuditTab("security")}
+                      className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${activeAuditTab === "security" ? "bg-white text-stone-900 shadow-xs" : "text-stone-500 hover:text-stone-800"}`}
+                    >
+                      Security Logs ({auditLogs.length})
+                    </button>
+                  </div>
+                  <button
+                    onClick={loadAuditLogs}
+                    className="p-2 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 self-start cursor-pointer"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-stone-200 text-stone-400 uppercase tracking-wider font-extrabold">
-                      <th className="py-3 px-3">Timestamp</th>
-                      <th className="py-3 px-3">Actor</th>
-                      <th className="py-3 px-3">Action</th>
-                      <th className="py-3 px-3">Previous Value</th>
-                      <th className="py-3 px-3">New Value</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-stone-100">
-                    {auditLogs.map((log) => (
-                      <tr key={log.id} className="hover:bg-stone-50/80">
-                        <td className="py-3 px-3 font-mono text-stone-500 whitespace-nowrap">
-                          {log.timestamp}
-                        </td>
-                        <td className="py-3 px-3 font-bold text-stone-900">
-                          {log.actor_name}
-                        </td>
-                        <td className="py-3 px-3">
-                          <span className="px-2 py-0.5 rounded-md font-mono text-[10px] font-extrabold bg-stone-100 text-stone-800">
-                            {log.action}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 text-stone-500 text-[11px] max-w-xs truncate">
-                          {log.previous_value || "—"}
-                        </td>
-                        <td className="py-3 px-3 font-medium text-stone-800 text-[11px] max-w-xs truncate">
-                          {log.new_value}
-                        </td>
+              {activeAuditTab === "attendance" ? (
+                attendanceAuditLogs.length === 0 ? (
+                  <div className="py-12 text-center text-stone-400 text-sm">
+                    No attendance modifications recorded yet. All changes by Superadmin will be logged here with reason and exact timestamps.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-stone-200 text-stone-400 uppercase tracking-wider font-extrabold">
+                          <th className="py-3 px-3">Modified At (IST)</th>
+                          <th className="py-3 px-3">Participant</th>
+                          <th className="py-3 px-3">Event Date</th>
+                          <th className="py-3 px-3">Action</th>
+                          <th className="py-3 px-3">Old Time</th>
+                          <th className="py-3 px-3">New Time</th>
+                          <th className="py-3 px-3">Modified By</th>
+                          <th className="py-3 px-3">Reason / Audit Note</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-stone-100">
+                        {attendanceAuditLogs.map((log) => (
+                          <tr key={log.id} className="hover:bg-stone-50/80">
+                            <td className="py-3 px-3 font-mono text-stone-600 font-bold whitespace-nowrap">
+                              {log.modified_at}
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className="font-bold text-stone-900 block">{log.user_name}</span>
+                              <span className="text-[10px] text-stone-400 font-mono">{log.reg_id || log.auid}</span>
+                            </td>
+                            <td className="py-3 px-3 font-mono font-semibold text-stone-700">
+                              {log.attendance_date_dmy || log.attendance_date}
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className={`px-2 py-0.5 rounded-md font-mono text-[10px] font-extrabold ${
+                                log.action === "SUPERADMIN_RESET" ? "bg-red-100 text-red-800" :
+                                log.action === "SUPERADMIN_UNLOCK" ? "bg-amber-100 text-amber-900" :
+                                "bg-emerald-100 text-emerald-800"
+                              }`}>
+                                {log.action}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 font-mono text-stone-500">
+                              {log.old_check_in || log.old_check_out ? (
+                                <span>In: {log.old_check_in || "--"} | Out: {log.old_check_out || "--"}</span>
+                              ) : "--"}
+                            </td>
+                            <td className="py-3 px-3 font-mono text-stone-900 font-bold">
+                              {log.new_check_in || log.new_check_out ? (
+                                <span>In: {log.new_check_in || "--"} | Out: {log.new_check_out || "--"}</span>
+                              ) : "--"}
+                            </td>
+                            <td className="py-3 px-3 font-medium text-stone-700">
+                              {log.modified_by}
+                            </td>
+                            <td className="py-3 px-3 text-stone-600 italic">
+                              {log.reason || "—"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-stone-200 text-stone-400 uppercase tracking-wider font-extrabold">
+                        <th className="py-3 px-3">Timestamp</th>
+                        <th className="py-3 px-3">Actor</th>
+                        <th className="py-3 px-3">Action</th>
+                        <th className="py-3 px-3">Previous Value</th>
+                        <th className="py-3 px-3">New Value</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-stone-100">
+                      {auditLogs.map((log) => (
+                        <tr key={log.id} className="hover:bg-stone-50/80">
+                          <td className="py-3 px-3 font-mono text-stone-500 whitespace-nowrap">
+                            {log.timestamp}
+                          </td>
+                          <td className="py-3 px-3 font-bold text-stone-900">
+                            {log.actor_name}
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className="px-2 py-0.5 rounded-md font-mono text-[10px] font-extrabold bg-stone-100 text-stone-800">
+                              {log.action}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-stone-500 text-[11px] max-w-xs truncate">
+                            {log.previous_value || "—"}
+                          </td>
+                          <td className="py-3 px-3 font-medium text-stone-800 text-[11px] max-w-xs truncate">
+                            {log.new_value}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 
@@ -2550,6 +3096,219 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                 >
                   <Check className="w-4 h-4" />
                   <span>{reelModal === "new" ? "Save Reel / Post" : "Update Reel / Post"}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================== */}
+      {/* MODAL: EDIT ATTENDANCE RECORD (SUPERADMIN)           */}
+      {/* ==================================================== */}
+      {editRecordModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in my-8">
+            <div className="flex items-center justify-between border-b border-stone-200 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2.5 bg-amber-100 text-amber-900 rounded-xl">
+                  <Pencil className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-stone-900">Modify Attendance Timestamps</h3>
+                  <p className="text-[11px] text-stone-500 font-mono">Date: {editRecordModal.date}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditRecordModal(null)}
+                className="p-1.5 text-stone-400 hover:text-stone-700 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-3 bg-stone-50 rounded-2xl border border-stone-200 text-xs space-y-1">
+              <div className="flex justify-between">
+                <span className="text-stone-500">Participant:</span>
+                <strong className="text-stone-900">{editRecordModal.name}</strong>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-stone-500">Reg ID / AUID:</span>
+                <strong className="text-stone-700 font-mono">{editRecordModal.reg_id} / {editRecordModal.auid}</strong>
+              </div>
+            </div>
+
+            <form onSubmit={handleSaveOfficialAttendanceEdit} className="space-y-3.5 text-xs">
+              <div>
+                <label className="font-bold text-stone-700 uppercase block mb-1">
+                  Check-In Time (IST)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 09:35:22 AM or 09:35:22"
+                  value={editRecordModal.check_in_time || ""}
+                  onChange={(e) => setEditRecordModal({ ...editRecordModal, check_in_time: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono text-sm focus:ring-2 focus:ring-amber-500"
+                />
+                <span className="text-[10px] text-stone-400 mt-0.5 block">Format: hh:mm:ss AM/PM</span>
+              </div>
+
+              <div>
+                <label className="font-bold text-stone-700 uppercase block mb-1">
+                  Check-Out Time (IST)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 04:42:17 PM or 16:42:17"
+                  value={editRecordModal.check_out_time || ""}
+                  onChange={(e) => setEditRecordModal({ ...editRecordModal, check_out_time: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono text-sm focus:ring-2 focus:ring-amber-500"
+                />
+                <span className="text-[10px] text-stone-400 mt-0.5 block">Leave blank if check-out not applicable</span>
+              </div>
+
+              <div>
+                <label className="font-bold text-stone-700 uppercase block mb-1">
+                  Audit Reason / Correction Note *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Correction requested by coordinator / timing error"
+                  value={editRecordModal.reason || ""}
+                  onChange={(e) => setEditRecordModal({ ...editRecordModal, reason: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-amber-500"
+                />
+                <span className="text-[10px] text-stone-500 mt-0.5 block">This note is permanently recorded in the audit trail.</span>
+              </div>
+
+              <div className="flex items-center gap-3 pt-2 border-t border-stone-100">
+                <button
+                  type="button"
+                  onClick={() => setEditRecordModal(null)}
+                  className="flex-1 py-2.5 rounded-xl border border-stone-300 font-bold hover:bg-stone-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-bold shadow-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Update & Log Audit</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================== */}
+      {/* MODAL: UNLOCK ATTENDANCE SESSION                     */}
+      {/* ==================================================== */}
+      {unlockModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in">
+            <div className="flex items-start gap-3.5">
+              <div className="p-3 bg-amber-100 text-amber-800 rounded-2xl shrink-0">
+                <Unlock className="w-6 h-6" />
+              </div>
+              <div>
+                <h4 className="font-extrabold text-base text-stone-900">
+                  Unlock Attendance for {unlockModal.date}
+                </h4>
+                <p className="text-xs text-stone-600 mt-1 leading-relaxed">
+                  Unlocking this session will allow normal administrators to mark Check-In and Check-Out again until re-submitted.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleConfirmUnlock} className="space-y-3.5 text-xs">
+              <div>
+                <label className="font-bold text-stone-700 uppercase block mb-1">
+                  Reason for Unlocking *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Additional volunteers reporting late / admin correction"
+                  value={unlockModal.reason || ""}
+                  onChange={(e) => setUnlockModal({ ...unlockModal, reason: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+
+              <div className="flex items-center gap-3 pt-2 border-t border-stone-100">
+                <button
+                  type="button"
+                  onClick={() => setUnlockModal(null)}
+                  className="flex-1 py-2.5 rounded-xl border border-stone-300 font-bold hover:bg-stone-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold shadow-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Unlock className="w-4 h-4" />
+                  <span>Confirm Unlock</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================== */}
+      {/* MODAL: RESET ATTENDANCE RECORD                       */}
+      {/* ==================================================== */}
+      {resetModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in">
+            <div className="flex items-start gap-3.5">
+              <div className="p-3 bg-red-100 text-kar-red rounded-2xl shrink-0">
+                <RotateCcw className="w-6 h-6" />
+              </div>
+              <div>
+                <h4 className="font-extrabold text-base text-stone-900">
+                  Reset Attendance for {resetModal.name}
+                </h4>
+                <p className="text-xs text-stone-600 mt-1 leading-relaxed">
+                  Resetting clears both Check-In and Check-Out timestamps for <strong>{resetModal.date}</strong> and returns status to <strong>NOT MARKED</strong>.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleConfirmReset} className="space-y-3.5 text-xs">
+              <div>
+                <label className="font-bold text-stone-700 uppercase block mb-1">
+                  Reason for Resetting *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Accidental mark / student was absent"
+                  value={resetModal.reason || ""}
+                  onChange={(e) => setResetModal({ ...resetModal, reason: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-kar-red"
+                />
+              </div>
+
+              <div className="flex items-center gap-3 pt-2 border-t border-stone-100">
+                <button
+                  type="button"
+                  onClick={() => setResetModal(null)}
+                  className="flex-1 py-2.5 rounded-xl border border-stone-300 font-bold hover:bg-stone-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-kar-red hover:bg-red-700 text-white font-bold shadow-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  <span>Confirm Reset</span>
                 </button>
               </div>
             </form>

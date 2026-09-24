@@ -1,5 +1,5 @@
 import datetime
-from sqlalchemy import Column, Integer, String, Boolean, Text, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, Text, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from .database import Base
 
@@ -39,6 +39,7 @@ class User(Base):
     # Relationships
     admin_profile = relationship("Admin", back_populates="user", uselist=False, cascade="all, delete-orphan")
     attendances = relationship("VolunteerAttendance", back_populates="user", cascade="all, delete-orphan")
+    attendance_records = relationship("AttendanceRecord", back_populates="user", cascade="all, delete-orphan")
     event_registrations = relationship("Registration", back_populates="user")
     reset_tokens = relationship("PasswordResetToken", back_populates="user", cascade="all, delete-orphan")
 
@@ -224,4 +225,101 @@ class SocialPost(Base):
     comments = Column(String, default="0", nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+# ==============================================================================
+# OFFICIAL ATTENDANCE SYSTEM (PARTICIPANTS & VOLUNTEERS)
+# ==============================================================================
+
+class AttendanceRecord(Base):
+    """
+    Official daily attendance record for a participant or volunteer.
+    Enforces exactly two markings per day (Check-In & Check-Out) with server-side IST timestamps.
+    Unique constraint ensures no duplicate records for a participant on the same date.
+    """
+    __tablename__ = "attendance_records"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    attendance_date = Column(String, index=True, nullable=False)  # Format: YYYY-MM-DD
+    
+    # Timestamps stored in UTC, converted to Indian Standard Time (Asia/Kolkata) for display & export
+    check_in_at = Column(DateTime, nullable=True)
+    check_out_at = Column(DateTime, nullable=True)
+    
+    # Status: NOT_MARKED, CHECKED_IN, COMPLETED
+    status = Column(String, default="NOT_MARKED", nullable=False, index=True)
+    
+    # Submission & Locking
+    submitted = Column(Boolean, default=False, nullable=False, index=True)
+    submitted_at = Column(DateTime, nullable=True)
+    submitted_by = Column(String, nullable=True)
+    
+    # Modification Tracking
+    last_modified_at = Column(DateTime, nullable=True)
+    last_modified_by = Column(String, nullable=True)
+    
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "attendance_date", name="uq_user_attendance_date"),
+    )
+
+    user = relationship("User", back_populates="attendance_records")
+
+
+class AttendanceDaySession(Base):
+    """
+    Controls the overall submission and lock state for each event attendance date.
+    When marked submitted, regular admins are locked from modifying attendance records for that day.
+    SuperAdmin can unlock, edit, or reset.
+    """
+    __tablename__ = "attendance_day_sessions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    attendance_date = Column(String, unique=True, index=True, nullable=False)  # Format: YYYY-MM-DD
+    is_submitted = Column(Boolean, default=False, nullable=False)
+    submitted_at = Column(DateTime, nullable=True)
+    submitted_by = Column(String, nullable=True)
+    unlocked_at = Column(DateTime, nullable=True)
+    unlocked_by = Column(String, nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+
+class AttendanceAuditLog(Base):
+    """
+    Audit log capturing all administrative attendance modifications, especially SuperAdmin overrides.
+    """
+    __tablename__ = "attendance_audit_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    attendance_id = Column(Integer, nullable=True, index=True)
+    user_id = Column(Integer, nullable=False, index=True)
+    participant_name = Column(String, nullable=True)
+    attendance_date = Column(String, nullable=False, index=True)
+    old_check_in = Column(String, nullable=True)
+    new_check_in = Column(String, nullable=True)
+    old_check_out = Column(String, nullable=True)
+    new_check_out = Column(String, nullable=True)
+    action = Column(String, nullable=False)  # CHECK_IN, CHECK_OUT, SUBMIT_ATTENDANCE, SUPERADMIN_EDIT, SUPERADMIN_RESET, SUPERADMIN_UNLOCK
+    modified_by = Column(String, nullable=False)
+    modified_at = Column(DateTime, default=datetime.datetime.utcnow)
+    reason = Column(Text, nullable=True)
+
+
+class FestivalEventDate(Base):
+    """
+    Configurable festival event dates for multi-day attendance support.
+    """
+    __tablename__ = "festival_event_dates"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    date = Column(String, unique=True, index=True, nullable=False)  # Format: YYYY-MM-DD
+    label = Column(String, nullable=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
 

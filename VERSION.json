@@ -4,7 +4,16 @@
   "status": "STAGED_DEVELOPMENT",
   "active_branch": "develop",
   "production_branch": "main",
-  "pending_changes": [],
+  "pending_changes": [
+    "Full Two-Marking Attendance System: Integrated Check-In and Check-Out per day for participants and volunteers",
+    "Server-Side Indian Standard Time (Asia/Kolkata, UTC+05:30) generation formatted as hh:mm:ss AM/PM",
+    "Multi-day event support with dynamic date configuration (28/09/2026 to 02/10/2026)",
+    "Backend enforced Admin Lock: SUBMIT ATTENDANCE permanently saves records and locks them for normal admins (403 Forbidden)",
+    "SuperAdmin Privilege Suite: modify timestamps, reset records, unlock sessions, with mandatory audit reason logging",
+    "Attendance Audit Trail: immutable logging of all attendance actions, timestamps, actors, and reasons",
+    "Official Attendance Excel Export: exact reference column structure, bold headers, freeze panes, auto widths, and IST times",
+    "Real-time Attendance Dashboard: live metrics for Total, Checked In, Completed, Not Marked, and Submission Status"
+  ],
   "history": [
     {
       "version": "2.1.1",
