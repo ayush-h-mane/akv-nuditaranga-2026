@@ -20,12 +20,13 @@ from .routes import (
 # Ensure schema integrity and automatic migrations for SQLite
 def ensure_schema_migrations():
     try:
-        with engine.connect() as conn:
-            # Check registrations table columns
-            cols = [c[1] for c in conn.exec_driver_sql("PRAGMA table_info(registrations)").fetchall()]
-            if cols and "user_id" not in cols:
-                print("[MIGRATION] Adding 'user_id' column to 'registrations' table...")
-                conn.exec_driver_sql("ALTER TABLE registrations ADD COLUMN user_id INTEGER REFERENCES users(id)")
+        if engine.dialect.name == "sqlite":
+            with engine.connect() as conn:
+                # Check registrations table columns
+                cols = [c[1] for c in conn.exec_driver_sql("PRAGMA table_info(registrations)").fetchall()]
+                if cols and "user_id" not in cols:
+                    print("[MIGRATION] Adding 'user_id' column to 'registrations' table...")
+                    conn.exec_driver_sql("ALTER TABLE registrations ADD COLUMN user_id INTEGER REFERENCES users(id)")
     except Exception as e:
         print(f"[MIGRATION NOTICE] {e}")
 
