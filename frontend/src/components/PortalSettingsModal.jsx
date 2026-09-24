@@ -102,7 +102,7 @@ export const PortalSettingsModal = ({
                 Executive Superadmin Portal
               </h4>
               <p className="text-xs text-stone-300 leading-relaxed mb-4">
-                Highest authority gateway for festival administrators. Authorized accounts (<code className="text-amber-300 font-mono">akvntkvsa1</code>, <code className="text-amber-300 font-mono">akvntkvsa2</code>, <code className="text-amber-300 font-mono">akvntkvsa3</code>) can approve admins, manage activities, and view master telemetry.
+                Highest authority gateway for festival administrators. Authorized executive accounts can approve admins, manage activities, and view master telemetry.
               </p>
 
               <button

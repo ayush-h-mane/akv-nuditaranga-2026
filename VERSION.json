@@ -19,7 +19,8 @@
     "Volunteer AKV domain selection with 13 domains and custom manual entry support.",
     "Configured 3 official Super Admin credentials (akvntkvsa1, akvntkvsa2, akvntkvsa3) with on-demand database provisioning and offline fallback.",
     "Relocated Superadmin portal access from regular login tabs into a new Portal Settings & Directory modal.",
-    "Added Developer (Ayush H Mane) and Secretary (AKV Secretariat) direct contact directory in the Login Portal."
+    "Added Developer (Ayush H Mane) and Secretary (AKV Secretariat) direct contact directory in the Login Portal.",
+    "Removed all demo credentials and autofill helper cards from Student, Admin, and Super Admin login views."
   ],
   "history": [
     {

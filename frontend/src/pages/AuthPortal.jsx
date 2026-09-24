@@ -513,23 +513,6 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                       </div>
                     </div>
 
-                    {/* Fast-fill Demo Student Helper */}
-                    <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl flex items-center justify-between text-xs">
-                      <div className="text-stone-700">
-                        <span className="font-bold text-stone-900">Demo Student:</span>{" "}
-                        <code className="bg-white px-2 py-0.5 rounded text-[11px] font-mono font-bold text-stone-800 border border-stone-200">
-                          AIT22IS045
-                        </code>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setStudentLoginForm({ auid: "AIT22IS045", password: "Password123!" })}
-                        className="px-2.5 py-1 text-[11px] font-extrabold text-amber-800 bg-amber-100 hover:bg-amber-200 rounded-lg border border-amber-300 transition-colors shadow-2xs cursor-pointer"
-                      >
-                        Fill Credentials
-                      </button>
-                    </div>
-
                     <button
                       type="submit"
                       disabled={loading}
@@ -967,7 +950,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                           required
                           value={adminForm.username}
                           onChange={(e) => setAdminForm({ ...adminForm, username: e.target.value.toLowerCase() })}
-                          placeholder="e.g. ayush_h_mane or ayush@acharya.ac.in"
+                          placeholder="Enter admin username or college email"
                           className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm"
                         />
                       </div>
@@ -988,23 +971,6 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                           className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm"
                         />
                       </div>
-                    </div>
-
-                    {/* Fast-fill Coordinator Admin Helper */}
-                    <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl flex items-center justify-between text-xs">
-                      <div className="text-stone-700">
-                        <span className="font-bold text-stone-900">Coordinator Admin:</span>{" "}
-                        <code className="bg-white px-2 py-0.5 rounded text-[11px] font-mono font-bold text-stone-800 border border-stone-200">
-                          ayush_h_mane
-                        </code>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setAdminForm({ ...adminForm, username: "ayush_h_mane", password: "AcharyaAKV2026" })}
-                        className="px-2.5 py-1 text-[11px] font-extrabold text-amber-800 bg-amber-100 hover:bg-amber-200 rounded-lg border border-amber-300 transition-colors shadow-2xs cursor-pointer"
-                      >
-                        Fill Credentials
-                      </button>
                     </div>
 
                     <button
@@ -1300,7 +1266,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                         required
                         value={superadminForm.username}
                         onChange={(e) => setSuperadminForm({ ...superadminForm, username: e.target.value.toLowerCase() })}
-                        placeholder="akvntkvsa1"
+                        placeholder="Enter superadmin username"
                         className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-amber-500 text-sm font-mono font-bold text-stone-900 bg-stone-50"
                       />
                     </div>
@@ -1326,47 +1292,6 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                         className="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 focus:outline-hidden"
                       >
                         {showSuperadminPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Super Admin Fast-fill helper */}
-                  <div className="p-3.5 bg-amber-50/80 border border-amber-200/90 rounded-2xl space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-black text-amber-950 uppercase tracking-wider">
-                        Authorized Super Admins
-                      </span>
-                      <span className="text-[10px] text-amber-700 font-semibold">
-                        Select account to fill
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => setSuperadminForm({ username: "akvntkvsa1", password: "akvntkvsa@1" })}
-                        className="p-2 bg-white hover:bg-amber-100/70 border border-amber-200 rounded-xl text-left transition-all hover:border-amber-400 shadow-2xs group cursor-pointer"
-                      >
-                        <div className="text-[10px] font-extrabold text-stone-500 uppercase tracking-wider">Super Admin 1</div>
-                        <div className="text-xs font-mono font-bold text-stone-900 group-hover:text-kar-red">akvntkvsa1</div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setSuperadminForm({ username: "akvntkvsa2", password: "akvntkvsa@2" })}
-                        className="p-2 bg-white hover:bg-amber-100/70 border border-amber-200 rounded-xl text-left transition-all hover:border-amber-400 shadow-2xs group cursor-pointer"
-                      >
-                        <div className="text-[10px] font-extrabold text-stone-500 uppercase tracking-wider">Super Admin 2</div>
-                        <div className="text-xs font-mono font-bold text-stone-900 group-hover:text-kar-red">akvntkvsa2</div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setSuperadminForm({ username: "akvntkvsa3", password: "akvntkvsa@3" })}
-                        className="p-2 bg-white hover:bg-amber-100/70 border border-amber-200 rounded-xl text-left transition-all hover:border-amber-400 shadow-2xs group cursor-pointer"
-                      >
-                        <div className="text-[10px] font-extrabold text-stone-500 uppercase tracking-wider">Super Admin 3</div>
-                        <div className="text-xs font-mono font-bold text-stone-900 group-hover:text-kar-red">akvntkvsa3</div>
                       </button>
                     </div>
                   </div>
