@@ -7,7 +7,10 @@
 [![Backend](https://img.shields.io/badge/Backend-FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![Frontend](https://img.shields.io/badge/Frontend-React%20%7C%20Vite-61DAFB?logo=react&logoColor=white)](https://vitejs.dev)
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Download PDF Manual](https://img.shields.io/badge/Documentation-Download%20PDF-800020?logo=adobeacrobatreader&logoColor=white)](./AKV_Nuditaranga_2026_Architecture_Documentation.pdf)
 [![Language](https://img.shields.io/badge/Bilingual-English%20%2F%20%E0%B2%95%E0%B2%A8%E0%B3%8D%E0%B2%A8%E0%B2%A1-FFD700)](#)
+
+📄 **[Download Complete Technical Documentation & Architecture PDF](./AKV_Nuditaranga_2026_Architecture_Documentation.pdf)** (or access online at [https://akv-nuditaranga-2026.vercel.app/AKV_Nuditaranga_2026_Documentation.pdf](https://akv-nuditaranga-2026.vercel.app/AKV_Nuditaranga_2026_Documentation.pdf))
 
 ---
 
