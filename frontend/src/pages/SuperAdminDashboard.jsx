@@ -34,6 +34,7 @@ import {
   Share2,
   Heart,
   ExternalLink,
+  History,
   Image as ImageIcon
 } from "lucide-react";
 import { EventImageUpload } from "../components/EventImageUpload";
