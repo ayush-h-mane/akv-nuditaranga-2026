@@ -28,8 +28,6 @@ import {
   Trash2,
   Plus,
   Image as ImageIcon,
-  Download,
-  FileSpreadsheet,
   CheckCheck,
   CheckSquare
 } from "lucide-react";
@@ -71,7 +69,6 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [submitNotes, setSubmitNotes] = useState("");
   const [submitLoading, setSubmitLoading] = useState(false);
-  const [exportLoading, setExportLoading] = useState(false);
 
   // Check-In Desk State
   const [checkinId, setCheckinId] = useState("");
@@ -257,21 +254,6 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
     }
   };
 
-  // Export Excel Handler
-  const handleExportExcel = async () => {
-    setExportLoading(true);
-    try {
-      await api.exportOfficialAttendanceExcel({
-        department: deptFilter !== "all" ? deptFilter : "",
-        akv_dept: akvDeptFilter !== "all" ? akvDeptFilter : ""
-      });
-      notify("success", "Official Attendance Excel sheet downloaded successfully!");
-    } catch (err) {
-      notify("error", err.message || "Failed to export Excel sheet.");
-    } finally {
-      setExportLoading(false);
-    }
-  };
 
   // Participant Check-in Handler
   const handleCheckInSubmit = async (eOrId) => {
@@ -488,15 +470,6 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
 
               {/* Action Buttons */}
               <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleExportExcel}
-                  disabled={exportLoading}
-                  className="px-3.5 py-2 rounded-xl text-xs font-bold text-stone-700 bg-white border border-stone-300 hover:bg-stone-50 flex items-center gap-1.5 transition-all shadow-xs disabled:opacity-50 cursor-pointer"
-                >
-                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                  <span>{exportLoading ? "Exporting..." : "Export Attendance Excel"}</span>
-                </button>
 
                 {attendanceSession.is_submitted ? (
                   <div className="px-3.5 py-2 rounded-xl text-xs font-bold text-stone-500 bg-stone-100 border border-stone-200 flex items-center gap-1.5 cursor-not-allowed">

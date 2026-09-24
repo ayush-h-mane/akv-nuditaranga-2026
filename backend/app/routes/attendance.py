@@ -910,7 +910,7 @@ def export_attendance_excel(
     department: Optional[str] = Query(None, description="Filter by department"),
     institute: Optional[str] = Query(None, description="Filter by institute"),
     akv_dept: Optional[str] = Query(None, description="Filter by AKV Domain"),
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_superadmin),
     db: Session = Depends(get_db)
 ):
     """
