@@ -15,7 +15,8 @@ import {
   MessageCircle,
   Building2,
   Sparkles,
-  KeyRound
+  KeyRound,
+  Globe
 } from "lucide-react";
 
 export const PortalSettingsModal = ({
@@ -133,23 +134,36 @@ export const PortalSettingsModal = ({
 
             {/* 1. Lead Developer Contact Card */}
             <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200/80 hover:border-amber-300 transition-all space-y-3">
-              <div className="flex items-start justify-between">
+              <div className="flex items-start justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-bold shadow-xs">
+                  <div className="w-9 h-9 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-bold shadow-xs shrink-0">
                     <Code2 className="w-4 h-4" />
                   </div>
                   <div>
                     <span className="text-[10px] font-black tracking-widest uppercase px-2 py-0.5 bg-amber-200/80 text-amber-900 rounded-md">
-                      Lead Developer & Architect
+                      Full-Stack Developer, AIML Engineer
                     </span>
                     <h5 className="text-sm font-extrabold text-stone-900 mt-0.5">
                       Ayush H Mane
                     </h5>
                     <p className="text-[11px] text-stone-500 font-medium">
-                      Full-Stack Architecture • Portal Engineering
+                      Full-Stack Developer • AIML Engineer
                     </p>
                   </div>
                 </div>
+
+                {/* Portfolio Link Button */}
+                <a
+                  href="https://ayushhmane.vercel.app/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 text-xs font-black shadow-xs hover:shadow-sm transition-all group cursor-pointer"
+                  title="Open Ayush H Mane's Portfolio"
+                >
+                  <Globe className="w-3.5 h-3.5 text-stone-950 group-hover:rotate-12 transition-transform" />
+                  <span>Portfolio</span>
+                  <ExternalLink className="w-3 h-3 text-stone-950" />
+                </a>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-xs">
@@ -157,21 +171,21 @@ export const PortalSettingsModal = ({
                 <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-stone-200/70">
                   <div className="flex items-center gap-2 truncate">
                     <Mail className="w-3.5 h-3.5 text-kar-red shrink-0" />
-                    <span className="text-[11px] font-mono text-stone-700 truncate" title="ayush@acharya.ac.in">
-                      ayush@acharya.ac.in
+                    <span className="text-[11px] font-mono text-stone-700 truncate" title="ayushhmane@gmail.com">
+                      ayushhmane@gmail.com
                     </span>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     <button
                       type="button"
-                      onClick={() => handleCopy("dev-email", "ayush@acharya.ac.in")}
+                      onClick={() => handleCopy("dev-email", "ayushhmane@gmail.com")}
                       className="p-1 rounded-md hover:bg-stone-100 text-stone-500 hover:text-stone-800 transition-colors"
                       title="Copy Email"
                     >
                       {copiedKey === "dev-email" ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
                     </button>
                     <a
-                      href="mailto:ayush@acharya.ac.in?subject=AKV%20Portal%20Inquiry%20-%20Technical"
+                      href="mailto:ayushhmane@gmail.com?subject=AKV%20Portal%20Inquiry%20-%20Technical"
                       className="p-1 rounded-md hover:bg-stone-100 text-stone-500 hover:text-kar-red transition-colors"
                       title="Compose Email"
                     >
@@ -185,27 +199,27 @@ export const PortalSettingsModal = ({
                   <div className="flex items-center gap-2">
                     <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                     <span className="text-[11px] font-mono text-stone-700">
-                      +91 98450 12345
+                      +91 95351 74767
                     </span>
                   </div>
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
-                      onClick={() => handleCopy("dev-phone", "+919845012345")}
+                      onClick={() => handleCopy("dev-phone", "+919535174767")}
                       className="p-1 rounded-md hover:bg-stone-100 text-stone-500 hover:text-stone-800 transition-colors"
                       title="Copy Phone"
                     >
                       {copiedKey === "dev-phone" ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
                     </button>
                     <a
-                      href="tel:+919845012345"
+                      href="tel:+919535174767"
                       className="p-1 rounded-md hover:bg-stone-100 text-stone-500 hover:text-emerald-600 transition-colors"
                       title="Call Developer"
                     >
                       <Phone className="w-3 h-3" />
                     </a>
                     <a
-                      href="https://wa.me/919845012345?text=Hello%20Ayush,%20regarding%20AKV%20Nuditaranga%202026%20Portal"
+                      href="https://wa.me/919535174767?text=Hello%20Ayush,%20regarding%20AKV%20Nuditaranga%202026%20Portal"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="p-1 rounded-md hover:bg-stone-100 text-stone-500 hover:text-emerald-600 transition-colors"
@@ -218,22 +232,22 @@ export const PortalSettingsModal = ({
               </div>
             </div>
 
-            {/* 2. General Secretary Contact Card */}
+            {/* 2. Secretary & Event Coordinator Contact Card */}
             <div className="p-4 rounded-2xl bg-red-50/50 border border-red-200/80 hover:border-red-300 transition-all space-y-3">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-kar-red text-white flex items-center justify-center font-bold shadow-xs">
+                  <div className="w-9 h-9 rounded-xl bg-kar-red text-white flex items-center justify-center font-bold shadow-xs shrink-0">
                     <Users className="w-4 h-4" />
                   </div>
                   <div>
                     <span className="text-[10px] font-black tracking-widest uppercase px-2 py-0.5 bg-red-100 text-red-900 rounded-md">
-                      General Secretary & Secretariat
+                      Secretary • Event Coordinator
                     </span>
                     <h5 className="text-sm font-extrabold text-stone-900 mt-0.5">
-                      Acharya Kannada Vedike Secretariat
+                      Priyanka S Reddy
                     </h5>
                     <p className="text-[11px] text-stone-500 font-medium">
-                      Event Coordination • Registrations & Verification
+                      Event Coordinator • Acharya Kannada Vedike
                     </p>
                   </div>
                 </div>
@@ -244,21 +258,21 @@ export const PortalSettingsModal = ({
                 <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-stone-200/70">
                   <div className="flex items-center gap-2 truncate">
                     <Mail className="w-3.5 h-3.5 text-kar-red shrink-0" />
-                    <span className="text-[11px] font-mono text-stone-700 truncate" title="akv@acharya.ac.in">
-                      akv@acharya.ac.in
+                    <span className="text-[11px] font-mono text-stone-700 truncate" title="priyankas.23.beee@acharya.ac.in">
+                      priyankas.23.beee@acharya.ac.in
                     </span>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     <button
                       type="button"
-                      onClick={() => handleCopy("sec-email", "akv@acharya.ac.in")}
+                      onClick={() => handleCopy("sec-email", "priyankas.23.beee@acharya.ac.in")}
                       className="p-1 rounded-md hover:bg-stone-100 text-stone-500 hover:text-stone-800 transition-colors"
                       title="Copy Email"
                     >
                       {copiedKey === "sec-email" ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
                     </button>
                     <a
-                      href="mailto:akv@acharya.ac.in?subject=AKV%20Nuditaranga%202026%20-%20Secretariat%20Inquiry"
+                      href="mailto:priyankas.23.beee@acharya.ac.in?subject=AKV%20Nuditaranga%202026%20-%20Event%20Coordination%20Inquiry"
                       className="p-1 rounded-md hover:bg-stone-100 text-stone-500 hover:text-kar-red transition-colors"
                       title="Compose Email"
                     >
@@ -267,29 +281,38 @@ export const PortalSettingsModal = ({
                   </div>
                 </div>
 
-                {/* Secretary Phone */}
+                {/* Secretary Phone / WhatsApp */}
                 <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-stone-200/70">
                   <div className="flex items-center gap-2">
                     <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                     <span className="text-[11px] font-mono text-stone-700">
-                      +91 98765 43210
+                      +91 95130 93026
                     </span>
                   </div>
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
-                      onClick={() => handleCopy("sec-phone", "+919876543210")}
+                      onClick={() => handleCopy("sec-phone", "+919513093026")}
                       className="p-1 rounded-md hover:bg-stone-100 text-stone-500 hover:text-stone-800 transition-colors"
                       title="Copy Phone"
                     >
                       {copiedKey === "sec-phone" ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
                     </button>
                     <a
-                      href="tel:+919876543210"
+                      href="tel:+919513093026"
                       className="p-1 rounded-md hover:bg-stone-100 text-stone-500 hover:text-emerald-600 transition-colors"
-                      title="Call Secretariat"
+                      title="Call Secretary"
                     >
                       <Phone className="w-3 h-3" />
+                    </a>
+                    <a
+                      href="https://wa.me/919513093026?text=Hello%20Priyanka,%20regarding%20AKV%20Nuditaranga%202026%20Event%20Coordination"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-1 rounded-md hover:bg-stone-100 text-stone-500 hover:text-emerald-600 transition-colors"
+                      title="WhatsApp Chat"
+                    >
+                      <MessageCircle className="w-3 h-3" />
                     </a>
                   </div>
                 </div>

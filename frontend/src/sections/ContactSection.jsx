@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useLanguage } from "../context/LanguageContext";
 import { siteConfig } from "../config/siteConfig";
-import { MapPin, Mail, Phone, Send, CheckCircle, UserCheck } from "lucide-react";
+import { MapPin, Mail, Phone, Send, CheckCircle, UserCheck, ExternalLink } from "lucide-react";
 
 export const ContactSection = () => {
   const { lang, t } = useLanguage();
@@ -94,14 +94,38 @@ export const ContactSection = () => {
                     <span className="text-[11px] text-stone-500 block mt-1">
                       {lang === "kn" ? (c.deptKn || c.dept) : (c.deptEn || c.dept)}
                     </span>
-                    <a 
-                      href={`tel:${c.contact.replace(/\s+/g, '')}`} 
-                      className="mt-3 pt-2 border-t border-stone-100 flex items-center gap-1.5 text-xs text-stone-700 font-mono hover:text-kar-red transition-colors group"
-                      title={lang === "kn" ? `${c.nameKn} ಅವರಿಗೆ ಕರೆ ಮಾಡಿ` : `Call ${c.nameEn}`}
-                    >
-                      <Phone className="w-3.5 h-3.5 text-kar-red group-hover:scale-110 transition-transform" />
-                      <span className="group-hover:underline">{c.contact}</span>
-                    </a>
+                    <div className="mt-3 pt-2 border-t border-stone-100 space-y-1.5 text-xs text-stone-700 font-mono">
+                      <a 
+                        href={`tel:${c.contact.replace(/\s+/g, '')}`} 
+                        className="flex items-center gap-1.5 hover:text-kar-red transition-colors group"
+                        title={lang === "kn" ? `${c.nameKn} ಅವರಿಗೆ ಕರೆ ಮಾಡಿ` : `Call ${c.nameEn}`}
+                      >
+                        <Phone className="w-3.5 h-3.5 text-kar-red group-hover:scale-110 transition-transform" />
+                        <span className="group-hover:underline">{c.contact}</span>
+                      </a>
+                      {c.email && (
+                        <a 
+                          href={`mailto:${c.email}`} 
+                          className="flex items-center gap-1.5 hover:text-kar-red transition-colors group truncate text-[11px]"
+                          title={`Email ${c.nameEn}`}
+                        >
+                          <Mail className="w-3.5 h-3.5 text-stone-400 group-hover:text-kar-red transition-colors shrink-0" />
+                          <span className="group-hover:underline truncate">{c.email}</span>
+                        </a>
+                      )}
+                      {c.portfolio && (
+                        <a 
+                          href={c.portfolio} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="flex items-center gap-1.5 text-amber-700 hover:text-amber-900 font-bold transition-colors group text-[11px]"
+                          title="View Portfolio"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                          <span className="group-hover:underline">Portfolio Website</span>
+                        </a>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
