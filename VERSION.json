@@ -1,23 +1,16 @@
 {
-  "production_version": "2.1.1",
-  "staged_version": "2.1.2",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.2.1",
+  "staged_version": "2.2.2",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
-  "pending_changes": [
-    "Full Two-Marking Attendance System: Integrated Check-In and Check-Out per day for participants and volunteers",
-    "Server-Side Indian Standard Time (Asia/Kolkata, UTC+05:30) generation formatted as hh:mm:ss AM/PM",
-    "Multi-day event support with dynamic date configuration (28/09/2026 to 02/10/2026)",
-    "Backend enforced Admin Lock: SUBMIT ATTENDANCE permanently saves records and locks them for normal admins (403 Forbidden)",
-    "SuperAdmin Privilege Suite: modify timestamps, reset records, unlock sessions, with mandatory audit reason logging",
-    "Attendance Audit Trail: immutable logging of all attendance actions, timestamps, actors, and reasons",
-    "Official Attendance Excel Export: Exclusive SuperAdmin 15-sheet export suite (revoked from normal Admin), exact reference column structure, bold headers, freeze panes, auto widths, and IST times",
-    "Real-time Attendance Dashboard: live metrics for Total, Checked In, Completed, Not Marked, and Submission Status",
-    "Dedicated Working Committee Attendance System: Exclusive SuperAdmin control over Working Committee roster, check-ins, check-outs, and session submissions (Admin access strictly forbidden with 403 Forbidden)",
-    "15-Sheet Official Excel Export: Dedicated sheets for each of the 13 department groups, Sheet 14 for Working Committee, and Sheet 15 for complete consolidated roster (Sheets 1–13 + Sheet 14) with Member Type tags and zero duplicates",
-    "Admin Cultural Gallery Fix: Restored handleAddGalleryItem, handleDeleteGalleryItem, and loadGallery handlers on Coordinator Dashboard"
-  ],
+  "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.1",
+      "released_at": "2026-09-25T01:54:20+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.1: Multi-day 2-marking attendance system, server IST timestamps, submit locks, SuperAdmin privilege suite & audit trail, dedicated Working Committee attendance, exclusive SuperAdmin 15-sheet Excel export, and Admin Coordinator gallery fix."
+    },
     {
       "version": "2.1.1",
       "released_at": "2026-09-24T22:22:06+0530",
