@@ -55,12 +55,16 @@ export function AppContent() {
     return () => window.removeEventListener("hashchange", handleHash);
   }, []);
 
-  // Redirect to home if user logs out while on a protected dashboard view
+  // Redirect to home if user logs out or unauthorized user navigates to protected views
   useEffect(() => {
     if (!user && (currentView === "student-dashboard" || currentView === "admin-dashboard" || currentView === "superadmin-dashboard")) {
       setCurrentView("home");
     }
-  }, [user, currentView]);
+    // Organizer Check-In Desk is restricted to administrators only
+    if (currentView === "checkin" && (!user || (role !== "ADMIN" && role !== "SUPERADMIN"))) {
+      setCurrentView("home");
+    }
+  }, [user, role, currentView]);
 
   // When user successfully authenticates
   const handleAuthSuccess = (authenticatedUser) => {
@@ -230,7 +234,9 @@ export function AppContent() {
           )}
 
           {currentView === "checkin" && (
-            <CheckInPage />
+            user && (role === "ADMIN" || role === "SUPERADMIN") ? (
+              <CheckInPage />
+            ) : null
           )}
         </div>
       </main>

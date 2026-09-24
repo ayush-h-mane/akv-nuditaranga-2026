@@ -172,18 +172,20 @@ export const Navbar = ({ currentView, setCurrentView, onOpenAuthTab }) => {
             </div>
           )}
 
-          {/* Check-In Desk Link */}
-          <button
-            onClick={() => handleNavClick("checkin")}
-            className={`p-2 rounded-xl text-xs font-semibold flex items-center justify-center transition-colors border ${
-              currentView === "checkin" 
-                ? "bg-amber-100 text-amber-900 border-amber-300" 
-                : "text-stone-600 hover:bg-amber-50/70 hover:text-amber-800 border-stone-200/80"
-            }`}
-            title={t("nav.checkIn")}
-          >
-            <UserCheck className="w-4 h-4 text-amber-600" />
-          </button>
+          {/* Check-In Desk Link - Available to Admins only */}
+          {user && (role === "ADMIN" || role === "SUPERADMIN") && (
+            <button
+              onClick={() => handleNavClick("checkin")}
+              className={`p-2 rounded-xl text-xs font-semibold flex items-center justify-center transition-colors border ${
+                currentView === "checkin" 
+                  ? "bg-amber-100 text-amber-900 border-amber-300" 
+                  : "text-stone-600 hover:bg-amber-50/70 hover:text-amber-800 border-stone-200/80"
+              }`}
+              title={t("nav.checkIn")}
+            >
+              <UserCheck className="w-4 h-4 text-amber-600" />
+            </button>
+          )}
 
           {/* Primary CTA: Login/Register */}
           <button
@@ -258,13 +260,15 @@ export const Navbar = ({ currentView, setCurrentView, onOpenAuthTab }) => {
               </button>
             )}
 
-            <button
-              onClick={() => handleNavClick("checkin")}
-              className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-stone-700 bg-stone-50 hover:bg-stone-100"
-            >
-              <UserCheck className="w-4 h-4 text-amber-600" />
-              <span>{t("nav.checkIn")}</span>
-            </button>
+            {user && (role === "ADMIN" || role === "SUPERADMIN") && (
+              <button
+                onClick={() => handleNavClick("checkin")}
+                className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-stone-700 bg-stone-50 hover:bg-stone-100"
+              >
+                <UserCheck className="w-4 h-4 text-amber-600" />
+                <span>{t("nav.checkIn")}</span>
+              </button>
+            )}
 
             <button
               onClick={handleRegisterCTA}

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useLanguage } from "../context/LanguageContext";
+import { useAuth } from "../context/AuthContext";
 import { api } from "../services/api";
 import { CameraQRScanner } from "../components/CameraQRScanner";
 import { formatKannadaStatus, toKannadaDigits } from "../utils/kannadaUtils";
@@ -7,11 +8,28 @@ import { CheckCircle2, UserCheck, AlertTriangle, Clock, MapPin, RefreshCw, XCirc
 
 export const CheckInPage = () => {
   const { lang, t } = useLanguage();
+  const { user, role } = useAuth();
   const [activeReg, setActiveReg] = useState(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
   const [mode, setMode] = useState("camera"); // "camera" | "manual"
   const [manualInput, setManualInput] = useState("");
+
+  if (!user || (role !== "ADMIN" && role !== "SUPERADMIN")) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center p-6 text-center">
+        <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-stone-200 shadow-xl space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-red-100 text-kar-red mx-auto flex items-center justify-center font-bold">
+            <AlertTriangle className="w-6 h-6 text-kar-red" />
+          </div>
+          <h2 className="text-xl font-extrabold text-stone-900">Restricted to Administrators</h2>
+          <p className="text-xs text-stone-600">
+            The Organizer QR Verification & Check-In Desk is strictly restricted to authorized festival administrators.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const handleScanOrSearch = async (id) => {
     if (!id || !id.trim()) return;

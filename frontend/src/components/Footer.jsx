@@ -139,14 +139,6 @@ export const Footer = ({ setCurrentView }) => {
               </li>
               <li>
                 <button
-                  onClick={() => { setCurrentView("checkin"); scrollToTop(); }}
-                  className="hover:text-kar-yellow transition-colors"
-                >
-                  → {t("nav.checkIn")}
-                </button>
-              </li>
-              <li>
-                <button
                   onClick={() => { setCurrentView("admin"); scrollToTop(); }}
                   className="hover:text-kar-yellow transition-colors"
                 >

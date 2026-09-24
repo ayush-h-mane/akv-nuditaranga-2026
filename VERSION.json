@@ -25,7 +25,8 @@
     "Updated navbar primary gradient CTA button from 'Register Now' to 'Login/Register' (ಕನ್ನಡ: 'ಲಾಗಿನ್ / ನೋಂದಣಿ').",
     "Removed redundant Settings button from the AuthPortal card header banner while retaining directory access in the top navbar.",
     "Resolved SuperAdmin dashboard blank white screen issue by importing the missing History icon and adding an application ErrorBoundary wrapper.",
-    "Removed redundant secondary guest login border button from the navbar, leaving the primary gradient 'Login/Register' CTA."
+    "Removed redundant secondary guest login border button from the navbar, leaving the primary gradient 'Login/Register' CTA.",
+    "Restricted Organizer Check-In Desk & scanner to Admins and Superadmins only; removed public check-in links from navbar and footer."
   ],
   "history": [
     {
