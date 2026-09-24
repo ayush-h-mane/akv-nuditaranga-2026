@@ -279,6 +279,67 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
     }
   };
 
+  // Cultural Gallery Handlers
+  const loadGallery = async () => {
+    try {
+      setGalleryLoading(true);
+      const data = await api.getGallery();
+      setGalleryItems(data || []);
+    } catch (err) {
+      console.error("Failed to load gallery:", err);
+    } finally {
+      setGalleryLoading(false);
+    }
+  };
+
+  const handleAddGalleryItem = async (e) => {
+    e.preventDefault();
+    if (!galleryForm.image_url) {
+      notify("error", "Please provide or upload an event image.");
+      return;
+    }
+    if (!galleryForm.description) {
+      notify("error", "Please provide an event description.");
+      return;
+    }
+    if (!galleryForm.event_date) {
+      notify("error", "Please select the date of the event.");
+      return;
+    }
+
+    try {
+      await api.createGalleryItem({
+        title: galleryForm.title.trim() || "Cultural Event",
+        description: galleryForm.description.trim(),
+        event_date: galleryForm.event_date,
+        image_url: galleryForm.image_url,
+        category: "Cultural"
+      });
+      notify("success", "Photo added to Cultural Gallery successfully!");
+      setGalleryForm({
+        title: "",
+        description: "",
+        event_date: "",
+        image_url: "",
+        category: "Cultural"
+      });
+      loadGallery();
+    } catch (err) {
+      notify("error", err.message || "Failed to add photo to gallery.");
+    }
+  };
+
+  const handleDeleteGalleryItem = async (id) => {
+    if (!window.confirm("Are you sure you want to remove this image from the Cultural Gallery?")) return;
+    try {
+      await api.deleteGalleryItem(id);
+      notify("success", "Cultural Gallery item removed.");
+      setGalleryItems(prev => prev.filter(item => item.id !== id));
+    } catch (err) {
+      notify("error", err.message || "Failed to remove gallery item.");
+    }
+  };
+
   const departments = [
     "Computer Science & Engineering",
     "Information Science & Engineering",
