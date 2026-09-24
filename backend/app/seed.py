@@ -139,6 +139,23 @@ def seed_database():
             db.commit()
             print("Reels successfully seeded!")
             
+        # Seed festival event dates
+        from .models import FestivalEventDate
+        dates_count = db.query(FestivalEventDate).count()
+        if dates_count == 0:
+            initial_dates = [
+                {"date": "2026-09-28", "label": "Day 1 (28/09/2026) - Inauguration & Literary"},
+                {"date": "2026-09-29", "label": "Day 2 (29/09/2026) - Traditional Arts & Rangoli"},
+                {"date": "2026-09-30", "label": "Day 3 (30/09/2026) - Folk Music & Drama"},
+                {"date": "2026-10-01", "label": "Day 4 (01/10/2026) - Classical Dance & Competitions"},
+                {"date": "2026-10-02", "label": "Day 5 (02/10/2026) - Grand Finale & Valedictory"},
+            ]
+            print(f"Seeding {len(initial_dates)} festival event dates...")
+            for d in initial_dates:
+                db.add(FestivalEventDate(**d))
+            db.commit()
+            print("Festival event dates successfully seeded!")
+            
     finally:
         db.close()
 

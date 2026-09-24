@@ -1,11 +1,16 @@
 {
-  "production_version": "2.1.1",
-  "staged_version": "2.1.2",
+  "production_version": "2.2.1",
+  "staged_version": "2.2.2",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.1",
+      "released_at": "2026-09-25T02:01:04+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.1: Multi-day 2-marking attendance system, server IST timestamps, submit locks, SuperAdmin privilege suite & audit trail, dedicated Working Committee attendance, exclusive SuperAdmin 15-sheet Excel export, and Admin Coordinator gallery fix."
+    },
     {
       "version": "2.1.1",
       "released_at": "2026-09-24T22:22:06+0530",

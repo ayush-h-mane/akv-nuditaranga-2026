@@ -69,6 +69,12 @@ def ensure_schema_migrations(target_engine=None):
                         conn.exec_driver_sql("ALTER TABLE users ADD COLUMN admin_type VARCHAR DEFAULT 'WORKING_COMMITTEE'")
                     if "faculty_id" not in user_cols:
                         conn.exec_driver_sql("ALTER TABLE users ADD COLUMN faculty_id VARCHAR")
+                    if "is_working_committee" not in user_cols:
+                        conn.exec_driver_sql("ALTER TABLE users ADD COLUMN is_working_committee BOOLEAN DEFAULT 0")
+                    if "working_committee_role" not in user_cols:
+                        conn.exec_driver_sql("ALTER TABLE users ADD COLUMN working_committee_role VARCHAR DEFAULT 'Coordinator'")
+                    if "managed_by" not in user_cols:
+                        conn.exec_driver_sql("ALTER TABLE users ADD COLUMN managed_by VARCHAR")
 
                 # 3. admins table
                 admin_cols = [c[1] for c in conn.exec_driver_sql("PRAGMA table_info(admins)").fetchall()]
@@ -103,6 +109,9 @@ def ensure_schema_migrations(target_engine=None):
                 add_pg_col("users", "volunteer_domain", "VARCHAR")
                 add_pg_col("users", "admin_type", "VARCHAR DEFAULT 'WORKING_COMMITTEE'")
                 add_pg_col("users", "faculty_id", "VARCHAR")
+                add_pg_col("users", "is_working_committee", "BOOLEAN DEFAULT FALSE")
+                add_pg_col("users", "working_committee_role", "VARCHAR DEFAULT 'Coordinator'")
+                add_pg_col("users", "managed_by", "VARCHAR")
                 add_pg_col("admins", "admin_type", "VARCHAR DEFAULT 'WORKING_COMMITTEE'")
                 add_pg_col("admins", "faculty_id", "VARCHAR")
                 add_pg_col("gallery_items", "event_date", "VARCHAR")

@@ -85,6 +85,31 @@ def get_student_dashboard(
                 "marked_by": rec.marked_by
             })
 
+    # Official event attendance records (Check-In & Check-Out)
+    from ..models import AttendanceRecord
+    from ..utils.timezone import format_to_ist_time, iso_date_to_dmy, get_current_ist_date_str
+
+    attendance_records = []
+    official_records = db.query(AttendanceRecord).filter(
+        AttendanceRecord.user_id == current_user.id
+    ).order_by(AttendanceRecord.attendance_date.desc()).all()
+
+    today_ist = get_current_ist_date_str()
+    today_official_record = None
+
+    for r in official_records:
+        rec_data = {
+            "date": r.attendance_date,
+            "date_dmy": iso_date_to_dmy(r.attendance_date),
+            "status": r.status,
+            "check_in_time": format_to_ist_time(r.check_in_at) if r.check_in_at else None,
+            "check_out_time": format_to_ist_time(r.check_out_at) if r.check_out_at else None,
+            "submitted": r.submitted
+        }
+        if r.attendance_date == today_ist:
+            today_official_record = rec_data
+        attendance_records.append(rec_data)
+
     return {
         "success": True,
         "profile": {
@@ -104,10 +129,13 @@ def get_student_dashboard(
         "stats": {
             "registered_events_count": len(registered_events),
             "total_available_events": total_events_count,
-            "volunteer_days_present": len([r for r in volunteer_attendance_records if r["status"] == "PRESENT"])
+            "volunteer_days_present": len([r for r in volunteer_attendance_records if r["status"] == "PRESENT"]),
+            "attendance_days_present": len([r for r in attendance_records if r["status"] == "COMPLETED"])
         },
         "registered_events": registered_events,
         "registered_event_ids": list(registered_event_ids),
+        "today_attendance": today_official_record,
+        "attendance_records": attendance_records,
         "volunteer_info": {
             "is_volunteer": current_user.role == "VOLUNTEER",
             "today_attendance": today_status or "NOT_MARKED",

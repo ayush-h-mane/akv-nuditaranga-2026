@@ -15,7 +15,9 @@ from .routes import (
     auth,
     student,
     superadmin,
-    reels
+    reels,
+    attendance,
+    working_committee_attendance
 )
 
 # Ensure schema integrity and automatic migrations for SQLite and PostgreSQL
@@ -44,6 +46,15 @@ def ensure_schema_migrations():
                     if "faculty_id" not in user_cols:
                         print("[MIGRATION] Adding 'faculty_id' column to 'users' table...")
                         conn.exec_driver_sql("ALTER TABLE users ADD COLUMN faculty_id VARCHAR")
+                    if "is_working_committee" not in user_cols:
+                        print("[MIGRATION] Adding 'is_working_committee' column to 'users' table...")
+                        conn.exec_driver_sql("ALTER TABLE users ADD COLUMN is_working_committee BOOLEAN DEFAULT 0")
+                    if "working_committee_role" not in user_cols:
+                        print("[MIGRATION] Adding 'working_committee_role' column to 'users' table...")
+                        conn.exec_driver_sql("ALTER TABLE users ADD COLUMN working_committee_role VARCHAR DEFAULT 'Coordinator'")
+                    if "managed_by" not in user_cols:
+                        print("[MIGRATION] Adding 'managed_by' column to 'users' table...")
+                        conn.exec_driver_sql("ALTER TABLE users ADD COLUMN managed_by VARCHAR")
 
                 # 3. admins table
                 admin_cols = [c[1] for c in conn.exec_driver_sql("PRAGMA table_info(admins)").fetchall()]
@@ -83,6 +94,9 @@ def ensure_schema_migrations():
                 add_pg_col("users", "volunteer_domain", "VARCHAR")
                 add_pg_col("users", "admin_type", "VARCHAR DEFAULT 'WORKING_COMMITTEE'")
                 add_pg_col("users", "faculty_id", "VARCHAR")
+                add_pg_col("users", "is_working_committee", "BOOLEAN DEFAULT FALSE")
+                add_pg_col("users", "working_committee_role", "VARCHAR DEFAULT 'Coordinator'")
+                add_pg_col("users", "managed_by", "VARCHAR")
                 add_pg_col("admins", "admin_type", "VARCHAR DEFAULT 'WORKING_COMMITTEE'")
                 add_pg_col("admins", "faculty_id", "VARCHAR")
                 add_pg_col("gallery_items", "event_date", "VARCHAR")
@@ -146,6 +160,8 @@ app.include_router(checkin.router, prefix=settings.API_PREFIX)
 app.include_router(activities.router, prefix=settings.API_PREFIX)
 app.include_router(gallery.router, prefix=settings.API_PREFIX)
 app.include_router(reels.router, prefix=settings.API_PREFIX)
+app.include_router(attendance.router, prefix=settings.API_PREFIX)
+app.include_router(working_committee_attendance.router, prefix=settings.API_PREFIX)
 
 @app.get("/api/health")
 def health_check():

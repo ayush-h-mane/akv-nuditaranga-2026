@@ -157,6 +157,19 @@ def require_superadmin(current_user: User = Depends(get_current_user)) -> User:
         )
     return current_user
 
+def require_wc_superadmin(current_user: User = Depends(get_current_user)) -> User:
+    """
+    Strict enforcement for Working Committee Attendance:
+    Only SUPERADMIN is authorized. Normal admins and other users are rejected with 403 Forbidden:
+    'You are not authorized to manage Working Committee attendance.'
+    """
+    if current_user.role != "SUPERADMIN":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to manage Working Committee attendance."
+        )
+    return current_user
+
 def init_superadmin():
     """
     Database starts with zero preloaded records per user requirements.

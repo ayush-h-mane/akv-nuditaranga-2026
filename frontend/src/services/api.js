@@ -1129,6 +1129,360 @@ export const api = {
   },
 
   // ==========================================
+  // OFFICIAL ATTENDANCE SYSTEM APIs
+  // ==========================================
+  async getAttendanceConfigDates() {
+    try {
+      const res = await fetch(`${API_BASE_URL}/attendance/config-dates`, {
+        headers: { ...getAuthHeaders() }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Failed to fetch event dates");
+      return data;
+    } catch (err) {
+      if (isNetworkError(err)) {
+        return {
+          success: true,
+          current_date: new Date().toISOString().split("T")[0],
+          dates: [
+            { date: "2026-09-28", label: "Day 1 (28/09/2026)", dmy: "28/09/2026", is_today: false },
+            { date: "2026-09-29", label: "Day 2 (29/09/2026)", dmy: "29/09/2026", is_today: false },
+            { date: "2026-09-30", label: "Day 3 (30/09/2026)", dmy: "30/09/2026", is_today: false },
+            { date: "2026-10-01", label: "Day 4 (01/10/2026)", dmy: "01/10/2026", is_today: false },
+            { date: "2026-10-02", label: "Day 5 (02/10/2026)", dmy: "02/10/2026", is_today: false }
+          ]
+        };
+      }
+      throw err;
+    }
+  },
+
+  async getAttendance(params = {}) {
+    try {
+      const query = new URLSearchParams(params).toString();
+      const res = await fetch(`${API_BASE_URL}/attendance${query ? `?${query}` : ""}`, {
+        headers: { ...getAuthHeaders() }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Failed to fetch attendance roster");
+      return data;
+    } catch (err) {
+      if (isNetworkError(err)) {
+        const users = getLocalUsers();
+        return {
+          success: true,
+          date: params.date || new Date().toISOString().split("T")[0],
+          session: { is_submitted: false, submitted_at: null, submitted_by: null, locked_for_admin: false },
+          summary: { total_participants: users.length, checked_in: 0, completed: 0, not_marked: users.length, is_submitted: false },
+          participants: users.map(u => ({
+            id: null,
+            user_id: u.id,
+            reg_id: u.registration_id,
+            name: u.name,
+            auid: u.auid,
+            department: u.department,
+            akv_dept: u.volunteer_domain || "--",
+            contact: u.phone,
+            check_in_time: null,
+            check_out_time: null,
+            status: "NOT_MARKED",
+            can_mark: true
+          }))
+        };
+      }
+      throw err;
+    }
+  },
+
+  async markAttendanceCheckIn(userId, date = null) {
+    const res = await fetch(`${API_BASE_URL}/attendance/check-in`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({ user_id: userId, date })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Check-In failed");
+    return data;
+  },
+
+  async markAttendanceCheckOut(userId, date = null) {
+    const res = await fetch(`${API_BASE_URL}/attendance/check-out`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({ user_id: userId, date })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Check-Out failed");
+    return data;
+  },
+
+  async submitAttendance(date, notes = "") {
+    const res = await fetch(`${API_BASE_URL}/attendance/submit`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({ date, notes })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Submission failed");
+    return data;
+  },
+
+  async unlockAttendanceSession(date, reason) {
+    const res = await fetch(`${API_BASE_URL}/attendance/session/unlock`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({ date, reason })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Unlock session failed");
+    return data;
+  },
+
+  async editAttendanceRecord(attendanceId, payload) {
+    const res = await fetch(`${API_BASE_URL}/attendance/${attendanceId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to update record");
+    return data;
+  },
+
+  async resetAttendanceRecord(attendanceId, reason = "") {
+    const res = await fetch(`${API_BASE_URL}/attendance/${attendanceId}/reset`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({ reason })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to reset attendance");
+    return data;
+  },
+
+  async getAttendanceAudit(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    const res = await fetch(`${API_BASE_URL}/attendance/audit${query ? `?${query}` : ""}`, {
+      headers: { ...getAuthHeaders() }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to fetch attendance audit logs");
+    return data;
+  },
+
+  async exportOfficialAttendanceExcel(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    const res = await fetch(`${API_BASE_URL}/attendance/export${query ? `?${query}` : ""}`, {
+      headers: { ...getAuthHeaders() }
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || "Failed to export Excel report");
+    }
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `AKV_NudiTaranga_Attendance_${new Date().toISOString().split("T")[0]}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    return true;
+  },
+
+  // ==========================================
+  // WORKING COMMITTEE ATTENDANCE APIs (SUPERADMIN ONLY)
+  // ==========================================
+  async getWorkingCommitteeAttendance(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    const res = await fetch(`${API_BASE_URL}/working-committee-attendance${query ? `?${query}` : ""}`, {
+      headers: { ...getAuthHeaders() }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to fetch Working Committee attendance roster");
+    return data;
+  },
+
+  async markWorkingCommitteeCheckIn(memberUserId, date = null) {
+    const res = await fetch(`${API_BASE_URL}/working-committee-attendance/check-in`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({ working_committee_member_id: memberUserId, date })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Working Committee Check-In failed");
+    return data;
+  },
+
+  async markWorkingCommitteeCheckOut(memberUserId, date = null) {
+    const res = await fetch(`${API_BASE_URL}/working-committee-attendance/check-out`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({ working_committee_member_id: memberUserId, date })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Working Committee Check-Out failed");
+    return data;
+  },
+
+  async submitWorkingCommitteeAttendance(date, notes = "") {
+    const res = await fetch(`${API_BASE_URL}/working-committee-attendance/submit`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({ date, notes })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to submit Working Committee attendance");
+    return data;
+  },
+
+  async unlockWorkingCommitteeSession(date, reason) {
+    const res = await fetch(`${API_BASE_URL}/working-committee-attendance/session/unlock`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({ date, reason })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Unlock Working Committee session failed");
+    return data;
+  },
+
+  async editWorkingCommitteeRecord(attendanceId, payload) {
+    const res = await fetch(`${API_BASE_URL}/working-committee-attendance/${attendanceId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to update Working Committee record");
+    return data;
+  },
+
+  async resetWorkingCommitteeRecord(attendanceId, reason = "") {
+    const res = await fetch(`${API_BASE_URL}/working-committee-attendance/${attendanceId}/reset`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({ reason })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to reset Working Committee record");
+    return data;
+  },
+
+  async getWorkingCommitteeAudit(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    const res = await fetch(`${API_BASE_URL}/working-committee-attendance/audit${query ? `?${query}` : ""}`, {
+      headers: { ...getAuthHeaders() }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to fetch Working Committee audit logs");
+    return data;
+  },
+
+  async exportWorkingCommitteeExcel() {
+    const res = await fetch(`${API_BASE_URL}/working-committee-attendance/export`, {
+      headers: { ...getAuthHeaders() }
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || "Failed to export Working Committee Excel");
+    }
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `AKV_NudiTaranga_Working_Committee_Attendance_${new Date().toISOString().split("T")[0]}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    return true;
+  },
+
+  async getWorkingCommitteeStats(date = null) {
+    const query = date ? `?date=${encodeURIComponent(date)}` : "";
+    const res = await fetch(`${API_BASE_URL}/working-committee-attendance/stats${query}`, {
+      headers: { ...getAuthHeaders() }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to fetch Working Committee stats");
+    return data;
+  },
+
+  async getWorkingCommitteeMembers(search = "") {
+    const query = search ? `?search=${encodeURIComponent(search)}` : "";
+    const res = await fetch(`${API_BASE_URL}/working-committee-attendance/members${query}`, {
+      headers: { ...getAuthHeaders() }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to fetch Working Committee members");
+    return data;
+  },
+
+  async addWorkingCommitteeMember(payload) {
+    const res = await fetch(`${API_BASE_URL}/working-committee-attendance/members`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to add Working Committee member");
+    return data;
+  },
+
+  async updateWorkingCommitteeMember(userId, payload) {
+    const res = await fetch(`${API_BASE_URL}/working-committee-attendance/members/${userId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to update Working Committee member");
+    return data;
+  },
+
+  // ==========================================
   // EXISTING EVENTS, CHECK-IN & GALLERY APIs
   // ==========================================
   async getEvents(category = "all", activeOnly = true) {

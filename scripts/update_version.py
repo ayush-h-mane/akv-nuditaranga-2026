@@ -156,7 +156,10 @@ def main():
     data["pending_changes"] = []
     if "history" not in data:
         data["history"] = []
-    data["history"].insert(0, history_entry)
+    if data["history"] and data["history"][0].get("version") == target_version:
+        data["history"][0] = history_entry
+    else:
+        data["history"].insert(0, history_entry)
 
     with open(VERSION_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
@@ -170,7 +173,7 @@ def main():
 
     print("\n[STEP 4/6] Merging develop into main...")
     run_cmd("git checkout main")
-    run_cmd(f'git merge develop -m "release: deploy v{target_version} to production"')
+    run_cmd(f'git merge develop --no-ff -m "release: deploy v{target_version} to production"')
     
     # Tag
     run_cmd(f'git tag -a v{target_version} -m "Release v{target_version}: {release_desc}"', check=False)
