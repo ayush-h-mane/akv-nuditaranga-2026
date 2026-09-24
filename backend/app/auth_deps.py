@@ -5,6 +5,7 @@ import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from .config import settings
 from .database import get_db, SessionLocal
@@ -286,7 +287,64 @@ def init_superadmin():
             db.add(legacy_admin)
             db.commit()
 
-        print(f"[BOOTSTRAP] Administrator accounts initialized: ayush_h_mane, akvadmin")
+        # Provision default demo student users
+        demo_students = [
+            {
+                "name": "Pooja Sharma",
+                "auid": "AIT22IS045",
+                "email": "pooja.sharma@acharya.ac.in",
+                "phone": "9876543211",
+                "institute": "Acharya Institute of Technology",
+                "department": "Information Science & Engineering",
+                "semester": 4,
+                "section": "B",
+                "gender": "Female",
+                "role": "PARTICIPANT",
+                "registration_id": "AKV-2026-000002"
+            },
+            {
+                "name": "Kavya Murthy",
+                "auid": "1AY23CS199",
+                "email": "kavyamurthy@acharya.ac.in",
+                "phone": "9845012345",
+                "institute": "Acharya Institute of Technology",
+                "department": "Computer Science & Engineering",
+                "semester": 6,
+                "section": "A",
+                "gender": "Female",
+                "role": "VOLUNTEER",
+                "registration_id": "AKV-2026-000003"
+            }
+        ]
+        student_pw_hash = get_password_hash("Password123!")
+        for ds in demo_students:
+            s_user = db.query(User).filter(
+                (func.upper(User.auid) == ds["auid"].upper()) |
+                (func.lower(User.email) == ds["email"].lower())
+            ).first()
+            if not s_user:
+                new_s = User(
+                    name=ds["name"],
+                    auid=ds["auid"],
+                    email=ds["email"],
+                    phone=ds["phone"],
+                    institute=ds["institute"],
+                    department=ds["department"],
+                    semester=ds["semester"],
+                    section=ds["section"],
+                    gender=ds["gender"],
+                    role=ds["role"],
+                    registration_id=ds["registration_id"],
+                    password_hash=student_pw_hash,
+                    account_status="ACTIVE"
+                )
+                db.add(new_s)
+            else:
+                s_user.password_hash = student_pw_hash
+                s_user.account_status = "ACTIVE"
+        db.commit()
+
+        print(f"[BOOTSTRAP] Administrator & Student accounts initialized.")
     except Exception as e:
         print(f"[BOOTSTRAP ERROR] Failed to initialize Super Admin: {e}")
         db.rollback()

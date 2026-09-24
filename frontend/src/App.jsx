@@ -55,6 +55,13 @@ export function AppContent() {
     return () => window.removeEventListener("hashchange", handleHash);
   }, []);
 
+  // Redirect to home if user logs out while on a protected dashboard view
+  useEffect(() => {
+    if (!user && (currentView === "student-dashboard" || currentView === "admin-dashboard" || currentView === "superadmin-dashboard")) {
+      setCurrentView("home");
+    }
+  }, [user, currentView]);
+
   // When user successfully authenticates
   const handleAuthSuccess = (authenticatedUser) => {
     if (authenticatedUser.role === "SUPERADMIN") {

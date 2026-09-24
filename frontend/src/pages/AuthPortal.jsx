@@ -422,7 +422,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                   <form onSubmit={handleStudentLogin} className="space-y-4 animate-fade-in">
                     <div>
                       <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">
-                        Acharya University ID (AUID)
+                        Acharya University ID (AUID) or College Email
                       </label>
                       <div className="relative">
                         <User className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
@@ -430,13 +430,13 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                           type="text"
                           required
                           value={studentLoginForm.auid}
-                          onChange={(e) => setStudentLoginForm({ ...studentLoginForm, auid: e.target.value.toUpperCase() })}
-                          placeholder="e.g. AIT22CS001"
-                          className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm font-mono uppercase"
+                          onChange={(e) => setStudentLoginForm({ ...studentLoginForm, auid: e.target.value })}
+                          placeholder="e.g. AIT22CS001 or student@acharya.ac.in"
+                          className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm"
                         />
                       </div>
                       <p className="text-[11px] text-stone-500 mt-1">
-                        Enter the student AUID provided on your college ID card.
+                        Enter your college AUID, registered college email, or AKV Registration ID.
                       </p>
                     </div>
 
@@ -471,6 +471,23 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                           {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                       </div>
+                    </div>
+
+                    {/* Fast-fill Demo Student Helper */}
+                    <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl flex items-center justify-between text-xs">
+                      <div className="text-stone-700">
+                        <span className="font-bold text-stone-900">Demo Student:</span>{" "}
+                        <code className="bg-white px-2 py-0.5 rounded text-[11px] font-mono font-bold text-stone-800 border border-stone-200">
+                          AIT22IS045
+                        </code>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setStudentLoginForm({ auid: "AIT22IS045", password: "Password123!" })}
+                        className="px-2.5 py-1 text-[11px] font-extrabold text-amber-800 bg-amber-100 hover:bg-amber-200 rounded-lg border border-amber-300 transition-colors shadow-2xs cursor-pointer"
+                      >
+                        Fill Credentials
+                      </button>
                     </div>
 
                     <button
@@ -846,7 +863,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                   <form onSubmit={handleAdminLogin} className="space-y-4">
                     <div>
                       <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">
-                        Username
+                        Username or College Email
                       </label>
                       <div className="relative">
                         <User className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
@@ -855,7 +872,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                           required
                           value={adminForm.username}
                           onChange={(e) => setAdminForm({ ...adminForm, username: e.target.value.toLowerCase() })}
-                          placeholder="e.g. suresh_rao or superadmin"
+                          placeholder="e.g. ayush_h_mane or ayush@acharya.ac.in"
                           className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm"
                         />
                       </div>
@@ -876,6 +893,23 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                           className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm"
                         />
                       </div>
+                    </div>
+
+                    {/* Fast-fill Coordinator Admin Helper */}
+                    <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl flex items-center justify-between text-xs">
+                      <div className="text-stone-700">
+                        <span className="font-bold text-stone-900">Coordinator Admin:</span>{" "}
+                        <code className="bg-white px-2 py-0.5 rounded text-[11px] font-mono font-bold text-stone-800 border border-stone-200">
+                          ayush_h_mane
+                        </code>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setAdminForm({ ...adminForm, username: "ayush_h_mane", password: "AcharyaAKV2026" })}
+                        className="px-2.5 py-1 text-[11px] font-extrabold text-amber-800 bg-amber-100 hover:bg-amber-200 rounded-lg border border-amber-300 transition-colors shadow-2xs cursor-pointer"
+                      >
+                        Fill Credentials
+                      </button>
                     </div>
 
                     <button

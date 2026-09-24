@@ -20,7 +20,7 @@ export const AuthProvider = ({ children }) => {
 
       try {
         const res = await api.getCurrentUser();
-        if (res.success && res.user) {
+        if (res && res.user) {
           setUser(res.user);
           setRole(res.user.role);
           localStorage.setItem("akv_role", res.user.role);
@@ -59,7 +59,7 @@ export const AuthProvider = ({ children }) => {
   const refreshUser = async () => {
     try {
       const res = await api.getCurrentUser();
-      if (res.success && res.user) {
+      if (res && res.user) {
         setUser(res.user);
         setRole(res.user.role);
       }
