@@ -5,6 +5,7 @@ import { api } from "../services/api";
 import { ForgotPasswordModal } from "../components/ForgotPasswordModal";
 import { CandidatePhotoUpload } from "../components/CandidatePhotoUpload";
 import { InstituteDepartmentSelect } from "../components/InstituteDepartmentSelect";
+import { PortalSettingsModal } from "../components/PortalSettingsModal";
 import { ACHARYA_INSTITUTES, STANDARD_DEPARTMENTS, AKV_DOMAINS } from "../config/institutesData";
 import {
   Sparkles,
@@ -14,6 +15,7 @@ import {
   CheckCircle2,
   AlertCircle,
   ArrowRight,
+  ArrowLeft,
   Eye,
   EyeOff,
   Compass,
@@ -23,7 +25,8 @@ import {
   ShieldAlert,
   KeyRound,
   GraduationCap,
-  Briefcase
+  Briefcase,
+  Settings
 } from "lucide-react";
 
 export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, initialTab = "student-login" }) => {
@@ -45,6 +48,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
   const [studentMode, setStudentMode] = useState(() => getInitialStudentMode(initialTab)); // "login" or "register"
   const [adminMode, setAdminMode] = useState("login"); // "login" or "register"
   const [showForgotModal, setShowForgotModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showSuperadminPassword, setShowSuperadminPassword] = useState(false);
 
@@ -312,17 +316,30 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
           </div>
         </div>
 
-        {/* Small option for visitors who only want to view public information */}
-        <button
-          onClick={onExplorePublic}
-          className="group flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold text-amber-200 bg-stone-800/90 hover:bg-stone-700 border border-amber-400/30 transition-all hover:border-amber-400 shadow-sm"
-          title="Browse festival schedule, gallery, and public information"
-        >
-          <Compass className="w-3.5 h-3.5 text-amber-400 group-hover:rotate-45 transition-transform" />
-          <span className="hidden sm:inline">Explore AKV Website</span>
-          <span className="sm:hidden">Explore</span>
-          <ArrowRight className="w-3 h-3 text-amber-400" />
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Settings & Directory Button */}
+          <button
+            type="button"
+            onClick={() => setShowSettingsModal(true)}
+            className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-amber-200 bg-stone-800/90 hover:bg-stone-700 border border-amber-400/30 transition-all hover:border-amber-400 shadow-sm cursor-pointer active:scale-95"
+            title="Portal Settings & Directory"
+          >
+            <Settings className="w-3.5 h-3.5 text-amber-400 group-hover:rotate-90 transition-transform" />
+            <span className="hidden sm:inline">Settings</span>
+          </button>
+
+          {/* Small option for visitors who only want to view public information */}
+          <button
+            onClick={onExplorePublic}
+            className="group flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold text-amber-200 bg-stone-800/90 hover:bg-stone-700 border border-amber-400/30 transition-all hover:border-amber-400 shadow-sm"
+            title="Browse festival schedule, gallery, and public information"
+          >
+            <Compass className="w-3.5 h-3.5 text-amber-400 group-hover:rotate-45 transition-transform" />
+            <span className="hidden sm:inline">Explore AKV Website</span>
+            <span className="sm:hidden">Explore</span>
+            <ArrowRight className="w-3 h-3 text-amber-400" />
+          </button>
+        </div>
       </header>
 
       {/* Main Authentication Portal Card Container */}
@@ -332,9 +349,22 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
           {/* Karnataka Flag Colored Heraldic Header */}
           <div className="bg-gradient-to-r from-kar-red via-red-600 to-kar-yellow p-6 text-white text-center relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl transform translate-x-10 -translate-y-10" />
-            <span className="inline-block px-3 py-1 rounded-full text-[11px] font-extrabold tracking-widest uppercase bg-black/25 text-amber-200 mb-2 border border-white/20">
-              AUTHENTICATION PORTAL
-            </span>
+            
+            <div className="flex items-center justify-between mb-2">
+              <span className="inline-block px-3 py-1 rounded-full text-[11px] font-extrabold tracking-widest uppercase bg-black/25 text-amber-200 border border-white/20">
+                AUTHENTICATION PORTAL
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowSettingsModal(true)}
+                className="group flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold tracking-wider bg-black/30 hover:bg-black/50 text-amber-200 hover:text-white border border-white/20 transition-all shadow-xs cursor-pointer active:scale-95"
+                title="Portal Settings, Super Admin Access & Contacts"
+              >
+                <Settings className="w-3.5 h-3.5 text-amber-300 group-hover:rotate-90 transition-transform" />
+                <span>Settings</span>
+              </button>
+            </div>
+
             <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
               ನುಡಿತರಂಗ ೨೦೨೬
             </h2>
@@ -343,7 +373,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
             </p>
           </div>
 
-          {/* Tab Selection Switcher: 3 Options (Student Portal, Admin Portal, Superadmin) */}
+          {/* Tab Selection Switcher: 2 Regular Options (Student Portal, Admin Portal) */}
           <div className="flex border-b border-stone-200 bg-stone-50/80 p-1.5 gap-1.5">
             <button
               type="button"
@@ -376,22 +406,8 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
               <Shield className="w-4 h-4 text-amber-600" />
               <span>Admin Portal</span>
             </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab("superadmin");
-                setErrorMessage("");
-              }}
-              className={`flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-extrabold transition-all flex items-center justify-center gap-1.5 active:scale-98 ${activeTab === "superadmin"
-                ? "bg-stone-900 text-amber-300 shadow-xs border border-stone-800"
-                : "text-stone-600 hover:text-stone-900 hover:bg-stone-100/60"
-                }`}
-            >
-              <ShieldAlert className="w-4 h-4 text-amber-500" />
-              <span>Superadmin</span>
-            </button>
           </div>
+
 
           {/* Form Content Area */}
           <div className="p-6 sm:p-8">
@@ -1234,6 +1250,22 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
             {/* ==================================================== */}
             {activeTab === "superadmin" && (
               <div className="space-y-5 animate-fade-in text-left">
+                {/* Back to Regular Portals Navigation */}
+                <div className="flex items-center justify-between pb-1 border-b border-stone-200/70">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab("student");
+                      setErrorMessage("");
+                    }}
+                    className="group inline-flex items-center gap-1.5 text-xs font-bold text-stone-600 hover:text-kar-red transition-colors cursor-pointer"
+                  >
+                    <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+                    <span>Back to Regular Login Portal</span>
+                  </button>
+                  <span className="text-[11px] font-mono text-stone-400">Settings &gt; Superadmin</span>
+                </div>
+
                 {/* Executive Restricted Notice */}
                 <div className="p-4 bg-gradient-to-r from-stone-900 via-neutral-900 to-red-950 text-white rounded-2xl border border-amber-500/30 shadow-lg relative overflow-hidden">
                   <div className="flex items-start gap-3 relative z-10">
@@ -1268,7 +1300,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                         required
                         value={superadminForm.username}
                         onChange={(e) => setSuperadminForm({ ...superadminForm, username: e.target.value.toLowerCase() })}
-                        placeholder="akv-nt-2026"
+                        placeholder="akvntkvsa1"
                         className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-amber-500 text-sm font-mono font-bold text-stone-900 bg-stone-50"
                       />
                     </div>
@@ -1298,21 +1330,45 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                     </div>
                   </div>
 
-                  {/* Fast-fill Master Credentials helper */}
-                  <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl flex items-center justify-between text-xs">
-                    <div className="text-stone-700">
-                      <span className="font-bold text-stone-900">Festival Master:</span>{" "}
-                      <code className="bg-white px-2 py-0.5 rounded text-[11px] font-mono font-bold text-stone-800 border border-stone-200">
-                        akv-nt-2026
-                      </code>
+                  {/* Super Admin Fast-fill helper */}
+                  <div className="p-3.5 bg-amber-50/80 border border-amber-200/90 rounded-2xl space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-amber-950 uppercase tracking-wider">
+                        Authorized Super Admins
+                      </span>
+                      <span className="text-[10px] text-amber-700 font-semibold">
+                        Select account to fill
+                      </span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setSuperadminForm({ username: "akv-nt-2026", password: "akv.nt@2026" })}
-                      className="px-2.5 py-1 text-[11px] font-extrabold text-amber-800 bg-amber-100 hover:bg-amber-200 rounded-lg border border-amber-300 transition-colors shadow-2xs"
-                    >
-                      Fill Credentials
-                    </button>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setSuperadminForm({ username: "akvntkvsa1", password: "akvntkvsa@1" })}
+                        className="p-2 bg-white hover:bg-amber-100/70 border border-amber-200 rounded-xl text-left transition-all hover:border-amber-400 shadow-2xs group cursor-pointer"
+                      >
+                        <div className="text-[10px] font-extrabold text-stone-500 uppercase tracking-wider">Super Admin 1</div>
+                        <div className="text-xs font-mono font-bold text-stone-900 group-hover:text-kar-red">akvntkvsa1</div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setSuperadminForm({ username: "akvntkvsa2", password: "akvntkvsa@2" })}
+                        className="p-2 bg-white hover:bg-amber-100/70 border border-amber-200 rounded-xl text-left transition-all hover:border-amber-400 shadow-2xs group cursor-pointer"
+                      >
+                        <div className="text-[10px] font-extrabold text-stone-500 uppercase tracking-wider">Super Admin 2</div>
+                        <div className="text-xs font-mono font-bold text-stone-900 group-hover:text-kar-red">akvntkvsa2</div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setSuperadminForm({ username: "akvntkvsa3", password: "akvntkvsa@3" })}
+                        className="p-2 bg-white hover:bg-amber-100/70 border border-amber-200 rounded-xl text-left transition-all hover:border-amber-400 shadow-2xs group cursor-pointer"
+                      >
+                        <div className="text-[10px] font-extrabold text-stone-500 uppercase tracking-wider">Super Admin 3</div>
+                        <div className="text-xs font-mono font-bold text-stone-900 group-hover:text-kar-red">akvntkvsa3</div>
+                      </button>
+                    </div>
                   </div>
 
                   <button
@@ -1343,6 +1399,16 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
         isOpen={showForgotModal}
         onClose={() => setShowForgotModal(false)}
         onOpenResetView={onOpenResetView}
+      />
+
+      {/* Settings & Directory Modal (Super Admin Access, Developer & Secretary Contacts) */}
+      <PortalSettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        onOpenSuperAdmin={() => {
+          setActiveTab("superadmin");
+          setErrorMessage("");
+        }}
       />
     </div>
   );

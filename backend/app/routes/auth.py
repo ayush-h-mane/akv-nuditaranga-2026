@@ -26,6 +26,34 @@ from ..config import settings
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
+SUPERADMIN_ACCOUNTS = {
+    "akvntkvsa1": {
+        "password": "akvntkvsa@1",
+        "name": "AKV Super Administrator 1",
+        "email": "sa1.akv@acharya.ac.in",
+    },
+    "akvntkvsa2": {
+        "password": "akvntkvsa@2",
+        "name": "AKV Super Administrator 2",
+        "email": "sa2.akv@acharya.ac.in",
+    },
+    "akvntkvsa3": {
+        "password": "akvntkvsa@3",
+        "name": "AKV Super Administrator 3",
+        "email": "sa3.akv@acharya.ac.in",
+    },
+    "akv-nt-2026": {
+        "password": "akv.nt@2026",
+        "name": "AKV Super Administrator",
+        "email": "akv@acharya.ac.in",
+    },
+    "superadmin": {
+        "password": "superadmin",
+        "name": "AKV Super Administrator",
+        "email": "superadmin@acharya.ac.in",
+    }
+}
+
 # Schemas
 class StudentRegisterRequest(BaseModel):
     full_name: str = Field(..., min_length=2, max_length=100)
@@ -139,6 +167,7 @@ def user_to_dict(user: User, admin_profile: Optional[Admin] = None) -> dict:
         "account_status": user.account_status,
         "admin_status": admin_profile.approval_status if admin_profile else None,
         "admin_username": admin_profile.username if admin_profile else None,
+        "username": admin_profile.username if admin_profile else user.auid,
         "created_at": user.created_at.isoformat() if user.created_at else None
     }
 
@@ -528,46 +557,87 @@ def login_admin(payload: AdminLoginRequest, db: Session = Depends(get_db)):
     clean_uname = payload.username.strip().lower()
     clean_pw = payload.password.strip()
 
-    # 1. Super Admin login (by username 'akv-nt-2026', 'superadmin', 'akv-superadmin', or email)
-    if clean_uname in [settings.SUPERADMIN_USERNAME.lower(), "superadmin", "akv-superadmin", settings.SUPERADMIN_EMAIL.lower()]:
+    # 1. Super Admin login (akvntkvsa1, akvntkvsa2, akvntkvsa3, akv-nt-2026, or superadmin)
+    is_sa_account = clean_uname in SUPERADMIN_ACCOUNTS or clean_uname in [
+        settings.SUPERADMIN_USERNAME.lower(),
+        "superadmin",
+        "akv-superadmin",
+        settings.SUPERADMIN_EMAIL.lower()
+    ]
+    if is_sa_account:
+        sa_info = SUPERADMIN_ACCOUNTS.get(clean_uname)
+        if not sa_info:
+            sa_info = {
+                "password": settings.SUPERADMIN_PASSWORD,
+                "name": settings.SUPERADMIN_NAME,
+                "email": settings.SUPERADMIN_EMAIL,
+            }
+        
+        sa_passwords = [sa_info["password"], settings.SUPERADMIN_PASSWORD, "akv.nt@2026", "AkvSuperAdmin@2026!", "superadmin"]
+
         admin_entry = db.query(Admin).filter(
             or_(
-                func.lower(Admin.username) == settings.SUPERADMIN_USERNAME.lower(),
-                func.lower(Admin.username) == "superadmin",
-                func.lower(Admin.username) == "akv-superadmin"
+                func.lower(Admin.username) == clean_uname,
+                func.lower(Admin.username) == settings.SUPERADMIN_USERNAME.lower()
             )
         ).first()
-        if not admin_entry:
-            admin_entry = db.query(Admin).join(User, Admin.user_id == User.id).filter(
-                func.lower(User.email) == settings.SUPERADMIN_EMAIL.lower()
-            ).first()
 
-        sa_passwords = [settings.SUPERADMIN_PASSWORD, "akv.nt@2026", "AkvSuperAdmin@2026!", "superadmin"]
+        is_pw_valid = False
         if admin_entry and admin_entry.user:
             if (verify_password(payload.password, admin_entry.user.password_hash) or
                 verify_password(clean_pw, admin_entry.user.password_hash) or
-                payload.password in sa_passwords or clean_pw in sa_passwords):
-                token = create_access_token({"sub": str(admin_entry.user.id), "role": "SUPERADMIN"})
-                return {
-                    "success": True,
-                    "message": "Super Admin login successful",
-                    "token": token,
-                    "user": user_to_dict(admin_entry.user, admin_entry)
-                }
-        elif payload.password in sa_passwords or clean_pw in sa_passwords:
-            token = create_access_token({"sub": "superadmin", "role": "SUPERADMIN"})
+                payload.password in sa_passwords or clean_pw in sa_passwords or
+                payload.password == sa_info["password"] or clean_pw == sa_info["password"]):
+                is_pw_valid = True
+        elif (payload.password in sa_passwords or clean_pw in sa_passwords or
+              payload.password == sa_info["password"] or clean_pw == sa_info["password"]):
+            is_pw_valid = True
+
+        if is_pw_valid:
+            if not admin_entry or not admin_entry.user:
+                sa_user = User(
+                    name=sa_info["name"],
+                    auid=f"SA-{clean_uname.upper()}",
+                    email=sa_info["email"],
+                    phone="9876543210",
+                    institute="Acharya Institute of Technology",
+                    department="Kannada Vedike",
+                    semester=8,
+                    section="A",
+                    gender="Other",
+                    role="SUPERADMIN",
+                    registration_id=f"AKV-SA-{clean_uname.upper()}",
+                    password_hash=get_password_hash(sa_info["password"]),
+                    account_status="ACTIVE"
+                )
+                db.add(sa_user)
+                db.commit()
+                db.refresh(sa_user)
+
+                admin_entry = Admin(
+                    user_id=sa_user.id,
+                    username=clean_uname,
+                    admin_type="SUPERADMIN",
+                    approval_status="APPROVED",
+                    approved_by="MASTER_SUPERADMIN",
+                    approved_at=datetime.datetime.utcnow()
+                )
+                db.add(admin_entry)
+                db.commit()
+                db.refresh(admin_entry)
+
+            token = create_access_token({"sub": str(admin_entry.user.id), "role": "SUPERADMIN"})
             return {
                 "success": True,
-                "message": "Super Admin login successful",
+                "message": f"Super Admin ({clean_uname}) login successful",
                 "token": token,
-                "user": {
-                    "id": 1,
-                    "name": settings.SUPERADMIN_NAME,
-                    "username": settings.SUPERADMIN_USERNAME,
-                    "role": "SUPERADMIN",
-                    "admin_status": "APPROVED"
-                }
+                "user": user_to_dict(admin_entry.user, admin_entry)
             }
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid Super Admin credentials."
+            )
 
     # 2. Regular Admin lookup by username, email, or AUID
     admin_entry = db.query(Admin).join(User, Admin.user_id == User.id).filter(

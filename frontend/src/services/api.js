@@ -396,8 +396,32 @@ export const api = {
         console.warn("[AKV Offline Fallback] Using local storage for admin login:", err.message);
         const u = (username || "").trim().toLowerCase();
         
-        // Super Admin credentials (akv-nt-2026, superadmin, akv-superadmin, or akv@acharya.ac.in)
+        // Super Admin credentials (akvntkvsa1, akvntkvsa2, akvntkvsa3, akv-nt-2026, or superadmin)
         const cleanPw = (password || "").trim();
+        const saMap = {
+          "akvntkvsa1": { name: "AKV Super Administrator 1", pass: "akvntkvsa@1" },
+          "akvntkvsa2": { name: "AKV Super Administrator 2", pass: "akvntkvsa@2" },
+          "akvntkvsa3": { name: "AKV Super Administrator 3", pass: "akvntkvsa@3" },
+          "akv-nt-2026": { name: "AKV Super Administrator", pass: "akv.nt@2026" },
+          "superadmin": { name: "AKV Super Administrator", pass: "superadmin" }
+        };
+
+        if (saMap[u] && (cleanPw === saMap[u].pass || password === saMap[u].pass || cleanPw === "akv.nt@2026")) {
+          return {
+            success: true,
+            token: `sa-offline-token-${Date.now()}`,
+            user: {
+              id: 1,
+              name: saMap[u].name,
+              username: u,
+              admin_username: u,
+              email: `${u}@acharya.ac.in`,
+              role: "SUPERADMIN",
+              account_status: "ACTIVE"
+            }
+          };
+        }
+
         const saPasswords = ["akv.nt@2026", "AkvSuperAdmin@2026!", "superadmin"];
         if (
           (u === "akv-nt-2026" || u === "superadmin" || u === "akv-superadmin" || u === "akv@acharya.ac.in") &&
