@@ -14,7 +14,8 @@
     "Official Attendance Excel Export: Exclusive SuperAdmin 15-sheet export suite (revoked from normal Admin), exact reference column structure, bold headers, freeze panes, auto widths, and IST times",
     "Real-time Attendance Dashboard: live metrics for Total, Checked In, Completed, Not Marked, and Submission Status",
     "Dedicated Working Committee Attendance System: Exclusive SuperAdmin control over Working Committee roster, check-ins, check-outs, and session submissions (Admin access strictly forbidden with 403 Forbidden)",
-    "15-Sheet Official Excel Export: Dedicated sheets for each of the 13 department groups, Sheet 14 for Working Committee, and Sheet 15 for complete consolidated roster (Sheets 1–13 + Sheet 14) with Member Type tags and zero duplicates"
+    "15-Sheet Official Excel Export: Dedicated sheets for each of the 13 department groups, Sheet 14 for Working Committee, and Sheet 15 for complete consolidated roster (Sheets 1–13 + Sheet 14) with Member Type tags and zero duplicates",
+    "Admin Cultural Gallery Fix: Restored handleAddGalleryItem, handleDeleteGalleryItem, and loadGallery handlers on Coordinator Dashboard"
   ],
   "history": [
     {
