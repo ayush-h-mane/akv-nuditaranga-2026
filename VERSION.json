@@ -1,34 +1,16 @@
 {
-  "production_version": "2.0.0",
-  "staged_version": "2.1.0",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.1.0",
+  "staged_version": "2.1.1",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
-  "pending_changes": [
-    "Admins can add and manage Cultural Gallery items with Event Image, Description, and Event Date.",
-    "SuperAdmins can add and manage Major AKV Activities with Activity Image, Name, Description, and Activity Date.",
-    "SuperAdmins can Add, Modify, and Delete Instagram Reels/Posts with link, original like count, description, and cover image for reels.",
-    "Candidate photo upload during registration (Volunteers, Participants, Admins, Spectators), visible in profile, pass, and ID card.",
-    "Semester selection dropdown (Sem 1 to 8) during candidate registration.",
-    "Admin registration with Faculty Coordinator vs Working Committee Member selection.",
-    "Faculty Coordinator registration with Faculty ID, college mail, contact number, institute, department, and password.",
-    "Institute selector with 11 official Acharya institutes and Department selector with manual entry support across the website.",
-    "Protected SuperAdmin accounts from deletion in SuperAdmin Admin Approvals.",
-    "Full-information verification QR Code displayed on Volunteer & Participant profiles.",
-    "Gated event registrations to require registering/logging in to the student portal first.",
-    "Volunteer AKV domain selection with 13 domains and custom manual entry support.",
-    "Configured 3 official Super Admin credentials (akvntkvsa1, akvntkvsa2, akvntkvsa3) with on-demand database provisioning and offline fallback.",
-    "Relocated Superadmin portal access from regular login tabs into a new Portal Settings & Directory modal.",
-    "Updated Developer (Ayush H Mane - Full-Stack Developer, AIML Engineer, portfolio) and Secretary (Priyanka S Reddy - Event Coordinator) official directory contacts.",
-    "Removed all demo credentials and autofill helper cards from Student, Admin, and Super Admin login views.",
-    "Removed the duplicate hero authentication bar from the homepage hero section.",
-    "Updated navbar primary gradient CTA button from 'Register Now' to 'Login/Register' (ಕನ್ನಡ: 'ಲಾಗಿನ್ / ನೋಂದಣಿ').",
-    "Removed redundant Settings button from the AuthPortal card header banner while retaining directory access in the top navbar.",
-    "Resolved SuperAdmin dashboard blank white screen issue by importing the missing History icon and adding an application ErrorBoundary wrapper.",
-    "Removed redundant secondary guest login border button from the navbar, leaving the primary gradient 'Login/Register' CTA.",
-    "Restricted Organizer Check-In Desk & scanner to Admins and Superadmins only; removed public check-in links from navbar and footer."
-  ],
+  "pending_changes": [],
   "history": [
+    {
+      "version": "2.1.0",
+      "released_at": "2026-09-24T22:00:57+0530",
+      "description": "AKV Nuditaranga 2026 v2.1.0: Cultural gallery, Major AKV activities, Reels management, Candidate photo upload, Semester & Institute selection, Superadmin security, and Check-In access restrictions."
+    },
     {
       "version": "2.0.0",
       "released_at": "2026-09-24T18:00:00+05:30",
