@@ -1,13 +1,16 @@
 {
-  "production_version": "2.1.0",
-  "staged_version": "2.1.1",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.1.1",
+  "staged_version": "2.1.2",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
-  "pending_changes": [
-    "Erased all legacy mock and demo account profiles across backend, database, and frontend fallback; retained only official SuperAdmin accounts."
-  ],
+  "pending_changes": [],
   "history": [
+    {
+      "version": "2.1.1",
+      "released_at": "2026-09-24T22:22:06+0530",
+      "description": "AKV Nuditaranga 2026 v2.1.1: Erased legacy mock profiles, retained only official SuperAdmin accounts, and secured authentication"
+    },
     {
       "version": "2.1.0",
       "released_at": "2026-09-24T22:00:57+0530",
