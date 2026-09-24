@@ -8,7 +8,6 @@ import {
   Sparkles, 
   UserCheck, 
   Shield, 
-  User, 
   LogOut, 
   LayoutDashboard,
   ShieldAlert
@@ -149,7 +148,7 @@ export const Navbar = ({ currentView, setCurrentView, onOpenAuthTab }) => {
           </button>
 
           {/* User Logged In State */}
-          {user ? (
+          {user && (
             <div className="flex items-center gap-1.5 bg-stone-50 border border-stone-200 rounded-xl p-1">
               <button
                 onClick={handleDashboardNav}
@@ -171,18 +170,6 @@ export const Navbar = ({ currentView, setCurrentView, onOpenAuthTab }) => {
                 <LogOut className="w-3.5 h-3.5" />
               </button>
             </div>
-          ) : (
-            /* Guest State: Sign In / Portal Link */
-            <button
-              onClick={() => {
-                if (onOpenAuthTab) onOpenAuthTab("student-login");
-                setCurrentView("auth");
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border border-stone-200 text-stone-700 hover:bg-stone-50 hover:text-stone-900 transition-colors shadow-xs"
-            >
-              <User className="w-3.5 h-3.5 text-kar-red" />
-              <span>Login / Portal</span>
-            </button>
           )}
 
           {/* Check-In Desk Link */}
@@ -261,13 +248,15 @@ export const Navbar = ({ currentView, setCurrentView, onOpenAuthTab }) => {
           ))}
 
           <div className="pt-3 border-t border-stone-100 flex flex-col gap-2">
-            <button
-              onClick={handleDashboardNav}
-              className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-stone-700 bg-stone-50 hover:bg-stone-100"
-            >
-              <LayoutDashboard className="w-4 h-4 text-kar-red" />
-              <span>{user ? "My Dashboard" : "Sign In to Portal"}</span>
-            </button>
+            {user && (
+              <button
+                onClick={handleDashboardNav}
+                className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-stone-700 bg-stone-50 hover:bg-stone-100"
+              >
+                <LayoutDashboard className="w-4 h-4 text-kar-red" />
+                <span>My Dashboard</span>
+              </button>
+            )}
 
             <button
               onClick={() => handleNavClick("checkin")}
