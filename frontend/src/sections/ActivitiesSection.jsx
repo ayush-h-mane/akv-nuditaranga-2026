@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useLanguage } from "../context/LanguageContext";
 import { api } from "../services/api";
-import { ArrowUpRight, Sparkles } from "lucide-react";
+import { ArrowUpRight, Sparkles, Calendar } from "lucide-react";
 
 export const ActivitiesSection = () => {
   const { lang, t } = useLanguage();
@@ -69,12 +69,18 @@ export const ActivitiesSection = () => {
                   {/* Image Container */}
                   <div className="relative h-48 sm:h-52 w-full overflow-hidden bg-stone-100">
                     <img
-                      src={act.image || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80"}
+                      src={act.image || act.image_url || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80"}
                       alt={title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       loading="lazy"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+                    {act.activity_date && (
+                      <span className="absolute bottom-2.5 left-2.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-black/75 text-white backdrop-blur-xs flex items-center gap-1.5 shadow-sm">
+                        <Calendar className="w-3 h-3 text-amber-400" />
+                        <span>{act.activity_date}</span>
+                      </span>
+                    )}
                   </div>
 
                   {/* Card Body */}

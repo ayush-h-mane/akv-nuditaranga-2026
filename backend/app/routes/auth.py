@@ -38,6 +38,8 @@ class StudentRegisterRequest(BaseModel):
     section: str = Field("A", min_length=1, max_length=10)
     gender: str = Field("Male")
     role: str = Field("PARTICIPANT")  # VOLUNTEER, PARTICIPANT, SPECTATOR
+    photo_url: Optional[str] = None
+    volunteer_domain: Optional[str] = None
     password: str = Field(..., min_length=6)
     confirm_password: str = Field(..., min_length=6)
 
@@ -72,21 +74,16 @@ class StudentLoginRequest(BaseModel):
 
 class AdminRegisterRequest(BaseModel):
     full_name: str = Field(..., min_length=2, max_length=100)
-    username: str = Field(..., min_length=3, max_length=50)
+    username: Optional[str] = None
+    faculty_id: Optional[str] = None
+    admin_type: str = Field("WORKING_COMMITTEE")  # FACULTY_COORDINATOR, WORKING_COMMITTEE
     email: EmailStr
     phone: str = Field(..., min_length=10, max_length=15)
     institute: str = Field("Acharya Institute of Technology", min_length=2, max_length=150)
     department: str = Field(..., min_length=2, max_length=100)
+    photo_url: Optional[str] = None
     password: str = Field(..., min_length=6)
     confirm_password: str = Field(..., min_length=6)
-
-    @field_validator("username")
-    @classmethod
-    def clean_username(cls, v: str) -> str:
-        cleaned = v.strip().lower()
-        if not re.match(r"^[a-z0-9_\-\.]{3,50}$", cleaned):
-            raise ValueError("Username must be alphanumeric and 3-50 characters")
-        return cleaned
 
     @field_validator("phone")
     @classmethod
@@ -134,12 +131,17 @@ def user_to_dict(user: User, admin_profile: Optional[Admin] = None) -> dict:
         "section": user.section,
         "gender": user.gender,
         "role": user.role,
+        "photo_url": user.photo_url,
+        "volunteer_domain": user.volunteer_domain,
+        "admin_type": user.admin_type or (admin_profile.admin_type if admin_profile else "WORKING_COMMITTEE"),
+        "faculty_id": user.faculty_id or (admin_profile.faculty_id if admin_profile else None),
         "registration_id": user.registration_id,
         "account_status": user.account_status,
         "admin_status": admin_profile.approval_status if admin_profile else None,
         "admin_username": admin_profile.username if admin_profile else None,
         "created_at": user.created_at.isoformat() if user.created_at else None
     }
+
 
 # ==========================================
 # 1. STUDENT REGISTRATION
@@ -177,6 +179,8 @@ def register_student(payload: StudentRegisterRequest, db: Session = Depends(get_
         section=payload.section.strip().upper(),
         gender=payload.gender,
         role=payload.role,
+        photo_url=payload.photo_url,
+        volunteer_domain=payload.volunteer_domain.strip() if payload.volunteer_domain else None,
         registration_id=reg_id,
         password_hash=pw_hash,
         account_status="ACTIVE"
@@ -426,12 +430,22 @@ def register_admin(payload: AdminRegisterRequest, db: Session = Depends(get_db))
     if payload.password != payload.confirm_password:
         raise HTTPException(status_code=400, detail="Passwords do not match.")
 
-    clean_uname = payload.username.strip().lower()
+    # Resolve username and faculty ID based on admin_type
+    admin_type = payload.admin_type or "WORKING_COMMITTEE"
+    clean_fac_id = payload.faculty_id.strip().upper() if payload.faculty_id else None
+    
+    if payload.username and payload.username.strip():
+        clean_uname = payload.username.strip().lower()
+    elif clean_fac_id:
+        clean_uname = f"fac_{clean_fac_id.lower()}"
+    else:
+        clean_uname = re.sub(r"[^a-z0-9]", "", payload.full_name.lower())[:15] + str(secrets.randbelow(999))
+
     clean_email = payload.email.strip().lower()
 
     # Check username in admins
     if db.query(Admin).filter(func.lower(Admin.username) == clean_uname).first():
-        raise HTTPException(status_code=409, detail="This admin username is already taken.")
+        raise HTTPException(status_code=409, detail="This admin username or faculty ID is already taken.")
 
     # Check email in users
     if db.query(User).filter(func.lower(User.email) == clean_email).first():
@@ -440,10 +454,12 @@ def register_admin(payload: AdminRegisterRequest, db: Session = Depends(get_db))
     pw_hash = get_password_hash(payload.password)
     reg_id = generate_student_reg_id(db)
 
+    auid_val = f"FAC-{clean_fac_id}" if clean_fac_id else f"ADM-{clean_uname.upper()}"
+
     # Create user with role ADMIN
     new_user = User(
         name=payload.full_name.strip(),
-        auid=f"ADM-{clean_uname.upper()}",
+        auid=auid_val,
         email=clean_email,
         phone=payload.phone.strip(),
         institute=payload.institute.strip(),
@@ -452,6 +468,9 @@ def register_admin(payload: AdminRegisterRequest, db: Session = Depends(get_db))
         section="A",
         gender="Other",
         role="ADMIN",
+        photo_url=payload.photo_url,
+        admin_type=admin_type,
+        faculty_id=clean_fac_id,
         registration_id=reg_id,
         password_hash=pw_hash,
         account_status="ACTIVE"
@@ -464,6 +483,8 @@ def register_admin(payload: AdminRegisterRequest, db: Session = Depends(get_db))
     admin_entry = Admin(
         user_id=new_user.id,
         username=clean_uname,
+        admin_type=admin_type,
+        faculty_id=clean_fac_id,
         approval_status="PENDING_APPROVAL",
         created_at=datetime.datetime.utcnow()
     )
@@ -477,7 +498,7 @@ def register_admin(payload: AdminRegisterRequest, db: Session = Depends(get_db))
         target_type="ADMIN",
         target_id=str(new_user.id),
         previous_value=None,
-        new_value=f"Status: PENDING_APPROVAL, Username: {clean_uname}"
+        new_value=f"Status: PENDING_APPROVAL, Type: {admin_type}, Username: {clean_uname}"
     )
     db.add(log)
     db.commit()

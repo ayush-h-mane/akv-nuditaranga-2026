@@ -141,23 +141,34 @@ export const DigitalPass = ({ registration, onBack }) => {
             
             {/* Details Column (2 Cols) */}
             <div className="md:col-span-2 space-y-4">
-              <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400 block">
-                  {t("pass.participantName")}
-                </span>
-                <p className="text-lg sm:text-xl font-black text-stone-900 font-display">
-                  {registration.full_name}
-                </p>
-                <div className="space-y-0.5 mt-1">
-                  <p className="text-xs font-bold text-kar-red font-mono">
-                    {lang === "kn" ? "ಎಯುಐಡಿ (AUID)" : "AUID"}: {registration.auid || registration.usn}
+              <div className="flex items-start gap-4">
+                {(registration.photo_url || registration.user?.photo_url) && (
+                  <div className="w-16 h-20 sm:w-20 sm:h-24 rounded-2xl overflow-hidden border-2 border-amber-400 bg-stone-100 shadow-sm shrink-0">
+                    <img
+                      src={registration.photo_url || registration.user?.photo_url}
+                      alt={registration.full_name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+                <div>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400 block">
+                    {t("pass.participantName")}
+                  </span>
+                  <p className="text-lg sm:text-xl font-black text-stone-900 font-display">
+                    {registration.full_name}
                   </p>
-                  <p className="text-xs font-bold text-stone-800">
-                    {registration.institute || (lang === "kn" ? "ಆಚಾರ್ಯ ಇನ್‌ಸ್ಟಿಟ್ಯೂಟ್ ಆಫ್ ಟೆಕ್ನಾಲಜಿ" : "Acharya Institute of Technology")}
-                  </p>
-                  <p className="text-xs text-stone-600 font-semibold">
-                    {registration.department} • {lang === "kn" ? `${toKannadaDigits(registration.semester)}ನೇ ಸೆಮಿಸ್ಟರ್ (ವಿಭಾಗ ${registration.section})` : `Sem ${registration.semester} (Sec ${registration.section})`}
-                  </p>
+                  <div className="space-y-0.5 mt-1">
+                    <p className="text-xs font-bold text-kar-red font-mono">
+                      {lang === "kn" ? "ಎಯುಐಡಿ (AUID)" : "AUID"}: {registration.auid || registration.usn}
+                    </p>
+                    <p className="text-xs font-bold text-stone-800">
+                      {registration.institute || (lang === "kn" ? "ಆಚಾರ್ಯ ಇನ್‌ಸ್ಟಿಟ್ಯೂಟ್ ಆಫ್ ಟೆಕ್ನಾಲಜಿ" : "Acharya Institute of Technology")}
+                    </p>
+                    <p className="text-xs text-stone-600 font-semibold">
+                      {registration.department} • {lang === "kn" ? `${toKannadaDigits(registration.semester)}ನೇ ಸೆಮಿಸ್ಟರ್ (ವಿಭಾಗ ${registration.section})` : `Sem ${registration.semester} (Sec ${registration.section})`}
+                    </p>
+                  </div>
                 </div>
               </div>
 

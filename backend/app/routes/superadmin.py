@@ -255,6 +255,10 @@ def list_admins(
             "phone": u.phone if u else "N/A",
             "institute": u.institute if u else "N/A",
             "department": u.department if u else "N/A",
+            "admin_type": a.admin_type or (u.admin_type if u else "WORKING_COMMITTEE"),
+            "faculty_id": a.faculty_id or (u.faculty_id if u else None),
+            "photo_url": u.photo_url if u else None,
+            "role": u.role if u else "ADMIN",
             "approval_status": a.approval_status,
             "approved_by": a.approved_by,
             "approved_at": a.approved_at.isoformat() if a.approved_at else None,
@@ -368,6 +372,10 @@ def delete_admin(
 
     username = admin.username
     user = admin.user
+
+    # Requirement 9: Block deleting SuperAdmin account
+    if (user and user.role == "SUPERADMIN") or username in ["superadmin", "akv-nt-2026"]:
+        raise HTTPException(status_code=403, detail="SuperAdmin profile cannot be deleted.")
 
     log = AuditLog(
         user_id=current_user.id,

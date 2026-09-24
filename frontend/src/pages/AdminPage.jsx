@@ -24,9 +24,13 @@ import {
   ArrowRight,
   ShieldAlert,
   Camera,
-  Scan
+  Scan,
+  Trash2,
+  Plus,
+  Image as ImageIcon
 } from "lucide-react";
 import { CameraQRScanner } from "../components/CameraQRScanner";
+import { EventImageUpload } from "../components/EventImageUpload";
 
 export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
   const { user, role, logout } = useAuth();
@@ -48,6 +52,17 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
   const [checkinMode, setCheckinMode] = useState("camera"); // "camera" or "manual"
 
   const [feedback, setFeedback] = useState({ type: "", text: "" });
+
+  // Cultural Gallery State
+  const [galleryItems, setGalleryItems] = useState([]);
+  const [galleryLoading, setGalleryLoading] = useState(false);
+  const [galleryForm, setGalleryForm] = useState({
+    title: "",
+    description: "",
+    event_date: "",
+    image_url: "",
+    category: "Cultural"
+  });
 
   const notify = (type, text) => {
     setFeedback({ type, text });
@@ -79,6 +94,66 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
   useEffect(() => {
     loadAdminData();
   }, [deptFilter]);
+
+  const loadGallery = async () => {
+    try {
+      setGalleryLoading(true);
+      const data = await api.getGallery();
+      setGalleryItems(data || []);
+    } catch (err) {
+      console.error("Failed to load gallery:", err);
+    } finally {
+      setGalleryLoading(false);
+    }
+  };
+
+  const handleAddGalleryItem = async (e) => {
+    e.preventDefault();
+    if (!galleryForm.image_url) {
+      notify("error", "Please provide or upload an event image.");
+      return;
+    }
+    if (!galleryForm.description) {
+      notify("error", "Please provide an event description.");
+      return;
+    }
+    if (!galleryForm.event_date) {
+      notify("error", "Please select the date of the event.");
+      return;
+    }
+
+    try {
+      await api.createGalleryItem({
+        title: galleryForm.title.trim() || "Cultural Event",
+        description: galleryForm.description.trim(),
+        event_date: galleryForm.event_date,
+        image_url: galleryForm.image_url,
+        category: "Cultural"
+      });
+      notify("success", "Photo added to Cultural Gallery successfully!");
+      setGalleryForm({
+        title: "",
+        description: "",
+        event_date: "",
+        image_url: "",
+        category: "Cultural"
+      });
+      loadGallery();
+    } catch (err) {
+      notify("error", err.message || "Failed to add photo to gallery.");
+    }
+  };
+
+  const handleDeleteGalleryItem = async (id) => {
+    if (!window.confirm("Are you sure you want to remove this image from the Cultural Gallery?")) return;
+    try {
+      await api.deleteGalleryItem(id);
+      notify("success", "Cultural Gallery item removed.");
+      setGalleryItems(prev => prev.filter(item => item.id !== id));
+    } catch (err) {
+      notify("error", err.message || "Failed to remove gallery item.");
+    }
+  };
 
   // Mark Volunteer Attendance Handler
   const handleMarkAttendance = async (volunteerUserId, statusVal) => {
@@ -279,6 +354,21 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
           >
             <UserCheck className="w-4 h-4 text-emerald-400" />
             <span>Participant Check-In Desk</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveTab("gallery");
+              loadGallery();
+            }}
+            className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold whitespace-nowrap transition-all flex items-center gap-2 ${
+              activeTab === "gallery"
+                ? "bg-stone-900 text-white shadow-xs"
+                : "text-stone-600 hover:bg-white"
+            }`}
+          >
+            <Camera className="w-4 h-4 text-kar-red" />
+            <span>Cultural Gallery</span>
           </button>
         </div>
 
@@ -566,6 +656,164 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
                 </button>
               </form>
             )}
+          </div>
+        )}
+
+        {/* ==================================================== */}
+        {/* TAB 3: CULTURAL GALLERY MANAGEMENT                   */}
+        {/* ==================================================== */}
+        {activeTab === "gallery" && (
+          <div className="space-y-6 animate-fade-in">
+            {/* Add Gallery Item Form */}
+            <div className="bg-white rounded-3xl p-6 sm:p-7 border border-stone-200 shadow-xs space-y-5">
+              <div className="border-b border-stone-100 pb-4">
+                <h3 className="font-extrabold text-base text-stone-900 flex items-center gap-2">
+                  <Camera className="w-5 h-5 text-kar-red" />
+                  <span>Add Photo to Cultural Gallery</span>
+                </h3>
+                <p className="text-xs text-stone-500 mt-0.5">
+                  Upload an event image, enter the description and date of the cultural event to display on the fest gallery.
+                </p>
+              </div>
+
+              <form onSubmit={handleAddGalleryItem} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Event Image */}
+                  <div>
+                    <EventImageUpload
+                      imageUrl={galleryForm.image_url}
+                      onImageChange={(url) => setGalleryForm({ ...galleryForm, image_url: url })}
+                      label="Event Image *"
+                      required={true}
+                    />
+                  </div>
+
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                        Event Title / Headline *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={galleryForm.title}
+                        onChange={(e) => setGalleryForm({ ...galleryForm, title: e.target.value })}
+                        placeholder="e.g. Dollu Kunitha Spectacular"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-kar-red"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                        Date of Event *
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        value={galleryForm.event_date}
+                        onChange={(e) => setGalleryForm({ ...galleryForm, event_date: e.target.value })}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-kar-red"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                        Event Description *
+                      </label>
+                      <textarea
+                        required
+                        rows={3}
+                        value={galleryForm.description}
+                        onChange={(e) => setGalleryForm({ ...galleryForm, description: e.target.value })}
+                        placeholder="Describe the cultural event, performance highlights, performers, or atmosphere..."
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-kar-red"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full py-3 rounded-xl bg-gradient-to-r from-kar-red to-red-600 text-white font-extrabold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Add to Cultural Gallery</span>
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+
+            {/* Existing Cultural Gallery Items Grid */}
+            <div className="bg-white rounded-3xl p-6 sm:p-7 border border-stone-200 shadow-xs space-y-4">
+              <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <ImageIcon className="w-5 h-5 text-kar-red" />
+                  <h4 className="font-extrabold text-stone-900 text-sm sm:text-base">
+                    Existing Cultural Gallery ({galleryItems.length})
+                  </h4>
+                </div>
+                <button
+                  type="button"
+                  onClick={loadGallery}
+                  className="px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-xs font-bold text-stone-700 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${galleryLoading ? "animate-spin" : ""}`} />
+                  <span>Refresh</span>
+                </button>
+              </div>
+
+              {galleryLoading ? (
+                <div className="py-12 text-center text-stone-400 text-sm">
+                  Loading gallery items...
+                </div>
+              ) : galleryItems.length === 0 ? (
+                <div className="py-12 text-center text-stone-400 text-sm">
+                  No cultural gallery items yet. Add the first event photo above!
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  {galleryItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className="rounded-2xl border border-stone-200 overflow-hidden bg-stone-50 hover:shadow-md transition-shadow group flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="h-44 w-full overflow-hidden bg-stone-900 relative">
+                          <img
+                            src={item.image_url}
+                            alt={item.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                          {item.event_date && (
+                            <span className="absolute bottom-2 left-2 px-2.5 py-1 rounded-md text-[10px] font-bold bg-black/75 text-white backdrop-blur-xs flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-amber-400" />
+                              {item.event_date}
+                            </span>
+                          )}
+                        </div>
+                        <div className="p-3.5 space-y-1">
+                          <h5 className="font-bold text-stone-900 text-sm line-clamp-1">{item.title}</h5>
+                          <p className="text-xs text-stone-600 line-clamp-2">{item.description}</p>
+                        </div>
+                      </div>
+
+                      <div className="p-3.5 pt-0 border-t border-stone-200/60 mt-2 flex items-center justify-between">
+                        <span className="text-[10px] font-semibold text-stone-400 uppercase">
+                          {item.category || "Cultural"}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteGalleryItem(item.id)}
+                          className="px-2.5 py-1 text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Delete</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

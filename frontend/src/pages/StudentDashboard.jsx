@@ -20,8 +20,11 @@ import {
   ChevronRight,
   QrCode,
   X,
-  Plus
+  Plus,
+  Printer,
+  ShieldCheck
 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 
 export const StudentDashboard = ({ onNavigateHome }) => {
   const { user, logout } = useAuth();
@@ -246,24 +249,44 @@ export const StudentDashboard = ({ onNavigateHome }) => {
         {/* Header Hero Banner with Role-Specific Styling */}
         <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-kar-red via-red-600 to-kar-yellow p-6 sm:p-8 text-white shadow-xl mb-8">
           <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-black/25 text-amber-200 border border-white/20">
-                  {profile?.role} PORTAL
-                </span>
-                <span className="text-amber-200 text-xs font-bold">
-                  {profile?.role === "VOLUNTEER" && "ಸ್ವಯಂಸೇವಕ ವಿಭಾಗ"}
-                  {profile?.role === "PARTICIPANT" && "ಸ್ಪರ್ಧಾ ವಿಭಾಗ"}
-                  {profile?.role === "SPECTATOR" && "ವೀಕ್ಷಕರ ವಿಭಾಗ"}
-                </span>
-              </div>
+            <div className="flex items-center gap-4 sm:gap-5">
+              {profile?.photo_url ? (
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden border-2 border-white/60 shadow-lg shrink-0 bg-white/20">
+                  <img
+                    src={profile.photo_url}
+                    alt={profile.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden border-2 border-white/40 shadow-lg shrink-0 bg-black/20 flex items-center justify-center text-amber-200">
+                  <User className="w-8 h-8" />
+                </div>
+              )}
+              <div>
+                <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                  <span className="px-3 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-black/25 text-amber-200 border border-white/20">
+                    {profile?.role} PORTAL
+                  </span>
+                  <span className="text-amber-200 text-xs font-bold">
+                    {profile?.role === "VOLUNTEER" && "ಸ್ವಯಂಸೇವಕ ವಿಭಾಗ"}
+                    {profile?.role === "PARTICIPANT" && "ಸ್ಪರ್ಧಾ ವಿಭಾಗ"}
+                    {profile?.role === "SPECTATOR" && "ವೀಕ್ಷಕರ ವಿಭಾಗ"}
+                  </span>
+                  {profile?.volunteer_domain && (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-400 text-stone-900 shadow-2xs">
+                      Domain: {profile.volunteer_domain}
+                    </span>
+                  )}
+                </div>
 
-              <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-                ನಮಸ್ಕಾರ, {profile?.name}!
-              </h2>
-              <p className="text-xs sm:text-sm text-amber-100 font-medium mt-1">
-                {profile?.institute} • {profile?.department}
-              </p>
+                <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+                  ನಮಸ್ಕಾರ, {profile?.name}!
+                </h2>
+                <p className="text-xs sm:text-sm text-amber-100 font-medium mt-0.5">
+                  {profile?.institute} • {profile?.department}
+                </p>
+              </div>
             </div>
 
             {/* Quick Stats in Hero */}
@@ -398,10 +421,17 @@ export const StudentDashboard = ({ onNavigateHome }) => {
                   </div>
 
                   <div>
-                    <span className="text-stone-400 font-bold block text-[11px] uppercase">Role</span>
-                    <span className="inline-block mt-0.5 px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-kar-red text-white uppercase">
-                      {profile?.role}
-                    </span>
+                    <span className="text-stone-400 font-bold block text-[11px] uppercase">Registered Role</span>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-kar-red text-white uppercase">
+                        {profile?.role}
+                      </span>
+                      {profile?.volunteer_domain && (
+                        <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                          {profile.volunteer_domain}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -469,6 +499,122 @@ export const StudentDashboard = ({ onNavigateHome }) => {
                   <span>Register for Cultural Events</span>
                   <ChevronRight className="w-3.5 h-3.5" />
                 </button>
+              </div>
+            </div>
+
+            {/* ==================================================== */}
+            {/* OFFICIAL VERIFICATION ID CARD & ALL-INFO QR CODE    */}
+            {/* Required for Volunteer & Participant (v2.1.0)       */}
+            {/* ==================================================== */}
+            <div className="bg-white rounded-3xl p-6 sm:p-7 border-2 border-amber-300 shadow-md space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-kar-red to-amber-500 text-white flex items-center justify-center shadow-xs">
+                    <ShieldCheck className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-base text-stone-900">
+                      Official Candidate ID Card & Verification QR
+                    </h3>
+                    <p className="text-xs text-stone-500">
+                      Contains complete verified candidate credentials for desk attendance & campus security check-in.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold flex items-center gap-1.5 transition-colors self-start cursor-pointer shadow-xs"
+                >
+                  <Printer className="w-3.5 h-3.5 text-kar-red" />
+                  <span>Print ID Card</span>
+                </button>
+              </div>
+
+              {/* ID Card Box */}
+              <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-stone-50 via-white to-amber-50/50 border border-stone-200 shadow-xs flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5 text-center sm:text-left flex-1">
+                  {/* Photo */}
+                  <div className="w-24 h-28 sm:w-28 sm:h-32 rounded-2xl overflow-hidden border-2 border-kar-red bg-stone-100 shadow-md shrink-0">
+                    {profile?.photo_url ? (
+                      <img
+                        src={profile.photo_url}
+                        alt={profile.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center text-stone-400 bg-stone-100">
+                        <User className="w-10 h-10" />
+                        <span className="text-[10px] font-bold mt-1">No Photo</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Details */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-kar-red text-white uppercase shadow-2xs">
+                        {profile?.role}
+                      </span>
+                      {profile?.volunteer_domain && (
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-amber-400 text-stone-900 shadow-2xs">
+                          {profile.volunteer_domain}
+                        </span>
+                      )}
+                      <span className="font-mono text-xs font-bold text-stone-500 bg-stone-100 px-2 py-0.5 rounded">
+                        {profile?.registration_id}
+                      </span>
+                    </div>
+
+                    <h4 className="text-xl font-black text-stone-900 tracking-tight">
+                      {profile?.name}
+                    </h4>
+
+                    <p className="text-xs font-bold text-kar-red font-mono">
+                      AUID: {profile?.auid}
+                    </p>
+
+                    <p className="text-xs font-bold text-stone-800">
+                      {profile?.institute}
+                    </p>
+
+                    <p className="text-xs text-stone-600 font-semibold">
+                      {profile?.department} • Sem {profile?.semester} (Sec {profile?.section})
+                    </p>
+
+                    <p className="text-[11px] text-stone-500 font-mono">
+                      {profile?.email} • {profile?.phone}
+                    </p>
+                  </div>
+                </div>
+
+                {/* QR Code Container */}
+                <div className="flex flex-col items-center p-3.5 bg-white rounded-2xl border-2 border-stone-900 shadow-md shrink-0">
+                  <QRCodeSVG
+                    value={JSON.stringify({
+                      reg_id: profile?.registration_id,
+                      name: profile?.name,
+                      auid: profile?.auid,
+                      role: profile?.role,
+                      domain: profile?.volunteer_domain || "N/A",
+                      institute: profile?.institute,
+                      department: profile?.department,
+                      semester: profile?.semester,
+                      section: profile?.section,
+                      email: profile?.email,
+                      phone: profile?.phone,
+                      verified_by: "Acharya Kannada Vedike Nuditaranga 2026"
+                    })}
+                    size={130}
+                    level="M"
+                    includeMargin={false}
+                  />
+                  <span className="text-[10px] font-mono font-extrabold text-stone-800 mt-2 tracking-wide uppercase">
+                    Scan to Verify
+                  </span>
+                  <span className="text-[9px] text-stone-400">Official Fest Credential</span>
+                </div>
               </div>
             </div>
 

@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { useLanguage } from "../context/LanguageContext";
+import { useAuth } from "../context/AuthContext";
 import { api } from "../services/api";
 import { EventCard } from "../components/EventCard";
 import { RulesModal } from "../components/RulesModal";
-import { Search, Filter, Sparkles, RefreshCw } from "lucide-react";
+import { Search, Filter, Sparkles, RefreshCw, ShieldAlert, ArrowRight } from "lucide-react";
 
 export const EventsPage = ({ setCurrentView, setSelectedEventId }) => {
   const { lang, t } = useLanguage();
+  const { user } = useAuth();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -31,7 +33,11 @@ export const EventsPage = ({ setCurrentView, setSelectedEventId }) => {
 
   const handleRegisterEvent = (eventId) => {
     setSelectedEventId(eventId);
-    setCurrentView("register");
+    if (user) {
+      setCurrentView("student-dashboard");
+    } else {
+      setCurrentView("auth");
+    }
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 

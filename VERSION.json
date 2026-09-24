@@ -4,7 +4,20 @@
   "status": "STAGED_DEVELOPMENT",
   "active_branch": "develop",
   "production_branch": "main",
-  "pending_changes": [],
+  "pending_changes": [
+    "Admins can add and manage Cultural Gallery items with Event Image, Description, and Event Date.",
+    "SuperAdmins can add and manage Major AKV Activities with Activity Image, Name, Description, and Activity Date.",
+    "SuperAdmins can Add, Modify, and Delete Instagram Reels/Posts with link, original like count, description, and cover image for reels.",
+    "Candidate photo upload during registration (Volunteers, Participants, Admins, Spectators), visible in profile, pass, and ID card.",
+    "Semester selection dropdown (Sem 1 to 8) during candidate registration.",
+    "Admin registration with Faculty Coordinator vs Working Committee Member selection.",
+    "Faculty Coordinator registration with Faculty ID, college mail, contact number, institute, department, and password.",
+    "Institute selector with 11 official Acharya institutes and Department selector with manual entry support across the website.",
+    "Protected SuperAdmin accounts from deletion in SuperAdmin Admin Approvals.",
+    "Full-information verification QR Code displayed on Volunteer & Participant profiles.",
+    "Gated event registrations to require registering/logging in to the student portal first.",
+    "Volunteer AKV domain selection with 13 domains and custom manual entry support."
+  ],
   "history": [
     {
       "version": "2.0.0",

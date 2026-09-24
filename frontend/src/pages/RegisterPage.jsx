@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
 import { useLanguage } from "../context/LanguageContext";
+import { useAuth } from "../context/AuthContext";
 import { api } from "../services/api";
 import { 
   toKannadaDigits, 
@@ -30,6 +31,7 @@ export const RegisterPage = ({
   setConfirmedRegistration 
 }) => {
   const { lang, t } = useLanguage();
+  const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [events, setEvents] = useState([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
@@ -40,19 +42,77 @@ export const RegisterPage = ({
   // Form Fields
   const [formData, setFormData] = useState({
     eventId: selectedEventId || "",
-    fullName: "",
-    auid: "",
-    usn: "",
-    institute: "Acharya Institute of Technology",
-    department: "",
-    semester: 6,
-    section: "A",
-    email: "",
-    phone: "",
-    gender: "Male",
+    fullName: user?.name || "",
+    auid: user?.auid || "",
+    usn: user?.auid || "",
+    institute: user?.institute || "Acharya Institute of Technology",
+    department: user?.department || "",
+    semester: user?.semester || 6,
+    section: user?.section || "A",
+    email: user?.email || "",
+    phone: user?.phone || "",
+    gender: user?.gender || "Male",
     teamName: "",
     teamMembers: []
   });
+
+  useEffect(() => {
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        fullName: prev.fullName || user.name || "",
+        auid: prev.auid || user.auid || "",
+        usn: prev.usn || user.auid || "",
+        email: prev.email || user.email || "",
+        phone: prev.phone || user.phone || "",
+        institute: prev.institute || user.institute || "Acharya Institute of Technology",
+        department: prev.department || user.department || "",
+        semester: user.semester || prev.semester || 6,
+        section: user.section || prev.section || "A"
+      }));
+    }
+  }, [user]);
+
+  // Requirement 11: In the web, don't give option to register to event without registering to the portal.
+  if (!user) {
+    return (
+      <div className="pt-28 pb-20 min-h-screen bg-stone-50 flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-stone-200 shadow-xl text-center space-y-5 animate-fade-in">
+          <div className="w-16 h-16 rounded-full bg-red-50 text-kar-red flex items-center justify-center mx-auto shadow-inner">
+            <ShieldCheck className="w-8 h-8" />
+          </div>
+          <div>
+            <span className="px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-red-100 text-red-900 border border-red-200">
+              PORTAL REGISTRATION REQUIRED
+            </span>
+            <h3 className="text-xl font-extrabold text-stone-900 mt-3 tracking-tight">
+              Portal Account Required
+            </h3>
+            <p className="text-xs text-stone-600 mt-2 leading-relaxed">
+              Per AKV fest rules, you must be registered in the Student Portal before registering for any cultural or literary competitions.
+              This provides your official verified badge and instant access passes.
+            </p>
+          </div>
+
+          <div className="space-y-2 pt-2">
+            <button
+              onClick={() => setCurrentView("auth")}
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-kar-red to-red-600 text-white font-extrabold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <span>Register / Sign In to Student Portal</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setCurrentView("events")}
+              className="w-full py-2.5 rounded-xl border border-stone-200 text-stone-700 hover:bg-stone-50 font-bold text-xs transition-colors cursor-pointer"
+            >
+              Back to Events Catalog
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   useEffect(() => {
     const loadEvents = async () => {

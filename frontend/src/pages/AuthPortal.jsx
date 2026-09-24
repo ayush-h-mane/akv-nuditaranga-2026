@@ -3,6 +3,9 @@ import confetti from "canvas-confetti";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../services/api";
 import { ForgotPasswordModal } from "../components/ForgotPasswordModal";
+import { CandidatePhotoUpload } from "../components/CandidatePhotoUpload";
+import { InstituteDepartmentSelect } from "../components/InstituteDepartmentSelect";
+import { ACHARYA_INSTITUTES, STANDARD_DEPARTMENTS, AKV_DOMAINS } from "../config/institutesData";
 import {
   Sparkles,
   User,
@@ -18,7 +21,9 @@ import {
   Trophy,
   Users,
   ShieldAlert,
-  KeyRound
+  KeyRound,
+  GraduationCap,
+  Briefcase
 } from "lucide-react";
 
 export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, initialTab = "student-login" }) => {
@@ -74,38 +79,34 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
     auid: "",
     email: "",
     phone: "",
-    institute: "Acharya Institute of Technology",
-    department: "Computer Science & Engineering",
+    institute: ACHARYA_INSTITUTES[0],
+    department: STANDARD_DEPARTMENTS[0],
     semester: 6,
     section: "A",
     gender: "Male",
     role: "PARTICIPANT", // VOLUNTEER, PARTICIPANT, SPECTATOR
+    volunteer_domain: "Promotions",
+    custom_domain: "",
+    photo_url: "",
     password: "",
     confirmPassword: ""
   });
 
   // Admin Form State
   const [adminForm, setAdminForm] = useState({
+    adminType: "WORKING_COMMITTEE", // "FACULTY_COORDINATOR" or "WORKING_COMMITTEE"
     fullName: "",
     username: "",
+    facultyId: "",
     email: "",
     phone: "",
-    institute: "Acharya Institute of Technology",
-    department: "Computer Science & Engineering",
+    institute: ACHARYA_INSTITUTES[0],
+    department: STANDARD_DEPARTMENTS[0],
+    photo_url: "",
     password: "",
     confirmPassword: ""
   });
 
-  const departmentList = [
-    "Computer Science & Engineering",
-    "Information Science & Engineering",
-    "Electronics & Communication Engineering",
-    "Mechanical Engineering",
-    "Civil Engineering",
-    "Artificial Intelligence & Machine Learning",
-    "Master of Computer Applications (MCA)",
-    "Master of Business Administration (MBA)",
-  ];
 
   // 1. Student Login Handler
   const handleStudentLogin = async (e) => {
@@ -144,6 +145,10 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
     setLoading(true);
 
     try {
+      const volunteerDomainValue = studentRegisterForm.role === "VOLUNTEER"
+        ? (studentRegisterForm.volunteer_domain === "Others" ? studentRegisterForm.custom_domain.trim() : studentRegisterForm.volunteer_domain)
+        : null;
+
       const payload = {
         full_name: studentRegisterForm.fullName.trim(),
         auid: studentRegisterForm.auid.trim().toUpperCase(),
@@ -155,6 +160,8 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
         section: studentRegisterForm.section.trim().toUpperCase() || "A",
         gender: studentRegisterForm.gender,
         role: studentRegisterForm.role,
+        photo_url: studentRegisterForm.photo_url || null,
+        volunteer_domain: volunteerDomainValue,
         password: studentRegisterForm.password,
         confirm_password: studentRegisterForm.confirmPassword
       };
@@ -210,16 +217,33 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
       return;
     }
 
+    const isFaculty = adminForm.adminType === "FACULTY_COORDINATOR";
+    if (isFaculty && !adminForm.facultyId?.trim()) {
+      setErrorMessage("Faculty ID is required for Faculty Coordinators.");
+      return;
+    }
+    if (!isFaculty && !adminForm.username?.trim()) {
+      setErrorMessage("Desired username is required.");
+      return;
+    }
+
     setLoading(true);
 
     try {
+      const cleanUsername = isFaculty
+        ? `fac_${adminForm.facultyId.trim().toLowerCase()}`
+        : adminForm.username.trim().toLowerCase();
+
       const payload = {
         full_name: adminForm.fullName.trim(),
-        username: adminForm.username.trim().toLowerCase(),
+        username: cleanUsername,
+        faculty_id: isFaculty ? adminForm.facultyId.trim().toUpperCase() : null,
+        admin_type: adminForm.adminType,
         email: adminForm.email.trim().toLowerCase(),
         phone: adminForm.phone.trim(),
         institute: adminForm.institute.trim(),
         department: adminForm.department.trim(),
+        photo_url: adminForm.photo_url || null,
         password: adminForm.password,
         confirm_password: adminForm.confirmPassword
       };
@@ -579,6 +603,15 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                     ) : (
                       /* Detailed Registration Form */
                       <form onSubmit={handleStudentRegister} className="space-y-4 text-left">
+                        {/* Candidate Photo Upload */}
+                        <div className="p-3.5 bg-stone-50 rounded-2xl border border-stone-200">
+                          <CandidatePhotoUpload
+                            photoUrl={studentRegisterForm.photo_url}
+                            onPhotoChange={(url) => setStudentRegisterForm({ ...studentRegisterForm, photo_url: url })}
+                            label="Candidate Profile Photo"
+                          />
+                        </div>
+
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                           <div>
                             <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
@@ -639,33 +672,46 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                           </div>
                         </div>
 
+                        {/* Institute and Department with Manual Support */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                          <InstituteDepartmentSelect
+                            institute={studentRegisterForm.institute}
+                            onInstituteChange={(val) => setStudentRegisterForm({ ...studentRegisterForm, institute: val })}
+                            department={studentRegisterForm.department}
+                            onDepartmentChange={(val) => setStudentRegisterForm({ ...studentRegisterForm, department: val })}
+                          />
+                        </div>
+
+                        {/* Semester Selection & Section */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                           <div>
                             <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                              Institute *
+                              Semester *
                             </label>
-                            <input
-                              type="text"
-                              required
-                              value={studentRegisterForm.institute}
-                              onChange={(e) => setStudentRegisterForm({ ...studentRegisterForm, institute: e.target.value })}
-                              className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm"
-                            />
+                            <select
+                              value={studentRegisterForm.semester}
+                              onChange={(e) => setStudentRegisterForm({ ...studentRegisterForm, semester: Number(e.target.value) })}
+                              className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm bg-white font-medium"
+                            >
+                              {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
+                                <option key={sem} value={sem}>
+                                  {sem}th Semester (Sem {sem})
+                                </option>
+                              ))}
+                            </select>
                           </div>
 
                           <div>
                             <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                              Department *
+                              Section / Division
                             </label>
-                            <select
-                              value={studentRegisterForm.department}
-                              onChange={(e) => setStudentRegisterForm({ ...studentRegisterForm, department: e.target.value })}
-                              className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm bg-white"
-                            >
-                              {departmentList.map((d) => (
-                                <option key={d} value={d}>{d}</option>
-                              ))}
-                            </select>
+                            <input
+                              type="text"
+                              value={studentRegisterForm.section}
+                              onChange={(e) => setStudentRegisterForm({ ...studentRegisterForm, section: e.target.value.toUpperCase() })}
+                              placeholder="e.g. A"
+                              className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm font-semibold uppercase"
+                            />
                           </div>
                         </div>
 
@@ -733,6 +779,39 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                             </div>
                           </div>
                         </div>
+
+                        {/* Volunteer Domain Selection */}
+                        {studentRegisterForm.role === "VOLUNTEER" && (
+                          <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200 space-y-2.5 animate-fade-in">
+                            <label className="block text-xs font-bold text-amber-950 uppercase tracking-wider">
+                              Choose AKV Domain / ಕಾರ್ಯಕ್ಷೇತ್ರ *
+                            </label>
+                            <select
+                              value={studentRegisterForm.volunteer_domain}
+                              onChange={(e) => setStudentRegisterForm({ ...studentRegisterForm, volunteer_domain: e.target.value })}
+                              className="w-full px-3.5 py-2.5 rounded-xl border border-amber-300 bg-white text-stone-900 text-xs sm:text-sm font-semibold shadow-xs"
+                            >
+                              {AKV_DOMAINS.map((dom) => (
+                                <option key={dom} value={dom}>{dom}</option>
+                              ))}
+                              <option value="Others">Others (Enter Manually)</option>
+                            </select>
+
+                            {studentRegisterForm.volunteer_domain === "Others" && (
+                              <input
+                                type="text"
+                                required
+                                value={studentRegisterForm.custom_domain}
+                                onChange={(e) => setStudentRegisterForm({ ...studentRegisterForm, custom_domain: e.target.value })}
+                                placeholder="Enter custom AKV domain (e.g. Stage Management)"
+                                className="w-full px-3.5 py-2 rounded-xl border-2 border-kar-red/60 bg-white text-xs sm:text-sm text-stone-900"
+                              />
+                            )}
+                            <p className="text-[11px] text-amber-800">
+                              Your domain will be printed on your official Volunteer ID Card and attendance reports.
+                            </p>
+                          </div>
+                        )}
 
                         {/* Account Passwords */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
@@ -923,96 +1002,184 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                   </form>
                 ) : (
                   /* Register as Admin Form */
-                  <form onSubmit={handleAdminRegister} className="space-y-3.5 text-left">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                          Full Name *
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={adminForm.fullName}
-                          onChange={(e) => setAdminForm({ ...adminForm, fullName: e.target.value })}
-                          placeholder="Faculty / Lead Name"
-                          className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                          Desired Username *
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={adminForm.username}
-                          onChange={(e) => setAdminForm({ ...adminForm, username: e.target.value.toLowerCase() })}
-                          placeholder="e.g. suresh_rao"
-                          className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                          College Email *
-                        </label>
-                        <input
-                          type="email"
-                          required
-                          value={adminForm.email}
-                          onChange={(e) => setAdminForm({ ...adminForm, email: e.target.value })}
-                          placeholder="faculty@acharya.ac.in"
-                          className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                          Contact Number *
-                        </label>
-                        <input
-                          type="tel"
-                          required
-                          value={adminForm.phone}
-                          onChange={(e) => setAdminForm({ ...adminForm, phone: e.target.value })}
-                          placeholder="10-digit number"
-                          className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                          Institute *
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={adminForm.institute}
-                          onChange={(e) => setAdminForm({ ...adminForm, institute: e.target.value })}
-                          className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                          Department *
-                        </label>
-                        <select
-                          value={adminForm.department}
-                          onChange={(e) => setAdminForm({ ...adminForm, department: e.target.value })}
-                          className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm bg-white"
+                  <form onSubmit={handleAdminRegister} className="space-y-4 text-left">
+                    {/* Role Selection: Faculty Coordinator vs Working Committee Member */}
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-2">
+                        Select Admin Category *
+                      </label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setAdminForm({ ...adminForm, adminType: "FACULTY_COORDINATOR" })}
+                          className={`p-3 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
+                            adminForm.adminType === "FACULTY_COORDINATOR"
+                              ? "border-kar-red bg-red-50/80 text-kar-red shadow-sm ring-1 ring-kar-red"
+                              : "border-stone-200 hover:border-stone-300 text-stone-600 bg-white"
+                          }`}
                         >
-                          {departmentList.map((d) => (
-                            <option key={d} value={d}>{d}</option>
-                          ))}
-                        </select>
+                          <GraduationCap className="w-5 h-5" />
+                          <span className="text-xs font-bold">Faculty Co-ordinator</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAdminForm({ ...adminForm, adminType: "WORKING_COMMITTEE" })}
+                          className={`p-3 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
+                            adminForm.adminType === "WORKING_COMMITTEE"
+                              ? "border-kar-red bg-red-50/80 text-kar-red shadow-sm ring-1 ring-kar-red"
+                              : "border-stone-200 hover:border-stone-300 text-stone-600 bg-white"
+                          }`}
+                        >
+                          <Briefcase className="w-5 h-5" />
+                          <span className="text-xs font-bold">Working Committee Member</span>
+                        </button>
                       </div>
                     </div>
+
+                    {/* Candidate Photo Upload */}
+                    <div className="p-3.5 bg-stone-50 rounded-2xl border border-stone-200">
+                      <CandidatePhotoUpload
+                        photoUrl={adminForm.photo_url}
+                        onPhotoChange={(url) => setAdminForm({ ...adminForm, photo_url: url })}
+                        label="Admin / Faculty Profile Photo"
+                      />
+                    </div>
+
+                    {/* If Faculty Coordinator: Name, Faculty ID, College Mail ID, Contact number, Institute, Department, Password, Confirm Password */}
+                    {adminForm.adminType === "FACULTY_COORDINATOR" ? (
+                      <>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                              Faculty Full Name *
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              value={adminForm.fullName}
+                              onChange={(e) => setAdminForm({ ...adminForm, fullName: e.target.value })}
+                              placeholder="e.g. Dr. Rajeshwari S"
+                              className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                              Faculty ID *
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              value={adminForm.facultyId}
+                              onChange={(e) => setAdminForm({ ...adminForm, facultyId: e.target.value.toUpperCase() })}
+                              placeholder="e.g. AIT-FAC-1042"
+                              className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm font-mono uppercase focus:ring-2 focus:ring-kar-red focus:outline-hidden"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                              College Mail ID *
+                            </label>
+                            <input
+                              type="email"
+                              required
+                              value={adminForm.email}
+                              onChange={(e) => setAdminForm({ ...adminForm, email: e.target.value })}
+                              placeholder="faculty@acharya.ac.in"
+                              className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                              Contact Number *
+                            </label>
+                            <input
+                              type="tel"
+                              required
+                              value={adminForm.phone}
+                              onChange={(e) => setAdminForm({ ...adminForm, phone: e.target.value })}
+                              placeholder="10-digit number"
+                              className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden"
+                            />
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      /* Working Committee Member */
+                      <>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                              Full Name *
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              value={adminForm.fullName}
+                              onChange={(e) => setAdminForm({ ...adminForm, fullName: e.target.value })}
+                              placeholder="Lead / Coordinator Name"
+                              className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                              Desired Username *
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              value={adminForm.username}
+                              onChange={(e) => setAdminForm({ ...adminForm, username: e.target.value.toLowerCase() })}
+                              placeholder="e.g. suresh_rao"
+                              className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                              College Mail ID *
+                            </label>
+                            <input
+                              type="email"
+                              required
+                              value={adminForm.email}
+                              onChange={(e) => setAdminForm({ ...adminForm, email: e.target.value })}
+                              placeholder="lead@acharya.ac.in"
+                              className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                              Contact Number *
+                            </label>
+                            <input
+                              type="tel"
+                              required
+                              value={adminForm.phone}
+                              onChange={(e) => setAdminForm({ ...adminForm, phone: e.target.value })}
+                              placeholder="10-digit number"
+                              className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden"
+                            />
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Institute and Department with Manual Input support */}
+                    <InstituteDepartmentSelect
+                      selectedInstitute={adminForm.institute}
+                      selectedDepartment={adminForm.department}
+                      onInstituteChange={(inst) => setAdminForm({ ...adminForm, institute: inst })}
+                      onDepartmentChange={(dept) => setAdminForm({ ...adminForm, department: dept })}
+                    />
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
@@ -1026,7 +1193,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                           value={adminForm.password}
                           onChange={(e) => setAdminForm({ ...adminForm, password: e.target.value })}
                           placeholder="Min. 6 characters"
-                          className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm"
+                          className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden"
                         />
                       </div>
 
@@ -1041,7 +1208,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                           value={adminForm.confirmPassword}
                           onChange={(e) => setAdminForm({ ...adminForm, confirmPassword: e.target.value })}
                           placeholder="Re-enter password"
-                          className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm"
+                          className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden"
                         />
                       </div>
                     </div>

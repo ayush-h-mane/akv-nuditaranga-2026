@@ -23,6 +23,16 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     account_status = Column(String, default="ACTIVE", nullable=False)  # ACTIVE, DISABLED
     
+    # Candidate profile image (Base64 data URL or hosted URL)
+    photo_url = Column(Text, nullable=True)
+
+    # AKV Domain for volunteers (e.g. Promotions, Decorations, Culturals, etc.)
+    volunteer_domain = Column(String, nullable=True)
+
+    # Admin designation & faculty identification
+    admin_type = Column(String, default="WORKING_COMMITTEE", nullable=True)  # FACULTY_COORDINATOR, WORKING_COMMITTEE
+    faculty_id = Column(String, nullable=True)
+    
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
@@ -39,6 +49,11 @@ class Admin(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
     username = Column(String, unique=True, index=True, nullable=False)
+    
+    # Role type: FACULTY_COORDINATOR or WORKING_COMMITTEE
+    admin_type = Column(String, default="WORKING_COMMITTEE", index=True, nullable=True)
+    faculty_id = Column(String, nullable=True)
+
     # Status: PENDING_APPROVAL, APPROVED, REJECTED
     approval_status = Column(String, default="PENDING_APPROVAL", index=True, nullable=False)
     approved_by = Column(String, nullable=True)
@@ -175,6 +190,7 @@ class Activity(Base):
     desc_en = Column(Text, nullable=False)
     desc_kn = Column(Text, nullable=False)
     image = Column(Text, nullable=False)
+    activity_date = Column(String, nullable=True, default="")  # Date of the activity (e.g. YYYY-MM-DD)
     tag_en = Column(String, nullable=True, default="")
     tag_kn = Column(String, nullable=True, default="")
     icon = Column(String, nullable=True, default="")
@@ -191,4 +207,21 @@ class GalleryItem(Base):
     desc_en = Column(Text, nullable=True, default="")
     desc_kn = Column(Text, nullable=True, default="")
     image = Column(Text, nullable=False)
+    event_date = Column(String, nullable=True, default="")  # Date of the event (e.g. YYYY-MM-DD)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class SocialPost(Base):
+    __tablename__ = "social_posts"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    type = Column(String, default="reel", index=True, nullable=False)  # "reel" or "post"
+    url = Column(String, nullable=False)  # Instagram/social URL
+    likes = Column(String, default="0", nullable=True)  # Original like count
+    description = Column(Text, nullable=True)
+    cover_image = Column(Text, nullable=True)  # Cover image (required for reels)
+    views = Column(String, default="0", nullable=True)
+    comments = Column(String, default="0", nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+

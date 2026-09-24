@@ -1483,14 +1483,61 @@ export const api = {
     }
   },
 
-  async getActivities() {
+  async getActivities(category = "all", activeOnly = true) {
     try {
-      const res = await fetch(`${API_BASE_URL}/activities`);
+      const url = `${API_BASE_URL}/activities?category=${category}&active_only=${activeOnly}`;
+      const res = await fetch(url);
       if (res.ok) return await res.json();
     } catch (err) {
-      console.warn("Backend unavailable, using empty activities list:", err.message);
+      console.warn("Backend unavailable, using fallback activities list:", err.message);
     }
-    return [];
+    return [
+      {
+        id: 1,
+        category: "nuditaranga",
+        title_en: "Nuditaranga Annual Inter-College Fest",
+        title_kn: "ನುಡಿತರಂಗ ವಾರ್ಷಿಕ ಸಾಂಸ್ಕೃತಿಕ ಹಬ್ಬ",
+        desc_en: "Flagship cultural extravaganza with over 25+ events spanning literature, classical singing, folk dances, rangoli, and street theatre.",
+        desc_kn: "ಸಾಹಿತ್ಯ, ಸುಗಮ ಸಂಗೀತ, ಜಾನಪದ ನೃತ್ಯ, ರಂಗೋಲಿ ಮತ್ತು ಬೀದಿ ನಾಟಕಗಳನ್ನೊಳಗೊಂಡ ೨೫ಕ್ಕೂ ಹೆಚ್ಚು ಸ್ಪರ್ಧೆಗಳ ಮಹಾಸಂಗಮ.",
+        image: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80",
+        activity_date: "2026-10-30",
+        tag_en: "Cultural Fest",
+        tag_kn: "ವಾರ್ಷಿಕ ಹಬ್ಬ",
+        icon: "Music",
+        is_active: true
+      }
+    ];
+  },
+
+  async createActivity(activityData) {
+    const res = await fetch(`${API_BASE_URL}/activities`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(activityData)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to create activity");
+    return data;
+  },
+
+  async updateActivity(id, activityData) {
+    const res = await fetch(`${API_BASE_URL}/activities/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(activityData)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to update activity");
+    return data;
+  },
+
+  async deleteActivity(id) {
+    const res = await fetch(`${API_BASE_URL}/activities/${id}`, {
+      method: "DELETE"
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to delete activity");
+    return data;
   },
 
   async getGallery(category = "all") {
@@ -1504,5 +1551,82 @@ export const api = {
       console.warn("Backend unavailable, using empty gallery list:", err.message);
     }
     return [];
+  },
+
+  async createGalleryItem(itemData) {
+    const res = await fetch(`${API_BASE_URL}/gallery`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(itemData)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to add gallery item");
+    return data;
+  },
+
+  async updateGalleryItem(id, itemData) {
+    const res = await fetch(`${API_BASE_URL}/gallery/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(itemData)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to update gallery item");
+    return data;
+  },
+
+  async deleteGalleryItem(id) {
+    const res = await fetch(`${API_BASE_URL}/gallery/${id}`, {
+      method: "DELETE"
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to delete gallery item");
+    return data;
+  },
+
+  // REELS & SOCIAL POSTS APIs
+  async getReels(postType = "all") {
+    try {
+      const url = postType && postType !== "all"
+        ? `${API_BASE_URL}/reels?post_type=${postType}`
+        : `${API_BASE_URL}/reels`;
+      const res = await fetch(url);
+      if (res.ok) return await res.json();
+    } catch (err) {
+      console.warn("Backend unavailable, using fallback reels:", err.message);
+    }
+    return [];
+  },
+
+  async createReel(reelData) {
+    const res = await fetch(`${API_BASE_URL}/reels`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(reelData)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to create reel/post");
+    return data;
+  },
+
+  async updateReel(id, reelData) {
+    const res = await fetch(`${API_BASE_URL}/reels/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(reelData)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to update reel/post");
+    return data;
+  },
+
+  async deleteReel(id) {
+    const res = await fetch(`${API_BASE_URL}/reels/${id}`, {
+      method: "DELETE"
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to delete reel/post");
+    return data;
   }
 };
+

@@ -21,7 +21,6 @@ import {
   LogOut, 
   FileSpreadsheet, 
   FileText, 
-  History, 
   RefreshCw, 
   Sparkles,
   MapPin,
@@ -30,8 +29,14 @@ import {
   Compass,
   ChevronRight,
   ShieldCheck,
-  UserX
+  UserX,
+  Film,
+  Share2,
+  Heart,
+  ExternalLink,
+  Image as ImageIcon
 } from "lucide-react";
+import { EventImageUpload } from "../components/EventImageUpload";
 
 export const SuperAdminDashboard = ({ onNavigateHome }) => {
   const { user, logout } = useAuth();
@@ -46,6 +51,35 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
   const [attendanceData, setAttendanceData] = useState({ records: [], available_dates: [] });
   const [eventsList, setEventsList] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
+
+  // Major Activities State (v2.1.0)
+  const [activitiesList, setActivitiesList] = useState([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(false);
+  const [activityModal, setActivityModal] = useState(null); // null, "new", "edit"
+  const [currentActivity, setCurrentActivity] = useState({
+    id: null,
+    title: "",
+    activity_date: "",
+    description: "",
+    image_url: "",
+    category: "Major Activity"
+  });
+
+  // Reels & Social Posts State (v2.1.0)
+  const [reelsList, setReelsList] = useState([]);
+  const [reelsLoading, setReelsLoading] = useState(false);
+  const [reelModal, setReelModal] = useState(null); // null, "new", "edit"
+  const [currentReel, setCurrentReel] = useState({
+    id: null,
+    type: "REEL",
+    url: "",
+    likes: 0,
+    description: "",
+    cover_image: "",
+    views: "",
+    comments: "",
+    is_active: true
+  });
 
   // Search & Filters
   const [studentSearch, setStudentSearch] = useState("");
@@ -161,10 +195,36 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
     }
   };
 
+  const loadActivities = async () => {
+    try {
+      setActivitiesLoading(true);
+      const data = await api.getActivities("all", false);
+      setActivitiesList(data || []);
+    } catch (e) {
+      console.error("Error loading activities:", e);
+    } finally {
+      setActivitiesLoading(false);
+    }
+  };
+
+  const loadReels = async () => {
+    try {
+      setReelsLoading(true);
+      const data = await api.getReels("all");
+      setReelsList(data || []);
+    } catch (e) {
+      console.error("Error loading reels:", e);
+    } finally {
+      setReelsLoading(false);
+    }
+  };
+
   // Master refresh depending on active section
   const refreshCurrentSection = () => {
     loadStats();
     if (activeSection === "admins") loadAdmins();
+    else if (activeSection === "activities") loadActivities();
+    else if (activeSection === "reels") loadReels();
     else if (activeSection === "students") loadStudents();
     else if (activeSection === "volunteers") loadVolunteers();
     else if (activeSection === "attendance") loadAttendance();
@@ -210,6 +270,10 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
   };
 
   const handleDeleteAdmin = async (id, uname) => {
+    if (uname === "akv-nt-2026" || uname === "superadmin") {
+      notify("error", "The Super Administrator profile cannot be deleted.");
+      return;
+    }
     if (!window.confirm(`Permanently remove admin '${uname}'?`)) return;
     try {
       await api.deleteAdmin(id);
@@ -217,6 +281,103 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
       loadAdmins();
     } catch (err) {
       notify("error", err.message);
+    }
+  };
+
+  // Handlers for Major Activities (v2.1.0)
+  const handleSaveActivity = async (e) => {
+    e.preventDefault();
+    if (!currentActivity.title || !currentActivity.description || !currentActivity.activity_date) {
+      notify("error", "Please fill in Activity Name, Date of Activity, and Description.");
+      return;
+    }
+    if (!currentActivity.image_url) {
+      notify("error", "Please upload or provide an Activity Image.");
+      return;
+    }
+    try {
+      if (activityModal === "new") {
+        await api.createActivity({
+          title: currentActivity.title.trim(),
+          description: currentActivity.description.trim(),
+          activity_date: currentActivity.activity_date,
+          image_url: currentActivity.image_url,
+          category: currentActivity.category || "Major Activity"
+        });
+        notify("success", "Major Activity added successfully!");
+      } else if (activityModal === "edit") {
+        await api.updateActivity(currentActivity.id, {
+          title: currentActivity.title.trim(),
+          description: currentActivity.description.trim(),
+          activity_date: currentActivity.activity_date,
+          image_url: currentActivity.image_url,
+          category: currentActivity.category || "Major Activity"
+        });
+        notify("success", "Major Activity updated successfully!");
+      }
+      setActivityModal(null);
+      loadActivities();
+    } catch (err) {
+      notify("error", err.message || "Failed to save activity.");
+    }
+  };
+
+  const handleDeleteActivity = async (id, title) => {
+    if (!window.confirm(`Permanently remove major activity '${title}'?`)) return;
+    try {
+      await api.deleteActivity(id);
+      notify("success", `Activity '${title}' removed.`);
+      loadActivities();
+    } catch (err) {
+      notify("error", err.message || "Failed to delete activity.");
+    }
+  };
+
+  // Handlers for Reels & Posts (v2.1.0)
+  const handleSaveReel = async (e) => {
+    e.preventDefault();
+    if (!currentReel.url || !currentReel.description) {
+      notify("error", "Please provide Reel/Post Link and Description.");
+      return;
+    }
+    if (currentReel.type === "REEL" && !currentReel.cover_image) {
+      notify("error", "A Cover Image is required when adding a Reel.");
+      return;
+    }
+    try {
+      const payload = {
+        type: currentReel.type,
+        url: currentReel.url.trim(),
+        likes: parseInt(currentReel.likes) || 0,
+        description: currentReel.description.trim(),
+        cover_image: currentReel.cover_image || null,
+        views: currentReel.views ? String(currentReel.views) : null,
+        comments: currentReel.comments ? String(currentReel.comments) : null,
+        is_active: currentReel.is_active !== false
+      };
+
+      if (reelModal === "new") {
+        await api.createReel(payload);
+        notify("success", `${currentReel.type === "REEL" ? "Reel" : "Post"} added successfully!`);
+      } else if (reelModal === "edit") {
+        await api.updateReel(currentReel.id, payload);
+        notify("success", `${currentReel.type === "REEL" ? "Reel" : "Post"} updated successfully!`);
+      }
+      setReelModal(null);
+      loadReels();
+    } catch (err) {
+      notify("error", err.message || "Failed to save reel/post.");
+    }
+  };
+
+  const handleDeleteReel = async (id) => {
+    if (!window.confirm("Permanently remove this Reel/Post?")) return;
+    try {
+      await api.deleteReel(id);
+      notify("success", "Reel/Post removed.");
+      loadReels();
+    } catch (err) {
+      notify("error", err.message || "Failed to delete reel.");
     }
   };
 
@@ -435,6 +596,8 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
           {[
             { id: "overview", label: "Dashboard Overview", icon: BarChart3 },
             { id: "admins", label: `Admin Approvals ${metrics?.pending_admins ? `(${metrics.pending_admins})` : ""}`, icon: ShieldCheck, alert: metrics?.pending_admins > 0 },
+            { id: "activities", label: "Major AKV Activities", icon: Sparkles },
+            { id: "reels", label: "Reels & Posts", icon: Film },
             { id: "students", label: "Student Directory", icon: Users },
             { id: "volunteers", label: "Volunteer Management", icon: UserCheck },
             { id: "attendance", label: "Daily Attendance Records", icon: Clock },
@@ -624,81 +787,383 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-stone-100">
-                      {adminsList.map((adm) => (
-                        <tr key={adm.id} className="hover:bg-stone-50/80 transition-colors">
-                          <td className="py-3 px-3">
-                            <span className="font-bold text-stone-900 block">{adm.full_name}</span>
-                            <span className="text-[11px] text-stone-400">{adm.email}</span>
-                          </td>
-                          <td className="py-3 px-3 font-mono font-bold text-stone-800">
-                            {adm.username}
-                          </td>
-                          <td className="py-3 px-3 text-stone-600 font-medium">
-                            {adm.department}
-                          </td>
-                          <td className="py-3 px-3 text-stone-600 font-mono">
-                            {adm.phone}
-                          </td>
-                          <td className="py-3 px-3">
-                            <span className={`px-2.5 py-1 rounded-full text-[11px] font-extrabold ${
-                              adm.approval_status === "APPROVED"
-                                ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                                : adm.approval_status === "PENDING_APPROVAL"
-                                ? "bg-amber-100 text-amber-900 border border-amber-300 animate-pulse"
-                                : "bg-red-100 text-red-800 border border-red-200"
-                            }`}>
-                              {adm.approval_status}
-                            </span>
-                          </td>
-                          <td className="py-3 px-3 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              {adm.approval_status === "PENDING_APPROVAL" && (
-                                <>
-                                  <button
-                                    onClick={() => handleApproveAdmin(adm.id, adm.username)}
-                                    className="p-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-bold flex items-center gap-1 shadow-xs"
-                                    title="Approve Admin"
-                                  >
-                                    <Check className="w-3.5 h-3.5" />
-                                    <span>Approve</span>
-                                  </button>
-                                  <button
-                                    onClick={() => handleRejectAdmin(adm.id, adm.username)}
-                                    className="p-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-kar-red text-[11px] font-bold flex items-center gap-1"
-                                    title="Reject Admin"
-                                  >
-                                    <X className="w-3.5 h-3.5" />
-                                    <span>Reject</span>
-                                  </button>
-                                </>
-                              )}
+                      {adminsList.map((adm) => {
+                        const isSuperAdmin = adm.role === "SUPERADMIN" || adm.username === "superadmin" || adm.username === "akv-nt-2026";
+                        return (
+                          <tr key={adm.id} className="hover:bg-stone-50/80 transition-colors">
+                            <td className="py-3 px-3">
+                              <div className="flex items-center gap-2.5">
+                                {adm.photo_url ? (
+                                  <img
+                                    src={adm.photo_url}
+                                    alt={adm.full_name}
+                                    className="w-9 h-9 rounded-xl object-cover border border-stone-200 shadow-2xs shrink-0"
+                                  />
+                                ) : (
+                                  <div className="w-9 h-9 rounded-xl bg-stone-100 border border-stone-200 flex items-center justify-center text-stone-500 font-bold text-xs shrink-0">
+                                    {(adm.full_name || "A").charAt(0).toUpperCase()}
+                                  </div>
+                                )}
+                                <div>
+                                  <span className="font-bold text-stone-900 block">{adm.full_name}</span>
+                                  <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                                    <span className="text-[11px] text-stone-400">{adm.email}</span>
+                                    {adm.admin_type === "FACULTY_COORDINATOR" ? (
+                                      <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200">
+                                        Faculty ({adm.faculty_id || "ID N/A"})
+                                      </span>
+                                    ) : isSuperAdmin ? (
+                                      <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-red-50 text-kar-red border border-red-200">
+                                        Super Admin
+                                      </span>
+                                    ) : (
+                                      <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-stone-100 text-stone-700 border border-stone-200">
+                                        Committee Member
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-3 px-3 font-mono font-bold text-stone-800">
+                              {adm.username}
+                            </td>
+                            <td className="py-3 px-3 text-stone-600 font-medium">
+                              <div>{adm.institute || "Acharya"}</div>
+                              <div className="text-[11px] text-stone-400">{adm.department}</div>
+                            </td>
+                            <td className="py-3 px-3 text-stone-600 font-mono">
+                              {adm.phone}
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className={`px-2.5 py-1 rounded-full text-[11px] font-extrabold ${
+                                adm.approval_status === "APPROVED"
+                                  ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                  : adm.approval_status === "PENDING_APPROVAL"
+                                  ? "bg-amber-100 text-amber-900 border border-amber-300 animate-pulse"
+                                  : "bg-red-100 text-red-800 border border-red-200"
+                              }`}>
+                                {adm.approval_status}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                {adm.approval_status === "PENDING_APPROVAL" && (
+                                  <>
+                                    <button
+                                      onClick={() => handleApproveAdmin(adm.id, adm.username)}
+                                      className="p-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-bold flex items-center gap-1 shadow-xs cursor-pointer"
+                                      title="Approve Admin"
+                                    >
+                                      <Check className="w-3.5 h-3.5" />
+                                      <span>Approve</span>
+                                    </button>
+                                    <button
+                                      onClick={() => handleRejectAdmin(adm.id, adm.username)}
+                                      className="p-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-kar-red text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                                      title="Reject Admin"
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                      <span>Reject</span>
+                                    </button>
+                                  </>
+                                )}
 
-                              {adm.approval_status === "APPROVED" && (
-                                <button
-                                  onClick={() => handleToggleAdmin(adm.id)}
-                                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border ${
-                                    adm.account_status === "ACTIVE"
-                                      ? "border-stone-300 text-stone-600 hover:bg-stone-100"
-                                      : "border-red-300 text-red-700 bg-red-50 hover:bg-red-100"
-                                  }`}
-                                >
-                                  {adm.account_status === "ACTIVE" ? "Deactivate" : "Activate"}
-                                </button>
-                              )}
+                                {adm.approval_status === "APPROVED" && !isSuperAdmin && (
+                                  <button
+                                    onClick={() => handleToggleAdmin(adm.id)}
+                                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border cursor-pointer ${
+                                      adm.account_status === "ACTIVE"
+                                        ? "border-stone-300 text-stone-600 hover:bg-stone-100"
+                                        : "border-red-300 text-red-700 bg-red-50 hover:bg-red-100"
+                                    }`}
+                                  >
+                                    {adm.account_status === "ACTIVE" ? "Deactivate" : "Activate"}
+                                  </button>
+                                )}
 
-                              <button
-                                onClick={() => handleDeleteAdmin(adm.id, adm.username)}
-                                className="p-1.5 text-stone-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
-                                title="Delete Admin"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                                {!isSuperAdmin ? (
+                                  <button
+                                    onClick={() => handleDeleteAdmin(adm.id, adm.username)}
+                                    className="p-1.5 text-stone-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
+                                    title="Delete Admin"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-stone-100 text-stone-500 border border-stone-200">
+                                    Protected
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ==================================================== */}
+          {/* SECTION: MAJOR AKV ACTIVITIES (v2.1.0)               */}
+          {/* ==================================================== */}
+          {activeSection === "activities" && (
+            <div className="bg-white p-6 sm:p-7 rounded-3xl border border-stone-200 shadow-xs space-y-5 animate-fade-in">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-100 pb-4">
+                <div>
+                  <h3 className="font-extrabold text-base text-stone-900 flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-amber-500" />
+                    <span>Major AKV Activities ({activitiesList.length})</span>
+                  </h3>
+                  <p className="text-xs text-stone-500">
+                    Manage key flagship activities, cultural drives, and annual milestones displayed across the website.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={loadActivities}
+                    className="p-2 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 cursor-pointer"
+                    title="Refresh List"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${activitiesLoading ? "animate-spin" : ""}`} />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCurrentActivity({
+                        id: null,
+                        title: "",
+                        activity_date: new Date().toISOString().split("T")[0],
+                        description: "",
+                        image_url: "",
+                        category: "Major Activity"
+                      });
+                      setActivityModal("new");
+                    }}
+                    className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-kar-red to-red-600 text-white font-extrabold text-xs shadow-md hover:shadow-lg transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add Major Activity</span>
+                  </button>
+                </div>
+              </div>
+
+              {activitiesLoading ? (
+                <div className="py-12 text-center text-stone-400 text-sm">
+                  Loading activities...
+                </div>
+              ) : activitiesList.length === 0 ? (
+                <div className="py-12 text-center text-stone-400 text-sm">
+                  No major activities configured yet. Click "Add Major Activity" to create one.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {activitiesList.map((act) => (
+                    <div
+                      key={act.id}
+                      className="rounded-2xl border border-stone-200 bg-stone-50/50 hover:shadow-md transition-shadow overflow-hidden flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="relative h-44 w-full bg-stone-900 overflow-hidden">
+                          <img
+                            src={act.image || act.image_url || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80"}
+                            alt={act.title || act.title_en}
+                            className="w-full h-full object-cover"
+                          />
+                          {act.activity_date && (
+                            <span className="absolute bottom-2 left-2 px-2.5 py-1 rounded-md text-[10px] font-bold bg-black/75 text-white backdrop-blur-xs flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-amber-400" />
+                              {act.activity_date}
+                            </span>
+                          )}
+                        </div>
+                        <div className="p-4 space-y-1.5">
+                          <h4 className="font-extrabold text-stone-900 text-sm">
+                            {act.title || act.title_en}
+                          </h4>
+                          <p className="text-xs text-stone-600 line-clamp-3 leading-relaxed">
+                            {act.description || act.desc_en}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="p-4 pt-0 border-t border-stone-200/60 mt-3 flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-stone-400 uppercase">
+                          {act.category || "Major Activity"}
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => {
+                              setCurrentActivity({
+                                id: act.id,
+                                title: act.title || act.title_en || "",
+                                activity_date: act.activity_date || "",
+                                description: act.description || act.desc_en || "",
+                                image_url: act.image || act.image_url || "",
+                                category: act.category || "Major Activity"
+                              });
+                              setActivityModal("edit");
+                            }}
+                            className="p-1.5 rounded-lg border border-stone-200 hover:bg-stone-200 text-stone-700 cursor-pointer"
+                            title="Edit Activity"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteActivity(act.id, act.title || act.title_en)}
+                            className="p-1.5 rounded-lg border border-red-200 hover:bg-red-50 text-red-600 cursor-pointer"
+                            title="Delete Activity"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ==================================================== */}
+          {/* SECTION: REELS & SOCIAL POSTS (v2.1.0)               */}
+          {/* ==================================================== */}
+          {activeSection === "reels" && (
+            <div className="bg-white p-6 sm:p-7 rounded-3xl border border-stone-200 shadow-xs space-y-5 animate-fade-in">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-100 pb-4">
+                <div>
+                  <h3 className="font-extrabold text-base text-stone-900 flex items-center gap-2">
+                    <Film className="w-5 h-5 text-pink-600" />
+                    <span>Instagram Reels & Social Posts ({reelsList.length})</span>
+                  </h3>
+                  <p className="text-xs text-stone-500">
+                    Add, edit, or remove featured Instagram reels and cultural posts displayed in the social section.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={loadReels}
+                    className="p-2 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 cursor-pointer"
+                    title="Refresh List"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${reelsLoading ? "animate-spin" : ""}`} />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCurrentReel({
+                        id: null,
+                        type: "REEL",
+                        url: "",
+                        likes: 1200,
+                        description: "",
+                        cover_image: "",
+                        views: "15K",
+                        comments: "45",
+                        is_active: true
+                      });
+                      setReelModal("new");
+                    }}
+                    className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 text-white font-extrabold text-xs shadow-md hover:shadow-lg transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add Reel / Post</span>
+                  </button>
+                </div>
+              </div>
+
+              {reelsLoading ? (
+                <div className="py-12 text-center text-stone-400 text-sm">
+                  Loading reels...
+                </div>
+              ) : reelsList.length === 0 ? (
+                <div className="py-12 text-center text-stone-400 text-sm">
+                  No custom reels or posts added yet. Default fest reels are shown on the website.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {reelsList.map((post) => (
+                    <div
+                      key={post.id}
+                      className="rounded-2xl border border-stone-200 bg-stone-50/50 hover:shadow-md transition-shadow overflow-hidden flex flex-col justify-between"
+                    >
+                      <div>
+                        {/* Cover Image for Reel */}
+                        <div className="relative h-48 w-full bg-stone-900 overflow-hidden">
+                          {post.cover_image ? (
+                            <img
+                              src={post.cover_image}
+                              alt="Reel Cover"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center text-stone-500 gap-1 bg-gradient-to-br from-stone-800 to-stone-950">
+                              <Film className="w-8 h-8 text-pink-500" />
+                              <span className="text-[11px]">No Cover Image</span>
+                            </div>
+                          )}
+                          <span className="absolute top-2 left-2 px-2 py-0.5 rounded text-[10px] font-extrabold bg-black/75 text-white uppercase backdrop-blur-xs">
+                            {post.type}
+                          </span>
+                          <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded text-[10px] font-bold bg-pink-600/90 text-white backdrop-blur-xs flex items-center gap-1">
+                            <Heart className="w-3 h-3 fill-current" />
+                            {post.likes ? post.likes.toLocaleString() : 0} Likes
+                          </span>
+                        </div>
+
+                        <div className="p-4 space-y-2">
+                          <p className="text-xs text-stone-700 line-clamp-3 leading-relaxed">
+                            {post.description}
+                          </p>
+                          <a
+                            href={post.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[11px] font-bold text-pink-600 hover:text-pink-700 underline truncate max-w-full"
+                          >
+                            <span>Watch on Instagram</span>
+                            <ExternalLink className="w-3 h-3 shrink-0" />
+                          </a>
+                        </div>
+                      </div>
+
+                      <div className="p-4 pt-0 border-t border-stone-200/60 mt-2 flex items-center justify-between">
+                        <span className="text-[10px] text-stone-400">
+                          {post.views ? `${post.views} views` : "Active"}
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => {
+                              setCurrentReel({
+                                id: post.id,
+                                type: post.type || "REEL",
+                                url: post.url || "",
+                                likes: post.likes || 0,
+                                description: post.description || "",
+                                cover_image: post.cover_image || "",
+                                views: post.views || "",
+                                comments: post.comments || "",
+                                is_active: post.is_active !== false
+                              });
+                              setReelModal("edit");
+                            }}
+                            className="p-1.5 rounded-lg border border-stone-200 hover:bg-stone-200 text-stone-700 cursor-pointer"
+                            title="Edit Reel"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteReel(post.id)}
+                            className="p-1.5 rounded-lg border border-red-200 hover:bg-red-50 text-red-600 cursor-pointer"
+                            title="Delete Reel"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -1879,6 +2344,211 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                 >
                   <Check className="w-4 h-4" />
                   <span>Save Changes</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================== */}
+      {/* MODAL: ADD / EDIT MAJOR ACTIVITY (v2.1.0)            */}
+      {/* ==================================================== */}
+      {activityModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in my-8">
+            <div className="flex items-center justify-between border-b border-stone-200 pb-3">
+              <h3 className="font-extrabold text-base text-stone-900 flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-amber-500" />
+                <span>{activityModal === "new" ? "Add Major AKV Activity" : "Edit Major AKV Activity"}</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setActivityModal(null)}
+                className="p-1.5 text-stone-400 hover:text-stone-700 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveActivity} className="space-y-4 text-xs">
+              {/* Activity Image */}
+              <EventImageUpload
+                imageUrl={currentActivity.image_url}
+                onImageChange={(url) => setCurrentActivity({ ...currentActivity, image_url: url })}
+                label="Activity Image *"
+                required={true}
+              />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-stone-700 uppercase">Activity Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={currentActivity.title}
+                    onChange={(e) => setCurrentActivity({ ...currentActivity, title: e.target.value })}
+                    placeholder="e.g. Grand Kannada Rajyotsava Celebrations"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 text-sm focus:ring-2 focus:ring-kar-red"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-stone-700 uppercase">Date of Activity *</label>
+                  <input
+                    type="date"
+                    required
+                    value={currentActivity.activity_date}
+                    onChange={(e) => setCurrentActivity({ ...currentActivity, activity_date: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 text-sm focus:ring-2 focus:ring-kar-red"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-stone-700 uppercase">Description *</label>
+                <textarea
+                  rows={4}
+                  required
+                  value={currentActivity.description}
+                  onChange={(e) => setCurrentActivity({ ...currentActivity, description: e.target.value })}
+                  placeholder="Comprehensive details of the activity, participation highlights, or institutional significance..."
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 text-sm focus:ring-2 focus:ring-kar-red"
+                />
+              </div>
+
+              <div className="flex items-center gap-3 pt-2 border-t border-stone-100">
+                <button
+                  type="button"
+                  onClick={() => setActivityModal(null)}
+                  className="flex-1 py-2.5 rounded-xl border border-stone-300 font-bold hover:bg-stone-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-kar-red to-red-600 hover:from-red-700 hover:to-red-800 text-white font-bold shadow-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>{activityModal === "new" ? "Save Activity" : "Update Activity"}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================== */}
+      {/* MODAL: ADD / EDIT REEL / POST (v2.1.0)               */}
+      {/* ==================================================== */}
+      {reelModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in my-8">
+            <div className="flex items-center justify-between border-b border-stone-200 pb-3">
+              <h3 className="font-extrabold text-base text-stone-900 flex items-center gap-2">
+                <Film className="w-5 h-5 text-pink-600" />
+                <span>{reelModal === "new" ? "Add Reel / Social Post" : "Edit Reel / Social Post"}</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setReelModal(null)}
+                className="p-1.5 text-stone-400 hover:text-stone-700 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveReel} className="space-y-4 text-xs">
+              {/* Type Switcher */}
+              <div>
+                <label className="font-bold text-stone-700 uppercase mb-1 block">Post Type</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentReel({ ...currentReel, type: "REEL" })}
+                    className={`py-2 rounded-xl font-bold border transition-colors cursor-pointer ${
+                      currentReel.type === "REEL"
+                        ? "bg-pink-50 border-pink-500 text-pink-700 shadow-xs"
+                        : "bg-white border-stone-200 text-stone-600"
+                    }`}
+                  >
+                    Instagram Reel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentReel({ ...currentReel, type: "POST" })}
+                    className={`py-2 rounded-xl font-bold border transition-colors cursor-pointer ${
+                      currentReel.type === "POST"
+                        ? "bg-pink-50 border-pink-500 text-pink-700 shadow-xs"
+                        : "bg-white border-stone-200 text-stone-600"
+                    }`}
+                  >
+                    Standard Post
+                  </button>
+                </div>
+              </div>
+
+              {/* Cover Image for Reels */}
+              <EventImageUpload
+                imageUrl={currentReel.cover_image}
+                onImageChange={(url) => setCurrentReel({ ...currentReel, cover_image: url })}
+                label={currentReel.type === "REEL" ? "Cover Image for Reel *" : "Post Image (Optional)"}
+                required={currentReel.type === "REEL"}
+              />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-stone-700 uppercase">Reel / Post Link *</label>
+                  <input
+                    type="url"
+                    required
+                    value={currentReel.url}
+                    onChange={(e) => setCurrentReel({ ...currentReel, url: e.target.value })}
+                    placeholder="https://www.instagram.com/reel/..."
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 text-sm focus:ring-2 focus:ring-pink-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-stone-700 uppercase">Original Like Count *</label>
+                  <input
+                    type="number"
+                    min={0}
+                    required
+                    value={currentReel.likes}
+                    onChange={(e) => setCurrentReel({ ...currentReel, likes: parseInt(e.target.value) || 0 })}
+                    placeholder="e.g. 1850"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 text-sm focus:ring-2 focus:ring-pink-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-stone-700 uppercase">Description / Caption *</label>
+                <textarea
+                  rows={3}
+                  required
+                  value={currentReel.description}
+                  onChange={(e) => setCurrentReel({ ...currentReel, description: e.target.value })}
+                  placeholder="Reel caption, performer credits, hashtags..."
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 text-sm focus:ring-2 focus:ring-pink-500"
+                />
+              </div>
+
+              <div className="flex items-center gap-3 pt-2 border-t border-stone-100">
+                <button
+                  type="button"
+                  onClick={() => setReelModal(null)}
+                  className="flex-1 py-2.5 rounded-xl border border-stone-300 font-bold hover:bg-stone-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 text-white font-bold shadow-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>{reelModal === "new" ? "Save Reel / Post" : "Update Reel / Post"}</span>
                 </button>
               </div>
             </form>

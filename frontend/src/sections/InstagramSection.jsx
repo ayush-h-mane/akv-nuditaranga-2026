@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useLanguage } from "../context/LanguageContext";
 import { siteConfig } from "../config/siteConfig";
+import { api } from "../services/api";
 import { toKannadaDigits } from "../utils/kannadaUtils";
 import { ExternalLink, Heart, MessageCircle, Send, Play } from "lucide-react";
 
@@ -55,6 +56,33 @@ export const InstagramSection = () => {
     }
   ];
 
+  const [reels, setReels] = useState(originalReels);
+
+  useEffect(() => {
+    const fetchReels = async () => {
+      try {
+        const data = await api.getReels();
+        if (data && data.length > 0) {
+          const formatted = data.map((item) => ({
+            id: item.id,
+            type: (item.type || "reel").toLowerCase(),
+            url: item.url,
+            likes: typeof item.likes === "number" ? item.likes.toLocaleString() : item.likes,
+            views: item.views || "15K",
+            comments: item.comments || "45",
+            captionEn: item.description,
+            captionKn: item.description,
+            image: item.cover_image || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=700&q=80"
+          }));
+          setReels(formatted);
+        }
+      } catch (err) {
+        console.warn("Using default reels fallback:", err.message);
+      }
+    };
+    fetchReels();
+  }, []);
+
   return (
     <section className="py-20 bg-white relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -87,7 +115,7 @@ export const InstagramSection = () => {
 
         {/* Instagram Interactive Reel Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {originalReels.map((post) => (
+          {reels.map((post) => (
             <a
               key={post.id}
               href={post.url}
