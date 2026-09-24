@@ -181,7 +181,7 @@ export const Navbar = ({ currentView, setCurrentView, onOpenAuthTab }) => {
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border border-stone-200 text-stone-700 hover:bg-stone-50 hover:text-stone-900 transition-colors shadow-xs"
             >
               <User className="w-3.5 h-3.5 text-kar-red" />
-              <span>Login/Register</span>
+              <span>Login / Portal</span>
             </button>
           )}
 
@@ -198,7 +198,7 @@ export const Navbar = ({ currentView, setCurrentView, onOpenAuthTab }) => {
             <UserCheck className="w-4 h-4 text-amber-600" />
           </button>
 
-          {/* Primary CTA: Register Now */}
+          {/* Primary CTA: Login/Register */}
           <button
             onClick={handleRegisterCTA}
             className="shrink-0 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-extrabold text-white shadow-md hover:shadow-lg transition-all transform active:scale-95 bg-gradient-to-r from-kar-red via-red-600 to-kar-yellow flex items-center gap-1.5 whitespace-nowrap"
@@ -266,7 +266,7 @@ export const Navbar = ({ currentView, setCurrentView, onOpenAuthTab }) => {
               className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-stone-700 bg-stone-50 hover:bg-stone-100"
             >
               <LayoutDashboard className="w-4 h-4 text-kar-red" />
-              <span>{user ? "My Dashboard" : "Login/Register"}</span>
+              <span>{user ? "My Dashboard" : "Sign In to Portal"}</span>
             </button>
 
             <button

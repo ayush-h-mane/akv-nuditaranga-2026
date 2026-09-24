@@ -10,7 +10,8 @@ export const translations = {
       contact: "ಸಂಪರ್ಕ",
       checkIn: "ಹಾಜರಾತಿ / ಸ್ಕ್ಯಾನರ್",
       admin: "ಆಡಳಿತ ಮಂಡಳಿ",
-      registerNow: "ಈಗಲೇ ನೋಂದಾಯಿಸಿ"
+      registerNow: "ಲಾಗಿನ್ / ನೋಂದಣಿ",
+      loginRegister: "ಲಾಗಿನ್ / ನೋಂದಣಿ"
     },
     hero: {
       tag: "ಆಚಾರ್ಯ ತಾಂತ್ರಿಕ ಮಹಾವಿದ್ಯಾಲಯದ ಆಚಾರ್ಯ ಕನ್ನಡ ವೇದಿಕೆ",
@@ -244,7 +245,8 @@ export const translations = {
       contact: "Contact",
       checkIn: "Check-In / Scanner",
       admin: "Admin Portal",
-      registerNow: "Register Now"
+      registerNow: "Login/Register",
+      loginRegister: "Login/Register"
     },
     hero: {
       tag: "Acharya Kannada Vedike • Cultural Platform of Acharya Institute of Technology",
