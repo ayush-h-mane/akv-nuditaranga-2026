@@ -17,16 +17,24 @@ from .routes import (
     superadmin
 )
 
-# Ensure schema integrity and automatic migrations for SQLite
+# Ensure schema integrity and automatic migrations for SQLite and PostgreSQL
 def ensure_schema_migrations():
     try:
         if engine.dialect.name == "sqlite":
             with engine.connect() as conn:
-                # Check registrations table columns
                 cols = [c[1] for c in conn.exec_driver_sql("PRAGMA table_info(registrations)").fetchall()]
                 if cols and "user_id" not in cols:
-                    print("[MIGRATION] Adding 'user_id' column to 'registrations' table...")
+                    print("[MIGRATION] Adding 'user_id' column to 'registrations' table in SQLite...")
                     conn.exec_driver_sql("ALTER TABLE registrations ADD COLUMN user_id INTEGER REFERENCES users(id)")
+        elif engine.dialect.name == "postgresql":
+            with engine.connect() as conn:
+                res = conn.exec_driver_sql(
+                    "SELECT column_name FROM information_schema.columns WHERE table_name = 'registrations' AND column_name = 'user_id'"
+                ).fetchone()
+                if not res:
+                    print("[MIGRATION] Adding 'user_id' column to 'registrations' table in PostgreSQL...")
+                    conn.exec_driver_sql("ALTER TABLE registrations ADD COLUMN user_id INTEGER REFERENCES users(id)")
+                    conn.commit()
     except Exception as e:
         print(f"[MIGRATION NOTICE] {e}")
 
@@ -41,9 +49,27 @@ app = FastAPI(
 )
 
 # CORS configuration
+allowed_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+if settings.FRONTEND_URL:
+    clean_frontend = settings.FRONTEND_URL.rstrip("/")
+    if clean_frontend and clean_frontend not in allowed_origins:
+        allowed_origins.append(clean_frontend)
+
+if settings.ALLOWED_ORIGINS:
+    for origin in settings.ALLOWED_ORIGINS.split(","):
+        o = origin.strip().rstrip("/")
+        if o and o not in allowed_origins:
+            allowed_origins.append(o)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
+    allow_origin_regex=r"^https:\/\/.*\.vercel\.app$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -290,6 +290,19 @@ def init_superadmin():
         # Provision default demo student users
         demo_students = [
             {
+                "name": "Rohan Gowda",
+                "auid": "AIT22CS001",
+                "email": "rohan.gowda@acharya.ac.in",
+                "phone": "9876543210",
+                "institute": "Acharya Institute of Technology",
+                "department": "Computer Science & Engineering",
+                "semester": 6,
+                "section": "A",
+                "gender": "Male",
+                "role": "VOLUNTEER",
+                "registration_id": "AKV-2026-000001"
+            },
+            {
                 "name": "Pooja Sharma",
                 "auid": "AIT22IS045",
                 "email": "pooja.sharma@acharya.ac.in",

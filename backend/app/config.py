@@ -5,12 +5,14 @@ class Settings(BaseSettings):
     APP_NAME: str = "Acharya Kannada Vedike (AKV) API"
     APP_VERSION: str = "2.0.0"
     API_PREFIX: str = "/api"
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:////tmp/akv_fest.db" if os.environ.get("VERCEL") else "sqlite:///./akv_fest.db")
+    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "production" if os.environ.get("VERCEL") else "development")
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "" if os.environ.get("VERCEL") else "sqlite:///./akv_fest.db")
     
     # JWT & Security
-    SECRET_KEY: str = os.getenv("JWT_SECRET", "akv-kannada-vedike-nuditaranga-secret-2026")
+    SECRET_KEY: str = os.getenv("JWT_SECRET_KEY") or os.getenv("JWT_SECRET", "akv-kannada-vedike-nuditaranga-secret-2026")
     JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 1440))
+    ALLOWED_ORIGINS: str = os.getenv("ALLOWED_ORIGINS", "")
     
     # Super Admin credentials
     SUPERADMIN_USERNAME: str = os.getenv("SUPERADMIN_USERNAME", "akv-nt-2026")
