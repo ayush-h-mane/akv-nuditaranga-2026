@@ -75,6 +75,22 @@ def get_current_user(
     except (ValueError, TypeError):
         if str(user_id).lower() == "superadmin" or payload.get("role") == "SUPERADMIN":
             user = db.query(User).filter(User.role == "SUPERADMIN").first()
+            if not user:
+                user = User(
+                    id=1,
+                    name=settings.SUPERADMIN_NAME,
+                    auid="AKV-SUPERADMIN",
+                    email=settings.SUPERADMIN_EMAIL,
+                    phone="9876543210",
+                    institute="Acharya Institute of Technology",
+                    department="Kannada Vedike",
+                    semester=7,
+                    section="A",
+                    gender="Male",
+                    role="SUPERADMIN",
+                    registration_id="AKV-SA-0001",
+                    account_status="ACTIVE"
+                )
         else:
             raise credentials_exception
 
@@ -143,223 +159,7 @@ def require_superadmin(current_user: User = Depends(get_current_user)) -> User:
 
 def init_superadmin():
     """
-    Auto-provision initial Super Admin from environment variables on startup.
-    Credentials are encrypted and never exposed in client code.
+    Database starts with zero preloaded records per user requirements.
+    SuperAdmin is authenticated on-demand via secure credentials without preloading mock data.
     """
-    db = SessionLocal()
-    try:
-        sa_username = settings.SUPERADMIN_USERNAME or "akv-nt-2026"
-        sa_password = settings.SUPERADMIN_PASSWORD or "akv.nt@2026"
-        hashed_pw = get_password_hash(sa_password)
-
-        # Check if user with that email or auid exists
-        sa_user = db.query(User).filter(
-            (User.auid == "AKV-SUPERADMIN") | 
-            (User.email == settings.SUPERADMIN_EMAIL)
-        ).first()
-
-        if not sa_user:
-            sa_user = User(
-                name=settings.SUPERADMIN_NAME,
-                auid="AKV-SUPERADMIN",
-                email=settings.SUPERADMIN_EMAIL,
-                phone="9876543210",
-                institute="Acharya Institute of Technology",
-                department="Kannada Vedike",
-                semester=7,
-                section="A",
-                gender="Male",
-                role="SUPERADMIN",
-                registration_id="AKV-SA-0001",
-                password_hash=hashed_pw,
-                account_status="ACTIVE"
-            )
-            db.add(sa_user)
-            db.commit()
-            db.refresh(sa_user)
-        else:
-            sa_user.password_hash = hashed_pw
-            sa_user.role = "SUPERADMIN"
-            sa_user.account_status = "ACTIVE"
-            db.commit()
-
-        # Check admin entry
-        admin_entry = db.query(Admin).filter(
-            (Admin.user_id == sa_user.id) | 
-            (Admin.username == sa_username) | 
-            (Admin.username == "superadmin")
-        ).first()
-
-        if not admin_entry:
-            admin_entry = Admin(
-                user_id=sa_user.id,
-                username=sa_username,
-                approval_status="APPROVED",
-                approved_by="SYSTEM_BOOTSTRAP",
-                approved_at=datetime.datetime.utcnow()
-            )
-            db.add(admin_entry)
-        # Provision primary coordinator admin: ayush_h_mane
-        admin_pw = settings.ADMIN_PASSWORD or "AcharyaAKV2026"
-        admin_hash = get_password_hash(admin_pw)
-        
-        ayush_user = db.query(User).filter(
-            (User.auid == "ADM-AYUSH") | 
-            (User.email == "ayush@acharya.ac.in") |
-            (User.email == "ayushh.22.beai@acharya.ac.in")
-        ).first()
-
-        if not ayush_user:
-            ayush_user = User(
-                name="Ayush H Mane",
-                auid="ADM-AYUSH",
-                email="ayush@acharya.ac.in",
-                phone="9876543211",
-                institute="Acharya Institute of Technology",
-                department="Computer Science & Engineering",
-                semester=7,
-                section="A",
-                gender="Male",
-                role="ADMIN",
-                registration_id="AKV-ADM-0001",
-                password_hash=admin_hash,
-                account_status="ACTIVE"
-            )
-            db.add(ayush_user)
-            db.commit()
-            db.refresh(ayush_user)
-        else:
-            ayush_user.password_hash = admin_hash
-            ayush_user.role = "ADMIN"
-            ayush_user.account_status = "ACTIVE"
-            db.commit()
-
-        adm = db.query(Admin).filter(
-            (Admin.username == "ayush_h_mane") | 
-            (Admin.user_id == ayush_user.id)
-        ).first()
-        if not adm:
-            adm = Admin(
-                user_id=ayush_user.id,
-                username="ayush_h_mane",
-                approval_status="APPROVED",
-                approved_by="SYSTEM_BOOTSTRAP",
-                approved_at=datetime.datetime.utcnow()
-            )
-            db.add(adm)
-        else:
-            adm.approval_status = "APPROVED"
-            adm.username = "ayush_h_mane"
-            adm.user_id = ayush_user.id
-        db.commit()
-
-        # Provision legacy admin: akvadmin
-        legacy_user = db.query(User).filter(User.auid == "ADM-AKVADMIN").first()
-        if not legacy_user:
-            legacy_user = User(
-                name="Prof. Basavaraj (Cultural Lead)",
-                auid="ADM-AKVADMIN",
-                email="akvadmin@acharya.ac.in",
-                phone="9876543212",
-                institute="Acharya Institute of Technology",
-                department="Kannada Vedike",
-                semester=8,
-                section="A",
-                gender="Male",
-                role="ADMIN",
-                registration_id="AKV-ADM-0002",
-                password_hash=admin_hash,
-                account_status="ACTIVE"
-            )
-            db.add(legacy_user)
-            db.commit()
-            db.refresh(legacy_user)
-
-        legacy_admin = db.query(Admin).filter(Admin.username == "akvadmin").first()
-        if not legacy_admin:
-            legacy_admin = Admin(
-                user_id=legacy_user.id,
-                username="akvadmin",
-                approval_status="APPROVED",
-                approved_by="SYSTEM_BOOTSTRAP",
-                approved_at=datetime.datetime.utcnow()
-            )
-            db.add(legacy_admin)
-            db.commit()
-
-        # Provision default demo student users
-        demo_students = [
-            {
-                "name": "Rohan Gowda",
-                "auid": "AIT22CS001",
-                "email": "rohan.gowda@acharya.ac.in",
-                "phone": "9876543210",
-                "institute": "Acharya Institute of Technology",
-                "department": "Computer Science & Engineering",
-                "semester": 6,
-                "section": "A",
-                "gender": "Male",
-                "role": "VOLUNTEER",
-                "registration_id": "AKV-2026-000001"
-            },
-            {
-                "name": "Pooja Sharma",
-                "auid": "AIT22IS045",
-                "email": "pooja.sharma@acharya.ac.in",
-                "phone": "9876543211",
-                "institute": "Acharya Institute of Technology",
-                "department": "Information Science & Engineering",
-                "semester": 4,
-                "section": "B",
-                "gender": "Female",
-                "role": "PARTICIPANT",
-                "registration_id": "AKV-2026-000002"
-            },
-            {
-                "name": "Kavya Murthy",
-                "auid": "1AY23CS199",
-                "email": "kavyamurthy@acharya.ac.in",
-                "phone": "9845012345",
-                "institute": "Acharya Institute of Technology",
-                "department": "Computer Science & Engineering",
-                "semester": 6,
-                "section": "A",
-                "gender": "Female",
-                "role": "VOLUNTEER",
-                "registration_id": "AKV-2026-000003"
-            }
-        ]
-        student_pw_hash = get_password_hash("Password123!")
-        for ds in demo_students:
-            s_user = db.query(User).filter(
-                (func.upper(User.auid) == ds["auid"].upper()) |
-                (func.lower(User.email) == ds["email"].lower())
-            ).first()
-            if not s_user:
-                new_s = User(
-                    name=ds["name"],
-                    auid=ds["auid"],
-                    email=ds["email"],
-                    phone=ds["phone"],
-                    institute=ds["institute"],
-                    department=ds["department"],
-                    semester=ds["semester"],
-                    section=ds["section"],
-                    gender=ds["gender"],
-                    role=ds["role"],
-                    registration_id=ds["registration_id"],
-                    password_hash=student_pw_hash,
-                    account_status="ACTIVE"
-                )
-                db.add(new_s)
-            else:
-                s_user.password_hash = student_pw_hash
-                s_user.account_status = "ACTIVE"
-        db.commit()
-
-        print(f"[BOOTSTRAP] Administrator & Student accounts initialized.")
-    except Exception as e:
-        print(f"[BOOTSTRAP ERROR] Failed to initialize Super Admin: {e}")
-        db.rollback()
-    finally:
-        db.close()
+    pass

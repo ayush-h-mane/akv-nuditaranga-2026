@@ -18,57 +18,9 @@ const STORAGE_ADMINS_KEY = "akv_admins_cache_v2";
 const STORAGE_ATTENDANCE_KEY = "akv_attendance_cache_v2";
 const STORAGE_AUDIT_KEY = "akv_audit_logs_cache_v2";
 
-// Seed demo users in local storage if not present
-const defaultDemoUsers = [
-  {
-    id: 101,
-    name: "Rohan Gowda",
-    auid: "AIT22CS001",
-    email: "rohan.gowda@acharya.ac.in",
-    phone: "9876543210",
-    institute: "Acharya Institute of Technology",
-    department: "Computer Science & Engineering",
-    semester: 6,
-    section: "A",
-    gender: "Male",
-    role: "VOLUNTEER",
-    registration_id: "AKV-2026-000001",
-    account_status: "ACTIVE",
-    password: "Password123!"
-  },
-  {
-    id: 102,
-    name: "Pooja Sharma",
-    auid: "AIT22IS045",
-    email: "pooja.sharma@acharya.ac.in",
-    phone: "9876543211",
-    institute: "Acharya Institute of Technology",
-    department: "Information Science & Engineering",
-    semester: 4,
-    section: "B",
-    gender: "Female",
-    role: "PARTICIPANT",
-    registration_id: "AKV-2026-000002",
-    account_status: "ACTIVE",
-    password: "Password123!"
-  },
-  {
-    id: 103,
-    name: "Kavya Murthy",
-    auid: "1AY23CS199",
-    email: "kavyamurthy@acharya.ac.in",
-    phone: "9845012345",
-    institute: "Acharya Institute of Technology",
-    department: "Computer Science & Engineering",
-    semester: 6,
-    section: "A",
-    gender: "Female",
-    role: "VOLUNTEER",
-    registration_id: "AKV-2026-000003",
-    account_status: "ACTIVE",
-    password: "Password123!"
-  }
-];
+// Zero preloaded demo users
+const defaultDemoUsers = [];
+
 
 function getLocalUsers() {
   try {
