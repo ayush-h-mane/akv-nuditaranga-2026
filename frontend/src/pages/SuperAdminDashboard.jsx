@@ -40,7 +40,9 @@ import {
   Unlock,
   RotateCcw,
   CheckCheck,
-  CheckSquare
+  CheckSquare,
+  Briefcase,
+  UserPlus
 } from "lucide-react";
 import { EventImageUpload } from "../components/EventImageUpload";
 
@@ -121,6 +123,45 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
   const [resetModal, setResetModal] = useState(null);
   const [attendanceActionLoading, setAttendanceActionLoading] = useState(false);
   const [officialExportLoading, setOfficialExportLoading] = useState(false);
+
+  // Dedicated Working Committee Attendance State
+  const [wcAttendanceRoster, setWcAttendanceRoster] = useState([]);
+  const [wcAttendanceSession, setWcAttendanceSession] = useState({
+    is_submitted: false,
+    submitted_at: null,
+    submitted_by: null
+  });
+  const [wcAttendanceSummary, setWcAttendanceSummary] = useState({
+    total_members: 0,
+    checked_in: 0,
+    completed: 0,
+    not_marked: 0,
+    is_submitted: false
+  });
+  const [wcCombinedStats, setWcCombinedStats] = useState({
+    working_committee: { total_members: 0, checked_in: 0, completed: 0, not_marked: 0, is_submitted: false, submitted_label: "NO" },
+    department_members: { total_members: 0, checked_in: 0, completed: 0, not_marked: 0 },
+    combined: { total_members: 0, checked_in: 0, completed: 0, not_marked: 0 }
+  });
+  const [wcSearchQuery, setWcSearchQuery] = useState("");
+  const [wcRoleFilter, setWcRoleFilter] = useState("all");
+  const [wcStatusFilter, setWcStatusFilter] = useState("all");
+  const [wcActionLoading, setWcActionLoading] = useState(false);
+  const [wcExportLoading, setWcExportLoading] = useState(false);
+  const [wcEditRecordModal, setWcEditRecordModal] = useState(null);
+  const [wcUnlockModal, setWcUnlockModal] = useState(null);
+  const [wcResetModal, setWcResetModal] = useState(null);
+  const [wcAddMemberModal, setWcAddMemberModal] = useState(false);
+  const [wcAddMemberData, setWcAddMemberData] = useState({
+    user_id: "",
+    name: "",
+    phone: "",
+    auid: "",
+    institute: "Acharya Institute of Technology",
+    department: "",
+    working_committee_role: "Coordinator",
+    registration_id: ""
+  });
 
   // Modals & Edit States
   const [editStudent, setEditStudent] = useState(null);
@@ -256,6 +297,60 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
     }
   };
 
+  const loadWcAttendance = async (dateOverride = null) => {
+    try {
+      setWcActionLoading(true);
+      let activeDate = dateOverride || selectedOfficialDate;
+      if (!activeDate) {
+        const datesRes = await api.getAttendanceConfigDates().catch(() => null);
+        if (datesRes && datesRes.dates) {
+          setAttendanceConfigDates(datesRes.dates);
+          const todayItem = datesRes.dates.find(d => d.is_today);
+          activeDate = todayItem ? todayItem.date : (datesRes.current_date || datesRes.dates[0]?.date || "");
+          setSelectedOfficialDate(activeDate);
+        }
+      }
+      if (!activeDate) return;
+
+      const [wcRes, statsRes] = await Promise.all([
+        api.getWorkingCommitteeAttendance({
+          date: activeDate,
+          search: wcSearchQuery,
+          role_filter: wcRoleFilter !== "all" ? wcRoleFilter : "",
+          status_filter: wcStatusFilter !== "all" ? wcStatusFilter : ""
+        }).catch(err => {
+          console.error("WC attendance fetch error:", err);
+          return null;
+        }),
+        api.getWorkingCommitteeStats(activeDate).catch(() => null)
+      ]);
+
+      if (wcRes && wcRes.success) {
+        setWcAttendanceRoster(wcRes.members || []);
+        setWcAttendanceSession(wcRes.session || {
+          is_submitted: false,
+          submitted_at: null,
+          submitted_by: null
+        });
+        setWcAttendanceSummary(wcRes.summary || {
+          total_members: wcRes.members?.length || 0,
+          checked_in: 0,
+          completed: 0,
+          not_marked: 0,
+          is_submitted: false
+        });
+      }
+
+      if (statsRes && statsRes.success) {
+        setWcCombinedStats(statsRes);
+      }
+    } catch (err) {
+      console.error("Working Committee attendance loading error:", err);
+    } finally {
+      setWcActionLoading(false);
+    }
+  };
+
   const loadEvents = async () => {
     try {
       const data = await api.getEvents("all", false);
@@ -305,19 +400,21 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
   // Master refresh depending on active section
   const refreshCurrentSection = () => {
     loadStats();
+    loadWcAttendance();
     if (activeSection === "admins") loadAdmins();
     else if (activeSection === "activities") loadActivities();
     else if (activeSection === "reels") loadReels();
     else if (activeSection === "students") loadStudents();
     else if (activeSection === "volunteers") loadVolunteers();
     else if (activeSection === "attendance") loadAttendance();
+    else if (activeSection === "working-committee") loadWcAttendance();
     else if (activeSection === "events") loadEvents();
     else if (activeSection === "audit-logs") loadAuditLogs();
   };
 
   useEffect(() => {
     refreshCurrentSection();
-  }, [activeSection, studentRoleFilter, attendanceDateFilter, attendanceDeptFilter, auditActionFilter]);
+  }, [activeSection, studentRoleFilter, attendanceDateFilter, attendanceDeptFilter, auditActionFilter, wcRoleFilter, wcStatusFilter]);
 
   // Handlers for Admin Approvals
   const handleApproveAdmin = async (id, uname) => {
@@ -607,6 +704,115 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
     }
   };
 
+  // Working Committee Attendance Handlers
+  const handleWcCheckIn = async (memberUserId) => {
+    try {
+      const res = await api.markWorkingCommitteeCheckIn(memberUserId, selectedOfficialDate);
+      notify("success", res.message || "Working Committee Check-In recorded in IST.");
+      loadWcAttendance();
+    } catch (err) {
+      notify("error", err.message || "Working Committee Check-In failed.");
+    }
+  };
+
+  const handleWcCheckOut = async (memberUserId) => {
+    try {
+      const res = await api.markWorkingCommitteeCheckOut(memberUserId, selectedOfficialDate);
+      notify("success", res.message || "Working Committee Check-Out recorded in IST.");
+      loadWcAttendance();
+    } catch (err) {
+      notify("error", err.message || "Working Committee Check-Out failed.");
+    }
+  };
+
+  const handleSubmitWcAttendance = async () => {
+    if (!window.confirm(`Submit and lock Working Committee attendance for ${selectedOfficialDate}?`)) return;
+    try {
+      const res = await api.submitWorkingCommitteeAttendance(selectedOfficialDate, "Official Working Committee Finalization");
+      notify("success", res.message || "Working Committee attendance submitted and locked.");
+      loadWcAttendance();
+    } catch (err) {
+      notify("error", err.message || "Submission failed.");
+    }
+  };
+
+  const handleSaveWcAttendanceEdit = async (e) => {
+    e.preventDefault();
+    if (!wcEditRecordModal?.record_id) return;
+    try {
+      await api.editWorkingCommitteeRecord(wcEditRecordModal.record_id, {
+        check_in_time: wcEditRecordModal.check_in_time || null,
+        check_out_time: wcEditRecordModal.check_out_time || null,
+        reason: wcEditRecordModal.reason || "Superadmin Working Committee correction"
+      });
+      notify("success", "Working Committee timestamps updated.");
+      setWcEditRecordModal(null);
+      loadWcAttendance();
+    } catch (err) {
+      notify("error", err.message || "Failed to update Working Committee record.");
+    }
+  };
+
+  const handleConfirmWcReset = async (e) => {
+    e.preventDefault();
+    if (!wcResetModal?.record_id) return;
+    try {
+      await api.resetWorkingCommitteeRecord(wcResetModal.record_id, wcResetModal.reason || "Superadmin Working Committee reset");
+      notify("success", "Working Committee attendance reset to NOT MARKED.");
+      setWcResetModal(null);
+      loadWcAttendance();
+    } catch (err) {
+      notify("error", err.message || "Failed to reset Working Committee record.");
+    }
+  };
+
+  const handleConfirmWcUnlock = async (e) => {
+    e.preventDefault();
+    if (!wcUnlockModal?.date) return;
+    try {
+      await api.unlockWorkingCommitteeSession(wcUnlockModal.date, wcUnlockModal.reason || "Superadmin unlocked Working Committee session");
+      notify("success", `Working Committee attendance for ${wcUnlockModal.date} unlocked!`);
+      setWcUnlockModal(null);
+      loadWcAttendance();
+    } catch (err) {
+      notify("error", err.message || "Failed to unlock Working Committee session.");
+    }
+  };
+
+  const handleWcExcelExport = async () => {
+    setWcExportLoading(true);
+    try {
+      await api.exportWorkingCommitteeExcel();
+      notify("success", "Working Committee Attendance Excel downloaded!");
+    } catch (err) {
+      notify("error", err.message || "Failed to export Working Committee Excel.");
+    } finally {
+      setWcExportLoading(false);
+    }
+  };
+
+  const handleAddWcMember = async (e) => {
+    e.preventDefault();
+    try {
+      await api.addWorkingCommitteeMember(wcAddMemberData);
+      notify("success", "Working Committee member added successfully.");
+      setWcAddMemberModal(false);
+      setWcAddMemberData({
+        user_id: "",
+        name: "",
+        phone: "",
+        auid: "",
+        institute: "Acharya Institute of Technology",
+        department: "",
+        working_committee_role: "Coordinator",
+        registration_id: ""
+      });
+      loadWcAttendance();
+    } catch (err) {
+      notify("error", err.message || "Failed to add Working Committee member.");
+    }
+  };
+
   const categoryMapping = {
     cultural: "ಸಾಂಸ್ಕೃತಿಕ",
     traditional: "ಜಾನಪದ & ಸಾಂಪ್ರದಾಯಿಕ",
@@ -766,6 +972,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
             { id: "students", label: "Student Directory", icon: Users },
             { id: "volunteers", label: "Volunteer Management", icon: UserCheck },
             { id: "attendance", label: "Daily Attendance Records", icon: Clock },
+            { id: "working-committee", label: "Working Committee", icon: Briefcase },
             { id: "exports", label: "Attendance & Data Exports", icon: FileSpreadsheet },
             { id: "events", label: "Event Configuration", icon: Calendar },
             { id: "audit-logs", label: "Security Audit Trail", icon: History }
@@ -912,6 +1119,106 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                   >
                     <span>Manage Admin Approvals ({metrics?.pending_admins || 0})</span>
                   </button>
+                </div>
+              </div>
+
+              {/* Working Committee & Combined Attendance Statistics Cards (v2.1.3) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Working Committee Attendance Card */}
+                <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-xs space-y-4">
+                  <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+                    <h3 className="font-extrabold text-sm text-stone-900 flex items-center gap-2">
+                      <Briefcase className="w-4 h-4 text-purple-600" />
+                      <span>Working Committee Attendance</span>
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono font-bold text-stone-400">
+                        {wcCombinedStats?.date || selectedOfficialDate}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                        wcCombinedStats?.working_committee?.is_submitted
+                          ? "bg-emerald-100 text-emerald-800"
+                          : "bg-amber-100 text-amber-800"
+                      }`}>
+                        Submitted: {wcCombinedStats?.working_committee?.submitted_label || "NO"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-2 text-center">
+                    <div className="p-2.5 bg-stone-50 rounded-2xl border border-stone-200">
+                      <span className="block text-lg font-extrabold text-stone-800">
+                        {wcCombinedStats?.working_committee?.total_members || 0}
+                      </span>
+                      <span className="text-[9px] font-bold uppercase text-stone-500">Total</span>
+                    </div>
+                    <div className="p-2.5 bg-amber-50 rounded-2xl border border-amber-100">
+                      <span className="block text-lg font-extrabold text-amber-700">
+                        {wcCombinedStats?.working_committee?.checked_in || 0}
+                      </span>
+                      <span className="text-[9px] font-bold uppercase text-amber-800">Checked In</span>
+                    </div>
+                    <div className="p-2.5 bg-emerald-50 rounded-2xl border border-emerald-100">
+                      <span className="block text-lg font-extrabold text-emerald-700">
+                        {wcCombinedStats?.working_committee?.completed || 0}
+                      </span>
+                      <span className="text-[9px] font-bold uppercase text-emerald-800">Completed</span>
+                    </div>
+                    <div className="p-2.5 bg-red-50 rounded-2xl border border-red-100">
+                      <span className="block text-lg font-extrabold text-kar-red">
+                        {wcCombinedStats?.working_committee?.not_marked || 0}
+                      </span>
+                      <span className="text-[9px] font-bold uppercase text-red-800">Not Marked</span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setActiveSection("working-committee")}
+                    className="w-full py-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-800 text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>Manage Working Committee Attendance &rarr;</span>
+                  </button>
+                </div>
+
+                {/* Combined Attendance Statistics Card */}
+                <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-xs space-y-4">
+                  <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+                    <h3 className="font-extrabold text-sm text-stone-900 flex items-center gap-2">
+                      <Users className="w-4 h-4 text-blue-600" />
+                      <span>Combined Attendance Statistics</span>
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-800">
+                      Official Consolidated
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3 text-center">
+                    <div className="p-3 bg-stone-50 rounded-2xl border border-stone-200">
+                      <span className="block text-xl font-extrabold text-stone-800">
+                        {wcCombinedStats?.department_members?.total_members || 0}
+                      </span>
+                      <span className="text-[10px] font-bold uppercase text-stone-500">Dept Members</span>
+                    </div>
+                    <div className="p-3 bg-purple-50 rounded-2xl border border-purple-100">
+                      <span className="block text-xl font-extrabold text-purple-700">
+                        {wcCombinedStats?.working_committee?.total_members || 0}
+                      </span>
+                      <span className="text-[10px] font-bold uppercase text-purple-800">Working Comm</span>
+                    </div>
+                    <div className="p-3 bg-blue-50 rounded-2xl border border-blue-200">
+                      <span className="block text-xl font-extrabold text-blue-700">
+                        {wcCombinedStats?.combined?.total_members || 0}
+                      </span>
+                      <span className="text-[10px] font-bold uppercase text-blue-900">Total Members</span>
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-2xl bg-stone-50 border border-stone-100 flex items-center justify-between text-xs text-stone-600">
+                    <span>Active Status:</span>
+                    <span className="font-bold text-stone-800">
+                      {wcCombinedStats?.combined?.completed || 0} Completed &bull; {wcCombinedStats?.combined?.checked_in || 0} In Progress
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1911,6 +2218,379 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                   </table>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ==================================================== */}
+          {/* SECTION: WORKING COMMITTEE ATTENDANCE (SUPERADMIN)   */}
+          {/* ==================================================== */}
+          {activeSection === "working-committee" && (
+            <div className="bg-white p-6 sm:p-7 rounded-3xl border border-stone-200 shadow-xs space-y-6 animate-fade-in">
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-100 pb-5">
+                <div>
+                  <div className="flex items-center gap-2.5">
+                    <span className="p-2 rounded-xl bg-purple-100 text-purple-700">
+                      <Briefcase className="w-5 h-5" />
+                    </span>
+                    <div>
+                      <h3 className="font-extrabold text-lg text-stone-900">WORKING COMMITTEE ATTENDANCE</h3>
+                      <p className="text-xs text-stone-500">
+                        Super Admin exclusive attendance management. Logically separated from normal department records.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => setWcAddMemberModal(true)}
+                    className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    <span>+ Add / Assign Member</span>
+                  </button>
+
+                  <button
+                    onClick={handleWcExcelExport}
+                    disabled={wcExportLoading}
+                    className="px-3.5 py-2 rounded-xl border border-purple-200 bg-purple-50 text-purple-800 hover:bg-purple-100 font-bold text-xs shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>{wcExportLoading ? "Exporting..." : "Export Sheet 14 (XLSX)"}</span>
+                  </button>
+
+                  <button
+                    onClick={() => loadWcAttendance()}
+                    className="p-2 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 cursor-pointer"
+                    title="Refresh List"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Event Date Selector (Asia/Kolkata Calendar) */}
+              <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-purple-600" />
+                  <span className="text-xs font-bold text-stone-700 uppercase tracking-wider">Date:</span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {attendanceConfigDates.map((d) => (
+                    <button
+                      key={d.date}
+                      type="button"
+                      onClick={() => {
+                        setSelectedOfficialDate(d.date);
+                        loadWcAttendance(d.date);
+                      }}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        selectedOfficialDate === d.date
+                          ? "bg-purple-700 text-white shadow-sm ring-2 ring-purple-300"
+                          : "bg-white text-stone-700 hover:bg-stone-100 border border-stone-200"
+                      }`}
+                    >
+                      <span>{d.date_dmy}</span>
+                      {d.is_today && (
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" title="Today" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Submission & Lock Status Banner */}
+              {wcAttendanceSession?.is_submitted ? (
+                <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-600 text-white rounded-xl shadow-xs">
+                      <Lock className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold text-emerald-950 text-sm">SUBMITTED 🔒</span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-200 text-emerald-900">
+                          Session Locked
+                        </span>
+                      </div>
+                      <p className="text-xs text-emerald-800 mt-0.5">
+                        Submitted By: <span className="font-bold">{wcAttendanceSession.submitted_by || "Super Admin"}</span>
+                        {wcAttendanceSession.submitted_at && (
+                          <span> &bull; At: {wcAttendanceSession.submitted_at}</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setWcUnlockModal({ date: selectedOfficialDate, reason: "" })}
+                    className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer self-start sm:self-auto"
+                  >
+                    <Unlock className="w-4 h-4" />
+                    <span>Unlock Working Committee Session</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2 text-stone-700">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="font-bold">WORKING COMMITTEE ATTENDANCE OPEN 🟢</span>
+                    <span className="text-stone-500">&bull; Marking enabled for Superadmin</span>
+                  </div>
+                  <span className="text-[11px] text-stone-500 font-mono">Date: {selectedOfficialDate}</span>
+                </div>
+              )}
+
+              {/* Working Committee 4 Metrics Summary Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                <div className="p-3.5 bg-stone-50 rounded-2xl border border-stone-200">
+                  <span className="block text-2xl font-extrabold text-stone-800">
+                    {wcAttendanceSummary.total_members}
+                  </span>
+                  <span className="text-[10px] font-bold uppercase text-stone-500">Total Members</span>
+                </div>
+
+                <div className="p-3.5 bg-amber-50 rounded-2xl border border-amber-200">
+                  <span className="block text-2xl font-extrabold text-amber-700">
+                    {wcAttendanceSummary.checked_in}
+                  </span>
+                  <span className="text-[10px] font-bold uppercase text-amber-800">Checked In</span>
+                </div>
+
+                <div className="p-3.5 bg-emerald-50 rounded-2xl border border-emerald-200">
+                  <span className="block text-2xl font-extrabold text-emerald-700">
+                    {wcAttendanceSummary.completed}
+                  </span>
+                  <span className="text-[10px] font-bold uppercase text-emerald-800">Completed</span>
+                </div>
+
+                <div className="p-3.5 bg-red-50 rounded-2xl border border-red-200">
+                  <span className="block text-2xl font-extrabold text-kar-red">
+                    {wcAttendanceSummary.not_marked}
+                  </span>
+                  <span className="text-[10px] font-bold uppercase text-red-800">Not Marked</span>
+                </div>
+              </div>
+
+              {/* Search & Filters */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 absolute left-3 top-3 text-stone-400" />
+                  <input
+                    type="text"
+                    placeholder="Search by Reg ID, Name, AUID, Phone, Dept..."
+                    value={wcSearchQuery}
+                    onChange={(e) => setWcSearchQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && loadWcAttendance()}
+                    className="w-full pl-9 pr-4 py-2 rounded-xl border border-stone-200 text-xs focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+
+                <select
+                  value={wcRoleFilter}
+                  onChange={(e) => setWcRoleFilter(e.target.value)}
+                  className="px-3 py-2 rounded-xl border border-stone-200 text-xs focus:ring-2 focus:ring-purple-500 bg-white"
+                >
+                  <option value="all">All Roles</option>
+                  <option value="Coordinator">Coordinator</option>
+                  <option value="Convenor">Convenor</option>
+                  <option value="Core Committee">Core Committee</option>
+                  <option value="Faculty Incharge">Faculty Incharge</option>
+                  <option value="Volunteer Head">Volunteer Head</option>
+                </select>
+
+                <select
+                  value={wcStatusFilter}
+                  onChange={(e) => setWcStatusFilter(e.target.value)}
+                  className="px-3 py-2 rounded-xl border border-stone-200 text-xs focus:ring-2 focus:ring-purple-500 bg-white"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="NOT_MARKED">Not Marked</option>
+                  <option value="CHECKED_IN">Checked In</option>
+                  <option value="COMPLETED">Completed</option>
+                </select>
+              </div>
+
+              {/* Working Committee Attendance Roster Table */}
+              {wcActionLoading ? (
+                <div className="py-12 text-center text-xs text-stone-500 flex items-center justify-center gap-2">
+                  <RefreshCw className="w-4 h-4 animate-spin text-purple-600" />
+                  <span>Loading Working Committee attendance records...</span>
+                </div>
+              ) : wcAttendanceRoster.length === 0 ? (
+                <div className="py-12 text-center space-y-2">
+                  <p className="text-xs text-stone-500 italic">No Working Committee members found matching criteria.</p>
+                  <button
+                    onClick={() => setWcAddMemberModal(true)}
+                    className="text-xs font-bold text-purple-700 hover:underline cursor-pointer"
+                  >
+                    + Add first Working Committee member
+                  </button>
+                </div>
+              ) : (
+                <div className="overflow-x-auto border border-stone-200 rounded-2xl">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-stone-50 text-stone-600 uppercase border-b border-stone-200 font-bold">
+                      <tr>
+                        <th className="py-3 px-4">Reg ID</th>
+                        <th className="py-3 px-4">Name</th>
+                        <th className="py-3 px-4">Role</th>
+                        <th className="py-3 px-4">Check-In</th>
+                        <th className="py-3 px-4">Check-Out</th>
+                        <th className="py-3 px-4">Status</th>
+                        <th className="py-3 px-4 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-100">
+                      {wcAttendanceRoster.map((m) => {
+                        const isNotMarked = m.status === "NOT_MARKED";
+                        const isCheckedIn = m.status === "CHECKED_IN";
+                        const isCompleted = m.status === "COMPLETED";
+
+                        return (
+                          <tr key={m.user_id} className="hover:bg-purple-50/20 transition-colors">
+                            <td className="py-3 px-4 font-mono font-bold text-purple-900">
+                              {m.registration_id}
+                            </td>
+                            <td className="py-3 px-4">
+                              <p className="font-extrabold text-stone-900">{m.name}</p>
+                              <p className="text-[11px] text-stone-500">
+                                {m.auid ? `AUID: ${m.auid} • ` : ""}{m.phone || "No phone"}
+                              </p>
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800">
+                                {m.working_committee_role || "Coordinator"}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 font-mono text-stone-800">
+                              {m.check_in_time || "--"}
+                            </td>
+                            <td className="py-3 px-4 font-mono text-stone-800">
+                              {m.check_out_time || "--"}
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                                isCompleted
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : isCheckedIn
+                                  ? "bg-amber-100 text-amber-800"
+                                  : "bg-stone-100 text-stone-600"
+                              }`}>
+                                {isCompleted ? "Completed" : isCheckedIn ? "Checked In" : "Not Marked"}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                {/* Check-In Action */}
+                                {isNotMarked && (
+                                  <button
+                                    onClick={() => handleWcCheckIn(m.user_id)}
+                                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] shadow-xs flex items-center gap-1 transition-colors cursor-pointer"
+                                  >
+                                    <Clock className="w-3 h-3" />
+                                    <span>CHECK IN</span>
+                                  </button>
+                                )}
+
+                                {/* Check-Out Action */}
+                                {isCheckedIn && (
+                                  <button
+                                    onClick={() => handleWcCheckOut(m.user_id)}
+                                    className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-[11px] shadow-xs flex items-center gap-1 transition-colors cursor-pointer"
+                                  >
+                                    <CheckCircle2 className="w-3 h-3" />
+                                    <span>CHECK OUT</span>
+                                  </button>
+                                )}
+
+                                {/* Completed - 3rd attempt prevented */}
+                                {isCompleted && (
+                                  <span className="px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 font-extrabold text-[10px] flex items-center gap-1">
+                                    <CheckCircle2 className="w-3 h-3" />
+                                    <span>LOCKED</span>
+                                  </span>
+                                )}
+
+                                {/* SUPERADMIN Override: Edit */}
+                                <button
+                                  onClick={() => setWcEditRecordModal({
+                                    record_id: m.record_id,
+                                    member_user_id: m.user_id,
+                                    name: m.name,
+                                    registration_id: m.registration_id,
+                                    check_in_time: m.check_in_time || "",
+                                    check_out_time: m.check_out_time || "",
+                                    status: m.status,
+                                    reason: ""
+                                  })}
+                                  className="p-1.5 rounded-lg border border-stone-200 hover:bg-stone-100 text-stone-600 cursor-pointer"
+                                  title="Superadmin Edit Record"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+
+                                {/* SUPERADMIN Override: Reset */}
+                                {m.record_id && (
+                                  <button
+                                    onClick={() => setWcResetModal({
+                                      record_id: m.record_id,
+                                      name: m.name,
+                                      registration_id: m.registration_id,
+                                      date: selectedOfficialDate,
+                                      reason: ""
+                                    })}
+                                    className="p-1.5 rounded-lg border border-stone-200 hover:bg-red-50 text-red-600 cursor-pointer"
+                                    title="Superadmin Reset Record"
+                                  >
+                                    <RotateCcw className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Bottom Submit Action */}
+              <div className="pt-4 border-t border-stone-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <p className="text-xs text-stone-500">
+                  Submitting finalizes and locks Working Committee attendance for <strong>{selectedOfficialDate}</strong>.
+                </p>
+
+                {wcAttendanceSession?.is_submitted ? (
+                  <div className="flex items-center gap-2">
+                    <span className="px-4 py-2.5 rounded-xl bg-stone-100 text-stone-600 font-extrabold text-xs flex items-center gap-1.5 border border-stone-200">
+                      <Lock className="w-4 h-4" />
+                      <span>WORKING COMMITTEE ATTENDANCE SUBMITTED 🔒</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setWcUnlockModal({ date: selectedOfficialDate, reason: "" })}
+                      className="px-3.5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <Unlock className="w-4 h-4" />
+                      <span>Unlock Session</span>
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleSubmitWcAttendance}
+                    className="w-full sm:w-auto px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  >
+                    <Lock className="w-4 h-4" />
+                    <span>[ SUBMIT WORKING COMMITTEE ATTENDANCE ]</span>
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
@@ -3309,6 +3989,374 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                 >
                   <RotateCcw className="w-4 h-4" />
                   <span>Confirm Reset</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================== */}
+      {/* MODAL: EDIT WORKING COMMITTEE RECORD (SUPERADMIN)    */}
+      {/* ==================================================== */}
+      {wcEditRecordModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in">
+            <div className="flex items-start justify-between border-b border-stone-100 pb-3">
+              <div>
+                <h4 className="font-extrabold text-base text-stone-900">
+                  Edit Working Committee Attendance
+                </h4>
+                <p className="text-xs text-stone-500 mt-0.5">
+                  Member: <strong className="text-stone-800">{wcEditRecordModal.name}</strong> ({wcEditRecordModal.registration_id})
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setWcEditRecordModal(null)}
+                className="p-1 rounded-lg text-stone-400 hover:text-stone-600 hover:bg-stone-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveWcAttendanceEdit} className="space-y-3.5 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-stone-700 uppercase block mb-1">
+                    Check-In (IST)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 09:30:00 AM or ISO"
+                    value={wcEditRecordModal.check_in_time || ""}
+                    onChange={(e) => setWcEditRecordModal({ ...wcEditRecordModal, check_in_time: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-purple-500 font-mono"
+                  />
+                  <span className="text-[10px] text-stone-400 mt-0.5 block">Leave empty/-- to clear</span>
+                </div>
+
+                <div>
+                  <label className="font-bold text-stone-700 uppercase block mb-1">
+                    Check-Out (IST)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 04:30:00 PM or ISO"
+                    value={wcEditRecordModal.check_out_time || ""}
+                    onChange={(e) => setWcEditRecordModal({ ...wcEditRecordModal, check_out_time: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-purple-500 font-mono"
+                  />
+                  <span className="text-[10px] text-stone-400 mt-0.5 block">Leave empty/-- to clear</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-stone-700 uppercase block mb-1">
+                  Status Override
+                </label>
+                <select
+                  value={wcEditRecordModal.status || "AUTO"}
+                  onChange={(e) => setWcEditRecordModal({ ...wcEditRecordModal, status: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-purple-500 bg-white"
+                >
+                  <option value="">Auto (Calculate from times)</option>
+                  <option value="NOT_MARKED">NOT MARKED</option>
+                  <option value="CHECKED_IN">CHECKED IN</option>
+                  <option value="COMPLETED">COMPLETED</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="font-bold text-stone-700 uppercase block mb-1">
+                  Reason for Superadmin Correction *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Manual correction due to network issue"
+                  value={wcEditRecordModal.reason || ""}
+                  onChange={(e) => setWcEditRecordModal({ ...wcEditRecordModal, reason: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+
+              <div className="flex items-center gap-3 pt-3 border-t border-stone-100">
+                <button
+                  type="button"
+                  onClick={() => setWcEditRecordModal(null)}
+                  className="flex-1 py-2.5 rounded-xl border border-stone-300 font-bold hover:bg-stone-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold shadow-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Save Timestamps</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================== */}
+      {/* MODAL: UNLOCK WORKING COMMITTEE SESSION              */}
+      {/* ==================================================== */}
+      {wcUnlockModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in">
+            <div className="flex items-start gap-3.5">
+              <div className="p-3 bg-amber-100 text-amber-800 rounded-2xl shrink-0">
+                <Unlock className="w-6 h-6" />
+              </div>
+              <div>
+                <h4 className="font-extrabold text-base text-stone-900">
+                  Unlock Working Committee Session
+                </h4>
+                <p className="text-xs text-stone-600 mt-1 leading-relaxed">
+                  Unlocking Working Committee attendance for <strong>{wcUnlockModal.date}</strong> allows editing and marking actions again.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleConfirmWcUnlock} className="space-y-3.5 text-xs">
+              <div>
+                <label className="font-bold text-stone-700 uppercase block mb-1">
+                  Reason for Unlocking *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Committee meeting ran late / manual adjustments"
+                  value={wcUnlockModal.reason || ""}
+                  onChange={(e) => setWcUnlockModal({ ...wcUnlockModal, reason: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+
+              <div className="flex items-center gap-3 pt-2 border-t border-stone-100">
+                <button
+                  type="button"
+                  onClick={() => setWcUnlockModal(null)}
+                  className="flex-1 py-2.5 rounded-xl border border-stone-300 font-bold hover:bg-stone-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold shadow-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Unlock className="w-4 h-4" />
+                  <span>Confirm Unlock</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================== */}
+      {/* MODAL: RESET WORKING COMMITTEE ATTENDANCE RECORD     */}
+      {/* ==================================================== */}
+      {wcResetModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in">
+            <div className="flex items-start gap-3.5">
+              <div className="p-3 bg-red-100 text-kar-red rounded-2xl shrink-0">
+                <RotateCcw className="w-6 h-6" />
+              </div>
+              <div>
+                <h4 className="font-extrabold text-base text-stone-900">
+                  Reset Attendance for {wcResetModal.name}
+                </h4>
+                <p className="text-xs text-stone-600 mt-1 leading-relaxed">
+                  Resetting clears both Check-In and Check-Out timestamps for <strong>{wcResetModal.date}</strong> and returns status to <strong>NOT MARKED</strong>.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleConfirmWcReset} className="space-y-3.5 text-xs">
+              <div>
+                <label className="font-bold text-stone-700 uppercase block mb-1">
+                  Reason for Resetting *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Accidental mark / committee member was absent"
+                  value={wcResetModal.reason || ""}
+                  onChange={(e) => setWcResetModal({ ...wcResetModal, reason: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-kar-red"
+                />
+              </div>
+
+              <div className="flex items-center gap-3 pt-2 border-t border-stone-100">
+                <button
+                  type="button"
+                  onClick={() => setWcResetModal(null)}
+                  className="flex-1 py-2.5 rounded-xl border border-stone-300 font-bold hover:bg-stone-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-kar-red hover:bg-red-700 text-white font-bold shadow-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  <span>Confirm Reset</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================== */}
+      {/* MODAL: ADD / ASSIGN WORKING COMMITTEE MEMBER         */}
+      {/* ==================================================== */}
+      {wcAddMemberModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in">
+            <div className="flex items-start justify-between border-b border-stone-100 pb-3">
+              <div>
+                <h4 className="font-extrabold text-base text-stone-900">
+                  Add or Assign Working Committee Member
+                </h4>
+                <p className="text-xs text-stone-500 mt-0.5">
+                  Creates or designates a member for Working Committee Sheet 14 & attendance roster.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setWcAddMemberModal(false)}
+                className="p-1 rounded-lg text-stone-400 hover:text-stone-600 hover:bg-stone-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddWcMember} className="space-y-3.5 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-stone-700 uppercase block mb-1">
+                    Member Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Ayush Mane"
+                    value={wcAddMemberData.name}
+                    onChange={(e) => setWcAddMemberData({ ...wcAddMemberData, name: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-stone-700 uppercase block mb-1">
+                    Contact Number (Phone) *
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="e.g. 9876543210"
+                    value={wcAddMemberData.phone}
+                    onChange={(e) => setWcAddMemberData({ ...wcAddMemberData, phone: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-stone-700 uppercase block mb-1">
+                    Working Committee Role *
+                  </label>
+                  <select
+                    value={wcAddMemberData.working_committee_role}
+                    onChange={(e) => setWcAddMemberData({ ...wcAddMemberData, working_committee_role: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-purple-500 bg-white font-medium"
+                  >
+                    <option value="Coordinator">Coordinator</option>
+                    <option value="Convenor">Convenor</option>
+                    <option value="Core Committee">Core Committee</option>
+                    <option value="Faculty Incharge">Faculty Incharge</option>
+                    <option value="Volunteer Head">Volunteer Head</option>
+                    <option value="Student Coordinator">Student Coordinator</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-bold text-stone-700 uppercase block mb-1">
+                    Registration ID (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. WC001 (Auto if empty)"
+                    value={wcAddMemberData.registration_id}
+                    onChange={(e) => setWcAddMemberData({ ...wcAddMemberData, registration_id: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-purple-500 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-stone-700 uppercase block mb-1">
+                    AUID (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. AIT23BEIS001"
+                    value={wcAddMemberData.auid}
+                    onChange={(e) => setWcAddMemberData({ ...wcAddMemberData, auid: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-purple-500 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-stone-700 uppercase block mb-1">
+                    Academic Department (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. ISE / CSE / ECE"
+                    value={wcAddMemberData.department}
+                    onChange={(e) => setWcAddMemberData({ ...wcAddMemberData, department: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-stone-700 uppercase block mb-1">
+                  Institute
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Acharya Institute of Technology"
+                  value={wcAddMemberData.institute}
+                  onChange={(e) => setWcAddMemberData({ ...wcAddMemberData, institute: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+
+              <div className="flex items-center gap-3 pt-3 border-t border-stone-100">
+                <button
+                  type="button"
+                  onClick={() => setWcAddMemberModal(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-stone-300 font-bold hover:bg-stone-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold shadow-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>Save Member</span>
                 </button>
               </div>
             </form>

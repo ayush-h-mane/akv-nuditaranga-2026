@@ -1309,6 +1309,180 @@ export const api = {
   },
 
   // ==========================================
+  // WORKING COMMITTEE ATTENDANCE APIs (SUPERADMIN ONLY)
+  // ==========================================
+  async getWorkingCommitteeAttendance(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    const res = await fetch(`${API_BASE_URL}/working-committee-attendance${query ? `?${query}` : ""}`, {
+      headers: { ...getAuthHeaders() }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to fetch Working Committee attendance roster");
+    return data;
+  },
+
+  async markWorkingCommitteeCheckIn(memberUserId, date = null) {
+    const res = await fetch(`${API_BASE_URL}/working-committee-attendance/check-in`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({ working_committee_member_id: memberUserId, date })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Working Committee Check-In failed");
+    return data;
+  },
+
+  async markWorkingCommitteeCheckOut(memberUserId, date = null) {
+    const res = await fetch(`${API_BASE_URL}/working-committee-attendance/check-out`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({ working_committee_member_id: memberUserId, date })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Working Committee Check-Out failed");
+    return data;
+  },
+
+  async submitWorkingCommitteeAttendance(date, notes = "") {
+    const res = await fetch(`${API_BASE_URL}/working-committee-attendance/submit`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({ date, notes })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to submit Working Committee attendance");
+    return data;
+  },
+
+  async unlockWorkingCommitteeSession(date, reason) {
+    const res = await fetch(`${API_BASE_URL}/working-committee-attendance/session/unlock`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({ date, reason })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Unlock Working Committee session failed");
+    return data;
+  },
+
+  async editWorkingCommitteeRecord(attendanceId, payload) {
+    const res = await fetch(`${API_BASE_URL}/working-committee-attendance/${attendanceId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to update Working Committee record");
+    return data;
+  },
+
+  async resetWorkingCommitteeRecord(attendanceId, reason = "") {
+    const res = await fetch(`${API_BASE_URL}/working-committee-attendance/${attendanceId}/reset`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({ reason })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to reset Working Committee record");
+    return data;
+  },
+
+  async getWorkingCommitteeAudit(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    const res = await fetch(`${API_BASE_URL}/working-committee-attendance/audit${query ? `?${query}` : ""}`, {
+      headers: { ...getAuthHeaders() }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to fetch Working Committee audit logs");
+    return data;
+  },
+
+  async exportWorkingCommitteeExcel() {
+    const res = await fetch(`${API_BASE_URL}/working-committee-attendance/export`, {
+      headers: { ...getAuthHeaders() }
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || "Failed to export Working Committee Excel");
+    }
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `AKV_NudiTaranga_Working_Committee_Attendance_${new Date().toISOString().split("T")[0]}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    return true;
+  },
+
+  async getWorkingCommitteeStats(date = null) {
+    const query = date ? `?date=${encodeURIComponent(date)}` : "";
+    const res = await fetch(`${API_BASE_URL}/working-committee-attendance/stats${query}`, {
+      headers: { ...getAuthHeaders() }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to fetch Working Committee stats");
+    return data;
+  },
+
+  async getWorkingCommitteeMembers(search = "") {
+    const query = search ? `?search=${encodeURIComponent(search)}` : "";
+    const res = await fetch(`${API_BASE_URL}/working-committee-attendance/members${query}`, {
+      headers: { ...getAuthHeaders() }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to fetch Working Committee members");
+    return data;
+  },
+
+  async addWorkingCommitteeMember(payload) {
+    const res = await fetch(`${API_BASE_URL}/working-committee-attendance/members`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to add Working Committee member");
+    return data;
+  },
+
+  async updateWorkingCommitteeMember(userId, payload) {
+    const res = await fetch(`${API_BASE_URL}/working-committee-attendance/members/${userId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to update Working Committee member");
+    return data;
+  },
+
+  // ==========================================
   // EXISTING EVENTS, CHECK-IN & GALLERY APIs
   // ==========================================
   async getEvents(category = "all", activeOnly = true) {

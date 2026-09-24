@@ -16,8 +16,10 @@ from ..models import (
     AttendanceRecord, 
     AttendanceDaySession, 
     AttendanceAuditLog, 
-    FestivalEventDate
+    FestivalEventDate,
+    WorkingCommitteeAttendance
 )
+from .working_committee_attendance import get_wc_members_query
 from ..auth_deps import require_admin, require_superadmin, get_current_user
 from ..utils.timezone import (
     IST,
@@ -512,7 +514,12 @@ def submit_attendance(
         "success": True,
         "message": f"Attendance for {iso_date_to_dmy(target_date)} submitted successfully. Records are now locked.",
         "submitted_at": format_to_ist_datetime(session.submitted_at),
-        "submitted_by": session.submitted_by
+        "submitted_by": session.submitted_by,
+        "session": {
+            "is_submitted": True,
+            "submitted_at": format_to_ist_datetime(session.submitted_at),
+            "submitted_by": session.submitted_by
+        }
     }
 
 
@@ -768,70 +775,43 @@ def get_attendance_audit_logs(
             "reason": l.reason or ""
         })
 
-    return {"success": True, "total": len(output), "logs": output}
+    return {"success": True, "total": len(output), "logs": output, "audit_logs": output}
 
 
 # ==============================================================================
-# 6. OFFICIAL EXCEL EXPORT (EXACT REFERENCE SPECIFICATION)
-# ==============================================================================
+DEPARTMENT_GROUPS = [
+    ("PROMOTIONS", ["promotions", "promotion"]),
+    ("DECORATIONS", ["decorations", "decoration"]),
+    ("SOCIAL MEDIA", ["social media", "socialmedia", "social_media"]),
+    ("LOGISTICS", ["logistics", "logistic"]),
+    ("CULTURALS", ["culturals", "cultural"]),
+    ("CONTENT", ["content"]),
+    ("DEFENCE", ["defence", "defense"]),
+    ("EMCEE", ["emcee", "anchor"]),
+    ("MARKETING", ["marketing"]),
+    ("TECHNICAL", ["technical", "tech"]),
+    ("PHOTOGRAPHY", ["photography", "photo"]),
+    ("VIDEOGRAPHY", ["videography", "video"]),
+    ("HOSPITALITY", ["hospitality"])
+]
 
-@router.get("/export")
-def export_attendance_excel(
-    department: Optional[str] = Query(None, description="Filter by department"),
-    institute: Optional[str] = Query(None, description="Filter by institute"),
-    akv_dept: Optional[str] = Query(None, description="Filter by AKV Domain"),
-    current_user: User = Depends(require_admin),
-    db: Session = Depends(get_db)
+def populate_attendance_worksheet(
+    ws,
+    sheet_title: str,
+    subtitle_text: str,
+    headers: List[str],
+    rows_data: List[List],
+    col_widths_override: dict = None
 ):
     """
-    Generates and downloads the official Attendance Excel spreadsheet matching the exact reference image format:
-    Reg ID | Name | AUID | Institute | Dept | AKV-Dept | [Date 1] Time In | [Date 1] Time Out | ... | Total Days Present | Contact No. | Managed By
-    
-    - Timestamps in Indian Standard Time (Asia/Kolkata).
-    - Chronological event date columns (DD/MM/YYYY Time In, DD/MM/YYYY Time Out).
-    - Total Days Present calculated for days with both Check-In and Check-Out completed.
-    - Professional openpyxl formatting with freeze panes, auto column widths, borders, and auto filter.
+    Renders standard reference styling for an attendance sheet:
+    - Merged title banner row (Karnataka red)
+    - Subtitle banner with IST timestamp
+    - Colored headers with freeze panes and auto filter
+    - Data rows with borders and proper alignment
+    - Auto column widths
     """
-    # 1. Determine all event dates (from configuration and existing records)
-    configured_dates = [d[0] for d in db.query(FestivalEventDate.date).filter(FestivalEventDate.is_active == True).all()]
-    record_dates = [r[0] for r in db.query(AttendanceRecord.attendance_date).distinct().all()]
-    all_dates = sorted(list(set(configured_dates + record_dates)))
-
-    # If no dates in DB, default to fest schedule
-    if not all_dates:
-        all_dates = ["2026-09-28", "2026-09-29", "2026-09-30", "2026-10-01", "2026-10-02"]
-
-    # 2. Query participants
-    user_query = db.query(User).filter(
-        User.role.in_(["PARTICIPANT", "VOLUNTEER", "STUDENT", "SPECTATOR"])
-    )
-
-    if department and department != "all":
-        user_query = user_query.filter(User.department == department)
-    if institute and institute != "all":
-        user_query = user_query.filter(User.institute == institute)
-    if akv_dept and akv_dept != "all":
-        user_query = user_query.filter(User.volunteer_domain == akv_dept)
-
-    participants = user_query.order_by(User.name.asc()).all()
-    user_ids = [p.id for p in participants]
-
-    # 3. Batch query all attendance records for these participants
-    records = db.query(AttendanceRecord).filter(
-        AttendanceRecord.user_id.in_(user_ids)
-    ).all() if user_ids else []
-
-    # Map records: (user_id, date) -> AttendanceRecord
-    rec_lookup = {(r.user_id, r.attendance_date): r for r in records}
-
-    # 4. Build Excel Workbook
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Official Attendance"
-
-    # Styling Elements
     header_fill = PatternFill(start_color="991B1B", end_color="991B1B", fill_type="solid")  # Karnataka Red
-    date_header_fill = PatternFill(start_color="B91C1C", end_color="B91C1C", fill_type="solid")
     summary_fill = PatternFill(start_color="F59E0B", end_color="F59E0B", fill_type="solid") # Gold accent
     
     font_header = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
@@ -849,48 +829,26 @@ def export_attendance_excel(
 
     align_center = Alignment(horizontal="center", vertical="center")
     align_left = Alignment(horizontal="left", vertical="center")
-    align_right = Alignment(horizontal="right", vertical="center")
 
-    # Header Row columns according to reference specification:
-    # Reg ID | Name | AUID | Institute | Dept | AKV-Dept | [Date 1] Time In | [Date 1] Time Out | ... | Total Days Present | Contact No. | Managed By
-    headers = [
-        "Reg ID",
-        "Name",
-        "AUID",
-        "Institute",
-        "Dept",
-        "AKV-Dept"
-    ]
-
-    for d in all_dates:
-        dmy = iso_date_to_dmy(d)
-        headers.append(f"{dmy} Time In")
-        headers.append(f"{dmy} Time Out")
-
-    headers.extend([
-        "Total Days Present",
-        "Contact No.",
-        "Managed By"
-    ])
-
-    # Title Banner Rows
     total_cols = len(headers)
     last_col_letter = get_column_letter(total_cols)
 
+    # Row 1: Merged Title
     ws.merge_cells(f"A1:{last_col_letter}1")
     ws["A1"] = "ACHARYA KANNADA VEDIKE (AKV) — NUDITARANGA 2026"
     ws["A1"].font = font_title
     ws["A1"].alignment = align_center
 
+    # Row 2: Subtitle
     ws.merge_cells(f"A2:{last_col_letter}2")
-    now_ist_str = get_current_ist_datetime().strftime("%d/%m/%Y %I:%M:%S %p IST")
-    ws["A2"] = f"Official Event Attendance Sheet • Generated: {now_ist_str} • Generated By: {current_user.name}"
+    ws["A2"] = subtitle_text
     ws["A2"].font = font_sub
     ws["A2"].alignment = align_center
 
-    ws.append([]) # Row 3: Blank spacing row
+    # Row 3: Blank
+    ws.append([])
 
-    # Row 4: Column Headers
+    # Row 4: Header row
     header_row_idx = 4
     ws.append(headers)
 
@@ -899,88 +857,41 @@ def export_attendance_excel(
         cell.font = font_header
         cell.border = thin_border
         cell.alignment = align_center
-        # Highlight total days present in accent gold
         if headers[col_idx - 1] == "Total Days Present":
             cell.fill = summary_fill
             cell.font = Font(name="Calibri", size=11, bold=True, color="000000")
         else:
             cell.fill = header_fill
 
-    # Data Rows
+    # Row 5+: Data rows
     start_data_row = 5
-    for p in participants:
-        days_present = 0
-        date_times = []
-        managed_by_set = set()
+    for r in rows_data:
+        ws.append(r)
 
-        for d in all_dates:
-            rec = rec_lookup.get((p.id, d))
-            time_in_str = format_to_ist_time(rec.check_in_at) if rec and rec.check_in_at else "--"
-            time_out_str = format_to_ist_time(rec.check_out_at) if rec and rec.check_out_at else "--"
-            
-            date_times.append(time_in_str)
-            date_times.append(time_out_str)
-
-            # Both Check-In and Check-Out completed counts as a full day present
-            if rec and rec.check_in_at and rec.check_out_at:
-                days_present += 1
-            
-            if rec and rec.submitted_by:
-                managed_by_set.add(rec.submitted_by)
-            elif rec and rec.last_modified_by:
-                managed_by_set.add(rec.last_modified_by)
-
-        managed_by_str = ", ".join(list(managed_by_set)) if managed_by_set else (current_user.name or "AKV Coordinator")
-
-        row_values = [
-            p.registration_id or f"REG-{p.id:04d}",
-            p.name,
-            p.auid,
-            p.institute or "Acharya Institute of Technology",
-            p.department or "--",
-            p.volunteer_domain or "--"
-        ]
-        row_values.extend(date_times)
-        row_values.extend([
-            days_present,
-            p.phone or "--",
-            managed_by_str
-        ])
-
-        ws.append(row_values)
-
-    # Style Data Cells
     end_data_row = ws.max_row
     for row_idx in range(start_data_row, end_data_row + 1):
         for col_idx in range(1, total_cols + 1):
             cell = ws.cell(row=row_idx, column=col_idx)
             cell.font = font_data
             cell.border = thin_border
-            
-            # Alignments: Name, Dept, Institute, AKV-Dept left-aligned; IDs and Times centered
             col_name = headers[col_idx - 1]
-            if col_name in ["Name", "Dept", "Institute", "AKV-Dept", "Managed By"]:
+            if col_name in ["Name", "Dept", "Institute", "AKV-Dept", "Working Committee Role", "AKV-Dept / Working Committee Role", "Managed By"]:
                 cell.alignment = align_left
             else:
                 cell.alignment = align_center
 
-            # Bold Total Days Present
             if col_name == "Total Days Present":
                 cell.font = font_bold_data
                 cell.alignment = align_center
 
-    # Freeze Panes: Freeze header rows so data scrolls underneath
     ws.freeze_panes = "A5"
+    if end_data_row >= header_row_idx:
+        ws.auto_filter.ref = f"A{header_row_idx}:{last_col_letter}{end_data_row}"
 
-    # Auto-filter on the header row
-    ws.auto_filter.ref = f"A{header_row_idx}:{last_col_letter}{end_data_row}"
-
-    # Auto-adjust column widths cleanly
     for col in ws.columns:
         col_letter = get_column_letter(col[0].column)
         max_len = 0
         for cell in col:
-            # Skip title rows (1 and 2) when computing width
             if cell.row in [1, 2, 3]:
                 continue
             val_str = str(cell.value or "")
@@ -988,14 +899,260 @@ def export_attendance_excel(
                 max_len = len(val_str)
         ws.column_dimensions[col_letter].width = max(max_len + 4, 12)
 
-    # Specific column width overrides for elegance
-    ws.column_dimensions["A"].width = 16  # Reg ID
-    ws.column_dimensions["B"].width = 24  # Name
-    ws.column_dimensions["C"].width = 16  # AUID
-    ws.column_dimensions["D"].width = 28  # Institute
-    ws.column_dimensions["E"].width = 30  # Dept
-    ws.column_dimensions["F"].width = 18  # AKV-Dept
+    if col_widths_override:
+        for col_let, width in col_widths_override.items():
+            ws.column_dimensions[col_let].width = width
 
+
+@router.get("/export")
+@router.get("/export/excel")
+def export_attendance_excel(
+    department: Optional[str] = Query(None, description="Filter by department"),
+    institute: Optional[str] = Query(None, description="Filter by institute"),
+    akv_dept: Optional[str] = Query(None, description="Filter by AKV Domain"),
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Generates and downloads the official Attendance Excel workbook.
+    When exported by SUPERADMIN, contains exactly 15 sheets:
+      - Sheet 1: PROMOTIONS
+      - Sheet 2: DECORATIONS
+      - Sheet 3: SOCIAL MEDIA
+      - Sheet 4: LOGISTICS
+      - Sheet 5: CULTURALS
+      - Sheet 6: CONTENT
+      - Sheet 7: DEFENCE
+      - Sheet 8: EMCEE
+      - Sheet 9: MARKETING
+      - Sheet 10: TECHNICAL
+      - Sheet 11: PHOTOGRAPHY
+      - Sheet 12: VIDEOGRAPHY
+      - Sheet 13: HOSPITALITY
+      - Sheet 14: WORKING COMMITTEE (strictly Working Committee members only)
+      - Sheet 15: ALL (consolidated combination of Sheets 1–13 + Sheet 14)
+    
+    Timestamps in Indian Standard Time (Asia/Kolkata).
+    Chronological event date columns across all sheets.
+    Total Days Present calculated when both Check-In and Check-Out are recorded on that date.
+    """
+    # 1. Determine all event dates (from configuration and existing records)
+    configured_dates = [d[0] for d in db.query(FestivalEventDate.date).filter(FestivalEventDate.is_active == True).all()]
+    rec_dates_dept = [r[0] for r in db.query(AttendanceRecord.attendance_date).distinct().all()]
+    rec_dates_wc = [r[0] for r in db.query(WorkingCommitteeAttendance.attendance_date).distinct().all()]
+    all_dates = sorted(list(set(configured_dates + rec_dates_dept + rec_dates_wc)))
+
+    if not all_dates:
+        all_dates = ["2026-09-28", "2026-09-29", "2026-09-30", "2026-10-01", "2026-10-02"]
+
+    # 2. Query all participants (Department Members)
+    user_query = db.query(User).filter(
+        User.role.in_(["PARTICIPANT", "VOLUNTEER", "STUDENT", "SPECTATOR"])
+    )
+    if department and department != "all":
+        user_query = user_query.filter(User.department == department)
+    if institute and institute != "all":
+        user_query = user_query.filter(User.institute == institute)
+    if akv_dept and akv_dept != "all":
+        user_query = user_query.filter(User.volunteer_domain == akv_dept)
+
+    all_participants = user_query.order_by(User.name.asc()).all()
+    dept_user_ids = [p.id for p in all_participants]
+
+    # Department attendance records lookup
+    dept_records = db.query(AttendanceRecord).filter(
+        AttendanceRecord.user_id.in_(dept_user_ids)
+    ).all() if dept_user_ids else []
+    dept_rec_lookup = {(r.user_id, r.attendance_date): r for r in dept_records}
+
+    # 3. Query Working Committee members & records (SuperAdmin only)
+    is_superadmin = (current_user.role == "SUPERADMIN")
+    wc_members = []
+    wc_rec_lookup = {}
+    if is_superadmin:
+        wc_members = get_wc_members_query(db).order_by(User.name.asc()).all()
+        wc_member_ids = [m.id for m in wc_members]
+        wc_records = db.query(WorkingCommitteeAttendance).filter(
+            WorkingCommitteeAttendance.working_committee_member_id.in_(wc_member_ids)
+        ).all() if wc_member_ids else []
+        wc_rec_lookup = {(r.working_committee_member_id, r.attendance_date): r for r in wc_records}
+
+    # 4. Initialize Workbook
+    wb = openpyxl.Workbook()
+    now_ist_str = get_current_ist_datetime().strftime("%d/%m/%Y %I:%M:%S %p IST")
+
+    # Common Column Width Overrides
+    common_col_widths = {
+        "A": 16,  # Reg ID
+        "B": 24,  # Name
+        "C": 16,  # AUID
+        "D": 28,  # Institute
+        "E": 28,  # Dept
+        "F": 22   # Domain / Role
+    }
+
+    # Date headers
+    date_cols = []
+    for d in all_dates:
+        dmy = iso_date_to_dmy(d)
+        date_cols.append(f"{dmy} Time In")
+        date_cols.append(f"{dmy} Time Out")
+
+    # Helper to build participant row values
+    def make_dept_row(p, role_col_val):
+        days_present = 0
+        date_times = []
+        managed_by_set = set()
+
+        for d in all_dates:
+            rec = dept_rec_lookup.get((p.id, d))
+            time_in_str = format_to_ist_time(rec.check_in_at) if rec and rec.check_in_at else "--"
+            time_out_str = format_to_ist_time(rec.check_out_at) if rec and rec.check_out_at else "--"
+            date_times.append(time_in_str)
+            date_times.append(time_out_str)
+
+            if rec and rec.check_in_at and rec.check_out_at:
+                days_present += 1
+
+            if rec and rec.submitted_by:
+                managed_by_set.add(rec.submitted_by)
+            elif rec and rec.last_modified_by:
+                managed_by_set.add(rec.last_modified_by)
+
+        managed_by_str = ", ".join(list(managed_by_set)) if managed_by_set else (p.managed_by or current_user.name or "AKV Coordinator")
+        row = [
+            p.registration_id or f"REG-{p.id:04d}",
+            p.name,
+            p.auid or "--",
+            p.institute or "Acharya Institute of Technology",
+            p.department or "--",
+            role_col_val
+        ]
+        row.extend(date_times)
+        row.extend([
+            days_present,
+            p.phone or "--",
+            managed_by_str
+        ])
+        return row, days_present
+
+    # Helper to build Working Committee row values
+    def make_wc_row(m, role_col_val):
+        days_present = 0
+        date_times = []
+        managed_by_set = set()
+
+        for d in all_dates:
+            rec = wc_rec_lookup.get((m.id, d))
+            time_in_str = format_to_ist_time(rec.check_in_at) if rec and rec.check_in_at else "--"
+            time_out_str = format_to_ist_time(rec.check_out_at) if rec and rec.check_out_at else "--"
+            date_times.append(time_in_str)
+            date_times.append(time_out_str)
+
+            if rec and rec.check_in_at and rec.check_out_at:
+                days_present += 1
+
+            if rec and rec.submitted_by:
+                managed_by_set.add(rec.submitted_by)
+            elif rec and rec.last_modified_by:
+                managed_by_set.add(rec.last_modified_by)
+
+        managed_by_str = ", ".join(list(managed_by_set)) if managed_by_set else (m.managed_by or current_user.name or "AKV Superadmin")
+        row = [
+            m.registration_id or f"WC{m.id:03d}",
+            m.name,
+            m.auid or "--",
+            m.institute or "Acharya Institute of Technology",
+            m.department or "--",
+            role_col_val
+        ]
+        row.extend(date_times)
+        row.extend([
+            days_present,
+            m.phone or "--",
+            managed_by_str
+        ])
+        return row, days_present
+
+    # ==========================================================================
+    # SHEETS 1 TO 13: INDIVIDUAL DEPARTMENT / DOMAIN GROUPS
+    # ==========================================================================
+    dept_headers = ["Reg ID", "Name", "AUID", "Institute", "Dept", "AKV-Dept"]
+    dept_headers.extend(date_cols)
+    dept_headers.extend(["Total Days Present", "Contact No.", "Managed By"])
+
+    for idx, (group_sheet_name, aliases) in enumerate(DEPARTMENT_GROUPS):
+        if idx == 0:
+            ws = wb.active
+            ws.title = group_sheet_name
+        else:
+            ws = wb.create_sheet(title=group_sheet_name)
+
+        # Filter members whose volunteer_domain matches alias
+        group_members = [
+            p for p in all_participants 
+            if p.volunteer_domain and any(a in p.volunteer_domain.lower() for a in aliases)
+        ]
+
+        rows_data = []
+        for p in group_members:
+            r_vals, _ = make_dept_row(p, p.volunteer_domain or group_sheet_name)
+            rows_data.append(r_vals)
+
+        sub_text = f"Official Department Attendance Sheet • {group_sheet_name} • Generated: {now_ist_str} • Generated By: {current_user.name}"
+        populate_attendance_worksheet(ws, group_sheet_name, sub_text, dept_headers, rows_data, common_col_widths)
+
+    # ==========================================================================
+    # SHEET 14: WORKING COMMITTEE (SUPERADMIN ONLY)
+    # ==========================================================================
+    if is_superadmin:
+        ws_wc = wb.create_sheet(title="WORKING COMMITTEE")
+        wc_headers = ["Reg ID", "Name", "AUID", "Institute", "Dept", "Working Committee Role"]
+        wc_headers.extend(date_cols)
+        wc_headers.extend(["Total Days Present", "Contact No.", "Managed By"])
+
+        wc_rows_data = []
+        for m in wc_members:
+            r_vals, _ = make_wc_row(m, m.working_committee_role or "Coordinator")
+            wc_rows_data.append(r_vals)
+
+        sub_text_wc = f"Official Working Committee Attendance • Generated: {now_ist_str} • Generated By: {current_user.name}"
+        populate_attendance_worksheet(ws_wc, "WORKING COMMITTEE", sub_text_wc, wc_headers, wc_rows_data, common_col_widths)
+
+    # ==========================================================================
+    # SHEET 15: ALL (CONSOLIDATED: SHEETS 1–13 + SHEET 14)
+    # ==========================================================================
+    if is_superadmin:
+        ws_all = wb.create_sheet(title="ALL")
+        all_headers = ["Reg ID", "Name", "AUID", "Institute", "Dept", "AKV-Dept / Working Committee Role"]
+        all_headers.extend(date_cols)
+        all_headers.extend(["Total Days Present", "Contact No.", "Managed By", "Member Type"])
+
+        all_rows_data = []
+        seen_user_ids = set()
+
+        # 1. Normal Department Participants
+        for p in all_participants:
+            # Check if this user is also a working committee member
+            is_in_wc = any(m.id == p.id for m in wc_members)
+            if not is_in_wc:
+                r_vals, _ = make_dept_row(p, p.volunteer_domain or p.department or "--")
+                r_vals.append("DEPARTMENT")
+                all_rows_data.append(r_vals)
+                seen_user_ids.add(p.id)
+
+        # 2. Working Committee Members
+        for m in wc_members:
+            if m.id not in seen_user_ids:
+                r_vals, _ = make_wc_row(m, m.working_committee_role or "Coordinator")
+                r_vals.append("WORKING COMMITTEE")
+                all_rows_data.append(r_vals)
+                seen_user_ids.add(m.id)
+
+        sub_text_all = f"Official Consolidated Attendance Sheet (All Departments + Working Committee) • Generated: {now_ist_str} • Generated By: {current_user.name}"
+        populate_attendance_worksheet(ws_all, "ALL CONSOLIDATED", sub_text_all, all_headers, all_rows_data, common_col_widths)
+
+    # Save to BytesIO
     output = io.BytesIO()
     wb.save(output)
     output.seek(0)

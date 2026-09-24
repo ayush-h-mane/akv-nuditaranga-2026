@@ -33,6 +33,11 @@ class User(Base):
     admin_type = Column(String, default="WORKING_COMMITTEE", nullable=True)  # FACULTY_COORDINATOR, WORKING_COMMITTEE
     faculty_id = Column(String, nullable=True)
     
+    # Working Committee designation
+    is_working_committee = Column(Boolean, default=False, nullable=False, index=True)
+    working_committee_role = Column(String, default="Coordinator", nullable=True)
+    managed_by = Column(String, nullable=True)
+    
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
@@ -40,6 +45,7 @@ class User(Base):
     admin_profile = relationship("Admin", back_populates="user", uselist=False, cascade="all, delete-orphan")
     attendances = relationship("VolunteerAttendance", back_populates="user", cascade="all, delete-orphan")
     attendance_records = relationship("AttendanceRecord", back_populates="user", cascade="all, delete-orphan")
+    wc_attendances = relationship("WorkingCommitteeAttendance", back_populates="user", cascade="all, delete-orphan")
     event_registrations = relationship("Registration", back_populates="user")
     reset_tokens = relationship("PasswordResetToken", back_populates="user", cascade="all, delete-orphan")
 
@@ -321,5 +327,97 @@ class FestivalEventDate(Base):
     label = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+# ==============================================================================
+# SEPARATE STORAGE: WORKING COMMITTEE ATTENDANCE SYSTEM
+# ==============================================================================
+
+class WorkingCommitteeAttendance(Base):
+    """
+    Dedicated Working Committee attendance storage.
+    Strictly separated from normal department attendance records in the database.
+    Enforces two markings per day (Check-In & Check-Out) with server-side IST timestamps.
+    Unique constraint ensures no duplicate records for a member on the same date.
+    """
+    __tablename__ = "working_committee_attendance"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    working_committee_member_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    attendance_date = Column(String, index=True, nullable=False)  # Format: YYYY-MM-DD
+    
+    # Server-generated timestamps stored in UTC, converted to Asia/Kolkata for display & export
+    check_in_at = Column(DateTime, nullable=True)
+    check_out_at = Column(DateTime, nullable=True)
+    
+    # Status: NOT_MARKED, CHECKED_IN, COMPLETED
+    status = Column(String, default="NOT_MARKED", nullable=False, index=True)
+    
+    # Submission & Locking
+    submitted = Column(Boolean, default=False, nullable=False, index=True)
+    submitted_at = Column(DateTime, nullable=True)
+    submitted_by = Column(String, nullable=True)
+    
+    # Modification Tracking
+    last_modified_at = Column(DateTime, nullable=True)
+    last_modified_by = Column(String, nullable=True)
+    
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("working_committee_member_id", "attendance_date", name="uq_wc_member_attendance_date"),
+    )
+
+    user = relationship("User", back_populates="wc_attendances")
+
+    @property
+    def user_id(self):
+        return self.working_committee_member_id
+
+    @user_id.setter
+    def user_id(self, val):
+        self.working_committee_member_id = val
+
+
+class WorkingCommitteeDaySession(Base):
+    """
+    Controls independent submission and lock state for Working Committee attendance per event date.
+    Independent of normal department submission sessions.
+    """
+    __tablename__ = "working_committee_day_sessions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    attendance_date = Column(String, unique=True, index=True, nullable=False)  # Format: YYYY-MM-DD
+    is_submitted = Column(Boolean, default=False, nullable=False)
+    submitted_at = Column(DateTime, nullable=True)
+    submitted_by = Column(String, nullable=True)
+    unlocked_at = Column(DateTime, nullable=True)
+    unlocked_by = Column(String, nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+
+class WorkingCommitteeAuditLog(Base):
+    """
+    Dedicated audit log for Working Committee attendance modifications.
+    Captures SuperAdmin overrides, edits, resets, unlocks, and markings.
+    """
+    __tablename__ = "working_committee_audit_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    attendance_id = Column(Integer, nullable=True, index=True)
+    working_committee_member_id = Column(Integer, nullable=False, index=True)
+    member_name = Column(String, nullable=True)
+    attendance_date = Column(String, nullable=False, index=True)
+    old_check_in = Column(String, nullable=True)
+    new_check_in = Column(String, nullable=True)
+    old_check_out = Column(String, nullable=True)
+    new_check_out = Column(String, nullable=True)
+    action = Column(String, nullable=False)  # CHECK_IN, CHECK_OUT, SUBMIT_ATTENDANCE, SUPERADMIN_EDIT, SUPERADMIN_RESET, SUPERADMIN_UNLOCK
+    modified_by = Column(String, nullable=False)
+    modified_at = Column(DateTime, default=datetime.datetime.utcnow)
+    reason = Column(Text, nullable=True)
 
 
