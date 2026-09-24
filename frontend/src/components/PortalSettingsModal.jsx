@@ -141,13 +141,13 @@ export const PortalSettingsModal = ({
                   </div>
                   <div>
                     <span className="text-[10px] font-black tracking-widest uppercase px-2 py-0.5 bg-amber-200/80 text-amber-900 rounded-md">
-                      Full-Stack Developer, AIML Engineer
+                      Lead Systems Architect & Developer
                     </span>
                     <h5 className="text-sm font-extrabold text-stone-900 mt-0.5">
                       Ayush H Mane
                     </h5>
                     <p className="text-[11px] text-stone-500 font-medium">
-                      Lead Systems Architect & Developer
+                      Developer AIML Engineer
                     </p>
                   </div>
                 </div>
@@ -241,13 +241,13 @@ export const PortalSettingsModal = ({
                   </div>
                   <div>
                     <span className="text-[10px] font-black tracking-widest uppercase px-2 py-0.5 bg-red-100 text-red-900 rounded-md">
-                      Secretary • Event Coordinator
+                      Secretary
                     </span>
                     <h5 className="text-sm font-extrabold text-stone-900 mt-0.5">
                       Priyanka S Reddy
                     </h5>
                     <p className="text-[11px] text-stone-500 font-medium">
-                      Event Coordinator • Acharya Kannada Vedike
+                      Event Coordinator • EE Engineer
                     </p>
                   </div>
                 </div>
@@ -321,7 +321,7 @@ export const PortalSettingsModal = ({
               {/* Secretariat Venue note */}
               <div className="flex items-center gap-2 text-[11px] text-stone-500 pt-1">
                 <Building2 className="w-3 h-3 text-stone-400 shrink-0" />
-                <span>Room 104, Central Secretariat, Acharya Campus, Bengaluru - 560107</span>
+                <span> Student Activity Office, Acharya Campus, Bengaluru - 560107</span>
               </div>
             </div>
           </div>

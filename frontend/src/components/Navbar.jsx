@@ -178,10 +178,10 @@ export const Navbar = ({ currentView, setCurrentView, onOpenAuthTab }) => {
                 if (onOpenAuthTab) onOpenAuthTab("student-login");
                 setCurrentView("auth");
               }}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold border border-stone-200 text-stone-700 hover:bg-stone-50 hover:text-stone-900 transition-colors shadow-xs"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border border-stone-200 text-stone-700 hover:bg-stone-50 hover:text-stone-900 transition-colors shadow-xs"
             >
               <User className="w-3.5 h-3.5 text-kar-red" />
-              <span>Login / Portal</span>
+              <span>Login/Register</span>
             </button>
           )}
 
@@ -266,7 +266,7 @@ export const Navbar = ({ currentView, setCurrentView, onOpenAuthTab }) => {
               className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-stone-700 bg-stone-50 hover:bg-stone-100"
             >
               <LayoutDashboard className="w-4 h-4 text-kar-red" />
-              <span>{user ? "My Dashboard" : "Sign In to Portal"}</span>
+              <span>{user ? "My Dashboard" : "Login/Register"}</span>
             </button>
 
             <button
