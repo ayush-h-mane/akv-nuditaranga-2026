@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.14",
-  "staged_version": "2.2.15",
+  "production_version": "2.2.15",
+  "staged_version": "2.2.16",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.15",
+      "released_at": "2026-09-26T02:35:15+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.15: Configured Vercel Python dependency installation to use copy mode and raised the Vite chunk-size warning threshold."
+    },
     {
       "version": "2.2.14",
       "released_at": "2026-09-26T02:19:03+0530",
