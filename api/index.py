@@ -1,5 +1,7 @@
 import os
 import sys
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 
 # Ensure backend package can be imported
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -7,14 +9,36 @@ parent_dir = os.path.dirname(current_dir)
 if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
-# Validate database configuration on Vercel
-if os.environ.get("VERCEL"):
-    db_url = os.environ.get("DATABASE_URL")
-    if not db_url or "sqlite" in db_url.lower():
-        raise RuntimeError(
-            "CRITICAL CONFIGURATION ERROR: Persistent DATABASE_URL (PostgreSQL) is required in Vercel production. "
-            "Ephemeral SQLite in /tmp will result in data loss across serverless invocations. "
-            "Please configure your PostgreSQL connection string (e.g. Supabase, Neon) in your Vercel Project Environment Variables."
+def _configuration_error_app(message: str) -> FastAPI:
+    app = FastAPI(title="AKV API Configuration Error")
+
+    @app.get("/api/health")
+    async def health_check():
+        return JSONResponse(
+            status_code=503,
+            content={"status": "unavailable", "detail": message}
         )
 
-from backend.app.main import app
+    @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
+    async def configuration_error(path: str):
+        return JSONResponse(
+            status_code=503,
+            content={"detail": message, "error_code": "SERVER_CONFIGURATION_ERROR"}
+        )
+
+    return app
+
+
+try:
+    # Production must use persistent PostgreSQL; never silently fall back to ephemeral SQLite.
+    if os.environ.get("VERCEL"):
+        db_url = os.environ.get("DATABASE_URL")
+        if not db_url or "sqlite" in db_url.lower():
+            raise RuntimeError(
+                "Persistent DATABASE_URL (PostgreSQL) is required in Vercel production. "
+                "Configure DATABASE_URL in Vercel Project Settings > Environment Variables, then redeploy."
+            )
+
+    from backend.app.main import app
+except RuntimeError as error:
+    app = _configuration_error_app(str(error))
