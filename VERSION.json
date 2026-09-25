@@ -9,7 +9,8 @@
     "Strengthened Forgot Password modal to display clean, secure confirmation instructions directing users to their college email.",
     "Enhanced email service with detailed SMTP diagnostic logging, STARTTLS negotiation, and created scripts/test_smtp.py for mail connectivity verification.",
     "Updated test suites to extract tokens securely from simulated outbound mail without exposing tokens in public API responses.",
-    "Fixed input font visibility in Forgot Password and Reset Password modals with explicit dark contrast (#1c1917 on white) and global base layer color styles."
+    "Fixed input font visibility in Forgot Password and Reset Password modals with explicit dark contrast (#1c1917 on white) and global base layer color styles.",
+    "Engineered Multi-Relay SMTP Pool architecture with round-robin load distribution and automatic quota failover to achieve 600+ free emails/day across Brevo relays."
   ],
   "history": [
     {

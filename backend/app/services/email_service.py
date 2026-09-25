@@ -49,6 +49,65 @@ def wrap_email_html(title: str, content: str) -> str:
     </html>
     """
 
+_RELAY_ROTATION_INDEX: int = 0
+
+def get_smtp_relays() -> List[Dict[str, Any]]:
+    """
+    Returns the list of active configured SMTP relays for multi-account load balancing.
+    Combining 2 free Brevo accounts gives 600 emails/day; 3 gives 900 emails/day.
+    """
+    relays = []
+    # Primary Relay
+    if settings.SMTP_HOST and settings.SMTP_HOST.strip():
+        relays.append({
+            "name": "Relay 1 (Primary)",
+            "host": settings.SMTP_HOST.strip(),
+            "port": settings.SMTP_PORT,
+            "username": settings.SMTP_USERNAME.strip(),
+            "password": settings.SMTP_PASSWORD.strip()
+        })
+    # Secondary Relay
+    if settings.SMTP_HOST_2 and settings.SMTP_HOST_2.strip():
+        relays.append({
+            "name": "Relay 2 (Secondary)",
+            "host": settings.SMTP_HOST_2.strip(),
+            "port": settings.SMTP_PORT_2,
+            "username": settings.SMTP_USERNAME_2.strip(),
+            "password": settings.SMTP_PASSWORD_2.strip()
+        })
+    # Tertiary Relay
+    if settings.SMTP_HOST_3 and settings.SMTP_HOST_3.strip():
+        relays.append({
+            "name": "Relay 3 (Tertiary)",
+            "host": settings.SMTP_HOST_3.strip(),
+            "port": settings.SMTP_PORT_3,
+            "username": settings.SMTP_USERNAME_3.strip(),
+            "password": settings.SMTP_PASSWORD_3.strip()
+        })
+    return relays
+
+def send_via_relay(relay: Dict[str, Any], msg: MIMEMultipart, to_email: str) -> None:
+    """Dispatches a MIME message through a designated SMTP relay server."""
+    host = relay["host"]
+    port = relay["port"]
+    username = relay["username"]
+    password = relay["password"]
+
+    if port == 465:
+        server = smtplib.SMTP_SSL(host, port, timeout=15)
+    else:
+        server = smtplib.SMTP(host, port, timeout=15)
+        try:
+            server.starttls()
+        except Exception as tls_err:
+            print(f"[{relay['name']} TLS NOTICE] {tls_err}")
+
+    if username and password:
+        server.login(username, password)
+
+    server.sendmail(settings.EMAIL_FROM, [to_email], msg.as_string())
+    server.quit()
+
 def send_email(
     to_email: str,
     subject: str,
@@ -57,9 +116,12 @@ def send_email(
     attachments: Optional[List[Dict[str, Any]]] = None
 ) -> bool:
     """
-    Sends an email using configured SMTP server, or logs to debug outbox if SMTP is unconfigured.
+    Sends an email using configured SMTP server pool with automatic round-robin rotation
+    and seamless failover (e.g. 2 Brevo accounts = 600 free emails/day).
     Supports binary attachments (e.g. PDF ID cards).
     """
+    global _RELAY_ROTATION_INDEX
+
     record = {
         "to": to_email,
         "subject": subject,
@@ -73,71 +135,72 @@ def send_email(
     }
     DEBUG_EMAIL_OUTBOX.append(record)
 
+    relays = get_smtp_relays()
+
     # If no SMTP host configured, print debug summary and notice
-    if not settings.SMTP_HOST or not settings.SMTP_HOST.strip():
+    if not relays:
         att_str = f" [Attached: {', '.join(a['filename'] for a in record['attachments'])}]" if record["attachments"] else ""
         print(f"\n[EMAIL DISPATCH - DEV SIMULATION (REAL SMTP UNCONFIGURED)]{att_str}")
         print(f"To: {to_email}")
         print(f"From: {settings.EMAIL_FROM}")
         print(f"Subject: {subject}")
         print(f"Summary: {text_content[:200]}...")
-        print(f"[EMAIL WARNING] SMTP_HOST is not set in .env. Real email was NOT dispatched to recipient's inbox. Set SMTP credentials to enable live delivery.")
+        print(f"[EMAIL WARNING] No SMTP relays configured. Configure SMTP_HOST in .env.")
         return True
 
-    try:
-        if attachments:
-            msg = MIMEMultipart("mixed")
-            msg["Subject"] = subject
-            msg["From"] = f"{settings.EMAIL_FROM_NAME} <{settings.EMAIL_FROM}>"
-            msg["To"] = to_email
-            msg["Reply-To"] = settings.EMAIL_FROM
+    # Assemble MIME Message
+    if attachments:
+        msg = MIMEMultipart("mixed")
+        msg["Subject"] = subject
+        msg["From"] = f"{settings.EMAIL_FROM_NAME} <{settings.EMAIL_FROM}>"
+        msg["To"] = to_email
+        msg["Reply-To"] = settings.EMAIL_FROM
 
-            body_part = MIMEMultipart("alternative")
-            if text_content:
-                body_part.attach(MIMEText(text_content, "plain", "utf-8"))
-            if html_content:
-                body_part.attach(MIMEText(html_content, "html", "utf-8"))
-            msg.attach(body_part)
+        body_part = MIMEMultipart("alternative")
+        if text_content:
+            body_part.attach(MIMEText(text_content, "plain", "utf-8"))
+        if html_content:
+            body_part.attach(MIMEText(html_content, "html", "utf-8"))
+        msg.attach(body_part)
 
-            for att in attachments:
-                filename = att.get("filename", "document.pdf")
-                content = att.get("content", b"")
-                part = MIMEApplication(content, _subtype="pdf")
-                part.add_header("Content-Disposition", "attachment", filename=filename)
-                msg.attach(part)
-        else:
-            msg = MIMEMultipart("alternative")
-            msg["Subject"] = subject
-            msg["From"] = f"{settings.EMAIL_FROM_NAME} <{settings.EMAIL_FROM}>"
-            msg["To"] = to_email
-            msg["Reply-To"] = settings.EMAIL_FROM
+        for att in attachments:
+            filename = att.get("filename", "document.pdf")
+            content = att.get("content", b"")
+            part = MIMEApplication(content, _subtype="pdf")
+            part.add_header("Content-Disposition", "attachment", filename=filename)
+            msg.attach(part)
+    else:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = f"{settings.EMAIL_FROM_NAME} <{settings.EMAIL_FROM}>"
+        msg["To"] = to_email
+        msg["Reply-To"] = settings.EMAIL_FROM
 
-            if text_content:
-                msg.attach(MIMEText(text_content, "plain", "utf-8"))
-            if html_content:
-                msg.attach(MIMEText(html_content, "html", "utf-8"))
+        if text_content:
+            msg.attach(MIMEText(text_content, "plain", "utf-8"))
+        if html_content:
+            msg.attach(MIMEText(html_content, "html", "utf-8"))
 
-        if settings.SMTP_PORT == 465:
-            server = smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15)
-        else:
-            server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15)
-            try:
-                server.starttls()
-            except Exception as tls_err:
-                print(f"[EMAIL TLS WARNING] STARTTLS not accepted or already active: {tls_err}")
+    # Multi-Relay Rotation: Round-robin across relays
+    start_idx = _RELAY_ROTATION_INDEX % len(relays)
+    _RELAY_ROTATION_INDEX += 1
 
-        if settings.SMTP_USERNAME and settings.SMTP_PASSWORD:
-            server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
+    attempts = [relays[(start_idx + i) % len(relays)] for i in range(len(relays))]
+    last_err = None
 
-        server.sendmail(settings.EMAIL_FROM, [to_email], msg.as_string())
-        server.quit()
-        print(f"[EMAIL DISPATCH] Successfully delivered live email to {to_email}")
-        return True
-    except Exception as e:
-        print(f"[EMAIL ERROR] Failed to send email to {to_email}: {type(e).__name__}: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
+    for relay in attempts:
+        try:
+            send_via_relay(relay, msg, to_email)
+            print(f"[EMAIL DISPATCH] Successfully delivered live email to {to_email} via {relay['name']} ({relay['username'] or relay['host']})")
+            return True
+        except Exception as e:
+            last_err = e
+            print(f"[EMAIL RELAY ERROR] {relay['name']} ({relay['username'] or relay['host']}) failed: {type(e).__name__}: {e}")
+            if len(attempts) > 1:
+                print(f"[EMAIL FAILOVER] Attempting delivery through next relay in pool...")
+
+    print(f"[EMAIL ERROR] All {len(relays)} SMTP relays failed to deliver email to {to_email}: {last_err}")
+    return False
 
 # High-Level Email Dispatchers
 
