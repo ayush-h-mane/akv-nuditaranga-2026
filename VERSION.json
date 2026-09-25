@@ -8,7 +8,9 @@
     "Secure Forgot Password system delivering single-use 10-minute reset links from akv@acharya.ac.in.",
     "Integrated support for Student AUID, College Email, and Admin Coordinator username recovery.",
     "Added 'Forgot Password?' modal trigger to the Admin Login portal.",
-    "Automatic address bar sanitization (clearing hash token) post-password reset."
+    "Automatic address bar sanitization (clearing hash token) post-password reset.",
+    "Automated registration confirmation email dispatch from akv@acharya.ac.in with complete registration details.",
+    "Official Candidate ID Card & Event Pass PDF generation with verification QR codes attached directly to registration confirmation emails."
   ],
   "history": [
     {

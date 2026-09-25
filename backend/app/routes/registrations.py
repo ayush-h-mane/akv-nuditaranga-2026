@@ -7,6 +7,7 @@ from sqlalchemy import func
 from ..database import get_db
 from ..models import Registration, Event
 from ..schemas import RegistrationCreate, RegistrationOut
+from ..services.email_service import send_event_registration_confirmation_email
 
 router = APIRouter(prefix="/registrations", tags=["Registrations"])
 
@@ -115,6 +116,29 @@ def register_participant(reg_data: RegistrationCreate, db: Session = Depends(get
     event.registered_count += 1
     db.commit()
     db.refresh(new_reg)
+
+    # Automated confirmation email with ID Card / Event Pass PDF from akv@acharya.ac.in
+    if new_reg.email:
+        try:
+            send_event_registration_confirmation_email(
+                to_email=new_reg.email,
+                participant_name=new_reg.full_name,
+                auid=new_reg.auid or new_reg.usn,
+                event_title=event.title_en or event.id,
+                registration_id=new_reg.registration_id,
+                institute=new_reg.institute,
+                department=new_reg.department,
+                is_team=new_reg.is_team,
+                team_name=new_reg.team_name,
+                candidate_data={
+                    "semester": new_reg.semester,
+                    "section": new_reg.section,
+                    "phone": new_reg.phone
+                }
+            )
+        except Exception as e:
+            print(f"[EVENT REG EMAIL WARNING] {e}")
+
     return new_reg
 
 @router.get("/auid/{auid}", response_model=List[RegistrationOut])

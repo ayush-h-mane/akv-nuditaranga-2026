@@ -218,13 +218,28 @@ def register_student(payload: StudentRegisterRequest, db: Session = Depends(get_
     db.commit()
     db.refresh(new_user)
 
-    # Send Welcome Email
+    # Send Welcome & Confirmation Email with ID Card PDF attached
+    candidate_info = {
+        "name": new_user.name,
+        "auid": clean_auid,
+        "registration_id": reg_id,
+        "role": new_user.role,
+        "institute": new_user.institute,
+        "department": new_user.department,
+        "semester": new_user.semester,
+        "section": new_user.section,
+        "email": clean_email,
+        "phone": new_user.phone,
+        "volunteer_domain": new_user.volunteer_domain,
+        "photo_url": new_user.photo_url
+    }
     send_student_welcome_email(
         to_email=clean_email,
         student_name=new_user.name,
         auid=clean_auid,
         role=new_user.role,
-        registration_id=reg_id
+        registration_id=reg_id,
+        candidate_data=candidate_info
     )
 
     # Log action
