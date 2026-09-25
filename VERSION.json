@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.24",
-  "staged_version": "2.2.25",
+  "production_version": "2.2.25",
+  "staged_version": "2.2.26",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.25",
+      "released_at": "2026-09-26T03:26:05+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.25: Logged sanitized backend startup exceptions for diagnosing the configured production PostgreSQL connection."
+    },
     {
       "version": "2.2.24",
       "released_at": "2026-09-26T03:24:00+0530",

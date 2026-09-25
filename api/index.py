@@ -46,6 +46,7 @@ try:
 except RuntimeError as error:
     app = _configuration_error_app(str(error))
 except Exception as error:
+    print(f"[API STARTUP ERROR] {error!r}", flush=True)
     if isinstance(error, ModuleNotFoundError):
         app = _configuration_error_app(
             f"API startup failed: missing Python module '{error.name}'."
