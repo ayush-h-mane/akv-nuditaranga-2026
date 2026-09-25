@@ -90,6 +90,7 @@ def send_email(
             msg["Subject"] = subject
             msg["From"] = f"{settings.EMAIL_FROM_NAME} <{settings.EMAIL_FROM}>"
             msg["To"] = to_email
+            msg["Reply-To"] = settings.EMAIL_FROM
 
             body_part = MIMEMultipart("alternative")
             if text_content:
@@ -109,6 +110,7 @@ def send_email(
             msg["Subject"] = subject
             msg["From"] = f"{settings.EMAIL_FROM_NAME} <{settings.EMAIL_FROM}>"
             msg["To"] = to_email
+            msg["Reply-To"] = settings.EMAIL_FROM
 
             if text_content:
                 msg.attach(MIMEText(text_content, "plain", "utf-8"))
