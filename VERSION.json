@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.19",
-  "staged_version": "2.2.20",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.2.20",
+  "staged_version": "2.2.21",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.20",
+      "released_at": "2026-09-26T03:17:17+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.20: Converted unexpected backend startup exceptions into structured API configuration responses instead of opaque Vercel invocation failures."
+    },
     {
       "version": "2.2.19",
       "released_at": "2026-09-26T03:12:57+0530",
