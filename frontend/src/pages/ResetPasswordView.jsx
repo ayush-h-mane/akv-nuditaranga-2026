@@ -87,7 +87,8 @@ export const ResetPasswordView = ({ token, onBackToLogin }) => {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Enter new password (min. 6 chars)"
-                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm"
+                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-stone-300 bg-white text-stone-900 placeholder:text-stone-400 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm font-medium"
+                    style={{ color: "#1c1917", backgroundColor: "#ffffff" }}
                   />
                 </div>
               </div>
@@ -105,7 +106,8 @@ export const ResetPasswordView = ({ token, onBackToLogin }) => {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Re-enter new password"
-                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm"
+                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-stone-300 bg-white text-stone-900 placeholder:text-stone-400 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm font-medium"
+                    style={{ color: "#1c1917", backgroundColor: "#ffffff" }}
                   />
                 </div>
               </div>

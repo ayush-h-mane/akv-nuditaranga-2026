@@ -72,6 +72,14 @@
     color: #1c1917;
   }
 
+  input, textarea, select {
+    color: #1c1917;
+  }
+
+  input::placeholder, textarea::placeholder {
+    color: #a8a29e;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *, ::before, ::after {
       animation-duration: 0.01ms !important;

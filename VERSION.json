@@ -8,7 +8,8 @@
     "Removed development reset token UI card, direct bypass button, and dev_reset_token API leakage from the Forgot Password section.",
     "Strengthened Forgot Password modal to display clean, secure confirmation instructions directing users to their college email.",
     "Enhanced email service with detailed SMTP diagnostic logging, STARTTLS negotiation, and created scripts/test_smtp.py for mail connectivity verification.",
-    "Updated test suites to extract tokens securely from simulated outbound mail without exposing tokens in public API responses."
+    "Updated test suites to extract tokens securely from simulated outbound mail without exposing tokens in public API responses.",
+    "Fixed input font visibility in Forgot Password and Reset Password modals with explicit dark contrast (#1c1917 on white) and global base layer color styles."
   ],
   "history": [
     {
