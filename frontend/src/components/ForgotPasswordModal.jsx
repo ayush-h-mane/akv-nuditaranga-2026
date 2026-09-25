@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { api } from "../services/api";
+import { ACHARYA_EMAIL_ERROR, isAcharyaEmail } from "../utils/emailValidation";
 import { Mail, AlertCircle, CheckCircle2, X, KeyRound } from "lucide-react";
 
 export const ForgotPasswordModal = ({ isOpen, onClose, onOpenResetView }) => {
@@ -14,6 +15,10 @@ export const ForgotPasswordModal = ({ isOpen, onClose, onOpenResetView }) => {
     e.preventDefault();
     if (!identifier.trim()) {
       setError("Please enter your AUID or Registered College Email.");
+      return;
+    }
+    if (identifier.includes("@") && !isAcharyaEmail(identifier)) {
+      setError(ACHARYA_EMAIL_ERROR);
       return;
     }
 
@@ -84,7 +89,7 @@ export const ForgotPasswordModal = ({ isOpen, onClose, onOpenResetView }) => {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <p className="text-sm text-stone-600">
-                Enter your <strong>Acharya University ID (AUID)</strong>, <strong>Registered College Email</strong>, or <strong>Admin Username</strong>. We will share a secure 10-minute reset link from <strong>akv@acharya.ac.in</strong>.
+                Enter the <strong>AUID</strong> or <strong>registered college email</strong> used during registration. We will send a secure 10-minute reset link from <strong>akv@acharya.ac.in</strong>.
               </p>
 
               {error && (
@@ -96,7 +101,7 @@ export const ForgotPasswordModal = ({ isOpen, onClose, onOpenResetView }) => {
 
               <div>
                 <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">
-                  AUID, College Email ID, or Username
+                  AUID or Registered College Email
                 </label>
                 <div className="relative">
                   <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
@@ -105,7 +110,7 @@ export const ForgotPasswordModal = ({ isOpen, onClose, onOpenResetView }) => {
                     required
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
-                    placeholder="e.g. AIT22CS001, student@acharya.ac.in, or admin username"
+                    placeholder="e.g. AIT22CS001 or student@acharya.ac.in"
                     className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-stone-300 bg-white text-stone-900 placeholder:text-stone-400 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm font-medium"
                     style={{ color: "#1c1917", backgroundColor: "#ffffff" }}
                   />
