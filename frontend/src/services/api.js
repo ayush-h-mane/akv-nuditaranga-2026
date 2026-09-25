@@ -113,16 +113,17 @@ function getAuthHeaders() {
 
 function isNetworkError(err) {
   if (!err) return false;
+  // If the browser is online, never treat server errors or syntax parsing errors as offline
+  if (typeof window !== "undefined" && window.navigator && window.navigator.onLine) {
+    return false;
+  }
   const msg = (err.message || "").toLowerCase();
   return (
     err.name === "TypeError" ||
-    err.name === "SyntaxError" ||
     msg.includes("failed to fetch") ||
     msg.includes("networkerror") ||
     msg.includes("load failed") ||
-    msg.includes("aborted") ||
-    msg.includes("unexpected token") ||
-    msg.includes("is not valid json")
+    msg.includes("network request failed")
   );
 }
 
@@ -1057,64 +1058,63 @@ export const api = {
   },
 
   async exportAttendanceCsv(date = "all") {
-    try {
-      const query = date && date !== "all" ? `?date=${date}` : "";
-      const res = await fetch(`${API_BASE_URL}/superadmin/attendance/export-csv${query}`, {
-        headers: { ...getAuthHeaders() }
-      });
-      if (res.ok) {
-        const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `AKV_Nuditaranga_2026_Volunteer_Attendance_${date}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        return;
-      }
-    } catch (err) {
-      console.warn("Generating CSV via client fallback:", err.message);
-    }
-
-    // Client fallback download
-    const users = getLocalUsers().filter(u => u.role === "VOLUNTEER");
-    let csvContent = "Attendance_ID,Date,Registration_ID,AUID,Volunteer_Name,Department,Status\n";
-    users.forEach((u, i) => {
-      csvContent += `${i + 1},${new Date().toISOString().split("T")[0]},${u.registration_id},${u.auid},"${u.name}","${u.department}",PRESENT\n`;
+    const query = date && date !== "all" ? `?date=${date}` : "";
+    const res = await fetch(`${API_BASE_URL}/superadmin/attendance/export-csv${query}`, {
+      headers: { ...getAuthHeaders() }
     });
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
+    if (!res.ok) {
+      let errorMsg = `Failed to export CSV report (${res.status})`;
+      try {
+        const errJson = await res.json();
+        if (errJson.detail) errorMsg = errJson.detail;
+      } catch {
+        try {
+          const text = await res.text();
+          if (text) errorMsg = text.slice(0, 150);
+        } catch {}
+      }
+      throw new Error(errorMsg);
+    }
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `AKV_Nuditaranga_2026_Volunteer_Attendance.csv`;
+    a.download = `AKV_Nuditaranga_2026_Volunteer_Attendance_${date || "All"}.csv`;
     document.body.appendChild(a);
     a.click();
     a.remove();
+    setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+    return true;
   },
 
   async exportAttendanceXlsx(date = "all") {
-    try {
-      const query = date && date !== "all" ? `?date=${date}` : "";
-      const res = await fetch(`${API_BASE_URL}/superadmin/attendance/export-xlsx${query}`, {
-        headers: { ...getAuthHeaders() }
-      });
-      if (res.ok) {
-        const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `AKV_Nuditaranga_2026_Volunteer_Attendance.xlsx`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        return;
+    const query = date && date !== "all" ? `?date=${date}` : "";
+    const res = await fetch(`${API_BASE_URL}/superadmin/attendance/export-xlsx${query}`, {
+      headers: { ...getAuthHeaders() }
+    });
+    if (!res.ok) {
+      let errorMsg = `Failed to export Excel report (${res.status})`;
+      try {
+        const errJson = await res.json();
+        if (errJson.detail) errorMsg = errJson.detail;
+      } catch {
+        try {
+          const text = await res.text();
+          if (text) errorMsg = text.slice(0, 150);
+        } catch {}
       }
-    } catch (err) {
-      console.warn("Generating XLSX fallback:", err.message);
+      throw new Error(errorMsg);
     }
-    // Fall back to CSV download if XLSX backend is unavailable
-    return this.exportAttendanceCsv(date);
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `AKV_Nuditaranga_2026_Volunteer_Attendance_${date || "All"}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+    return true;
   },
 
   async getAuditLogs(params = {}) {
@@ -1304,22 +1304,44 @@ export const api = {
   },
 
   async exportOfficialAttendanceExcel(params = {}) {
-    const query = new URLSearchParams(params).toString();
+    const cleanParams = {};
+    for (const [k, v] of Object.entries(params)) {
+      if (v !== undefined && v !== null && v !== "" && v !== "all") {
+        cleanParams[k] = v;
+      }
+    }
+    const query = new URLSearchParams(cleanParams).toString();
     const res = await fetch(`${API_BASE_URL}/attendance/export${query ? `?${query}` : ""}`, {
       headers: { ...getAuthHeaders() }
     });
     if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.detail || "Failed to export Excel report");
+      let errorMsg = `Failed to export Excel report (${res.status})`;
+      try {
+        const errData = await res.json();
+        if (errData.detail) errorMsg = errData.detail;
+      } catch {
+        try {
+          const text = await res.text();
+          if (text) errorMsg = text.slice(0, 150);
+        } catch {}
+      }
+      throw new Error(errorMsg);
     }
     const blob = await res.blob();
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `AKV_NudiTaranga_Attendance_${new Date().toISOString().split("T")[0]}.xlsx`;
+    const disposition = res.headers.get("Content-Disposition");
+    let filename = `AKV_NudiTaranga_Attendance_${new Date().toISOString().split("T")[0]}.xlsx`;
+    if (disposition && disposition.includes("filename=")) {
+      const match = disposition.match(/filename=["']?([^"';]+)["']?/);
+      if (match && match[1]) filename = match[1];
+    }
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     a.remove();
+    setTimeout(() => window.URL.revokeObjectURL(url), 1000);
     return true;
   },
 
@@ -1435,17 +1457,33 @@ export const api = {
       headers: { ...getAuthHeaders() }
     });
     if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.detail || "Failed to export Working Committee Excel");
+      let errorMsg = `Failed to export Working Committee Excel (${res.status})`;
+      try {
+        const errData = await res.json();
+        if (errData.detail) errorMsg = errData.detail;
+      } catch {
+        try {
+          const text = await res.text();
+          if (text) errorMsg = text.slice(0, 150);
+        } catch {}
+      }
+      throw new Error(errorMsg);
     }
     const blob = await res.blob();
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `AKV_NudiTaranga_Working_Committee_Attendance_${new Date().toISOString().split("T")[0]}.xlsx`;
+    const disposition = res.headers.get("Content-Disposition");
+    let filename = `AKV_NudiTaranga_Working_Committee_Attendance_${new Date().toISOString().split("T")[0]}.xlsx`;
+    if (disposition && disposition.includes("filename=")) {
+      const match = disposition.match(/filename=["']?([^"';]+)["']?/);
+      if (match && match[1]) filename = match[1];
+    }
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     a.remove();
+    setTimeout(() => window.URL.revokeObjectURL(url), 1000);
     return true;
   },
 
