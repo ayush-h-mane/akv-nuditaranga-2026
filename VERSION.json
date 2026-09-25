@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.18",
-  "staged_version": "2.2.19",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.2.19",
+  "staged_version": "2.2.20",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.19",
+      "released_at": "2026-09-26T03:12:57+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.19: Configured explicit Vercel Python and static builders so the API function is emitted in production.; Exported the FastAPI app at module scope so Vercel can detect the Python serverless entrypoint."
+    },
     {
       "version": "2.2.18",
       "released_at": "2026-09-26T03:08:04+0530",

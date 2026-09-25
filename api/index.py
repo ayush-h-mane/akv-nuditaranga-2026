@@ -29,6 +29,9 @@ def _configuration_error_app(message: str) -> FastAPI:
     return app
 
 
+app = None
+
+
 try:
     # Production must use persistent PostgreSQL; never silently fall back to ephemeral SQLite.
     if os.environ.get("VERCEL"):
