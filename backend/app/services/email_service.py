@@ -40,7 +40,7 @@ def wrap_email_html(title: str, content: str) -> str:
             <!-- Footer -->
             <div style="background-color: #f5f5f4; padding: 18px 24px; text-align: center; border-top: 1px solid #e7e5e4; font-size: 12px; color: #78716c;">
                 <p style="margin: 0 0 6px 0;"><strong>Acharya Kannada Vedike (AKV)</strong> • Acharya Institutes, Bengaluru</p>
-                <p style="margin: 0;">This is an automated system email. For queries, contact <a href="mailto:kannadavedike@acharya.ac.in" style="color: #b91c1c; text-decoration: none;">kannadavedike@acharya.ac.in</a></p>
+                <p style="margin: 0;">This is an automated system email. For queries, contact <a href="mailto:{settings.EMAIL_FROM}" style="color: #b91c1c; text-decoration: none;">{settings.EMAIL_FROM}</a></p>
             </div>
         </div>
     </body>
@@ -124,8 +124,8 @@ def send_student_welcome_email(to_email: str, student_name: str, auid: str, role
     html = wrap_email_html(subject, content)
     return send_email(to_email, subject, html, text)
 
-def send_password_reset_email(to_email: str, student_name: str, reset_link: str, expires_minutes: int = 15):
-    subject = "AKV Nuditaranga 2026 – Password Reset"
+def send_password_reset_email(to_email: str, student_name: str, reset_link: str, expires_minutes: int = 10):
+    subject = "AKV Nuditaranga 2026 – Password Reset (Valid for 10 Minutes)"
     content = f"""
         <h2 style="color: #b91c1c; margin-top: 0;">Password Reset Request</h2>
         <p>Hello <strong>{student_name}</strong>,</p>
@@ -140,6 +140,7 @@ def send_password_reset_email(to_email: str, student_name: str, reset_link: str,
             <ul style="margin: 0; padding-left: 18px;">
                 <li>This link will expire in <strong>{expires_minutes} minutes</strong>.</li>
                 <li>This link is single-use and will become invalid once used.</li>
+                <li>Sent officially from <strong>{settings.EMAIL_FROM}</strong> for your account security.</li>
                 <li>If you did not request this password reset, please ignore this email or notify the AKV team immediately.</li>
             </ul>
         </div>
@@ -149,7 +150,7 @@ def send_password_reset_email(to_email: str, student_name: str, reset_link: str,
             <a href="{reset_link}" style="color: #b91c1c;">{reset_link}</a>
         </p>
     """
-    text = f"Hello {student_name}, reset your AKV account password using this link (expires in {expires_minutes} mins): {reset_link}"
+    text = f"Hello {student_name}, reset your AKV account password using this link (expires in {expires_minutes} mins): {reset_link}. Sent officially from {settings.EMAIL_FROM}."
     html = wrap_email_html(subject, content)
     return send_email(to_email, subject, html, text)
 

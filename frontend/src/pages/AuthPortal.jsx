@@ -946,9 +946,18 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">
-                        Admin Password
-                      </label>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider">
+                          Admin Password
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setShowForgotModal(true)}
+                          className="text-xs font-bold text-kar-red hover:underline focus:outline-hidden"
+                        >
+                          Forgot Password?
+                        </button>
+                      </div>
                       <div className="relative">
                         <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
                         <input

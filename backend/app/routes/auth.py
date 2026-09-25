@@ -339,7 +339,7 @@ def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db
     clean_id = payload.identifier.strip().lower()
     
     # Generic security message to prevent account enumeration
-    success_msg = "If an account exists with this AUID or email, a password reset link has been sent to the registered college email."
+    success_msg = f"If an account exists with this identifier, a 10-minute password reset link has been dispatched from {settings.EMAIL_FROM} to your registered college email."
 
     user = db.query(User).filter(
         or_(
@@ -348,13 +348,19 @@ def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db
         )
     ).first()
 
+    # Also support looking up admin coordinators by username
+    if not user:
+        admin_entry = db.query(Admin).filter(func.lower(Admin.username) == clean_id).first()
+        if admin_entry and admin_entry.user:
+            user = admin_entry.user
+
     if not user:
         return {"success": True, "message": success_msg}
 
     # Generate single-use secure random token
     raw_token = secrets.token_urlsafe(32)
     token_hash = hash_reset_token(raw_token)
-    expires_at = datetime.datetime.utcnow() + datetime.timedelta(minutes=15)
+    expires_at = datetime.datetime.utcnow() + datetime.timedelta(minutes=10)
 
     # Invalidate previous unused tokens for this user
     db.query(PasswordResetToken).filter(
@@ -378,7 +384,7 @@ def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db
         to_email=user.email,
         student_name=user.name,
         reset_link=reset_link,
-        expires_minutes=15
+        expires_minutes=10
     )
 
     return {

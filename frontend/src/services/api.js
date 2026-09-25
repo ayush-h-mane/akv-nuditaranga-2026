@@ -266,7 +266,7 @@ export const api = {
         const dummyToken = `reset-offline-${Date.now()}`;
         return {
           success: true,
-          message: "If an account exists with this AUID or email, a password reset link has been sent to the registered college email.",
+          message: "If an account exists with this AUID, email, or username, a 10-minute password reset link has been dispatched from akv@acharya.ac.in to your registered college email.",
           dev_reset_token: dummyToken
         };
       }

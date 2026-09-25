@@ -111,7 +111,7 @@ export const ForgotPasswordModal = ({ isOpen, onClose, onOpenResetView }) => {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <p className="text-sm text-stone-600">
-                Enter your <strong>Acharya University ID (AUID)</strong> or <strong>Registered College Email</strong>. We will generate a secure reset link for your account.
+                Enter your <strong>Acharya University ID (AUID)</strong>, <strong>Registered College Email</strong>, or <strong>Admin Username</strong>. We will share a secure 10-minute reset link from <strong>akv@acharya.ac.in</strong>.
               </p>
 
               {error && (
@@ -123,7 +123,7 @@ export const ForgotPasswordModal = ({ isOpen, onClose, onOpenResetView }) => {
 
               <div>
                 <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">
-                  AUID or College Email ID
+                  AUID, College Email ID, or Username
                 </label>
                 <div className="relative">
                   <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
@@ -132,14 +132,14 @@ export const ForgotPasswordModal = ({ isOpen, onClose, onOpenResetView }) => {
                     required
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
-                    placeholder="e.g. AIT22CS001 or student@acharya.ac.in"
+                    placeholder="e.g. AIT22CS001, student@acharya.ac.in, or admin username"
                     className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm"
                   />
                 </div>
               </div>
 
-              <div className="p-3 bg-stone-50 border border-stone-200 rounded-xl text-[11px] text-stone-500 leading-relaxed">
-                🛡️ Single-use security token valid for 15 minutes. Passwords must be at least 6 characters long.
+              <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-xl text-[11px] text-amber-900 leading-relaxed flex items-center gap-2">
+                <span>🛡️ Single-use security token valid for <strong>10 minutes</strong> dispatched from <strong>akv@acharya.ac.in</strong>.</span>
               </div>
 
               <div className="flex items-center gap-3 pt-2">

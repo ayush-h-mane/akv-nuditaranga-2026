@@ -112,7 +112,7 @@ export const ResetPasswordView = ({ token, onBackToLogin }) => {
 
               <div className="p-3 bg-stone-50 border border-stone-200 rounded-xl text-[11px] text-stone-500 flex items-start gap-2">
                 <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                <span>Single-use security token verification. Old password is permanently invalidated.</span>
+                <span>Single-use security token verification (10-minute link from akv@acharya.ac.in). Old password is permanently invalidated.</span>
               </div>
 
               <button
