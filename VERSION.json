@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.21",
-  "staged_version": "2.2.22",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.2.22",
+  "staged_version": "2.2.23",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.22",
+      "released_at": "2026-09-26T03:21:10+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.22: Added a backend package marker so Vercel resolves and bundles the FastAPI backend imports."
+    },
     {
       "version": "2.2.21",
       "released_at": "2026-09-26T03:19:26+0530",
