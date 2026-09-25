@@ -46,6 +46,11 @@ try:
 except RuntimeError as error:
     app = _configuration_error_app(str(error))
 except Exception as error:
-    app = _configuration_error_app(
-        f"API startup failed ({type(error).__name__}). Check the production database configuration."
-    )
+    if isinstance(error, ModuleNotFoundError):
+        app = _configuration_error_app(
+            f"API startup failed: missing Python module '{error.name}'."
+        )
+    else:
+        app = _configuration_error_app(
+            f"API startup failed ({type(error).__name__}). Check the production database configuration."
+        )
