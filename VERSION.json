@@ -1,7 +1,7 @@
 {
   "production_version": "2.2.24",
   "staged_version": "2.2.25",
-  "status": "DEPLOYED_TO_PRODUCTION",
+  "status": "STAGED_DEVELOPMENT",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
