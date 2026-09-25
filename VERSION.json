@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.16",
-  "staged_version": "2.2.17",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.2.17",
+  "staged_version": "2.2.18",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.17",
+      "released_at": "2026-09-26T03:06:12+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.17: Added repository-level uv configuration to force copy mode during Vercel Python dependency installation.; Restored explicit Vercel registration for the FastAPI Python function so API requests do not fall through to the frontend."
+    },
     {
       "version": "2.2.16",
       "released_at": "2026-09-26T02:42:35+0530",
