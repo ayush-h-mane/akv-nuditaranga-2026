@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.8",
-  "staged_version": "2.2.9",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.2.9",
+  "staged_version": "2.2.10",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.9",
+      "released_at": "2026-09-25T21:57:01+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.9: Fixed Vercel API startup failures by including QR, image, PDF, and timezone runtime dependencies in the serverless API requirements."
+    },
     {
       "version": "2.2.8",
       "released_at": "2026-09-25T21:53:22+0530",
