@@ -1,14 +1,19 @@
 import os
 import smtplib
+import time
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 from ..config import settings
 from .id_card_service import generate_candidate_id_card_pdf
 
 # In-memory debug mail log for local testing without active SMTP
 DEBUG_EMAIL_OUTBOX: List[Dict[str, Any]] = []
+
+# Circuit-breaker cache for failing relays: relay_key -> failure timestamp
+_FAILED_RELAYS: Dict[str, float] = {}
+_RELAY_COOLDOWN_SECONDS: float = 120.0
 
 def get_email_styles() -> str:
     return """
@@ -86,17 +91,19 @@ def get_smtp_relays() -> List[Dict[str, Any]]:
         })
     return relays
 
-def send_via_relay(relay: Dict[str, Any], msg: MIMEMultipart, to_email: str) -> None:
+def send_via_relay(relay: Dict[str, Any], msg: MIMEMultipart, to_email: Union[str, List[str]]) -> None:
     """Dispatches a MIME message through a designated SMTP relay server."""
     host = relay["host"]
     port = relay["port"]
     username = relay["username"]
     password = relay["password"]
 
+    to_addrs = [to_email] if isinstance(to_email, str) else list(to_email)
+
     if port == 465:
-        server = smtplib.SMTP_SSL(host, port, timeout=15)
+        server = smtplib.SMTP_SSL(host, port, timeout=5)
     else:
-        server = smtplib.SMTP(host, port, timeout=15)
+        server = smtplib.SMTP(host, port, timeout=5)
         try:
             server.starttls()
         except Exception as tls_err:
@@ -105,25 +112,28 @@ def send_via_relay(relay: Dict[str, Any], msg: MIMEMultipart, to_email: str) -> 
     if username and password:
         server.login(username, password)
 
-    server.sendmail(settings.EMAIL_FROM, [to_email], msg.as_string())
+    server.sendmail(settings.EMAIL_FROM, to_addrs, msg.as_string())
     server.quit()
 
 def send_email(
-    to_email: str,
+    to_email: Union[str, List[str]],
     subject: str,
     html_content: str,
     text_content: str = "",
     attachments: Optional[List[Dict[str, Any]]] = None
 ) -> bool:
     """
-    Sends an email using configured SMTP server pool with automatic round-robin rotation
-    and seamless failover (e.g. 2 Brevo accounts = 600 free emails/day).
+    Sends an email using configured SMTP server pool with automatic round-robin rotation,
+    circuit-breaker cooldown, and seamless failover.
     Supports binary attachments (e.g. PDF ID cards).
     """
-    global _RELAY_ROTATION_INDEX
+    global _RELAY_ROTATION_INDEX, _FAILED_RELAYS
+
+    to_addrs = [to_email] if isinstance(to_email, str) else [e for e in to_email if e]
+    to_header = ", ".join(to_addrs)
 
     record = {
-        "to": to_email,
+        "to": to_header,
         "subject": subject,
         "html": html_content,
         "text": text_content,
@@ -135,25 +145,39 @@ def send_email(
     }
     DEBUG_EMAIL_OUTBOX.append(record)
 
-    relays = get_smtp_relays()
+    all_relays = get_smtp_relays()
 
     # If no SMTP host configured, print debug summary and notice
-    if not relays:
+    if not all_relays:
         att_str = f" [Attached: {', '.join(a['filename'] for a in record['attachments'])}]" if record["attachments"] else ""
         print(f"\n[EMAIL DISPATCH - DEV SIMULATION (REAL SMTP UNCONFIGURED)]{att_str}")
-        print(f"To: {to_email}")
+        print(f"To: {to_header}")
         print(f"From: {settings.EMAIL_FROM}")
         print(f"Subject: {subject}")
         print(f"Summary: {text_content[:200]}...")
         print(f"[EMAIL WARNING] No SMTP relays configured. Configure SMTP_HOST in .env.")
         return True
 
+    now = time.time()
+    # Filter active relays not in cooldown
+    active_relays = []
+    for r in all_relays:
+        r_key = f"{r['host']}:{r['username']}"
+        fail_time = _FAILED_RELAYS.get(r_key, 0)
+        if (now - fail_time) > _RELAY_COOLDOWN_SECONDS:
+            active_relays.append(r)
+
+    # If all relays recently failed auth/network, avoid blocking and return gracefully
+    if not active_relays:
+        print(f"[EMAIL NOTICE] All SMTP relays in pool are currently cooling down ({_RELAY_COOLDOWN_SECONDS}s). Skipping live attempt for '{subject}' to {to_header}.")
+        return False
+
     # Assemble MIME Message
     if attachments:
         msg = MIMEMultipart("mixed")
         msg["Subject"] = subject
         msg["From"] = f"{settings.EMAIL_FROM_NAME} <{settings.EMAIL_FROM}>"
-        msg["To"] = to_email
+        msg["To"] = to_header
         msg["Reply-To"] = settings.EMAIL_FROM
 
         body_part = MIMEMultipart("alternative")
@@ -173,7 +197,7 @@ def send_email(
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
         msg["From"] = f"{settings.EMAIL_FROM_NAME} <{settings.EMAIL_FROM}>"
-        msg["To"] = to_email
+        msg["To"] = to_header
         msg["Reply-To"] = settings.EMAIL_FROM
 
         if text_content:
@@ -181,25 +205,27 @@ def send_email(
         if html_content:
             msg.attach(MIMEText(html_content, "html", "utf-8"))
 
-    # Multi-Relay Rotation: Round-robin across relays
-    start_idx = _RELAY_ROTATION_INDEX % len(relays)
+    # Multi-Relay Rotation: Round-robin across active relays
+    start_idx = _RELAY_ROTATION_INDEX % len(active_relays)
     _RELAY_ROTATION_INDEX += 1
 
-    attempts = [relays[(start_idx + i) % len(relays)] for i in range(len(relays))]
+    attempts = [active_relays[(start_idx + i) % len(active_relays)] for i in range(len(active_relays))]
     last_err = None
 
     for relay in attempts:
+        r_key = f"{relay['host']}:{relay['username']}"
         try:
-            send_via_relay(relay, msg, to_email)
-            print(f"[EMAIL DISPATCH] Successfully delivered live email to {to_email} via {relay['name']} ({relay['username'] or relay['host']})")
+            send_via_relay(relay, msg, to_addrs)
+            print(f"[EMAIL DISPATCH] Successfully delivered live email to {to_header} via {relay['name']} ({relay['username'] or relay['host']})")
             return True
         except Exception as e:
             last_err = e
+            _FAILED_RELAYS[r_key] = time.time()
             print(f"[EMAIL RELAY ERROR] {relay['name']} ({relay['username'] or relay['host']}) failed: {type(e).__name__}: {e}")
             if len(attempts) > 1:
                 print(f"[EMAIL FAILOVER] Attempting delivery through next relay in pool...")
 
-    print(f"[EMAIL ERROR] All {len(relays)} SMTP relays failed to deliver email to {to_email}: {last_err}")
+    print(f"[EMAIL ERROR] All {len(attempts)} SMTP relays failed to deliver email to {to_header}: {last_err}")
     return False
 
 # High-Level Email Dispatchers
@@ -449,7 +475,7 @@ def send_admin_registration_email(to_email: str, admin_name: str, username: str)
     html = wrap_email_html(subject, content)
     return send_email(to_email, subject, html, text)
 
-def send_superadmin_new_admin_alert(superadmin_email: str, admin_name: str, username: str, admin_email: str, department: str):
+def send_superadmin_new_admin_alert(superadmin_email: Any, admin_name: str, username: str, admin_email: str, department: str):
     subject = "Action Required: New Admin Registration Awaiting Approval"
     content = f"""
         <h2 style="color: #b91c1c; margin-top: 0;">New Admin Registration Request</h2>
@@ -470,7 +496,18 @@ def send_superadmin_new_admin_alert(superadmin_email: str, admin_name: str, user
     """
     text = f"New Admin Registration: {admin_name} ({username}, {admin_email}, {department}). Please log in to Super Admin Portal to review."
     html = wrap_email_html(subject, content)
-    return send_email(superadmin_email, subject, html, text)
+
+    if isinstance(superadmin_email, (list, tuple, set)):
+        recipients = [e.strip() for e in superadmin_email if e and e.strip()]
+    elif isinstance(superadmin_email, str):
+        recipients = [superadmin_email.strip()] if superadmin_email.strip() else []
+    else:
+        recipients = [settings.SUPERADMIN_EMAIL]
+
+    if not recipients:
+        recipients = [settings.SUPERADMIN_EMAIL]
+
+    return send_email(recipients, subject, html, text)
 
 def send_admin_approval_email(to_email: str, admin_name: str, status: str):
     is_approved = status.upper() == "APPROVED"

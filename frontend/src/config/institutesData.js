@@ -10,16 +10,16 @@ export const ACHARYA_INSTITUTES = [
   "Acharya Institute of Allied Health Sciences",
   "Acharya's NR Institute of Physiotherapy",
   "Acharya & BM Reddy College of Pharmacy",
-  "Smt. Nagarathnamma School of Nursing",
+  "Smt. Nagarathnamma College of Nursing",
   "Global MBA",
   "Acharya Polytechnic",
   "Acharya PU College"
 ];
 
 export const STANDARD_DEPARTMENTS = [
+  "Artificial Intelligence & Machine Learning",
   "Computer Science & Engineering",
   "Information Science & Engineering",
-  "Artificial Intelligence & Machine Learning",
   "Electronics & Communication Engineering",
   "Mechanical Engineering",
   "Civil Engineering",
@@ -27,17 +27,6 @@ export const STANDARD_DEPARTMENTS = [
   "Biotechnology",
   "Master of Business Administration (MBA)",
   "Master of Computer Applications (MCA)",
-  "Architecture (B.Arch / M.Arch)",
-  "Design & Visual Arts",
-  "Allied Health Sciences",
-  "Physiotherapy (BPT / MPT)",
-  "Pharmacy (B.Pharm / M.Pharm / Pharm.D)",
-  "Nursing (B.Sc / GNM)",
-  "Polytechnic / Diploma Engineering",
-  "Pre-University (Science / Commerce / Arts)",
-  "Commerce & Management (B.Com / BBA)",
-  "Computer Applications (BCA)",
-  "Arts & Humanities (BA / MA)"
 ];
 
 export const AKV_DOMAINS = [

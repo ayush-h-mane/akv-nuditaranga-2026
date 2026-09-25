@@ -2,7 +2,7 @@ import io
 import csv
 import datetime
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
@@ -242,7 +242,40 @@ def list_admins(
     current_user: User = Depends(require_superadmin),
     db: Session = Depends(get_db)
 ):
-    admins = db.query(Admin).order_by(Admin.created_at.desc()).all()
+    # Retrieve all registered admins, surfacing PENDING_APPROVAL at the very top
+    admins = db.query(Admin).order_by(
+        (Admin.approval_status == "PENDING_APPROVAL").desc(),
+        Admin.created_at.desc()
+    ).all()
+
+    # Safety check: Detect any User marked role="ADMIN" without an Admin profile and backfill
+    existing_user_ids = {a.user_id for a in admins if a.user_id}
+    orphan_admins = db.query(User).filter(
+        User.role == "ADMIN",
+        ~User.id.in_(existing_user_ids) if existing_user_ids else True
+    ).all()
+
+    for ou in orphan_admins:
+        try:
+            uname = ou.auid.lower().replace("-", "_") if ou.auid else f"admin_{ou.id}"
+            if db.query(Admin).filter(func.lower(Admin.username) == uname.lower()).first():
+                uname = f"{uname}_{ou.id}"
+            new_a = Admin(
+                user_id=ou.id,
+                username=uname,
+                admin_type=ou.admin_type or "WORKING_COMMITTEE",
+                faculty_id=ou.faculty_id,
+                approval_status="PENDING_APPROVAL",
+                created_at=ou.created_at or datetime.datetime.utcnow()
+            )
+            db.add(new_a)
+            db.commit()
+            db.refresh(new_a)
+            admins.insert(0, new_a)
+        except Exception as e:
+            db.rollback()
+            print(f"[ORPHAN ADMIN BACKFILL WARNING] {e}")
+
     results = []
     for a in admins:
         u = a.user
@@ -270,6 +303,7 @@ def list_admins(
 @router.post("/admins/{admin_id}/approve")
 def approve_admin(
     admin_id: int,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(require_superadmin),
     db: Session = Depends(get_db)
 ):
@@ -285,7 +319,8 @@ def approve_admin(
     # Ensure user account is active
     if admin.user:
         admin.user.account_status = "ACTIVE"
-        send_admin_approval_email(admin.user.email, admin.user.name, "APPROVED")
+        if admin.user.email:
+            background_tasks.add_task(send_admin_approval_email, admin.user.email, admin.user.name, "APPROVED")
 
     log = AuditLog(
         user_id=current_user.id,
@@ -304,6 +339,7 @@ def approve_admin(
 @router.post("/admins/{admin_id}/reject")
 def reject_admin(
     admin_id: int,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(require_superadmin),
     db: Session = Depends(get_db)
 ):
@@ -315,8 +351,8 @@ def reject_admin(
     admin.approval_status = "REJECTED"
     admin.approved_by = current_user.name
 
-    if admin.user:
-        send_admin_approval_email(admin.user.email, admin.user.name, "REJECTED")
+    if admin.user and admin.user.email:
+        background_tasks.add_task(send_admin_approval_email, admin.user.email, admin.user.name, "REJECTED")
 
     log = AuditLog(
         user_id=current_user.id,

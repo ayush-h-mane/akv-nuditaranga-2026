@@ -115,7 +115,13 @@ def main():
         # Use staged version if set, otherwise patch bump current prod
         target_version = staged_ver if staged_ver != current_prod_ver else bump_semver(current_prod_ver, "patch")
 
-    release_desc = args.message or f"Production release version {target_version}"
+    if args.message:
+        release_desc = args.message
+    elif data.get("pending_changes"):
+        release_desc = f"AKV Nuditaranga 2026 v{target_version}: " + "; ".join(data.get("pending_changes"))
+    else:
+        release_desc = f"Production release version {target_version}"
+
     print(f"Current Production Version : v{current_prod_ver}")
     print(f"Deploying Target Version   : v{target_version}")
     print(f"Release Description        : {release_desc}")
@@ -168,7 +174,7 @@ def main():
 
     # 5. Git commit & merge to main
     print("\n[STEP 3/6] Committing version bump to develop...")
-    run_cmd("git add VERSION.json frontend/package.json backend/app/config.py")
+    run_cmd("git add -A")
     run_cmd(f'git commit -m "release: bump version to v{target_version}"', check=False)
 
     print("\n[STEP 4/6] Merging develop into main...")

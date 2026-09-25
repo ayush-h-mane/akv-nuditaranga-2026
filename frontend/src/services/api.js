@@ -306,16 +306,24 @@ export const api = {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
-      const data = await res.json();
+      let data;
+      try {
+        data = await res.json();
+      } catch (jsonErr) {
+        if (!res.ok) {
+          throw new Error(`Server returned HTTP ${res.status}: Admin registration could not be completed on server.`);
+        }
+        data = {};
+      }
       if (!res.ok) {
         throw new Error(data.detail || "Admin registration failed");
       }
       return data;
     } catch (err) {
-      if (isNetworkError(err)) {
+      if (typeof window !== "undefined" && !window.navigator.onLine) {
         console.warn("[AKV Offline Fallback] Using local storage for admin registration:", err.message);
         const admins = getLocalAdmins();
-        const cleanUname = payload.username.trim().toLowerCase();
+        const cleanUname = (payload.username || "").trim().toLowerCase();
         const newAdmin = {
           id: Date.now(),
           user_id: Date.now(),
@@ -324,7 +332,9 @@ export const api = {
           email: payload.email,
           phone: payload.phone,
           department: payload.department,
-          designation: payload.designation || "Event Lead",
+          designation: payload.admin_type === "FACULTY_COORDINATOR" ? "Faculty Coordinator" : "Working Committee",
+          admin_type: payload.admin_type || "WORKING_COMMITTEE",
+          faculty_id: payload.faculty_id || null,
           approval_status: "PENDING_APPROVAL",
           account_status: "ACTIVE",
           password: payload.password,
@@ -334,7 +344,7 @@ export const api = {
         saveLocalAdmins(admins);
         return {
           success: true,
-          message: "Your admin account is awaiting Super Admin approval.",
+          message: "Offline Mode: Your admin account is saved locally and will await Super Admin approval.",
           status: "PENDING_APPROVAL",
           username: cleanUname
         };
@@ -829,6 +839,13 @@ export const api = {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Failed to list admins");
+      if (Array.isArray(data)) {
+        return data.sort((a, b) => {
+          if (a.approval_status === "PENDING_APPROVAL" && b.approval_status !== "PENDING_APPROVAL") return -1;
+          if (a.approval_status !== "PENDING_APPROVAL" && b.approval_status === "PENDING_APPROVAL") return 1;
+          return 0;
+        });
+      }
       return data;
     } catch (err) {
       if (isNetworkError(err)) {

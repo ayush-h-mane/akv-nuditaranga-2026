@@ -3,7 +3,7 @@ import hashlib
 import secrets
 import datetime
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
@@ -176,7 +176,11 @@ def user_to_dict(user: User, admin_profile: Optional[Admin] = None) -> dict:
 # 1. STUDENT REGISTRATION
 # ==========================================
 @router.post("/register/student", status_code=status.HTTP_201_CREATED)
-def register_student(payload: StudentRegisterRequest, db: Session = Depends(get_db)):
+def register_student(
+    payload: StudentRegisterRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
     if payload.password != payload.confirm_password:
         raise HTTPException(status_code=400, detail="Passwords do not match.")
 
@@ -218,7 +222,7 @@ def register_student(payload: StudentRegisterRequest, db: Session = Depends(get_
     db.commit()
     db.refresh(new_user)
 
-    # Send Welcome & Confirmation Email with ID Card PDF attached
+    # Send Welcome & Confirmation Email asynchronously with ID Card PDF attached
     candidate_info = {
         "name": new_user.name,
         "auid": clean_auid,
@@ -233,7 +237,8 @@ def register_student(payload: StudentRegisterRequest, db: Session = Depends(get_
         "volunteer_domain": new_user.volunteer_domain,
         "photo_url": new_user.photo_url
     }
-    send_student_welcome_email(
+    background_tasks.add_task(
+        send_student_welcome_email,
         to_email=clean_email,
         student_name=new_user.name,
         auid=clean_auid,
@@ -350,7 +355,11 @@ def login_student(payload: StudentLoginRequest, db: Session = Depends(get_db)):
 # 3. FORGOT PASSWORD
 # ==========================================
 @router.post("/forgot-password")
-def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db)):
+def forgot_password(
+    payload: ForgotPasswordRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
     clean_id = payload.identifier.strip().lower()
     
     # Generic security message to prevent account enumeration
@@ -395,7 +404,8 @@ def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db
     frontend_base = settings.FRONTEND_URL.rstrip("/")
     reset_link = f"{frontend_base}/#reset-token={raw_token}"
 
-    send_password_reset_email(
+    background_tasks.add_task(
+        send_password_reset_email,
         to_email=user.email,
         student_name=user.name,
         reset_link=reset_link,
@@ -466,7 +476,11 @@ def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db))
 # 5. ADMIN REGISTRATION
 # ==========================================
 @router.post("/register/admin", status_code=status.HTTP_201_CREATED)
-def register_admin(payload: AdminRegisterRequest, db: Session = Depends(get_db)):
+def register_admin(
+    payload: AdminRegisterRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
     if payload.password != payload.confirm_password:
         raise HTTPException(status_code=400, detail="Passwords do not match.")
 
@@ -494,7 +508,10 @@ def register_admin(payload: AdminRegisterRequest, db: Session = Depends(get_db))
     pw_hash = get_password_hash(payload.password)
     reg_id = generate_student_reg_id(db)
 
-    auid_val = f"FAC-{clean_fac_id}" if clean_fac_id else f"ADM-{clean_uname.upper()}"
+    auid_base = f"FAC-{clean_fac_id}" if clean_fac_id else f"ADM-{clean_uname.upper()}"
+    auid_val = auid_base
+    if db.query(User).filter(func.upper(User.auid) == auid_val.upper()).first():
+        auid_val = f"{auid_base}-{secrets.randbelow(9999):04d}"
 
     # Create user with role ADMIN
     new_user = User(
@@ -543,10 +560,22 @@ def register_admin(payload: AdminRegisterRequest, db: Session = Depends(get_db))
     db.add(log)
     db.commit()
 
-    # Email notifications
-    send_admin_registration_email(clean_email, new_user.name, clean_uname)
-    send_superadmin_new_admin_alert(
-        superadmin_email=settings.SUPERADMIN_EMAIL,
+    # Collect all SuperAdmin email addresses for broadcast notification
+    sa_emails = set()
+    if settings.SUPERADMIN_EMAIL and settings.SUPERADMIN_EMAIL.strip():
+        sa_emails.add(settings.SUPERADMIN_EMAIL.strip().lower())
+    for sa_data in SUPERADMIN_ACCOUNTS.values():
+        if sa_data.get("email"):
+            sa_emails.add(sa_data["email"].strip().lower())
+    for sa_user in db.query(User).filter(User.role == "SUPERADMIN").all():
+        if sa_user.email:
+            sa_emails.add(sa_user.email.strip().lower())
+
+    # Email notifications dispatched asynchronously via BackgroundTasks
+    background_tasks.add_task(send_admin_registration_email, clean_email, new_user.name, clean_uname)
+    background_tasks.add_task(
+        send_superadmin_new_admin_alert,
+        superadmin_email=list(sa_emails),
         admin_name=new_user.name,
         username=clean_uname,
         admin_email=clean_email,

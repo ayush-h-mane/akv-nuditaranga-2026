@@ -1,7 +1,7 @@
 import json
 import random
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from ..database import get_db
@@ -32,7 +32,11 @@ def generate_unique_reg_id(db: Session) -> str:
     return reg_id
 
 @router.post("", response_model=RegistrationOut)
-def register_participant(reg_data: RegistrationCreate, db: Session = Depends(get_db)):
+def register_participant(
+    reg_data: RegistrationCreate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
     # 1. Check Event Existence
     event = db.query(Event).filter(Event.id == reg_data.event_id).first()
     if not event:
@@ -117,27 +121,25 @@ def register_participant(reg_data: RegistrationCreate, db: Session = Depends(get
     db.commit()
     db.refresh(new_reg)
 
-    # Automated confirmation email with ID Card / Event Pass PDF from akv@acharya.ac.in
+    # Automated confirmation email with ID Card / Event Pass PDF from akv@acharya.ac.in dispatched asynchronously
     if new_reg.email:
-        try:
-            send_event_registration_confirmation_email(
-                to_email=new_reg.email,
-                participant_name=new_reg.full_name,
-                auid=new_reg.auid or new_reg.usn,
-                event_title=event.title_en or event.id,
-                registration_id=new_reg.registration_id,
-                institute=new_reg.institute,
-                department=new_reg.department,
-                is_team=new_reg.is_team,
-                team_name=new_reg.team_name,
-                candidate_data={
-                    "semester": new_reg.semester,
-                    "section": new_reg.section,
-                    "phone": new_reg.phone
-                }
-            )
-        except Exception as e:
-            print(f"[EVENT REG EMAIL WARNING] {e}")
+        background_tasks.add_task(
+            send_event_registration_confirmation_email,
+            to_email=new_reg.email,
+            participant_name=new_reg.full_name,
+            auid=new_reg.auid or new_reg.usn,
+            event_title=event.title_en or event.id,
+            registration_id=new_reg.registration_id,
+            institute=new_reg.institute,
+            department=new_reg.department,
+            is_team=new_reg.is_team,
+            team_name=new_reg.team_name,
+            candidate_data={
+                "semester": new_reg.semester,
+                "section": new_reg.section,
+                "phone": new_reg.phone
+            }
+        )
 
     return new_reg
 
