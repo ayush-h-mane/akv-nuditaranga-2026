@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.12",
-  "staged_version": "2.2.13",
+  "production_version": "2.2.13",
+  "staged_version": "2.2.14",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.13",
+      "released_at": "2026-09-26T02:16:27+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.13: Explicitly registered the Vercel Python API function so /api routes are routed to FastAPI instead of falling through to the frontend SPA."
+    },
     {
       "version": "2.2.12",
       "released_at": "2026-09-25T22:13:50+0530",
