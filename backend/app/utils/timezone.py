@@ -3,7 +3,10 @@ from zoneinfo import ZoneInfo
 from typing import Optional
 
 # Indian Standard Time (IST): UTC+05:30
-IST = ZoneInfo("Asia/Kolkata")
+try:
+    IST = ZoneInfo("Asia/Kolkata")
+except Exception:
+    IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
 
 def get_current_ist_datetime() -> datetime.datetime:
     """Returns the current timezone-aware datetime in Indian Standard Time (Asia/Kolkata)."""

@@ -118,6 +118,7 @@ class RegistrationOut(BaseModel):
     full_name: str
     usn: str
     auid: Optional[str] = None
+    photo_url: Optional[str] = None
     institute: Optional[str] = "Acharya Institute of Technology"
     department: str
     semester: int

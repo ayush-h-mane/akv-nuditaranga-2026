@@ -524,11 +524,18 @@ export const StudentDashboard = ({ onNavigateHome }) => {
 
                 <button
                   type="button"
-                  onClick={() => window.print()}
+                  onClick={async () => {
+                    try {
+                      await api.downloadStudentIdCard();
+                    } catch (err) {
+                      console.error("ID card download failed:", err);
+                      window.print();
+                    }
+                  }}
                   className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold flex items-center gap-1.5 transition-colors self-start cursor-pointer shadow-xs"
                 >
                   <Printer className="w-3.5 h-3.5 text-kar-red" />
-                  <span>Print ID Card</span>
+                  <span>Download ID Card</span>
                 </button>
               </div>
 

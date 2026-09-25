@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.6",
-  "staged_version": "2.2.7",
+  "production_version": "2.2.7",
+  "staged_version": "2.2.8",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.7",
+      "released_at": "2026-09-25T21:44:59+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.7: Redesigned candidate ID cards with uploaded photos, QR verification, AKV and white Acharya logos, Kannada-only branding, and bundled Noto Sans Kannada and Outfit fonts.; Added reliable authenticated ID card and event pass PDF downloads with photo persistence on registrations.; Compressed Superadmin Daily Attendance Records to a no-horizontal-scroll layout with Reg ID, Name, AUID, AKV Dept, Status, and Superadmin Power controls."
+    },
     {
       "version": "2.2.6",
       "released_at": "2026-09-25T10:04:31+0530",
