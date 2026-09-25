@@ -188,9 +188,12 @@ def run_comprehensive_portal_tests():
         resp = client.post("/api/auth/forgot-password", json={"identifier": "AIT22CS001"})
         assert resp.status_code == 200, f"Forgot password failed: {resp.text}"
         data = resp.json()
-        dev_reset_token = data.get("dev_reset_token")
-        assert dev_reset_token is not None, "Expected dev_reset_token in development environment"
-        log_pass(8, "Password Reset Request", f"Token generated (10 min expiry from akv@acharya.ac.in)")
+        import re
+        from backend.app.services.email_service import DEBUG_EMAIL_OUTBOX
+        token_match = re.search(r"reset-token=([A-Za-z0-9_-]+)", DEBUG_EMAIL_OUTBOX[-1]["html"])
+        dev_reset_token = token_match.group(1) if token_match else None
+        assert dev_reset_token is not None, "Expected reset token delivered in outbound email"
+        log_pass(8, "Password Reset Request", f"Token generated & dispatched in email (10 min expiry from akv@acharya.ac.in)")
 
         # Execute Reset Password
         reset_resp = client.post("/api/auth/reset-password", json={

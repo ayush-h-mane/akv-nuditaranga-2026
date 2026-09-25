@@ -1,13 +1,12 @@
 import React, { useState } from "react";
 import { api } from "../services/api";
-import { Mail, AlertCircle, CheckCircle2, X, KeyRound, ArrowRight } from "lucide-react";
+import { Mail, AlertCircle, CheckCircle2, X, KeyRound } from "lucide-react";
 
 export const ForgotPasswordModal = ({ isOpen, onClose, onOpenResetView }) => {
   const [identifier, setIdentifier] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [devToken, setDevToken] = useState(null);
 
   if (!isOpen) return null;
 
@@ -21,29 +20,14 @@ export const ForgotPasswordModal = ({ isOpen, onClose, onOpenResetView }) => {
     setLoading(true);
     setError("");
     setMessage("");
-    setDevToken(null);
 
     try {
       const res = await api.forgotPassword(identifier.trim());
       setMessage(res.message || "Password reset instructions have been sent to your college email.");
-      if (res.dev_reset_token) {
-        setDevToken(res.dev_reset_token);
-      }
     } catch (err) {
       setError(err.message || "Failed to process request. Please try again.");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleUseDevLink = () => {
-    if (devToken) {
-      onClose();
-      if (onOpenResetView) {
-        onOpenResetView(devToken);
-      } else {
-        window.location.hash = `#reset-token=${devToken}`;
-      }
     }
   };
 
@@ -83,23 +67,12 @@ export const ForgotPasswordModal = ({ isOpen, onClose, onOpenResetView }) => {
                 </div>
               </div>
 
-              {devToken && (
-                <div className="p-3.5 bg-amber-50 border border-amber-300 rounded-xl text-amber-900 text-xs">
-                  <p className="font-bold text-amber-950 flex items-center gap-1.5">
-                    <span>⚡ Development Reset Token Active</span>
-                  </p>
-                  <p className="mt-1 text-stone-600">
-                    SMTP simulated for development. Click below to proceed to the reset screen directly:
-                  </p>
-                  <button
-                    onClick={handleUseDevLink}
-                    className="mt-2.5 w-full py-2 px-3 bg-gradient-to-r from-kar-red to-amber-600 text-white rounded-lg font-bold flex items-center justify-center gap-1.5 hover:opacity-95 transition-opacity"
-                  >
-                    <span>Open Password Reset Form</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
+              <div className="p-3.5 bg-amber-50/80 border border-amber-200 rounded-xl text-amber-900 text-xs leading-relaxed">
+                <p className="font-semibold text-amber-950">Security Notice:</p>
+                <p className="mt-1 text-stone-600">
+                  The link will expire in <strong>10 minutes</strong>. If you do not see the email from <strong>akv@acharya.ac.in</strong> in your inbox within 2 minutes, please check your spam or junk folder.
+                </p>
+              </div>
 
               <button
                 onClick={onClose}

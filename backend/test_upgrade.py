@@ -110,9 +110,12 @@ def run_all_tests():
         "identifier": "AIT22CS001"
     })
     assert forgot_resp.status_code == 200
-    dev_token = forgot_resp.json().get("dev_reset_token")
-    assert dev_token is not None, "Dev reset token should be returned in local mode"
-    print("[PASS] 8. Password Reset requested, secure token generated")
+    import re
+    from backend.app.services.email_service import DEBUG_EMAIL_OUTBOX
+    token_match = re.search(r"reset-token=([A-Za-z0-9_-]+)", DEBUG_EMAIL_OUTBOX[-1]["html"])
+    dev_token = token_match.group(1) if token_match else None
+    assert dev_token is not None, "Reset token should be present in outbound email"
+    print("[PASS] 8. Password Reset requested, secure token delivered in email from akv@acharya.ac.in")
 
     # 9. Password Reset Execution
     reset_resp = client.post("/api/auth/reset-password", json={

@@ -73,14 +73,15 @@ def send_email(
     }
     DEBUG_EMAIL_OUTBOX.append(record)
 
-    # If no SMTP host configured, print debug summary and succeed
+    # If no SMTP host configured, print debug summary and notice
     if not settings.SMTP_HOST or not settings.SMTP_HOST.strip():
         att_str = f" [Attached: {', '.join(a['filename'] for a in record['attachments'])}]" if record["attachments"] else ""
-        print(f"\n[EMAIL DISPATCH - DEV SIMULATION]{att_str}")
+        print(f"\n[EMAIL DISPATCH - DEV SIMULATION (REAL SMTP UNCONFIGURED)]{att_str}")
         print(f"To: {to_email}")
         print(f"From: {settings.EMAIL_FROM}")
         print(f"Subject: {subject}")
         print(f"Summary: {text_content[:200]}...")
+        print(f"[EMAIL WARNING] SMTP_HOST is not set in .env. Real email was NOT dispatched to recipient's inbox. Set SMTP credentials to enable live delivery.")
         return True
 
     try:
@@ -115,21 +116,25 @@ def send_email(
                 msg.attach(MIMEText(html_content, "html", "utf-8"))
 
         if settings.SMTP_PORT == 465:
-            server = smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10)
+            server = smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15)
         else:
-            server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10)
-            server.starttls()
+            server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15)
+            try:
+                server.starttls()
+            except Exception as tls_err:
+                print(f"[EMAIL TLS WARNING] STARTTLS not accepted or already active: {tls_err}")
 
         if settings.SMTP_USERNAME and settings.SMTP_PASSWORD:
             server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
 
         server.sendmail(settings.EMAIL_FROM, [to_email], msg.as_string())
         server.quit()
-        print(f"[EMAIL DISPATCH] Successfully delivered email to {to_email}")
+        print(f"[EMAIL DISPATCH] Successfully delivered live email to {to_email}")
         return True
     except Exception as e:
-        print(f"[EMAIL ERROR] Failed to send email to {to_email}: {e}")
-        # Even on SMTP network failure, return True to avoid crashing caller workflow
+        print(f"[EMAIL ERROR] Failed to send email to {to_email}: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 # High-Level Email Dispatchers

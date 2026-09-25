@@ -404,9 +404,7 @@ def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db
 
     return {
         "success": True,
-        "message": success_msg,
-        # Provide raw_token in development simulation if SMTP is empty so dev/testers can easily test
-        "dev_reset_token": raw_token if not settings.SMTP_HOST else None
+        "message": success_msg
     }
 
 # ==========================================

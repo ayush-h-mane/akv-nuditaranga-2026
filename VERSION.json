@@ -4,7 +4,12 @@
   "status": "STAGED_DEVELOPMENT",
   "active_branch": "develop",
   "production_branch": "main",
-  "pending_changes": [],
+  "pending_changes": [
+    "Removed development reset token UI card, direct bypass button, and dev_reset_token API leakage from the Forgot Password section.",
+    "Strengthened Forgot Password modal to display clean, secure confirmation instructions directing users to their college email.",
+    "Enhanced email service with detailed SMTP diagnostic logging, STARTTLS negotiation, and created scripts/test_smtp.py for mail connectivity verification.",
+    "Updated test suites to extract tokens securely from simulated outbound mail without exposing tokens in public API responses."
+  ],
   "history": [
     {
       "version": "2.2.3",
