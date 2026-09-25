@@ -1385,6 +1385,12 @@ export const api = {
       headers: { ...getAuthHeaders() }
     });
     if (!res.ok) {
+      if (res.status === 401) {
+        localStorage.removeItem("akv_token");
+        localStorage.removeItem("akv_role");
+        localStorage.removeItem("akv_user");
+        throw new Error("Your session expired. Please log in again and retry the export.");
+      }
       let errorMsg = `Failed to export Excel report (${res.status})`;
       try {
         const errData = await res.json();

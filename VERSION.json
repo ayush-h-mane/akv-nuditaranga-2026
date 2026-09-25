@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.7",
-  "staged_version": "2.2.8",
+  "production_version": "2.2.8",
+  "staged_version": "2.2.9",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.8",
+      "released_at": "2026-09-25T21:53:22+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.8: Fixed protected Superadmin actions after database reset by recovering signed Superadmin sessions whose previous user row was removed.; Prevented duplicate Superadmin bootstrap records and improved expired-session messaging for attendance Excel export."
+    },
     {
       "version": "2.2.7",
       "released_at": "2026-09-25T21:44:59+0530",
