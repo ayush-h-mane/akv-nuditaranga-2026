@@ -17,24 +17,36 @@ def get_current_utc_datetime() -> datetime.datetime:
     """Returns current UTC datetime without timezone info for standard database storage."""
     return datetime.datetime.utcnow()
 
-def format_to_ist_time(dt: Optional[datetime.datetime]) -> str:
+def format_to_ist_time(dt) -> str:
     """
-    Converts a UTC or naive datetime to Indian Standard Time formatted string:
+    Converts a UTC or naive datetime (or string ISO timestamp) to Indian Standard Time formatted string:
     e.g. '10:03:25 AM'
     """
     if not dt:
         return "--"
+    if isinstance(dt, str):
+        try:
+            clean_str = dt.replace("Z", "+00:00")
+            dt = datetime.datetime.fromisoformat(clean_str)
+        except Exception:
+            return dt
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=datetime.timezone.utc)
     return dt.astimezone(IST).strftime("%I:%M:%S %p")
 
-def format_to_ist_datetime(dt: Optional[datetime.datetime]) -> str:
+def format_to_ist_datetime(dt) -> str:
     """
-    Converts a datetime to readable IST string:
+    Converts a datetime (or string ISO timestamp) to readable IST string:
     e.g. '28/09/2026 10:03:25 AM'
     """
     if not dt:
         return "--"
+    if isinstance(dt, str):
+        try:
+            clean_str = dt.replace("Z", "+00:00")
+            dt = datetime.datetime.fromisoformat(clean_str)
+        except Exception:
+            return dt
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=datetime.timezone.utc)
     return dt.astimezone(IST).strftime("%d/%m/%Y %I:%M:%S %p")

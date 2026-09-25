@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.5",
-  "staged_version": "2.2.6",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.2.6",
+  "staged_version": "2.2.7",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.6",
+      "released_at": "2026-09-25T10:04:31+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.6: Fixed Excel Export AutoFilter XML corruption: Resolved OpenPyXL single-row filter range error on empty domain sheets across 15-Sheet Official Attendance and Working Committee workbooks.; FastAPI CORS header exposure: Added expose_headers=['Content-Disposition'] enabling browsers to extract dynamic server-generated file names.; Robust IST Timezone Formatter: Made format_to_ist_time and format_to_ist_datetime accept both datetime objects and ISO strings safely.; Export Request Sanitization & Error Handling: Stripped empty query string filters in api.js and surfaced human-readable backend error messages if export fails.; SuperAdmin Dashboard Export Suite: Added dedicated Working Committee Workbook (.xlsx) export card alongside the 15-sheet festival workbook and raw CSV downloads with loading indicators.; Comprehensive Portal Regression Testing: Successfully validated all 27 critical functions (System health, Auth, Student portal, Pass generation, Check-in verification & revert, SuperAdmin admin approvals, Multi-day attendance, Activity management, Audit logs) with zero errors."
+    },
     {
       "version": "2.2.5",
       "released_at": "2026-09-25T09:26:26+0530",

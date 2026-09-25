@@ -124,6 +124,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
   const [resetModal, setResetModal] = useState(null);
   const [attendanceActionLoading, setAttendanceActionLoading] = useState(false);
   const [officialExportLoading, setOfficialExportLoading] = useState(false);
+  const [csvExportLoading, setCsvExportLoading] = useState(false);
 
   // Dedicated Working Committee Attendance State
   const [wcAttendanceRoster, setWcAttendanceRoster] = useState([]);
@@ -789,6 +790,18 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
       notify("error", err.message || "Failed to export Working Committee Excel.");
     } finally {
       setWcExportLoading(false);
+    }
+  };
+
+  const handleCsvExport = async () => {
+    setCsvExportLoading(true);
+    try {
+      await api.exportAttendanceCsv(attendanceDateFilter || "all");
+      notify("success", "Attendance CSV report downloaded!");
+    } catch (err) {
+      notify("error", err.message || "Failed to export CSV report.");
+    } finally {
+      setCsvExportLoading(false);
     }
   };
 
@@ -2721,17 +2734,19 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Excel XLSX Export Card */}
-                <div className="p-6 rounded-3xl border-2 border-emerald-200 bg-emerald-50/40 space-y-4">
-                  <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md">
-                    <FileSpreadsheet className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h4 className="font-extrabold text-base text-stone-900">Official Festival Attendance Workbook (.xlsx)</h4>
-                    <p className="text-xs text-stone-600 mt-1 leading-relaxed">
-                      Standardized committee format with bold headers, frozen top row, borders, and auto-adjusted columns. Generates Indian Standard Time (IST) Time In & Time Out columns for all event dates, Total Days Present calculation, and participant details.
-                    </p>
+                <div className="p-6 rounded-3xl border-2 border-emerald-200 bg-emerald-50/40 space-y-4 flex flex-col justify-between">
+                  <div className="space-y-4">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md">
+                      <FileSpreadsheet className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-base text-stone-900">Official Festival Attendance Workbook (.xlsx)</h4>
+                      <p className="text-xs text-stone-600 mt-1 leading-relaxed">
+                        Standardized 15-sheet committee format (Sheets 1–13 Domains, Sheet 14 Working Committee, Sheet 15 Consolidated). Generates Indian Standard Time (IST) Time In & Time Out columns and Total Days Present.
+                      </p>
+                    </div>
                   </div>
                   <button
                     type="button"
@@ -2740,27 +2755,55 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                     className="w-full py-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs shadow-md flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
                   >
                     <Download className="w-4 h-4" />
-                    <span>{officialExportLoading ? "Generating Official Workbook..." : "Download Official XLSX Report"}</span>
+                    <span>{officialExportLoading ? "Generating Official Workbook..." : "Download Official XLSX (15 Sheets)"}</span>
+                  </button>
+                </div>
+
+                {/* Working Committee Excel XLSX Export Card */}
+                <div className="p-6 rounded-3xl border-2 border-purple-200 bg-purple-50/40 space-y-4 flex flex-col justify-between">
+                  <div className="space-y-4">
+                    <div className="w-12 h-12 rounded-2xl bg-purple-700 text-white flex items-center justify-center shadow-md">
+                      <Briefcase className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-base text-stone-900">Working Committee Workbook (.xlsx)</h4>
+                      <p className="text-xs text-stone-600 mt-1 leading-relaxed">
+                        Dedicated working committee attendance sheet with full roster, roles, daily IST Check-In and Check-Out timestamps, and days present total.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleWcExcelExport}
+                    disabled={wcExportLoading}
+                    className="w-full py-3 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-extrabold text-xs shadow-md flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>{wcExportLoading ? "Generating WC Workbook..." : "Download Working Committee XLSX"}</span>
                   </button>
                 </div>
 
                 {/* CSV Export Card */}
-                <div className="p-6 rounded-3xl border border-stone-200 bg-stone-50/50 space-y-4">
-                  <div className="w-12 h-12 rounded-2xl bg-stone-900 text-white flex items-center justify-center shadow-md">
-                    <FileText className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h4 className="font-extrabold text-base text-stone-900">Raw Attendance CSV (.csv)</h4>
-                    <p className="text-xs text-stone-600 mt-1 leading-relaxed">
-                      Clean CSV export containing raw volunteer check-in records, marked-by credentials, and exact UTC timestamps.
-                    </p>
+                <div className="p-6 rounded-3xl border border-stone-200 bg-stone-50/50 space-y-4 flex flex-col justify-between">
+                  <div className="space-y-4">
+                    <div className="w-12 h-12 rounded-2xl bg-stone-900 text-white flex items-center justify-center shadow-md">
+                      <FileText className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-base text-stone-900">Raw Attendance CSV (.csv)</h4>
+                      <p className="text-xs text-stone-600 mt-1 leading-relaxed">
+                        Clean CSV export containing raw volunteer check-in records, marked-by credentials, and exact UTC timestamps.
+                      </p>
+                    </div>
                   </div>
                   <button
-                    onClick={() => api.exportAttendanceCsv(attendanceDateFilter || "all")}
-                    className="w-full py-3 rounded-xl bg-stone-900 hover:bg-black text-white font-extrabold text-xs shadow-md flex items-center justify-center gap-2 transition-colors"
+                    type="button"
+                    onClick={handleCsvExport}
+                    disabled={csvExportLoading}
+                    className="w-full py-3 rounded-xl bg-stone-900 hover:bg-black text-white font-extrabold text-xs shadow-md flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
                   >
                     <Download className="w-4 h-4" />
-                    <span>Download CSV Attendance Data</span>
+                    <span>{csvExportLoading ? "Downloading CSV..." : "Download CSV Attendance Data"}</span>
                   </button>
                 </div>
               </div>

@@ -1080,7 +1080,7 @@ def export_working_committee_excel(
                 cell.alignment = align_center
 
     ws.freeze_panes = "A5"
-    if end_data_row >= header_row_idx:
+    if end_data_row > header_row_idx:
         ws.auto_filter.ref = f"A{header_row_idx}:{last_col_letter}{end_data_row}"
 
     for col in ws.columns:
