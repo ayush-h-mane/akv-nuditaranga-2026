@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.9",
-  "staged_version": "2.2.10",
+  "production_version": "2.2.10",
+  "staged_version": "2.2.11",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.10",
+      "released_at": "2026-09-25T22:00:18+0530",
+      "description": "Production release version 2.2.10"
+    },
     {
       "version": "2.2.9",
       "released_at": "2026-09-25T21:57:01+0530",
