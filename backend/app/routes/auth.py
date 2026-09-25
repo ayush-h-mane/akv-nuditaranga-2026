@@ -16,6 +16,7 @@ from ..auth_deps import (
     create_access_token,
     get_current_user
 )
+from ..utils.email_validation import validate_acharya_email
 from ..services.email_service import (
     send_student_welcome_email,
     send_password_reset_email,
@@ -71,6 +72,11 @@ class StudentRegisterRequest(BaseModel):
     password: str = Field(..., min_length=6)
     confirm_password: str = Field(..., min_length=6)
 
+    @field_validator("email")
+    @classmethod
+    def validate_email_domain(cls, v: EmailStr) -> str:
+        return validate_acharya_email(str(v))
+
     @field_validator("auid")
     @classmethod
     def clean_auid(cls, v: str) -> str:
@@ -113,6 +119,11 @@ class AdminRegisterRequest(BaseModel):
     password: str = Field(..., min_length=6)
     confirm_password: str = Field(..., min_length=6)
 
+    @field_validator("email")
+    @classmethod
+    def validate_email_domain(cls, v: EmailStr) -> str:
+        return validate_acharya_email(str(v))
+
     @field_validator("phone")
     @classmethod
     def clean_phone(cls, v: str) -> str:
@@ -126,7 +137,15 @@ class AdminLoginRequest(BaseModel):
     password: str
 
 class ForgotPasswordRequest(BaseModel):
-    identifier: str  # AUID or Email
+    identifier: str = Field(..., min_length=3)
+
+    @field_validator("identifier")
+    @classmethod
+    def validate_identifier(cls, v: str) -> str:
+        identifier = v.strip()
+        if "@" in identifier:
+            return validate_acharya_email(identifier)
+        return identifier.lower()
 
 class ResetPasswordRequest(BaseModel):
     token: str
@@ -371,12 +390,6 @@ def forgot_password(
             func.lower(User.auid) == clean_id
         )
     ).first()
-
-    # Also support looking up admin coordinators by username
-    if not user:
-        admin_entry = db.query(Admin).filter(func.lower(Admin.username) == clean_id).first()
-        if admin_entry and admin_entry.user:
-            user = admin_entry.user
 
     if not user:
         return {"success": True, "message": success_msg}

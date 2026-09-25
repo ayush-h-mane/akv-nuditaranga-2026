@@ -3,6 +3,7 @@ import confetti from "canvas-confetti";
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../services/api";
+import { ACHARYA_EMAIL_ERROR, isAcharyaEmail } from "../utils/emailValidation";
 import { 
   toKannadaDigits, 
   formatKannadaDate, 
@@ -227,10 +228,10 @@ export const RegisterPage = ({
     }
 
     // Email Validation
-    if (!formData.email.includes("@") || !formData.email.includes(".")) {
+    if (!isAcharyaEmail(formData.email)) {
       return lang === "kn" 
-        ? "ದಯವಿಟ್ಟು ಮಾನ್ಯವಾದ ಇಮೇಲ್ ವಿಳಾಸವನ್ನು ನಮೂದಿಸಿ." 
-        : "Please enter a valid email address.";
+        ? "ದಯವಿಟ್ಟು @acharya.ac.in ನಲ್ಲಿ ಕೊನೆಗೊಳ್ಳುವ ಅಧಿಕೃತ ಇಮೇಲ್ ಬಳಸಿ."
+        : ACHARYA_EMAIL_ERROR;
     }
 
     // Team Validations if event is team or group mode selected

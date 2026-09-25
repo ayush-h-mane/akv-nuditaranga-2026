@@ -7,6 +7,7 @@ import { CandidatePhotoUpload } from "../components/CandidatePhotoUpload";
 import { InstituteDepartmentSelect } from "../components/InstituteDepartmentSelect";
 import { PortalSettingsModal } from "../components/PortalSettingsModal";
 import { ACHARYA_INSTITUTES, STANDARD_DEPARTMENTS, AKV_DOMAINS } from "../config/institutesData";
+import { ACHARYA_EMAIL_ERROR, isAcharyaEmail } from "../utils/emailValidation";
 import {
   Sparkles,
   User,
@@ -136,6 +137,11 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
     e.preventDefault();
     setErrorMessage("");
 
+    if (!isAcharyaEmail(studentRegisterForm.email)) {
+      setErrorMessage(ACHARYA_EMAIL_ERROR);
+      return;
+    }
+
     if (studentRegisterForm.password !== studentRegisterForm.confirmPassword) {
       setErrorMessage("Passwords do not match.");
       return;
@@ -210,6 +216,11 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
   const handleAdminRegister = async (e) => {
     e.preventDefault();
     setErrorMessage("");
+
+    if (!isAcharyaEmail(adminForm.email)) {
+      setErrorMessage(ACHARYA_EMAIL_ERROR);
+      return;
+    }
 
     if (adminForm.password !== adminForm.confirmPassword) {
       setErrorMessage("Passwords do not match.");

@@ -2,6 +2,7 @@ import re
 from typing import List, Optional, Any, Union
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator, computed_field
 from datetime import datetime
+from .utils.email_validation import validate_acharya_email
 
 class TeamMemberSchema(BaseModel):
     name: str = Field(..., min_length=2)
@@ -81,6 +82,11 @@ class RegistrationCreate(BaseModel):
     is_team: bool = False
     team_name: Optional[str] = None
     team_members: Optional[List[TeamMemberSchema]] = []
+
+    @field_validator("email")
+    @classmethod
+    def validate_email_domain(cls, v: EmailStr) -> str:
+        return validate_acharya_email(str(v))
 
     @field_validator("auid", mode="before")
     @classmethod

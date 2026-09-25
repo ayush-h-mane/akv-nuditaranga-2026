@@ -1,4 +1,5 @@
 import { initialEvents } from "../config/eventsData";
+import { isAcharyaEmail, ACHARYA_EMAIL_ERROR } from "../utils/emailValidation";
 
 // Determine base API endpoint
 // When running in production (e.g. Vercel) without explicit VITE_API_URL, use same-origin relative path "/api"
@@ -142,6 +143,9 @@ export const api = {
   // AUTHENTICATION APIs
   // ==========================================
   async studentRegister(payload) {
+    if (!isAcharyaEmail(payload.email)) {
+      throw new Error(ACHARYA_EMAIL_ERROR);
+    }
     try {
       const res = await fetch(`${API_BASE_URL}/auth/register/student`, {
         method: "POST",
@@ -311,6 +315,9 @@ export const api = {
   },
 
   async adminRegister(payload) {
+    if (!isAcharyaEmail(payload.email)) {
+      throw new Error(ACHARYA_EMAIL_ERROR);
+    }
     try {
       const res = await fetch(`${API_BASE_URL}/auth/register/admin`, {
         method: "POST",
@@ -634,6 +641,9 @@ export const api = {
   },
 
   async studentRegisterEvent(payload) {
+    if (!isAcharyaEmail(payload.email)) {
+      throw new Error(ACHARYA_EMAIL_ERROR);
+    }
     try {
       const res = await fetch(`${API_BASE_URL}/student/register-event`, {
         method: "POST",
