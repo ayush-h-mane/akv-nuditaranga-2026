@@ -94,6 +94,28 @@ def get_current_user(
         else:
             raise credentials_exception
 
+    if not user and payload.get("role") == "SUPERADMIN":
+        user = db.query(User).filter(User.role == "SUPERADMIN").first()
+        if not user:
+            user = User(
+                name=settings.SUPERADMIN_NAME,
+                auid="AKV-SUPERADMIN",
+                email=settings.SUPERADMIN_EMAIL,
+                phone="9876543210",
+                institute="Acharya Institute of Technology",
+                department="Kannada Vedike",
+                semester=8,
+                section="A",
+                gender="Other",
+                role="SUPERADMIN",
+                registration_id="AKV-SA-0001",
+                password_hash=get_password_hash(settings.SUPERADMIN_PASSWORD),
+                account_status="ACTIVE"
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+
     if not user:
         raise credentials_exception
 
