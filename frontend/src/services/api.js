@@ -127,6 +127,16 @@ function isNetworkError(err) {
   );
 }
 
+async function readApiResponse(res) {
+  const raw = await res.text();
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return { detail: raw.trim() };
+  }
+}
+
 export const api = {
   // ==========================================
   // AUTHENTICATION APIs
@@ -361,9 +371,9 @@ export const api = {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: username.trim(), password })
       });
-      const data = await res.json();
+      const data = await readApiResponse(res);
       if (!res.ok) {
-        throw new Error(data.detail || "Invalid admin credentials.");
+        throw new Error(data.detail || `Admin login failed (${res.status}).`);
       }
       return data;
     } catch (err) {
