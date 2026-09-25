@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     APP_NAME: str = "Acharya Kannada Vedike (AKV) API"
-    APP_VERSION: str = "2.2.12"
+    APP_VERSION: str = "2.2.13"
     API_PREFIX: str = "/api"
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "production" if os.environ.get("VERCEL") else "development")
     DATABASE_URL: str = os.getenv("DATABASE_URL", "" if os.environ.get("VERCEL") else "sqlite:///./akv_fest.db")
@@ -55,4 +55,3 @@ class Settings(BaseSettings):
         extra = "ignore"
 
 settings = Settings()
-
