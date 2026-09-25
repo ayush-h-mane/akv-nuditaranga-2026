@@ -95,6 +95,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
   const [attendanceDateFilter, setAttendanceDateFilter] = useState("");
   const [attendanceDeptFilter, setAttendanceDeptFilter] = useState("all");
   const [auditActionFilter, setAuditActionFilter] = useState("all");
+  const [adminApprovalFilter, setAdminApprovalFilter] = useState("all"); // "all", "pending", "approved"
 
   // Official Multi-Day Attendance State (v2.1.2)
   const [attendanceConfigDates, setAttendanceConfigDates] = useState([]);
@@ -401,8 +402,8 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
   const refreshCurrentSection = () => {
     loadStats();
     loadWcAttendance();
-    if (activeSection === "admins") loadAdmins();
-    else if (activeSection === "activities") loadActivities();
+    loadAdmins();
+    if (activeSection === "activities") loadActivities();
     else if (activeSection === "reels") loadReels();
     else if (activeSection === "students") loadStudents();
     else if (activeSection === "volunteers") loadVolunteers();
@@ -1026,6 +1027,37 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
           {/* ==================================================== */}
           {activeSection === "overview" && (
             <div className="space-y-6">
+              {/* Alert Banner for Pending Admin Approvals */}
+              {metrics?.pending_admins > 0 && (
+                <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-amber-500/15 via-kar-red/10 to-amber-500/10 border border-amber-300 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-black shadow-xs shrink-0">
+                      <ShieldAlert className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-extrabold text-stone-900 flex items-center gap-2">
+                        <span>Action Required: {metrics.pending_admins} Pending Admin {metrics.pending_admins === 1 ? "Registration" : "Registrations"}</span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-200 text-amber-900 border border-amber-300 animate-pulse">
+                          Awaiting Review
+                        </span>
+                      </h4>
+                      <p className="text-xs text-stone-600 mt-0.5">
+                        New faculty coordinators or committee members have submitted registration requests and require authorization to access admin portals.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setAdminApprovalFilter("pending");
+                      setActiveSection("admins");
+                    }}
+                    className="px-4 py-2 rounded-xl bg-stone-900 hover:bg-black text-amber-300 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+                  >
+                    <span>Review Requests ({metrics.pending_admins}) &rarr;</span>
+                  </button>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div className="bg-white p-5 rounded-3xl border border-stone-200 shadow-xs">
                   <span className="text-[11px] font-bold text-stone-400 uppercase">Total Students</span>
@@ -1227,41 +1259,123 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
           {/* ==================================================== */}
           {/* SECTION 2: ADMIN APPROVALS & ROSTER                 */}
           {/* ==================================================== */}
-          {activeSection === "admins" && (
-            <div className="bg-white p-6 sm:p-7 rounded-3xl border border-stone-200 shadow-xs space-y-5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-100 pb-4">
-                <div>
-                  <h3 className="font-extrabold text-base text-stone-900">Administrator Approval Workflow</h3>
-                  <p className="text-xs text-stone-500">Approve or reject faculty and fest coordinator accounts</p>
-                </div>
-                <button
-                  onClick={loadAdmins}
-                  className="p-2 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 self-start"
-                  title="Refresh List"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                </button>
-              </div>
+          {activeSection === "admins" && (() => {
+            const pendingAdminsCount = adminsList.filter((a) => a.approval_status === "PENDING_APPROVAL").length;
+            const approvedAdminsCount = adminsList.filter((a) => a.approval_status === "APPROVED").length;
+            const filteredAdminsList = adminsList.filter((adm) => {
+              if (adminApprovalFilter === "pending") return adm.approval_status === "PENDING_APPROVAL";
+              if (adminApprovalFilter === "approved") return adm.approval_status === "APPROVED";
+              return true;
+            });
 
-              {adminsList.length === 0 ? (
-                <p className="text-xs text-stone-400 py-6 text-center italic">No registered administrators found.</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="border-b border-stone-200 text-stone-400 uppercase tracking-wider font-extrabold">
-                        <th className="py-3 px-3">Admin</th>
-                        <th className="py-3 px-3">Username</th>
-                        <th className="py-3 px-3">Department</th>
-                        <th className="py-3 px-3">Contact</th>
-                        <th className="py-3 px-3">Approval Status</th>
-                        <th className="py-3 px-3 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-stone-100">
-                      {adminsList.map((adm) => {
-                        const isSuperAdmin = adm.role === "SUPERADMIN" || adm.username === "superadmin" || adm.username === "akv-nt-2026";
-                        return (
+            return (
+              <div className="bg-white p-6 sm:p-7 rounded-3xl border border-stone-200 shadow-xs space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-100 pb-4">
+                  <div>
+                    <h3 className="font-extrabold text-base text-stone-900 flex items-center gap-2">
+                      <span>Administrator Approval Workflow</span>
+                      {pendingAdminsCount > 0 && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300 animate-pulse">
+                          {pendingAdminsCount} Awaiting Review
+                        </span>
+                      )}
+                    </h3>
+                    <p className="text-xs text-stone-500">Authorize or reject faculty coordinators and committee head registrations</p>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="inline-flex rounded-xl bg-stone-100 p-1 border border-stone-200">
+                      <button
+                        onClick={() => setAdminApprovalFilter("all")}
+                        className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                          adminApprovalFilter === "all"
+                            ? "bg-white text-stone-900 shadow-xs"
+                            : "text-stone-600 hover:text-stone-900"
+                        }`}
+                      >
+                        All ({adminsList.length})
+                      </button>
+                      <button
+                        onClick={() => setAdminApprovalFilter("pending")}
+                        className={`px-3 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
+                          adminApprovalFilter === "pending"
+                            ? "bg-amber-500 text-white shadow-xs"
+                            : pendingAdminsCount > 0
+                            ? "text-amber-800 bg-amber-100/70 hover:bg-amber-100"
+                            : "text-stone-600 hover:text-stone-900"
+                        }`}
+                      >
+                        <span>Pending</span>
+                        {pendingAdminsCount > 0 && (
+                          <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                            adminApprovalFilter === "pending" ? "bg-white text-amber-700" : "bg-amber-500 text-white"
+                          }`}>
+                            {pendingAdminsCount}
+                          </span>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => setAdminApprovalFilter("approved")}
+                        className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                          adminApprovalFilter === "approved"
+                            ? "bg-white text-stone-900 shadow-xs"
+                            : "text-stone-600 hover:text-stone-900"
+                        }`}
+                      >
+                        Approved ({approvedAdminsCount})
+                      </button>
+                    </div>
+
+                    <button
+                      onClick={loadAdmins}
+                      className="p-2 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 cursor-pointer"
+                      title="Refresh List"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {pendingAdminsCount > 0 && (
+                  <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-900">
+                    <div className="flex items-center gap-2.5">
+                      <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span className="font-semibold">
+                        <strong>{pendingAdminsCount} admin request{pendingAdminsCount === 1 ? "" : "s"}</strong> awaiting superadmin review. Approving an account immediately grants access to department coordinators.
+                      </span>
+                    </div>
+                    {adminApprovalFilter !== "pending" && (
+                      <button
+                        onClick={() => setAdminApprovalFilter("pending")}
+                        className="px-3 py-1 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold shrink-0 self-start sm:self-auto cursor-pointer"
+                      >
+                        View Pending Queue &rarr;
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {adminsList.length === 0 ? (
+                  <p className="text-xs text-stone-400 py-6 text-center italic">No registered administrators found.</p>
+                ) : filteredAdminsList.length === 0 ? (
+                  <p className="text-xs text-stone-400 py-6 text-center italic">No administrators match the selected filter ({adminApprovalFilter}).</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-stone-200 text-stone-400 uppercase tracking-wider font-extrabold">
+                          <th className="py-3 px-3">Admin</th>
+                          <th className="py-3 px-3">Username</th>
+                          <th className="py-3 px-3">Department</th>
+                          <th className="py-3 px-3">Contact</th>
+                          <th className="py-3 px-3">Approval Status</th>
+                          <th className="py-3 px-3 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-stone-100">
+                        {filteredAdminsList.map((adm) => {
+                          const isSuperAdmin = adm.role === "SUPERADMIN" || adm.username === "superadmin" || adm.username === "akv-nt-2026";
+                          return (
                           <tr key={adm.id} className="hover:bg-stone-50/80 transition-colors">
                             <td className="py-3 px-3">
                               <div className="flex items-center gap-2.5">
@@ -1377,7 +1491,8 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                 </div>
               )}
             </div>
-          )}
+          );
+        })()}
 
           {/* ==================================================== */}
           {/* SECTION: MAJOR AKV ACTIVITIES (v2.1.0)               */}

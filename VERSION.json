@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.4",
-  "staged_version": "2.2.5",
+  "production_version": "2.2.5",
+  "staged_version": "2.2.6",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.5",
+      "released_at": "2026-09-25T09:26:26+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.5: Fixed Admin Approval Requests reaching SuperAdmin: Converted blocking synchronous SMTP dispatches in admin registration, password reset, and approvals to non-blocking FastAPI BackgroundTasks (<50ms response).; Multi-Relay SMTP Circuit Breaker: Added 120s cooldown on failing relays to eliminate timeouts and prevent 504 Gateway errors on Vercel.; Eliminated False Offline Fallback: Restricted api.js localStorage fallback to strictly offline status (!navigator.onLine), ensuring real server errors are visible and avoiding trapped registrations.; SuperAdmin Notification Broadcasting: Registration alerts are now broadcast to all SuperAdmin email addresses in a single envelope transaction.; SuperAdmin Dashboard Enhancements: Added urgent pending admin approvals banner on Overview, segmented filter controls (All, Pending Review, Approved), and real-time approval queues."
+    },
     {
       "version": "2.2.4",
       "released_at": "2026-09-25T08:26:54+0530",
