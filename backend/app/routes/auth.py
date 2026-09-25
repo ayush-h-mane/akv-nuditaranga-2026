@@ -635,24 +635,36 @@ def login_admin(payload: AdminLoginRequest, db: Session = Depends(get_db)):
 
         if is_pw_valid:
             if not admin_entry or not admin_entry.user:
-                sa_user = User(
-                    name=sa_info["name"],
-                    auid=f"SA-{clean_uname.upper()}",
-                    email=sa_info["email"],
-                    phone="9876543210",
-                    institute="Acharya Institute of Technology",
-                    department="Kannada Vedike",
-                    semester=8,
-                    section="A",
-                    gender="Other",
-                    role="SUPERADMIN",
-                    registration_id=f"AKV-SA-{clean_uname.upper()}",
-                    password_hash=get_password_hash(sa_info["password"]),
-                    account_status="ACTIVE"
-                )
-                db.add(sa_user)
-                db.commit()
-                db.refresh(sa_user)
+                sa_user = db.query(User).filter(
+                    or_(
+                        func.lower(User.email) == sa_info["email"].lower(),
+                        func.lower(User.auid) == f"SA-{clean_uname.upper()}".lower()
+                    )
+                ).first()
+                if not sa_user:
+                    sa_user = User(
+                        name=sa_info["name"],
+                        auid=f"SA-{clean_uname.upper()}",
+                        email=sa_info["email"],
+                        phone="9876543210",
+                        institute="Acharya Institute of Technology",
+                        department="Kannada Vedike",
+                        semester=8,
+                        section="A",
+                        gender="Other",
+                        role="SUPERADMIN",
+                        registration_id=f"AKV-SA-{clean_uname.upper()}",
+                        password_hash=get_password_hash(sa_info["password"]),
+                        account_status="ACTIVE"
+                    )
+                    db.add(sa_user)
+                    db.commit()
+                    db.refresh(sa_user)
+                else:
+                    sa_user.role = "SUPERADMIN"
+                    sa_user.account_status = "ACTIVE"
+                    db.commit()
+                    db.refresh(sa_user)
 
                 admin_entry = Admin(
                     user_id=sa_user.id,
