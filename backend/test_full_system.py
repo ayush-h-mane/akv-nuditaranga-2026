@@ -190,7 +190,7 @@ def run_comprehensive_portal_tests():
         data = resp.json()
         dev_reset_token = data.get("dev_reset_token")
         assert dev_reset_token is not None, "Expected dev_reset_token in development environment"
-        log_pass(8, "Password Reset Request", f"Token generated (15 min expiry)")
+        log_pass(8, "Password Reset Request", f"Token generated (10 min expiry from akv@acharya.ac.in)")
 
         # Execute Reset Password
         reset_resp = client.post("/api/auth/reset-password", json={

@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.1",
-  "staged_version": "2.2.2",
+  "production_version": "2.2.3",
+  "staged_version": "2.2.4",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.3",
+      "released_at": "2026-09-25T07:16:49+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.3: 10-minute time-limited password reset link delivery from akv@acharya.ac.in, automated candidate & participant confirmation email dispatch with attached official ID Card & Event Pass PDF, verification QR codes, and admin coordinator recovery."
+    },
     {
       "version": "2.2.1",
       "released_at": "2026-09-25T02:01:04+0530",

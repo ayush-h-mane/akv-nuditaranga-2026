@@ -115,6 +115,10 @@ export function AppContent() {
       <ResetPasswordView
         token={resetToken}
         onBackToLogin={() => {
+          if (window.location.hash) {
+            window.history.replaceState(null, "", window.location.pathname);
+          }
+          setResetToken("");
           setAuthInitialTab("student-login");
           setCurrentView("auth");
         }}
