@@ -170,6 +170,7 @@ class Registration(Base):
     status = Column(String, default="Registered")  # Registered, Checked In, Cancelled
     checkin_time = Column(DateTime, nullable=True)
     checked_in_by = Column(String, nullable=True)
+    photo_url = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     event = relationship("Event", back_populates="registrations")

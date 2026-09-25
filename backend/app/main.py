@@ -30,6 +30,9 @@ def ensure_schema_migrations():
                 if reg_cols and "user_id" not in reg_cols:
                     print("[MIGRATION] Adding 'user_id' column to 'registrations' table in SQLite...")
                     conn.exec_driver_sql("ALTER TABLE registrations ADD COLUMN user_id INTEGER REFERENCES users(id)")
+                if reg_cols and "photo_url" not in reg_cols:
+                    print("[MIGRATION] Adding 'photo_url' column to 'registrations' table in SQLite...")
+                    conn.exec_driver_sql("ALTER TABLE registrations ADD COLUMN photo_url TEXT")
 
                 # 2. users table
                 user_cols = [c[1] for c in conn.exec_driver_sql("PRAGMA table_info(users)").fetchall()]
@@ -90,6 +93,7 @@ def ensure_schema_migrations():
                         conn.commit()
 
                 add_pg_col("registrations", "user_id", "INTEGER REFERENCES users(id)")
+                add_pg_col("registrations", "photo_url", "TEXT")
                 add_pg_col("users", "photo_url", "TEXT")
                 add_pg_col("users", "volunteer_domain", "VARCHAR")
                 add_pg_col("users", "admin_type", "VARCHAR DEFAULT 'WORKING_COMMITTEE'")

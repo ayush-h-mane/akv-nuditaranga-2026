@@ -1,5 +1,6 @@
 import React, { useRef } from "react";
 import { QRCodeSVG } from "qrcode.react";
+import { api } from "../services/api";
 import { useLanguage } from "../context/LanguageContext";
 import { siteConfig } from "../config/siteConfig";
 import { formatKannadaDate, formatKannadaTime, formatKannadaVenue, formatKannadaStatus, toKannadaDigits } from "../utils/kannadaUtils";
@@ -8,6 +9,15 @@ import { Printer, Download, CheckCircle, Calendar, MapPin, Clock, User, ShieldCh
 export const DigitalPass = ({ registration, onBack }) => {
   const { lang, t } = useLanguage();
   const passRef = useRef(null);
+
+  const handleDownload = async () => {
+    try {
+      await api.downloadEventPass(registration.registration_id);
+    } catch (err) {
+      console.error("Download pass failed:", err);
+      alert(err.message || "Unable to download the event pass right now.");
+    }
+  };
 
   if (!registration) return null;
 
@@ -54,6 +64,13 @@ export const DigitalPass = ({ registration, onBack }) => {
         </button>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleDownload}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 text-stone-900 text-xs font-bold hover:bg-amber-400 transition-colors shadow-md"
+          >
+            <Download className="w-4 h-4" />
+            <span>{t("registration.downloadPass")}</span>
+          </button>
           <button
             onClick={handlePrint}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-stone-900 text-white text-xs font-bold hover:bg-stone-800 transition-colors shadow-md"

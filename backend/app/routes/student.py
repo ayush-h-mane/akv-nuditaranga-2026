@@ -1,7 +1,7 @@
 import json
 import datetime
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
@@ -11,6 +11,7 @@ from ..models import User, Event, Registration, VolunteerAttendance, AuditLog
 from ..schemas import TeamMemberSchema
 from ..auth_deps import require_student, get_password_hash, verify_password
 from ..routes.registrations import generate_unique_reg_id
+from ..services.id_card_service import generate_candidate_id_card_pdf
 
 router = APIRouter(prefix="/student", tags=["Student"])
 
@@ -118,6 +119,7 @@ def get_student_dashboard(
             "auid": current_user.auid,
             "email": current_user.email,
             "phone": current_user.phone,
+            "photo_url": current_user.photo_url,
             "institute": current_user.institute,
             "department": current_user.department,
             "semester": current_user.semester,
@@ -257,6 +259,7 @@ def student_register_event(
         full_name=current_user.name,
         auid=clean_auid,
         usn=clean_auid,
+        photo_url=current_user.photo_url,
         institute=current_user.institute,
         department=current_user.department,
         semester=current_user.semester,
@@ -296,6 +299,71 @@ def student_register_event(
         "event_date": event.event_date,
         "event_time": event.event_time
     }
+
+
+@router.get("/id-card")
+def download_student_id_card(current_user: User = Depends(require_student)):
+    pdf_payload = {
+        "name": current_user.name,
+        "auid": current_user.auid,
+        "registration_id": current_user.registration_id,
+        "role": current_user.role,
+        "institute": current_user.institute,
+        "department": current_user.department,
+        "semester": current_user.semester,
+        "section": current_user.section,
+        "email": current_user.email,
+        "phone": current_user.phone,
+        "volunteer_domain": current_user.volunteer_domain,
+        "photo_url": current_user.photo_url,
+    }
+    pdf_bytes = generate_candidate_id_card_pdf(pdf_payload)
+    filename = f"AKV_ID_Card_{current_user.registration_id}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )
+
+
+@router.get("/event-pass/{registration_id}")
+def download_event_pass(
+    registration_id: str,
+    current_user: User = Depends(require_student),
+    db: Session = Depends(get_db),
+):
+    reg = db.query(Registration).filter(
+        func.lower(Registration.registration_id) == registration_id.strip().lower(),
+        or_(
+            Registration.user_id == current_user.id,
+            func.upper(Registration.auid) == current_user.auid.upper(),
+            func.lower(Registration.email) == current_user.email.lower()
+        )
+    ).first()
+    if not reg:
+        raise HTTPException(status_code=404, detail="Event pass not found for this account.")
+
+    pdf_payload = {
+        "name": reg.full_name,
+        "auid": reg.auid or reg.usn,
+        "registration_id": reg.registration_id,
+        "role": "PARTICIPANT",
+        "institute": reg.institute or current_user.institute,
+        "department": reg.department or current_user.department,
+        "semester": reg.semester,
+        "section": reg.section or current_user.section,
+        "email": reg.email or current_user.email,
+        "phone": reg.phone or current_user.phone,
+        "photo_url": reg.photo_url or current_user.photo_url,
+        "volunteer_domain": current_user.volunteer_domain,
+    }
+    pdf_bytes = generate_candidate_id_card_pdf(pdf_payload)
+    filename = f"AKV_Pass_{reg.registration_id}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )
 
 @router.post("/change-password")
 def change_password(

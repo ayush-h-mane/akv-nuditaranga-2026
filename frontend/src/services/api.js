@@ -553,6 +553,76 @@ export const api = {
     }
   },
 
+  async downloadStudentIdCard() {
+    const res = await fetch(`${API_BASE_URL}/student/id-card`, {
+      headers: { ...getAuthHeaders() }
+    });
+    if (!res.ok) {
+      let errorMsg = "Failed to download ID card";
+      try {
+        const errData = await res.json();
+        if (errData.detail) errorMsg = errData.detail;
+      } catch {
+        try {
+          const text = await res.text();
+          if (text) errorMsg = text.slice(0, 150);
+        } catch {}
+      }
+      throw new Error(errorMsg);
+    }
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const disposition = res.headers.get("Content-Disposition");
+    let filename = `AKV_ID_Card_${new Date().toISOString().split("T")[0]}.pdf`;
+    if (disposition && disposition.includes("filename=")) {
+      const match = disposition.match(/filename=["']?([^"';]+)["']?/);
+      if (match && match[1]) filename = match[1];
+    }
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+    return true;
+  },
+
+  async downloadEventPass(registrationId) {
+    const res = await fetch(`${API_BASE_URL}/student/event-pass/${encodeURIComponent(registrationId)}`, {
+      headers: { ...getAuthHeaders() }
+    });
+    if (!res.ok) {
+      let errorMsg = `Failed to download pass (${res.status})`;
+      try {
+        const errData = await res.json();
+        if (errData.detail) errorMsg = errData.detail;
+      } catch {
+        try {
+          const text = await res.text();
+          if (text) errorMsg = text.slice(0, 150);
+        } catch {}
+      }
+      throw new Error(errorMsg);
+    }
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const disposition = res.headers.get("Content-Disposition");
+    let filename = `AKV_Pass_${registrationId}.pdf`;
+    if (disposition && disposition.includes("filename=")) {
+      const match = disposition.match(/filename=["']?([^"';]+)["']?/);
+      if (match && match[1]) filename = match[1];
+    }
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+    return true;
+  },
+
   async studentRegisterEvent(payload) {
     try {
       const res = await fetch(`${API_BASE_URL}/student/register-event`, {

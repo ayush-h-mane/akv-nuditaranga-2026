@@ -2,22 +2,152 @@ import io
 import json
 import base64
 import qrcode
+import os
+from pathlib import Path
+from urllib.request import urlopen
 from typing import Optional, Dict, Any
 from reportlab.lib import colors
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
 from PIL import Image
 
+
+CARD_RED = "#B91C1C"
+CARD_RED_DARK = "#7F1D1D"
+CARD_GOLD = "#F59E0B"
+CARD_GOLD_LIGHT = "#FEF3C7"
+CARD_CREAM = "#FFFBEB"
+CARD_INK = "#292524"
+CARD_MUTED = "#57534E"
+
+
+def _register_pdf_fonts() -> tuple[str, str, str, str]:
+    kannada_font = "Helvetica"
+    kannada_bold_font = "Helvetica-Bold"
+    english_font = "Helvetica"
+    english_bold_font = "Helvetica-Bold"
+    bundled_fonts = Path(__file__).resolve().parents[1] / "assets" / "fonts"
+    font_specs = [
+        ("AKVNotoKannada", bundled_fonts / "NotoSansKannada.ttf", 0),
+        ("AKVOutfit", bundled_fonts / "Outfit.ttf", 0),
+    ]
+    for font_name, font_path, subfont_index in font_specs:
+        if not font_path.exists():
+            continue
+        try:
+            pdfmetrics.registerFont(TTFont(font_name, str(font_path), subfontIndex=subfont_index))
+            if font_name == "AKVNotoKannada":
+                kannada_font = font_name
+                kannada_bold_font = font_name
+            else:
+                english_font = font_name
+                english_bold_font = font_name
+        except Exception:
+            continue
+
+    if kannada_font == "Helvetica":
+        nirmala_path = Path(os.environ.get("WINDIR", "C:/Windows")) / "Fonts" / "Nirmala.ttc"
+        if nirmala_path.exists():
+            try:
+                pdfmetrics.registerFont(TTFont("AKVNirmala", str(nirmala_path), subfontIndex=0))
+                kannada_font = "AKVNirmala"
+                kannada_bold_font = "AKVNirmala"
+            except Exception:
+                pass
+
+    return kannada_font, kannada_bold_font, english_font, english_bold_font
+
+
+KANNADA_FONT, KANNADA_BOLD_FONT, ENGLISH_FONT, ENGLISH_BOLD_FONT = _register_pdf_fonts()
+
+
+def _asset_path(filename: str) -> Optional[Path]:
+    path = Path(__file__).resolve().parents[3] / "frontend" / "public" / "images" / filename
+    return path if path.exists() else None
+
+
+def _draw_image_contain(pdf: canvas.Canvas, image_path: Path, x: float, y: float, width: float, height: float) -> None:
+    with Image.open(image_path) as image:
+        image_width, image_height = image.size
+    scale = min(width / image_width, height / image_height)
+    draw_width = image_width * scale
+    draw_height = image_height * scale
+    pdf.drawImage(
+        ImageReader(str(image_path)),
+        x + (width - draw_width) / 2,
+        y + (height - draw_height) / 2,
+        width=draw_width,
+        height=draw_height,
+        mask="auto",
+    )
+
+
+def _draw_image_cover(pdf: canvas.Canvas, image_bytes: bytes, x: float, y: float, width: float, height: float) -> None:
+    with Image.open(io.BytesIO(image_bytes)) as source:
+        image = source.convert("RGB")
+        target_ratio = width / height
+        source_ratio = image.width / image.height
+        if source_ratio > target_ratio:
+            crop_width = int(image.height * target_ratio)
+            left = (image.width - crop_width) // 2
+            image = image.crop((left, 0, left + crop_width, image.height))
+        else:
+            crop_height = int(image.width / target_ratio)
+            top = (image.height - crop_height) // 2
+            image = image.crop((0, top, image.width, top + crop_height))
+        image_buffer = io.BytesIO()
+        image.save(image_buffer, format="JPEG", quality=92)
+    image_buffer.seek(0)
+    pdf.drawImage(ImageReader(image_buffer), x, y, width=width, height=height)
+
+
+def _draw_wrapped(pdf: canvas.Canvas, text: str, x: float, y: float, width: float, font: str, size: float, leading: float, color: colors.Color) -> float:
+    pdf.setFont(font, size)
+    pdf.setFillColor(color)
+    words = str(text or "--").split()
+    lines = []
+    current = ""
+    for word in words:
+        candidate = f"{current} {word}".strip()
+        if current and pdfmetrics.stringWidth(candidate, font, size) > width:
+            lines.append(current)
+            current = word
+        else:
+            current = candidate
+    if current:
+        lines.append(current)
+    for line in lines or ["--"]:
+        pdf.drawString(x, y, line)
+        y -= leading
+    return y
+
+
+def get_photo_bytes_for_pdf(photo_url: Optional[str]) -> Optional[bytes]:
+    if not photo_url:
+        return None
+
+    try:
+        if photo_url.startswith("data:image"):
+            header, data = photo_url.split(",", 1)
+            if "base64" in header.lower():
+                return base64.b64decode(data)
+            return data.encode("utf-8")
+
+        if photo_url.startswith(("http://", "https://")):
+            with urlopen(photo_url, timeout=15) as response:
+                return response.read()
+
+        return None
+    except Exception:
+        return None
+
 def generate_candidate_id_card_pdf(data: Dict[str, Any]) -> bytes:
-    """
-    Generates a high-quality, printable official ID Card & Verification Pass PDF
-    for Acharya Kannada Vedike (AKV) – Nuditaranga 2026.
-    
-    Card dimensions: 320 pt x 480 pt (approx 4.4 x 6.6 inches - standard festival badge size).
-    """
+    """Generate a branded, printable official AKV candidate ID card PDF."""
     buffer = io.BytesIO()
-    card_width = 320
-    card_height = 480
+    card_width = 360
+    card_height = 560
     c = canvas.Canvas(buffer, pagesize=(card_width, card_height))
 
     name = str(data.get("name") or data.get("full_name") or "Candidate").strip()
@@ -28,74 +158,63 @@ def generate_candidate_id_card_pdf(data: Dict[str, Any]) -> bytes:
     department = str(data.get("department") or "Information Science & Engineering").strip()
     semester = str(data.get("semester") or "").strip()
     section = str(data.get("section") or "").strip().upper()
-    email = str(data.get("email") or "").strip()
-    phone = str(data.get("phone") or "").strip()
-    volunteer_domain = data.get("volunteer_domain")
+    volunteer_domain = str(data.get("volunteer_domain") or data.get("akv_domain") or "Not Assigned").strip()
     photo_url = data.get("photo_url")
 
-    # 1. Background & Outer Border
-    c.setFillColor(colors.HexColor("#FAF8F5"))
-    c.roundRect(8, 8, card_width - 16, card_height - 16, 16, fill=1, stroke=0)
+    c.setFillColor(colors.HexColor(CARD_CREAM))
+    c.rect(0, 0, card_width, card_height, fill=1, stroke=0)
+    c.setFillColor(colors.HexColor("#FEF3C7"))
+    c.circle(card_width - 18, card_height - 26, 78, fill=1, stroke=0)
+    c.setFillColor(colors.HexColor("#FDE68A"))
+    c.circle(12, 158, 58, fill=1, stroke=0)
 
-    # Double Border (Outer Red, Inner Gold)
-    c.setStrokeColor(colors.HexColor("#B91C1C"))
-    c.setLineWidth(2.5)
-    c.roundRect(8, 8, card_width - 16, card_height - 16, 16, fill=0, stroke=1)
-
-    c.setStrokeColor(colors.HexColor("#F59E0B"))
+    c.setStrokeColor(colors.HexColor(CARD_RED))
+    c.setLineWidth(3)
+    c.roundRect(9, 9, card_width - 18, card_height - 18, 18, fill=0, stroke=1)
+    c.setStrokeColor(colors.HexColor(CARD_GOLD))
     c.setLineWidth(1)
-    c.roundRect(12, 12, card_width - 24, card_height - 24, 13, fill=0, stroke=1)
+    c.roundRect(14, 14, card_width - 28, card_height - 28, 14, fill=0, stroke=1)
 
-    # 2. Top Header Banner
-    # Red Header Block
-    header_height = 72
-    c.setFillColor(colors.HexColor("#B91C1C"))
-    c.rect(13, card_height - 13 - header_height, card_width - 26, header_height, fill=1, stroke=0)
+    header_y = card_height - 128
+    c.setFillColor(colors.HexColor(CARD_RED))
+    c.roundRect(15, header_y, card_width - 30, 113, 14, fill=1, stroke=0)
+    c.setFillColor(colors.HexColor(CARD_GOLD))
+    c.rect(15, header_y, card_width - 30, 5, fill=1, stroke=0)
 
-    # Gold Accent Line underneath header
-    c.setFillColor(colors.HexColor("#F59E0B"))
-    c.rect(13, card_height - 13 - header_height - 3, card_width - 26, 3, fill=1, stroke=0)
-
-    # Header Titles
-    c.setFillColor(colors.white)
-    c.setFont("Helvetica-Bold", 12.5)
-    c.drawCentredString(card_width / 2.0, card_height - 34, "ACHARYA KANNADA VEDIKE")
+    acharya_logo = _asset_path("acharya-logo-white.png")
+    akv_logo = _asset_path("akv-logo.png")
+    if acharya_logo:
+        _draw_image_contain(c, acharya_logo, 34, header_y + 32, 34, 50)
+    if akv_logo:
+        _draw_image_contain(c, akv_logo, card_width - 68, header_y + 32, 34, 50)
 
     c.setFillColor(colors.HexColor("#FEF08A"))
-    c.setFont("Helvetica-Bold", 10)
-    c.drawCentredString(card_width / 2.0, card_height - 49, "ನುಡಿತರಂಗ ೨೦೨೬ • NUDITARANGA 2026")
+    c.setFont(KANNADA_BOLD_FONT, 11)
+    c.drawCentredString(card_width / 2, card_height - 52, "ಆಚಾರ್ಯ ಕನ್ನಡ ವೇದಿಕೆ")
+    c.setFont(KANNADA_BOLD_FONT, 10)
+    c.drawCentredString(card_width / 2, card_height - 72, "ನುಡಿತರಂಗ ೨೦೨೬")
+    c.setFont(KANNADA_FONT, 8.5)
+    c.setFillColor(colors.HexColor("#FFEDD5"))
+    c.drawCentredString(card_width / 2, card_height - 91, "ಅಧಿಕೃತ ಗುರುತಿನ ಚೀಟಿ")
 
-    c.setFillColor(colors.HexColor("#FED7AA"))
-    c.setFont("Helvetica", 7.5)
-    c.drawCentredString(card_width / 2.0, card_height - 63, "OFFICIAL CANDIDATE CREDENTIAL & FESTIVAL PASS")
+    content_left = 28
+    content_right = card_width - 28
+    photo_box_x = content_left
+    photo_box_y = 292
+    photo_w = 104
+    photo_h = 132
 
-    # 3. Photo & Role Badge Section
-    photo_box_x = 24
-    photo_box_y = card_height - 13 - header_height - 110
-    photo_w = 75
-    photo_h = 95
-
-    # Draw Photo Frame
-    c.setFillColor(colors.HexColor("#FFFFFF"))
-    c.roundRect(photo_box_x, photo_box_y, photo_w, photo_h, 8, fill=1, stroke=0)
-    c.setStrokeColor(colors.HexColor("#DC2626"))
-    c.setLineWidth(1.5)
-    c.roundRect(photo_box_x, photo_box_y, photo_w, photo_h, 8, fill=0, stroke=1)
+    c.setFillColor(colors.white)
+    c.roundRect(photo_box_x, photo_box_y, photo_w, photo_h, 9, fill=1, stroke=0)
+    c.setStrokeColor(colors.HexColor(CARD_RED))
+    c.setLineWidth(2)
+    c.roundRect(photo_box_x, photo_box_y, photo_w, photo_h, 9, fill=0, stroke=1)
 
     photo_rendered = False
-    if photo_url and photo_url.startswith("data:image"):
+    img_bytes = get_photo_bytes_for_pdf(photo_url)
+    if img_bytes:
         try:
-            # Decode base64 data URL
-            header, base64_data = photo_url.split(",", 1)
-            img_bytes = base64.b64decode(base64_data)
-            pil_img = Image.open(io.BytesIO(img_bytes))
-            # Convert to RGB if RGBA
-            if pil_img.mode in ("RGBA", "P"):
-                pil_img = pil_img.convert("RGB")
-            img_buf = io.BytesIO()
-            pil_img.save(img_buf, format="JPEG")
-            img_buf.seek(0)
-            c.drawImage(ImageReader(img_buf), photo_box_x + 2, photo_box_y + 2, width=photo_w - 4, height=photo_h - 4, preserveAspectRatio=True)
+            _draw_image_cover(c, img_bytes, photo_box_x + 3, photo_box_y + 3, photo_w - 6, photo_h - 6)
             photo_rendered = True
         except Exception:
             photo_rendered = False
@@ -105,18 +224,16 @@ def generate_candidate_id_card_pdf(data: Dict[str, Any]) -> bytes:
         c.setFillColor(colors.HexColor("#FEE2E2"))
         c.roundRect(photo_box_x + 2, photo_box_y + 2, photo_w - 4, photo_h - 4, 6, fill=1, stroke=0)
         c.setFillColor(colors.HexColor("#991B1B"))
-        c.setFont("Helvetica-Bold", 24)
+        c.setFont(ENGLISH_BOLD_FONT, 24)
         initials = "".join([part[0] for part in name.split()[:2]]).upper() or "AKV"
         c.drawCentredString(photo_box_x + photo_w / 2.0, photo_box_y + photo_h / 2.0 - 8, initials)
-        c.setFont("Helvetica", 6.5)
+        c.setFont(ENGLISH_FONT, 6.5)
         c.setFillColor(colors.HexColor("#B91C1C"))
         c.drawCentredString(photo_box_x + photo_w / 2.0, photo_box_y + 8, "VERIFIED PHOTO")
 
-    # 4. Details Beside Photo
     details_x = photo_box_x + photo_w + 14
     details_top_y = photo_box_y + photo_h - 2
 
-    # Role Badge
     role_color = colors.HexColor("#B91C1C")
     if role == "VOLUNTEER":
         role_color = colors.HexColor("#DC2626")
@@ -126,74 +243,47 @@ def generate_candidate_id_card_pdf(data: Dict[str, Any]) -> bytes:
         role_color = colors.HexColor("#D97706")
 
     c.setFillColor(role_color)
-    role_text = f"  {role}  "
-    c.roundRect(details_x, details_top_y - 14, 88, 16, 4, fill=1, stroke=0)
+    c.roundRect(details_x, details_top_y - 16, 104, 18, 5, fill=1, stroke=0)
     c.setFillColor(colors.white)
-    c.setFont("Helvetica-Bold", 8)
-    c.drawCentredString(details_x + 44, details_top_y - 10, role)
+    c.setFont(ENGLISH_BOLD_FONT, 8.5)
+    c.drawCentredString(details_x + 52, details_top_y - 11, role)
 
-    # Volunteer Domain Tag if applicable
-    if role == "VOLUNTEER" and volunteer_domain:
-        c.setFillColor(colors.HexColor("#FEF3C7"))
-        c.roundRect(details_x + 94, details_top_y - 14, 94, 16, 4, fill=1, stroke=0)
-        c.setFillColor(colors.HexColor("#92400E"))
-        c.setFont("Helvetica-Bold", 7.5)
-        domain_str = volunteer_domain[:15]
-        c.drawCentredString(details_x + 94 + 47, details_top_y - 10, domain_str)
+    c.setFillColor(colors.HexColor(CARD_GOLD_LIGHT))
+    c.roundRect(details_x, details_top_y - 42, content_right - details_x, 20, 5, fill=1, stroke=0)
+    c.setFillColor(colors.HexColor(CARD_RED_DARK))
+    _draw_wrapped(c, volunteer_domain, details_x + 7, details_top_y - 35, content_right - details_x - 14, ENGLISH_BOLD_FONT, 7.5, 8, colors.HexColor(CARD_RED_DARK))
 
-    # Candidate Name
     c.setFillColor(colors.HexColor("#1C1917"))
-    c.setFont("Helvetica-Bold", 12)
-    display_name = name if len(name) <= 24 else name[:22] + "..."
-    c.drawString(details_x, details_top_y - 32, display_name)
+    c.setFont(ENGLISH_BOLD_FONT, 14)
+    _draw_wrapped(c, name, details_x, details_top_y - 62, content_right - details_x, ENGLISH_BOLD_FONT, 14, 16, colors.HexColor(CARD_INK))
 
-    # Monospace Reg ID Badge
     c.setFillColor(colors.HexColor("#B91C1C"))
-    c.setFont("Courier-Bold", 10.5)
-    c.drawString(details_x, details_top_y - 47, f"REG: {reg_id}")
-
-    # AUID
+    c.setFont(ENGLISH_BOLD_FONT, 10.5)
+    c.drawString(details_x, details_top_y - 100, f"REG ID: {reg_id}")
     c.setFillColor(colors.HexColor("#374151"))
-    c.setFont("Helvetica-Bold", 9.5)
-    c.drawString(details_x, details_top_y - 61, f"AUID: {auid}")
+    c.setFont(ENGLISH_BOLD_FONT, 9.5)
+    c.drawString(details_x, details_top_y - 114, f"AUID: {auid}")
 
-    # Institute (truncated cleanly)
-    c.setFillColor(colors.HexColor("#4B5563"))
-    c.setFont("Helvetica", 7.5)
-    inst_display = institute if len(institute) <= 30 else institute[:28] + "..."
-    c.drawString(details_x, details_top_y - 74, inst_display)
+    detail_y = 266
+    c.setFillColor(colors.HexColor(CARD_MUTED))
+    detail_y = _draw_wrapped(c, f"Institute: {institute}", content_left, detail_y, content_right - content_left, ENGLISH_BOLD_FONT, 8.5, 11, colors.HexColor(CARD_MUTED))
+    detail_y = _draw_wrapped(c, f"Department: {department}", content_left, detail_y - 2, content_right - content_left, ENGLISH_BOLD_FONT, 8.5, 11, colors.HexColor(CARD_MUTED))
+    sem_sec = " • ".join(value for value in (f"Semester {semester}" if semester else "", f"Section {section}" if section else "") if value)
+    _draw_wrapped(c, sem_sec, content_left, detail_y - 2, content_right - content_left, ENGLISH_FONT, 8, 10, colors.HexColor(CARD_MUTED))
 
-    # Dept & Sem/Sec
-    c.setFont("Helvetica", 7.5)
-    dept_display = department if len(department) <= 30 else department[:28] + "..."
-    c.drawString(details_x, details_top_y - 85, dept_display)
-
-    sem_sec = []
-    if semester:
-        sem_sec.append(f"Sem {semester}")
-    if section:
-        sem_sec.append(f"Sec {section}")
-    if sem_sec:
-        c.setFillColor(colors.HexColor("#6B7280"))
-        c.drawString(details_x, details_top_y - 96, " • ".join(sem_sec))
-
-    # 5. Middle Divider Line
-    mid_divider_y = photo_box_y - 16
-    c.setStrokeColor(colors.HexColor("#E5E7EB"))
+    c.setStrokeColor(colors.HexColor("#E7E5E4"))
     c.setLineWidth(1)
-    c.line(20, mid_divider_y, card_width - 20, mid_divider_y)
+    c.line(content_left, 246, content_right, 246)
 
-    # 6. Verification QR Code Section (Bottom Left)
     qr_data = {
         "reg_id": reg_id,
         "name": name,
         "auid": auid,
         "role": role,
+        "akv_domain": volunteer_domain,
         "institute": institute,
         "dept": department,
-        "email": email,
         "verified_by": "Acharya Kannada Vedike Nuditaranga 2026",
-        "auth_sender": "akv@acharya.ac.in"
     }
 
     qr = qrcode.QRCode(
@@ -209,11 +299,10 @@ def generate_candidate_id_card_pdf(data: Dict[str, Any]) -> bytes:
     qr_img.save(qr_buf, format="PNG")
     qr_buf.seek(0)
 
-    qr_x = 24
-    qr_size = 96
-    qr_y = mid_divider_y - qr_size - 12
+    qr_size = 130
+    qr_x = (card_width - qr_size) / 2
+    qr_y = 94
 
-    # QR Container Box
     c.setFillColor(colors.white)
     c.roundRect(qr_x - 3, qr_y - 3, qr_size + 6, qr_size + 6, 8, fill=1, stroke=0)
     c.setStrokeColor(colors.HexColor("#D1D5DB"))
@@ -222,45 +311,18 @@ def generate_candidate_id_card_pdf(data: Dict[str, Any]) -> bytes:
 
     c.drawImage(ImageReader(qr_buf), qr_x, qr_y, width=qr_size, height=qr_size)
 
-    c.setFillColor(colors.HexColor("#374151"))
-    c.setFont("Helvetica-Bold", 6.5)
-    c.drawCentredString(qr_x + qr_size / 2.0, qr_y - 10, "SCAN TO VERIFY IDENTITY")
+    c.setFillColor(colors.HexColor(CARD_RED_DARK))
+    c.setFont(KANNADA_BOLD_FONT, 7.5)
+    c.drawCentredString(qr_x + qr_size / 2.0, qr_y - 11, "ಪರಿಶೀಲಿಸಲು ಸ್ಕ್ಯಾನ್ ಮಾಡಿ")
 
-    # 7. Credential Instructions & Details (Bottom Right)
-    info_x = qr_x + qr_size + 16
-    info_top_y = mid_divider_y - 18
-
-    c.setFillColor(colors.HexColor("#1F2937"))
-    c.setFont("Helvetica-Bold", 8.5)
-    c.drawString(info_x, info_top_y, "Candidate Verification")
-
-    c.setFont("Helvetica", 7.2)
-    c.setFillColor(colors.HexColor("#4B5563"))
-    lines = [
-        f"• Status: ACTIVE & VERIFIED",
-        f"• Email: {email[:24] if email else 'N/A'}",
-        f"• Phone: {phone if phone else 'N/A'}",
-        "• Desk Check-In: Mandatory",
-        "• Valid for Fest: Nov 1-3, 2026",
-        "• Issued: Official AKV Desk"
-    ]
-    cur_y = info_top_y - 14
-    for line in lines:
-        c.drawString(info_x, cur_y, line)
-        cur_y -= 12.5
-
-    # 8. Security Stamp & Official Footer
-    footer_height = 36
-    c.setFillColor(colors.HexColor("#B91C1C"))
-    c.rect(13, 13, card_width - 26, footer_height, fill=1, stroke=0)
-
-    c.setFillColor(colors.HexColor("#FDE047"))
-    c.setFont("Helvetica-Bold", 7.5)
-    c.drawCentredString(card_width / 2.0, 34, "ACHARYA INSTITUTES • SOLDEVANAHALLI, BENGALURU")
-
+    c.setFillColor(colors.HexColor(CARD_RED))
+    c.roundRect(15, 22, card_width - 30, 43, 12, fill=1, stroke=0)
+    c.setFillColor(colors.HexColor("#FDE68A"))
+    c.setFont(KANNADA_FONT, 7.5)
+    c.drawCentredString(card_width / 2.0, 47, "ಆಚಾರ್ಯ ಇನ್‌ಸ್ಟಿಟ್ಯೂಟ್ಸ್ • ಸೋಲದೇವನಹಳ್ಳಿ, ಬೆಂಗಳೂರು")
     c.setFillColor(colors.white)
-    c.setFont("Helvetica", 6.5)
-    c.drawCentredString(card_width / 2.0, 22, "Official e-ID Card • Sent from akv@acharya.ac.in • Non-Transferable")
+    c.setFont(KANNADA_FONT, 7)
+    c.drawCentredString(card_width / 2.0, 34, "ಅಧಿಕೃತ ಗುರುತಿನ ಚೀಟಿ • ವರ್ಗಾಯಿಸಲಾಗದು")
 
     c.save()
     buffer.seek(0)
