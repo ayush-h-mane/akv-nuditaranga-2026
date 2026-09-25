@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.13",
-  "staged_version": "2.2.14",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.2.14",
+  "staged_version": "2.2.15",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.14",
+      "released_at": "2026-09-26T02:19:03+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.14: Removed the unmatched Vercel functions override that blocked deployment discovery; retained the conventional api/index.py handler and API-first rewrite."
+    },
     {
       "version": "2.2.13",
       "released_at": "2026-09-26T02:16:27+0530",
