@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.15",
-  "staged_version": "2.2.16",
+  "production_version": "2.2.16",
+  "staged_version": "2.2.17",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.16",
+      "released_at": "2026-09-26T02:42:35+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.16: Added repository-level uv configuration to force copy mode during Vercel Python dependency installation."
+    },
     {
       "version": "2.2.15",
       "released_at": "2026-09-26T02:35:15+0530",
