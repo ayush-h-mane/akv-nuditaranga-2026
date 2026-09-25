@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     APP_NAME: str = "Acharya Kannada Vedike (AKV) API"
-    APP_VERSION: str = "2.2.3"
+    APP_VERSION: str = "2.2.4"
     API_PREFIX: str = "/api"
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "production" if os.environ.get("VERCEL") else "development")
     DATABASE_URL: str = os.getenv("DATABASE_URL", "" if os.environ.get("VERCEL") else "sqlite:///./akv_fest.db")
@@ -24,11 +24,23 @@ class Settings(BaseSettings):
     ADMIN_USERNAME: str = os.getenv("ADMIN_USERNAME", "akvadmin")
     ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "AcharyaAKV2026")
 
-    # SMTP Mail
+    # SMTP Mail (Primary Relay)
     SMTP_HOST: str = os.getenv("SMTP_HOST", "")
     SMTP_PORT: int = int(os.getenv("SMTP_PORT", 587))
     SMTP_USERNAME: str = os.getenv("SMTP_USERNAME", "")
     SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
+
+    # Multi-Relay Pool (Relay 2 & 3 for combined 600+ to 900+ free emails/day)
+    SMTP_HOST_2: str = os.getenv("SMTP_HOST_2", "")
+    SMTP_PORT_2: int = int(os.getenv("SMTP_PORT_2", 587))
+    SMTP_USERNAME_2: str = os.getenv("SMTP_USERNAME_2", "")
+    SMTP_PASSWORD_2: str = os.getenv("SMTP_PASSWORD_2", "")
+
+    SMTP_HOST_3: str = os.getenv("SMTP_HOST_3", "")
+    SMTP_PORT_3: int = int(os.getenv("SMTP_PORT_3", 587))
+    SMTP_USERNAME_3: str = os.getenv("SMTP_USERNAME_3", "")
+    SMTP_PASSWORD_3: str = os.getenv("SMTP_PASSWORD_3", "")
+
     EMAIL_FROM: str = os.getenv("EMAIL_FROM", "akv@acharya.ac.in")
     EMAIL_FROM_NAME: str = os.getenv("EMAIL_FROM_NAME", "Acharya Kannada Vedike - Nuditaranga 2026")
     

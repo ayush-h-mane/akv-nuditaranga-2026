@@ -263,11 +263,9 @@ export const api = {
       return data;
     } catch (err) {
       if (isNetworkError(err)) {
-        const dummyToken = `reset-offline-${Date.now()}`;
         return {
           success: true,
-          message: "If an account exists with this AUID, email, or username, a 10-minute password reset link has been dispatched from akv@acharya.ac.in to your registered college email.",
-          dev_reset_token: dummyToken
+          message: "If an account exists with this AUID, email, or username, a 10-minute password reset link has been dispatched from akv@acharya.ac.in to your registered college email."
         };
       }
       throw err;

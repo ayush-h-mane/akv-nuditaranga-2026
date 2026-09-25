@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.3",
-  "staged_version": "2.2.4",
+  "production_version": "2.2.4",
+  "staged_version": "2.2.5",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.4",
+      "released_at": "2026-09-25T08:26:54+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.4: Removed dev reset token UI from Forgot Password modal, fixed input font contrast and visibility, and engineered Multi-Relay SMTP Pool with automatic failover and load balancing."
+    },
     {
       "version": "2.2.3",
       "released_at": "2026-09-25T07:16:49+0530",
