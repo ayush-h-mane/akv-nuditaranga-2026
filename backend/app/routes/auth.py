@@ -417,13 +417,14 @@ def forgot_password(
     frontend_base = settings.FRONTEND_URL.rstrip("/")
     reset_link = f"{frontend_base}/#reset-token={raw_token}"
 
-    background_tasks.add_task(
-        send_password_reset_email,
+    delivery_ok = send_password_reset_email(
         to_email=user.email,
         student_name=user.name,
         reset_link=reset_link,
         expires_minutes=10
     )
+    if not delivery_ok:
+        print(f"[PASSWORD RESET EMAIL ERROR] Delivery failed for user {user.id}.", flush=True)
 
     return {
         "success": True,

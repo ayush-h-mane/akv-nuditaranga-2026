@@ -156,7 +156,7 @@ def send_email(
         print(f"Subject: {subject}")
         print(f"Summary: {text_content[:200]}...")
         print(f"[EMAIL WARNING] No SMTP relays configured. Configure SMTP_HOST in .env.")
-        return True
+        return False
 
     now = time.time()
     # Filter active relays not in cooldown
