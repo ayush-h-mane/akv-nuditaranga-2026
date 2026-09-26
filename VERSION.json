@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.30",
-  "staged_version": "2.2.31",
+  "production_version": "2.2.31",
+  "staged_version": "2.2.32",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.31",
+      "released_at": "2026-09-26T08:57:30+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.31: Send password-reset emails synchronously on Vercel and report failed SMTP delivery in server logs instead of relying on a background task."
+    },
     {
       "version": "2.2.30",
       "released_at": "2026-09-26T08:45:04+0530",
