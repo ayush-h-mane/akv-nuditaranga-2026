@@ -1,15 +1,15 @@
 {
   "production_version": "2.2.30",
   "staged_version": "2.2.31",
-  "status": "STAGED_DEVELOPMENT",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
     {
       "version": "2.2.30",
-      "released_at": "2026-09-26T04:46:37+0530",
-      "description": "AKV Nuditaranga 2026 v2.2.30: Require official @acharya.ac.in email addresses for student, volunteer, working committee, faculty, and event registrations.; Restrict forgot-password requests to the registered AUID or Acharya email and send the 10-minute reset link from akv@acharya.ac.in.; Send immediate role-specific Volunteer ID or Participant ID confirmation emails with the candidate ID card from akv@acharya.ac.in."
+      "released_at": "2026-09-26T08:45:04+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.30: Require official @acharya.ac.in email addresses for student, volunteer, working committee, faculty, and event registrations.; Restrict forgot-password requests to the registered AUID or Acharya email and send the 10-minute reset link from akv@acharya.ac.in."
     },
     {
       "version": "2.2.29",

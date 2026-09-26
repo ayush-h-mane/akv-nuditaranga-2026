@@ -243,8 +243,7 @@ def send_student_welcome_email(
     Sends automated confirmation email with registration details and official Candidate ID Card PDF.
     Dispatched officially from akv@acharya.ac.in.
     """
-    role_id_label = "Volunteer ID" if role == "VOLUNTEER" else "Participant ID"
-    subject = f"AKV Nuditaranga 2026 – {role_id_label} Confirmation & Candidate ID Card"
+    subject = "AKV Nuditaranga 2026 – Registration Confirmation & Candidate ID Card"
 
     data = candidate_data or {}
     institute = data.get("institute") or "Acharya Institute of Technology"
@@ -296,7 +295,7 @@ def send_student_welcome_email(
             <p style="margin: 0 0 10px 0; font-size: 15px; font-weight: bold; color: #854d0e; border-bottom: 1px solid #fef08a; pb: 6px;">
                 📋 Official Registration Details:
             </p>
-            <p style="margin: 0 0 8px 0;"><strong>{role_id_label}:</strong> <span style="font-family: monospace; font-size: 16px; font-weight: bold; color: #b91c1c;">{registration_id}</span></p>
+            <p style="margin: 0 0 8px 0;"><strong>Registration ID:</strong> <span style="font-family: monospace; font-size: 16px; font-weight: bold; color: #b91c1c;">{registration_id}</span></p>
             <p style="margin: 0 0 8px 0;"><strong>Candidate Name:</strong> {student_name}</p>
             <p style="margin: 0 0 8px 0;"><strong>AUID / USN:</strong> <span style="font-family: monospace; font-weight: bold;">{auid}</span></p>
             <p style="margin: 0 0 8px 0;"><strong>Registered Role:</strong> <span style="display: inline-block; background-color: #b91c1c; color: white; padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: bold;">{role}</span></p>
@@ -330,7 +329,7 @@ def send_student_welcome_email(
             <a href="{settings.FRONTEND_URL}" style="background: linear-gradient(135deg, #b91c1c, #dc2626); color: #ffffff; text-decoration: none; padding: 13px 26px; border-radius: 8px; font-weight: bold; font-size: 14px; display: inline-block; box-shadow: 0 3px 8px rgba(185, 28, 28, 0.3);">Login to Candidate Portal</a>
         </div>
     """
-    text = f"Welcome {student_name}! Your {role_id_label} for AKV Nuditaranga 2026 is confirmed. {role_id_label}: {registration_id}, AUID: {auid}, Role: {role}. Your official Candidate ID Card PDF is attached (AKV_ID_Card_{registration_id}.pdf). Sent from {settings.EMAIL_FROM}."
+    text = f"Welcome {student_name}! Your registration for AKV Nuditaranga 2026 is confirmed. Reg ID: {registration_id}, AUID: {auid}, Role: {role}. Your official Candidate ID Card PDF is attached (AKV_ID_Card_{registration_id}.pdf). Sent from {settings.EMAIL_FROM}."
     html = wrap_email_html(subject, content)
     return send_email(to_email, subject, html, text, attachments=attachments)
 
