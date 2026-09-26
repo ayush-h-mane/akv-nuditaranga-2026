@@ -386,7 +386,7 @@ def forgot_password(
     clean_id = payload.identifier.strip().lower()
     
     # Generic security message to prevent account enumeration
-    success_msg = f"If an account exists with this identifier, a 10-minute password reset link has been dispatched from {settings.EMAIL_FROM} to your registered college email."
+    success_msg = f"If an account exists with this identifier, a 10-minute password reset link will be emailed from {settings.EMAIL_FROM} to your registered college email."
 
     user = db.query(User).filter(
         or_(

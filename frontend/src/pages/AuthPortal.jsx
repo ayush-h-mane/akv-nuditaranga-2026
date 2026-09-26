@@ -605,7 +605,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                         </div>
 
                         <p className="text-xs text-stone-600 leading-relaxed">
-                          A confirmation email has been dispatched to your college email.
+                          A confirmation email will be sent to your college email.
                           {successData.user.role === "VOLUNTEER" && " As a volunteer, your information has been automatically synchronized into the Volunteer Attendance System."}
                         </p>
 

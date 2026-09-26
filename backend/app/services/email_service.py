@@ -120,7 +120,8 @@ def send_email(
     subject: str,
     html_content: str,
     text_content: str = "",
-    attachments: Optional[List[Dict[str, Any]]] = None
+    attachments: Optional[List[Dict[str, Any]]] = None,
+    reply_to: Optional[str] = None
 ) -> bool:
     """
     Sends an email using configured SMTP server pool with automatic round-robin rotation,
@@ -138,6 +139,7 @@ def send_email(
         "html": html_content,
         "text": text_content,
         "from": settings.EMAIL_FROM,
+        "reply_to": reply_to or settings.EMAIL_FROM,
         "attachments": [
             {"filename": a.get("filename", "document.pdf"), "size": len(a.get("content", b""))}
             for a in (attachments or [])
@@ -178,7 +180,7 @@ def send_email(
         msg["Subject"] = subject
         msg["From"] = f"{settings.EMAIL_FROM_NAME} <{settings.EMAIL_FROM}>"
         msg["To"] = to_header
-        msg["Reply-To"] = settings.EMAIL_FROM
+        msg["Reply-To"] = reply_to or settings.EMAIL_FROM
 
         body_part = MIMEMultipart("alternative")
         if text_content:
@@ -198,7 +200,7 @@ def send_email(
         msg["Subject"] = subject
         msg["From"] = f"{settings.EMAIL_FROM_NAME} <{settings.EMAIL_FROM}>"
         msg["To"] = to_header
-        msg["Reply-To"] = settings.EMAIL_FROM
+        msg["Reply-To"] = reply_to or settings.EMAIL_FROM
 
         if text_content:
             msg.attach(MIMEText(text_content, "plain", "utf-8"))

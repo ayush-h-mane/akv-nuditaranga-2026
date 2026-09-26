@@ -139,6 +139,19 @@ async function readApiResponse(res) {
 }
 
 export const api = {
+  async sendContactMessage(payload) {
+    const res = await fetch(`${API_BASE_URL}/contact/message`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const data = await readApiResponse(res);
+    if (!res.ok) {
+      throw new Error(data.detail || "Unable to send your message. Please try again.");
+    }
+    return data;
+  },
+
   // ==========================================
   // AUTHENTICATION APIs
   // ==========================================
