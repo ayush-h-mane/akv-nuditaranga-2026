@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useLanguage } from "../context/LanguageContext";
 import { siteConfig } from "../config/siteConfig";
+import { api } from "../services/api";
 import { MapPin, Mail, Phone, Send, CheckCircle, UserCheck } from "lucide-react";
 
 export const ContactSection = () => {
@@ -12,15 +13,24 @@ export const ContactSection = () => {
     message: ""
   });
   const [submitted, setSubmitted] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.email || !formData.message) return;
-    setSubmitted(true);
-    setTimeout(() => {
-      setSubmitted(false);
+    if (!formData.name || !formData.email || !formData.subject || !formData.message || sending) return;
+    setSending(true);
+    setSendError("");
+    try {
+      await api.sendContactMessage(formData);
+      setSubmitted(true);
       setFormData({ name: "", email: "", subject: "", message: "" });
-    }, 5000);
+      setTimeout(() => setSubmitted(false), 5000);
+    } catch (error) {
+      setSendError(error.message || (lang === "kn" ? "ಸಂದೇಶ ಕಳುಹಿಸಲಾಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ." : "Message could not be sent. Please try again."));
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -162,6 +172,11 @@ export const ContactSection = () => {
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-4 text-xs sm:text-sm">
+                  {sendError && (
+                    <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+                      {sendError}
+                    </div>
+                  )}
                   <div>
                     <label className="block font-bold text-stone-700 mb-1">
                       {t("contact.formName")}
@@ -220,10 +235,11 @@ export const ContactSection = () => {
 
                   <button
                     type="submit"
+                    disabled={sending}
                     className="w-full py-3 rounded-2xl text-xs sm:text-sm font-extrabold text-white bg-gradient-to-r from-kar-red to-kar-yellow shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
                   >
                     <Send className="w-4 h-4" />
-                    <span>{t("contact.sendBtn")}</span>
+                    <span>{sending ? (lang === "kn" ? "ಕಳುಹಿಸಲಾಗುತ್ತಿದೆ..." : "Sending...") : t("contact.sendBtn")}</span>
                   </button>
                 </form>
               )}

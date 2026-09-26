@@ -1,11 +1,21 @@
 {
-  "production_version": "2.2.34",
-  "staged_version": "2.2.35",
+  "production_version": "2.2.36",
+  "staged_version": "2.2.37",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.36",
+      "released_at": "2026-09-27T02:09:54+0530",
+      "description": "Production release version 2.2.36"
+    },
+    {
+      "version": "2.2.35",
+      "released_at": "2026-09-27T02:09:27+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.35: Prepared automated registration, event, and password-reset email delivery from akv@acharya.ac.in; documented SMTP requirements and clarified email delivery messages.; Connected the Contact section form to the backend so messages are emailed to akv@acharya.ac.in with the sender set as Reply-To and a delivery error shown if SMTP fails."
+    },
     {
       "version": "2.2.34",
       "released_at": "2026-09-27T00:57:08+0530",

@@ -61,6 +61,14 @@ Configure these variables in your **Vercel Project Settings → Environment Vari
 | `SUPERADMIN_EMAIL` | Optional | Initial Superadmin notification email | `kannadavedike@acharya.ac.in` |
 | `FRONTEND_URL` | Optional | Allowed origin & password reset link domain | `https://your-fest-domain.vercel.app` |
 | `ALLOWED_ORIGINS` | Optional | Comma-separated list of additional CORS origins | `https://your-fest-domain.vercel.app` |
+| `SMTP_HOST` | **Yes, for automated email** | SMTP server host | Provider SMTP hostname |
+| `SMTP_PORT` | **Yes, for automated email** | SMTP port (commonly 587 or 465) | `587` |
+| `SMTP_USERNAME` | **Yes, for automated email** | SMTP account username | Provider-issued username |
+| `SMTP_PASSWORD` | **Yes, for automated email** | SMTP account password or app key | Store as a secret |
+| `EMAIL_FROM` | **Yes, for automated email** | Verified sender address | `akv@acharya.ac.in` |
+| `EMAIL_FROM_NAME` | Optional | Sender display name | `Acharya Kannada Vedike - Nuditaranga 2026` |
+
+Automated student registration, event registration, and password-reset emails use this SMTP configuration. The SMTP provider must authorize `akv@acharya.ac.in` as a sender. Add these values to the Vercel project for each environment that should send mail; secondary relay settings (`SMTP_HOST_2` / `SMTP_PORT_2` / `SMTP_USERNAME_2` / `SMTP_PASSWORD_2` and the corresponding `_3` variables) are optional failover relays.
 
 > [!IMPORTANT]
 > Never set `DATABASE_URL` to a `sqlite://` URL in Vercel. The server will throw a descriptive `RuntimeError` on startup to protect against ephemeral data loss.
