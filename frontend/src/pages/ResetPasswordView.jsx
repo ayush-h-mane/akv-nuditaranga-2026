@@ -43,7 +43,7 @@ export const ResetPasswordView = ({ token, onBackToLogin }) => {
           </div>
           <h2 className="text-xl font-extrabold tracking-tight">Create New Password</h2>
           <p className="text-xs text-amber-100 mt-1 font-medium">
-            AKV Nuditaranga 2026 • ಹೊಸ ಪಾಸ್‌ವರ್ಡ್ ಹೊಂದಿಸಿ
+            ನುಡಿತರಂಗ ೨೦೨೬ • ಹೊಸ ಪಾಸ್‌ವರ್ಡ್ ಹೊಂದಿಸಿ
           </p>
         </div>
 

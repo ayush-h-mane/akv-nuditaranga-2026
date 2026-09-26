@@ -161,7 +161,7 @@ export const CheckInPage = () => {
                     type="text"
                     value={manualInput}
                     onChange={(e) => setManualInput(e.target.value)}
-                    placeholder="e.g. AKV26001 or AIT22CS001"
+                    placeholder="Enter Registration ID or AUID"
                     className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-stone-300 text-xs sm:text-sm font-mono focus:outline-none focus:ring-2 focus:ring-kar-red/20 focus:border-kar-red"
                   />
                 </div>

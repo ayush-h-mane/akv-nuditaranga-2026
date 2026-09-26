@@ -391,11 +391,11 @@ export const api = {
         // Super Admin credentials (akvntkvsa1, akvntkvsa2, akvntkvsa3, akv-nt-2026, or superadmin)
         const cleanPw = (password || "").trim();
         const saMap = {
-          "akvntkvsa1": { name: "AKV Super Administrator 1", pass: "akvntkvsa@1" },
-          "akvntkvsa2": { name: "AKV Super Administrator 2", pass: "akvntkvsa@2" },
-          "akvntkvsa3": { name: "AKV Super Administrator 3", pass: "akvntkvsa@3" },
-          "akv-nt-2026": { name: "AKV Super Administrator", pass: "akv.nt@2026" },
-          "superadmin": { name: "AKV Super Administrator", pass: "superadmin" }
+          "akvntkvsa1": { name: "Super Administrator 1", pass: "akvntkvsa@1" },
+          "akvntkvsa2": { name: "Super Administrator 2", pass: "akvntkvsa@2" },
+          "akvntkvsa3": { name: "Super Administrator 3", pass: "akvntkvsa@3" },
+          "akv-nt-2026": { name: "Super Administrator", pass: "akv.nt@2026" },
+          "superadmin": { name: "Super Administrator", pass: "superadmin" }
         };
 
         if (saMap[u] && (cleanPw === saMap[u].pass || password === saMap[u].pass || cleanPw === "akv.nt@2026")) {
@@ -424,7 +424,7 @@ export const api = {
             token: `sa-offline-token-${Date.now()}`,
             user: {
               id: 1,
-              name: "AKV Super Administrator",
+              name: "Super Administrator",
               username: "akv-nt-2026",
               admin_username: "akv-nt-2026",
               email: "akv@acharya.ac.in",
@@ -1874,7 +1874,7 @@ export const api = {
         }
         return {
           registration_id: cleanId,
-          full_name: "AKV Participant",
+          full_name: "Participant",
           effective_auid: cleanId,
           department: "Acharya Student",
           status: "Checked In",
@@ -2030,6 +2030,44 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Failed to delete reel/post");
+    return data;
+  },
+
+  async getFestivalSchedule() {
+    const res = await fetch(`${API_BASE_URL}/festival-schedule`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to load festival schedule");
+    return data;
+  },
+
+  async updateFestivalSchedule(days) {
+    const normalizedDays = days.map((day) => ({
+      id: day.id,
+      sort_order: day.sort_order,
+      day: day.day,
+      day_kn: day.dayKn,
+      date: day.date,
+      date_kn: day.dateKn,
+      title: day.title,
+      title_kn: day.titleKn,
+      tag: day.tag,
+      tag_kn: day.tagKn,
+      desc_en: day.descEn,
+      desc_kn: day.descKn,
+      venue: day.venue,
+      venue_en: day.venueEn,
+      venue_kn: day.venueKn,
+      time_en: day.timeEn,
+      time_kn: day.timeKn,
+      is_active: day.is_active !== false
+    }));
+    const res = await fetch(`${API_BASE_URL}/festival-schedule`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+      body: JSON.stringify({ days: normalizedDays })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to update festival schedule");
     return data;
   }
 };

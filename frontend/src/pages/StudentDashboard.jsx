@@ -212,7 +212,7 @@ export const StudentDashboard = ({ onNavigateHome }) => {
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-stone-700 bg-white border border-stone-200 rounded-xl hover:bg-stone-50 transition-colors shadow-xs"
             >
               <Compass className="w-3.5 h-3.5 text-amber-600" />
-              <span>Explore AKV Website</span>
+              <span>Explore Acharya Kannada Vedike Website</span>
             </button>
 
             <button

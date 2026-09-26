@@ -27,9 +27,9 @@ export const translations = {
     },
     about: {
       badge: "ನಮ್ಮ ಪರಿಚಯ",
-      heading: "ಆಚಾರ್ಯ ಕನ್ನಡ ವೇದಿಕೆ (ಆ.ಕಂ.ವೇ)",
+      heading: "ಆಚಾರ್ಯ ಕನ್ನಡ ವೇದಿಕೆ",
       subheading: "ಕನ್ನಡ ನಾಡು, ನುಡಿ, ಸಂಸ್ಕೃತಿ ಮತ್ತು ಯುವ ಪ್ರತಿಭೆಗಳನ್ನು ಬೆಸೆಯುವ ಸುವರ್ಣ ಸೇತು",
-      description: "ಆಚಾರ್ಯ ಇನ್‌ಸ್ಟಿಟ್ಯೂಟ್ ಆಫ್ ಟೆಕ್ನಾಲಜಿಯ ಕನ್ನಡ ವೇದಿಕೆಯು ಕೇವಲ ಒಂದು ಸಂಘವಲ್ಲ; ಇದು ಪ್ರತಿಯೊಬ್ಬ ವಿದ್ಯಾರ್ಥಿಯೊಳಗಿನ ಸಾಂಸ್ಕೃತಿಕ ಒಲವನ್ನು ಜಾಗೃತಗೊಳಿಸುವ ಹೆಮ್ಮೆಯ ವೇದಿಕೆ. ತಾಂತ್ರಿಕ ಶಿಕ್ಷಣದ ಜತೆಜತೆಗೆ ನಮ್ಮ ನಾಡಿನ ಭವ್ಯ ಪರಂಪರೆ, ಸಾಹಿತ್ಯ, ಜಾನಪದ ಮತ್ತು ಕಲೆಗಳನ್ನು ಜೀವಂತವಾಗಿರಿಸಲು ನಾವು ಸದಾ ಬದ್ಧರಾಗಿದ್ದೇವೆ.",
+      description: "ಆಚಾರ್ಯ ವಿದ್ಯಾಸಂಸ್ಥೆಯ ಕನ್ನಡ ವೇದಿಕೆಯು ಕೇವಲ ಒಂದು ಸಂಘವಲ್ಲ; ಇದು ಪ್ರತಿಯೊಬ್ಬ ವಿದ್ಯಾರ್ಥಿಯೊಳಗಿನ ಸಾಂಸ್ಕೃತಿಕ ಒಲವನ್ನು ಜಾಗೃತಗೊಳಿಸುವ ಹೆಮ್ಮೆಯ ವೇದಿಕೆ. ಶಿಕ್ಷಣದ ಜೊತೆಗೆ ನಮ್ಮ ನಾಡಿನ ಭವ್ಯ ಪರಂಪರೆ, ಸಾಹಿತ್ಯ, ಜಾನಪದ ಮತ್ತು ಕಲೆಗಳನ್ನು ಜೀವಂತವಾಗಿರಿಸಲು ನಾವು ಸದಾ ಬದ್ಧರಾಗಿದ್ದೇವೆ.",
       pillarsTitle: "ನಮ್ಮ ನಾಲ್ಕು ಮೂಲ ಸ್ತಂಭಗಳು",
       pillars: [
         {
@@ -163,7 +163,7 @@ export const translations = {
       badge: "ಆಯೋಜಕರ ಹಾಜರಾತಿ ವಿಭಾಗ",
       heading: "ಸ್ಪರ್ಧಿಗಳ QR ಹಾಜರಾತಿ ಸ್ಕ್ಯಾನರ್",
       subheading: "ಕ್ಯಾಮೆರಾ ಮೂಲಕ QR ಕೋಡ್ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ ಅಥವಾ ನೋಂದಣಿ ಐಡಿ ನಮೂದಿಸಿ ಹಾಜರಾತಿ ದಾಖಲಿಸಿ",
-      searchPlaceholder: "ನೋಂದಣಿ ಐಡಿ ಅಥವಾ USN ನಮೂದಿಸಿ (ಉದಾ: AKV26001)",
+      searchPlaceholder: "ನೋಂದಣಿ ಐಡಿ ಅಥವಾ USN ನಮೂದಿಸಿ",
       searchBtn: "ಹುಡುಕಿ",
       scanBtn: "ಕ್ಯಾಮೆರಾ ಸ್ಕ್ಯಾನರ್ ಪ್ರಾರಂಭಿಸಿ",
       stopScanBtn: "ಕ್ಯಾಮೆರಾ ನಿಲ್ಲಿಸಿ",
@@ -237,7 +237,7 @@ export const translations = {
   en: {
     nav: {
       home: "Home",
-      about: "About AKV",
+      about: "About Acharya Kannada Vedike",
       activities: "Activities",
       nuditaranga: "Nuditaranga 2026",
       events: "Events",
@@ -254,7 +254,7 @@ export const translations = {
       subtitle: "Fragrance of Kannada • Elegance of Culture • Unveiling of Talent",
       description: "A premier student cultural community committed to preserving, cherishing, and elevating the rich linguistic heritage, arts, and folklore of Karnataka at Acharya Campus.",
       ctaExplore: "Explore Nuditaranga 2026",
-      ctaAbout: "Know About AKV",
+      ctaAbout: "Know About Acharya Kannada Vedike",
       days: "Days",
       hours: "Hours",
       minutes: "Minutes",
@@ -262,9 +262,9 @@ export const translations = {
     },
     about: {
       badge: "Who We Are",
-      heading: "About Acharya Kannada Vedike (AKV)",
+      heading: "About Acharya Kannada Vedike",
       subheading: "Bridging cultural heritage with modern youth aspirations at Acharya Institutes",
-      description: "Acharya Kannada Vedike is more than just a student organization; it is the cultural heartbeat of Acharya Institute of Technology. Alongside rigorous engineering and academic life, AKV empowers students to celebrate Karnataka's monumental literature, music, dance, and theater with pride and excellence.",
+      description: "Acharya Kannada Vedike is more than just a student organization; it is the cultural heartbeat of Acharya educational institutions. Alongside academic life, the Vedike empowers students to celebrate Karnataka's literature, music, dance, and theatre with pride.",
       pillarsTitle: "Our Four Core Pillars",
       pillars: [
         {
@@ -291,7 +291,7 @@ export const translations = {
     },
     activities: {
       badge: "Vibrant Campus Life",
-      heading: "Major AKV Activities",
+      heading: "Major Acharya Kannada Vedike Activities",
       subheading: "Round-the-year celebration of talent, literature, and art forms",
       all: "All Events",
       rajyotsava: "Rajyotsava",
@@ -398,7 +398,7 @@ export const translations = {
       badge: "Organizer Check-In Desk",
       heading: "Attendee QR Verification & Check-In",
       subheading: "Scan attendee QR code with your camera or search Registration ID / USN manually",
-      searchPlaceholder: "Enter Registration ID or USN (e.g., AKV26001)",
+      searchPlaceholder: "Enter Registration ID or USN",
       searchBtn: "Search & Verify",
       scanBtn: "Launch Camera Scanner",
       stopScanBtn: "Stop Camera Scanner",

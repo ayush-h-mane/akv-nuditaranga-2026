@@ -33,6 +33,16 @@ from ..utils.timezone import (
 
 router = APIRouter(prefix="/working-committee-attendance", tags=["Working Committee Attendance"])
 
+def attendance_units(check_in_at, check_out_at) -> float:
+    if not check_in_at or not check_out_at:
+        return 0.0
+    hours = (check_out_at - check_in_at).total_seconds() / 3600
+    if hours >= 8:
+        return 1.0
+    if hours >= 4:
+        return 0.5
+    return 0.0
+
 # ==============================================================================
 # PYDANTIC SCHEMAS
 # ==============================================================================
@@ -101,6 +111,13 @@ def get_wc_members_query(db: Session):
             User.volunteer_domain == "Working Committee"
         )
     )
+
+def verify_wc_attendance_date_is_open(date_str: str):
+    if date_str > get_current_ist_date_str():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Attendance cannot be marked before the selected date arrives."
+        )
 
 
 # ==============================================================================
@@ -191,6 +208,7 @@ def get_working_committee_attendance(
 
         cin_time = format_to_ist_time(rec.check_in_at) if rec and rec.check_in_at else None
         cout_time = format_to_ist_time(rec.check_out_at) if rec and rec.check_out_at else None
+        units = attendance_units(rec.check_in_at, rec.check_out_at) if rec else 0.0
 
         output_members.append({
             "id": rec.id if rec else None,
@@ -198,6 +216,7 @@ def get_working_committee_attendance(
             "working_committee_member_id": m.id,
             "reg_id": m.registration_id or f"WC{m.id:03d}",
             "name": m.name,
+            "akv_dept": m.volunteer_domain or "--",
             "auid": m.auid,
             "institute": m.institute,
             "department": m.department,
@@ -207,6 +226,7 @@ def get_working_committee_attendance(
             "photo_url": m.photo_url,
             "check_in_time": cin_time,
             "check_out_time": cout_time,
+            "attendance_units": units,
             "status": current_status,
             "submitted": is_submitted or (rec.submitted if rec else False),
             "submitted_by": rec.submitted_by if rec else submitted_by,
@@ -255,6 +275,7 @@ def mark_wc_check_in(
         raise HTTPException(status_code=400, detail="Missing user_id or working_committee_member_id")
 
     target_date = payload.date.strip() if payload.date else get_current_ist_date_str()
+    verify_wc_attendance_date_is_open(target_date)
 
     user = db.query(User).filter(User.id == target_uid).first()
     if not user:
@@ -341,6 +362,7 @@ def mark_wc_check_out(
         raise HTTPException(status_code=400, detail="Missing user_id or working_committee_member_id")
 
     target_date = payload.date.strip() if payload.date else get_current_ist_date_str()
+    verify_wc_attendance_date_is_open(target_date)
 
     user = db.query(User).filter(User.id == target_uid).first()
     if not user:
@@ -363,6 +385,14 @@ def mark_wc_check_out(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Attendance already completed for today. No further markings allowed."
+        )
+
+    elapsed = now_utc - rec.check_in_at
+    if elapsed.total_seconds() < 3600:
+        remaining_minutes = max(1, 60 - int(elapsed.total_seconds() // 60))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Check-Out will be available after one hour of Check-In. Please wait {remaining_minutes} more minute(s)."
         )
 
     rec.check_out_at = now_utc
@@ -679,11 +709,14 @@ def get_wc_audit_logs(
 
     output = []
     for l in logs:
+        member = db.query(User).filter(User.id == l.working_committee_member_id).first()
         output.append({
             "id": l.id,
             "attendance_id": l.attendance_id,
             "working_committee_member_id": l.working_committee_member_id,
             "member_name": l.member_name,
+            "participant_name": l.member_name,
+            "akv_dept": member.volunteer_domain if member else "--",
             "date": l.attendance_date,
             "date_dmy": iso_date_to_dmy(l.attendance_date),
             "old_check_in": l.old_check_in,
@@ -1037,8 +1070,8 @@ def export_working_committee_excel(
             date_times.append(time_in_str)
             date_times.append(time_out_str)
 
-            if rec and rec.check_in_at and rec.check_out_at:
-                days_present += 1
+            if rec:
+                days_present += attendance_units(rec.check_in_at, rec.check_out_at)
 
             if rec and rec.submitted_by:
                 managed_by_set.add(rec.submitted_by)

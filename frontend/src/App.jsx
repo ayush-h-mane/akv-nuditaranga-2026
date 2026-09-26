@@ -17,6 +17,7 @@ import { EventsPage } from "./pages/EventsPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { ConfirmationPage } from "./pages/ConfirmationPage";
 import { CheckInPage } from "./pages/CheckInPage";
+import { RulesPage } from "./pages/RulesPage";
 
 // Direct Sections
 import { AboutSection } from "./sections/AboutSection";
@@ -219,6 +220,10 @@ export function AppContent() {
             <div className="pt-24 min-h-screen">
               <ContactSection />
             </div>
+          )}
+
+          {currentView === "rules" && (
+            <RulesPage onBack={() => setCurrentView("home")} />
           )}
 
           {currentView === "register" && (

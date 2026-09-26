@@ -78,6 +78,7 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
   const [checkinMode, setCheckinMode] = useState("camera"); // "camera" or "manual"
 
   const [feedback, setFeedback] = useState({ type: "", text: "" });
+  const selectedDateIsFuture = Boolean(selectedDate && selectedDate > new Date().toISOString().slice(0, 10));
 
   // Cultural Gallery State
   const [galleryItems, setGalleryItems] = useState([]);
@@ -392,7 +393,7 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-stone-700 bg-white border border-stone-200 rounded-xl hover:bg-stone-50 transition-colors shadow-xs"
             >
               <Compass className="w-3.5 h-3.5 text-amber-600" />
-              <span>AKV Website</span>
+              <span>Acharya Kannada Vedike Website</span>
             </button>
 
             <button
@@ -694,7 +695,7 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
                   onChange={(e) => setAkvDeptFilter(e.target.value)}
                   className="py-1.5 px-3 rounded-xl border border-stone-300 text-xs bg-white font-bold text-stone-700"
                 >
-                  <option value="all">All AKV Depts</option>
+                  <option value="all">All Departments</option>
                   <option value="Promotion">Promotion</option>
                   <option value="Stage">Stage</option>
                   <option value="Hospitality">Hospitality</option>
@@ -746,7 +747,7 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
                       <th className="py-3 px-3">Reg ID</th>
                       <th className="py-3 px-3">Participant</th>
                       <th className="py-3 px-3">AUID</th>
-                      <th className="py-3 px-3">Dept / AKV Dept</th>
+                      <th className="py-3 px-3">Department / Domain</th>
                       <th className="py-3 px-3">Check-In</th>
                       <th className="py-3 px-3">Check-Out</th>
                       <th className="py-3 px-3">Status</th>
@@ -812,10 +813,10 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
                             </span>
                           </td>
                           <td className="py-3 px-3 text-right">
-                            {isLocked ? (
+                            {isLocked || selectedDateIsFuture ? (
                               <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-[11px] font-bold text-stone-400 bg-stone-100 border border-stone-200 cursor-not-allowed">
                                 <Lock className="w-3.5 h-3.5" />
-                                <span>Locked</span>
+                                <span>{selectedDateIsFuture ? "Opens on this date" : "Locked"}</span>
                               </span>
                             ) : p.status === "NOT_MARKED" ? (
                               <button
@@ -831,11 +832,11 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
                               <button
                                 type="button"
                                 onClick={() => handleCheckOut(p.user_id)}
-                                disabled={isMarking}
+                                disabled={isMarking || !p.check_in_time || (p.check_in_time && !p.check_out_available)}
                                 className="px-3.5 py-1.5 rounded-xl text-[11px] font-extrabold bg-amber-500 hover:bg-amber-600 text-stone-950 shadow-xs transition-all flex items-center gap-1.5 ml-auto disabled:opacity-50 cursor-pointer"
                               >
                                 <Clock className="w-3.5 h-3.5" />
-                                <span>{isMarking ? "Recording..." : "CHECK OUT"}</span>
+                                <span>{isMarking ? "Recording..." : p.check_out_available === false ? "AVAILABLE AFTER 1 HOUR" : "CHECK OUT"}</span>
                               </button>
                             ) : (
                               <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200">
@@ -973,7 +974,7 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
                     required
                     value={checkinId}
                     onChange={(e) => setCheckinId(e.target.value.toUpperCase())}
-                    placeholder="e.g. AKV26001 or AIT22CS001"
+                    placeholder="Enter Registration ID or AUID"
                     className="w-full px-4 py-3 rounded-2xl border border-stone-300 text-sm font-mono uppercase focus:ring-2 focus:ring-kar-red"
                   />
                 </div>

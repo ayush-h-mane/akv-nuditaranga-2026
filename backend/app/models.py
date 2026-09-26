@@ -330,6 +330,32 @@ class FestivalEventDate(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 
+class KarunadaScheduleDay(Base):
+    """Editable public Karunada Vaibhava programme schedule."""
+    __tablename__ = "karunada_schedule_days"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    sort_order = Column(Integer, nullable=False, default=0)
+    day = Column(String, nullable=False)
+    day_kn = Column(String, nullable=False)
+    date = Column(String, nullable=False)
+    date_kn = Column(String, nullable=True)
+    title = Column(String, nullable=False)
+    title_kn = Column(String, nullable=False)
+    tag = Column(String, nullable=True)
+    tag_kn = Column(String, nullable=True)
+    desc_en = Column(Text, nullable=True)
+    desc_kn = Column(Text, nullable=True)
+    venue = Column(String, nullable=True)
+    venue_en = Column(String, nullable=True)
+    venue_kn = Column(String, nullable=True)
+    time_en = Column(String, nullable=True)
+    time_kn = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+
 # ==============================================================================
 # SEPARATE STORAGE: WORKING COMMITTEE ATTENDANCE SYSTEM
 # ==============================================================================

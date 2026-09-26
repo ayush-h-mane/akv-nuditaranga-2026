@@ -255,11 +255,11 @@ export const DigitalPass = ({ registration, onBack }) => {
               <div className="h-3.5 w-[1px] bg-stone-300 shrink-0" />
               <img
                 src="/images/akv-logo.png?v=2026"
-                alt="AKV Seal"
+                alt="Acharya Kannada Vedike Seal"
                 className="h-5 w-auto object-contain shrink-0"
               />
               <span className="font-mono text-stone-900 font-extrabold text-[11px] tracking-wide ml-0.5">
-                {lang === "kn" ? "ಮುದ್ರೆ: ಆಕಂವೇ-೨೦೨೬" : "SEAL: AKV-AUTH-2026"}
+                {lang === "kn" ? "ಆಚಾರ್ಯ ಕನ್ನಡ ವೇದಿಕೆಯ ಅಧಿಕೃತ ಮುದ್ರೆ" : "OFFICIAL ACHARYA KANNADA VEDIKE SEAL"}
               </span>
             </div>
           </div>

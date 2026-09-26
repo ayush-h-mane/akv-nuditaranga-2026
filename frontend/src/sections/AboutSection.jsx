@@ -65,11 +65,8 @@ export const AboutSection = () => {
                 </p>
               </div>
 
-              <div className="pt-4 mt-6 border-t border-stone-200/60 flex items-center justify-between text-xs font-bold text-amber-800">
+              <div className="pt-4 mt-6 border-t border-stone-200/60 flex items-center text-xs font-bold text-amber-800">
                 <span>{lang === "kn" ? `೦${["೧", "೨", "೩", "೪"][index] || index + 1}` : `0${index + 1}`}</span>
-                <span className="opacity-0 group-hover:opacity-100 transition-opacity font-mono">
-                  ಆ.ಕಂ.ವೇ
-                </span>
               </div>
             </div>
           ))}
