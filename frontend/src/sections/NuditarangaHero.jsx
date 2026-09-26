@@ -1,7 +1,7 @@
 import React from "react";
 import { useLanguage } from "../context/LanguageContext";
 import { siteConfig } from "../config/siteConfig";
-import { CountdownTimer } from "../components/CountdownTimer";
+import { generalRules } from "../config/generalRules";
 import { Sparkles, Calendar, MapPin, Clock, Award, ShieldAlert, FileText, ArrowRight } from "lucide-react";
 
 export const NuditarangaHero = ({ onRegister, onViewEvents }) => {
@@ -43,11 +43,6 @@ export const NuditarangaHero = ({ onRegister, onViewEvents }) => {
           </p>
         </div>
 
-        {/* Live Fest Countdown */}
-        <div className="mb-14">
-          <CountdownTimer />
-        </div>
-
         {/* Essential Fest Info Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-12">
           
@@ -67,7 +62,7 @@ export const NuditarangaHero = ({ onRegister, onViewEvents }) => {
               </div>
             </div>
             <p className="text-xs text-stone-400 font-kannada">
-              {lang === "kn" ? "೬ ದಿನಗಳ ಭವ್ಯ ಸಾಂಸ್ಕೃತಿಕ ಮಹೋತ್ಸವ" : "6-Day Cultural Confluence"}
+              {lang === "kn" ? "೫ ದಿನಗಳ ಭವ್ಯ ಸಾಂಸ್ಕೃತಿಕ ಮಹೋತ್ಸವ" : "5-Day Cultural Confluence"}
             </p>
           </div>
 
@@ -156,6 +151,16 @@ export const NuditarangaHero = ({ onRegister, onViewEvents }) => {
                   : "Winners will receive prestigious trophies, cash prizes, and VTU activity point certification."}
               </span>
             </div>
+          </div>
+          <div className="mt-6 border-t border-white/10 pt-5">
+            <h4 className="text-sm font-bold text-amber-300 mb-3">
+              {lang === "kn" ? "ಮುಖ್ಯ ನಿಯಮಗಳು ಮತ್ತು ಸೂಚನೆಗಳು" : "Important Rules & Instructions"}
+            </h4>
+            <ol className="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-2 text-xs sm:text-sm text-stone-300 font-kannada list-decimal list-inside">
+              {(lang === "kn" ? generalRules.kn : generalRules.en).map((rule) => (
+                <li key={rule} className="leading-relaxed">{rule}</li>
+              ))}
+            </ol>
           </div>
         </div>
 

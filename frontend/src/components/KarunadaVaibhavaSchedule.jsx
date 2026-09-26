@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useLanguage } from "../context/LanguageContext";
 import { siteConfig } from "../config/siteConfig";
 import { formatKannadaDate, formatKannadaTime, formatKannadaVenue } from "../utils/kannadaUtils";
@@ -18,13 +18,20 @@ import {
   ArrowRight,
   CheckCircle2
 } from "lucide-react";
+import { api } from "../services/api";
 
 export const KarunadaVaibhavaSchedule = ({ onRegisterClick }) => {
   const { lang, t } = useLanguage();
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const [posterModalOpen, setPosterModalOpen] = useState(false);
 
-  const scheduleDays = siteConfig.festival.schedule || [];
+  const [scheduleDays, setScheduleDays] = useState(siteConfig.festival.schedule || []);
+
+  useEffect(() => {
+    api.getFestivalSchedule()
+      .then((data) => setScheduleDays(data.schedule || []))
+      .catch(() => {});
+  }, []);
 
   const getDayIcon = (index) => {
     switch (index) {
@@ -39,7 +46,20 @@ export const KarunadaVaibhavaSchedule = ({ onRegisterClick }) => {
   };
 
   const selectedDay = scheduleDays[selectedDayIndex] || scheduleDays[0];
-
+  const localizedTagline = (day) => {
+    const canonicalTaglines = {
+      "ಉದ್ಘಾಟನೆ": { en: "Kala Karunadu", kn: "ಕಲಾ ಕರುನಾಡು", oldEn: "Inaugural Day", oldKn: "ಉದ್ಘಾಟನಾ ಸಮಾರಂಭ" },
+      "ಕಲಾರಂಗ": { en: "Yuva Karunadu", kn: "ಯುವ ಕರುನಾಡು", oldEn: "Theatre & Performing Arts", oldKn: "ರಂಗಭೂಮಿ & ಪ್ರದರ್ಶನ ಕಲೆ" },
+      "ಜಾತ್ರೆ": { en: "Karunada Jatre", kn: "ಕರುನಾಡ ಜಾತ್ರೆ", oldEn: "Village Fair & Carnival", oldKn: "ಗ್ರಾಮೀಣ ಜಾತ್ರೆ & ಮೇಳ" },
+      "ಮಹಾ ಸಮಾರೋಪ ದಿನ": { en: "Samskruthika Karunadu", kn: "ಸಾಂಸ್ಕೃತಿಕ ಕರುನಾಡು", oldEn: "Grand Valedictory & Concert", oldKn: "ಮಹಾ ಸಮಾರೋಪ & ಸಂಗೀತ ಸಂಜೆ" },
+    };
+    const canonical = canonicalTaglines[day?.titleKn];
+    const isLegacyEnglishTag = canonical && [canonical.en, canonical.oldEn].includes(day.tag);
+    const isLegacyKannadaTag = canonical && [canonical.en, canonical.oldKn].includes(day.tagKn);
+    if (lang === "kn" && isLegacyKannadaTag) return canonical.kn;
+    if (lang !== "kn" && isLegacyEnglishTag) return canonical.en;
+    return lang === "kn" ? day?.tagKn : day?.tag;
+  };
   return (
     <section className="py-20 bg-gradient-to-b from-stone-900 via-stone-950 to-stone-900 text-stone-100 relative overflow-hidden" id="schedule">
       {/* Decorative Traditional Kannada Motifs Background */}
@@ -54,7 +74,7 @@ export const KarunadaVaibhavaSchedule = ({ onRegisterClick }) => {
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-black bg-gradient-to-r from-kar-red to-kar-yellow text-white shadow-lg tracking-wider uppercase mb-4">
             <Sparkles className="w-3.5 h-3.5" />
             <span>
-              {lang === "kn" ? "ಅಧಿಕೃತ ಕಾರ್ಯಕ್ರಮ ಪಟ್ಟಿ ೨೦೨೬" : "Official 6-Day Festival Schedule"}
+              {lang === "kn" ? "ಅಧಿಕೃತ ಕಾರ್ಯಕ್ರಮ ಪಟ್ಟಿ ೨೦೨೬" : "Official Festival Schedule"}
             </span>
           </div>
 
@@ -69,8 +89,8 @@ export const KarunadaVaibhavaSchedule = ({ onRegisterClick }) => {
 
           <p className="text-stone-300 text-sm sm:text-base font-bold font-kannada max-w-2xl mx-auto mb-6">
             {lang === "kn" 
-              ? "ಅಕ್ಟೋಬರ್ ೩೦ ರಿಂದ ನವೆಂಬರ್ ೪ ರವರೆಗೆ ಆಚಾರ್ಯ ಕ್ಯಾಂಪಸ್‌ನಲ್ಲಿ ನಡೆಯುವ ೬ ದಿನಗಳ ಸಂಭ್ರಮದ ರೂಪುರೇಷೆ"
-              : "6 Days of Grand Heritage & Cultural Confluence at Acharya Institutes (30/10/2026 - 04/11/2026)"}
+              ? "ಅಕ್ಟೋಬರ್ ೩೦, ನವೆಂಬರ್ ೧, ೨, ೩ ಮತ್ತು ೪ ರಂದು ಆಚಾರ್ಯ ಕ್ಯಾಂಪಸ್‌ನಲ್ಲಿ ನಡೆಯುವ ೫ ದಿನಗಳ ಸಂಭ್ರಮದ ರೂಪುರೇಷೆ"
+              : "Grand Heritage & Cultural Confluence at Acharya Institutes (30/10/2026 - 04/11/2026)"}
           </p>
 
           {/* Action to view the uploaded Draft Poster */}
@@ -95,11 +115,11 @@ export const KarunadaVaibhavaSchedule = ({ onRegisterClick }) => {
           </div>
         </div>
 
-        {/* 6-Day Grid / Tabs */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-10">
+        {/* Programme grid / tabs */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-10">
           {scheduleDays.map((item, idx) => {
             const isSelected = idx === selectedDayIndex;
-            const isDay3Rajyotsava = idx === 2; // Day 3 Flag Hoist
+            const isDay3Rajyotsava = idx === 1; // Day 2: 1 November Rajyotsava
 
             return (
               <div
@@ -127,9 +147,14 @@ export const KarunadaVaibhavaSchedule = ({ onRegisterClick }) => {
                     </span>
                   </div>
 
-                  <h3 className="font-extrabold text-white text-sm sm:text-base leading-snug line-clamp-1">
+                  <h3 className="font-extrabold text-white text-sm sm:text-base leading-snug line-clamp-2 min-h-10">
                     {lang === "kn" ? item.titleKn : item.title}
                   </h3>
+                  {localizedTagline(item) && (
+                    <p className="mt-1 text-[10px] font-bold tracking-wide text-amber-300 truncate">
+                      {localizedTagline(item)}
+                    </p>
+                  )}
                 </div>
 
                 <div className="mt-3 pt-2 border-t border-stone-800/80 flex items-center justify-between text-[11px] text-stone-400">
@@ -153,9 +178,6 @@ export const KarunadaVaibhavaSchedule = ({ onRegisterClick }) => {
                   <span className="px-3.5 py-1 rounded-xl text-xs font-black bg-kar-red text-white uppercase tracking-wider">
                     {lang === "kn" ? selectedDay.dayKn : selectedDay.day}
                   </span>
-                  <span className="px-3.5 py-1 rounded-xl text-xs font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30">
-                    {lang === "kn" ? selectedDay.tagKn : selectedDay.tag}
-                  </span>
                   <span className="inline-flex items-center gap-1.5 text-xs text-stone-300 font-mono">
                     <Calendar className="w-3.5 h-3.5 text-kar-yellow" />
                     <span>{lang === "kn" ? (selectedDay.dateKn || formatKannadaDate(selectedDay.date)) : selectedDay.date}</span>
@@ -165,6 +187,11 @@ export const KarunadaVaibhavaSchedule = ({ onRegisterClick }) => {
                 <h3 className="text-2xl sm:text-4xl font-black text-white font-display">
                   {lang === "kn" ? selectedDay.titleKn : selectedDay.title}
                 </h3>
+                {localizedTagline(selectedDay) && (
+                  <p className="text-amber-300 font-bold tracking-wide">
+                    {localizedTagline(selectedDay)}
+                  </p>
+                )}
 
                 <p className="text-stone-300 text-sm sm:text-base font-kannada leading-relaxed">
                   {lang === "kn" ? selectedDay.descKn : selectedDay.descEn}

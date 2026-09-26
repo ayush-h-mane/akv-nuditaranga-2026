@@ -39,8 +39,8 @@ export const InstagramSection = () => {
       likes: "2,180",
       views: "27.3K",
       comments: "142",
-      captionEn: "Grand Nuditaranga cultural festival celebrations on the main Acharya stadium stage! Unmatched euphoria and youth passion. 🚩🔥 #Nuditaranga2026 #Rajyotsava #AKV",
-      captionKn: "ಆಚಾರ್ಯ ಮುಖ್ಯ ವೇದಿಕೆಯಲ್ಲಿ ನುಡಿತರಂಗ ಸಾಂಸ್ಕೃತಿಕ ಹಬ್ಬದ ಸಂಭ್ರಮ! ಕನ್ನಡದ ಕಂಪು, ಯುವಜನತೆಯ ಅದ್ಭುತ ಉತ್ಸಾಹ. 🚩🔥 #Nuditaranga2026 #AKV",
+      captionEn: "Grand Nuditaranga cultural festival celebrations on the main Acharya stadium stage! Unmatched euphoria and youth passion. 🚩🔥 #Nuditaranga2026 #Rajyotsava",
+      captionKn: "ಆಚಾರ್ಯ ಮುಖ್ಯ ವೇದಿಕೆಯಲ್ಲಿ ನುಡಿತರಂಗ ಸಾಂಸ್ಕೃತಿಕ ಹಬ್ಬದ ಸಂಭ್ರಮ! ಕನ್ನಡದ ಕಂಪು, ಯುವಜನತೆಯ ಅದ್ಭುತ ಉತ್ಸಾಹ. 🚩🔥 #Nuditaranga2026",
       image: "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&w=700&q=80"
     },
     {
@@ -57,6 +57,7 @@ export const InstagramSection = () => {
   ];
 
   const [reels, setReels] = useState(originalReels);
+  const cleanBrandAbbreviation = (caption = "") => caption.replace(/\bAKV\b/gi, "").replace(/\s{2,}/g, " ").trim();
 
   useEffect(() => {
     const fetchReels = async () => {
@@ -152,7 +153,7 @@ export const InstagramSection = () => {
               <div className="relative h-64 bg-stone-950 overflow-hidden">
                 <img
                   src={post.image}
-                  alt={post.captionEn}
+              alt={cleanBrandAbbreviation(post.captionEn)}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-95 group-hover:opacity-100"
                   loading="lazy"
                 />
@@ -203,7 +204,7 @@ export const InstagramSection = () => {
 
                   <p className="text-xs text-stone-700 font-kannada leading-relaxed line-clamp-3">
                     <span className="font-bold text-stone-900 mr-1.5">acharyakannadavedike</span>
-                    {lang === "kn" ? post.captionKn : post.captionEn}
+                    {cleanBrandAbbreviation(lang === "kn" ? post.captionKn : post.captionEn)}
                   </p>
                 </div>
 

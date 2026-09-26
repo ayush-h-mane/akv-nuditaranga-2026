@@ -2,11 +2,11 @@ export const siteConfig = {
   name: {
     en: "Acharya Kannada Vedike",
     kn: "ಆಚಾರ್ಯ ಕನ್ನಡ ವೇದಿಕೆ",
-    short: "AKV"
+    short: "Acharya Kannada Vedike"
   },
   tagline: {
-    en: "Fragrance of Kannada • Elegance of Culture • Unveiling of Talent",
-    kn: "ಕನ್ನಡದ ಕಂಪು • ಸಂಸ್ಕೃತಿಯ ಸೊಬಗು • ಪ್ರತಿಭೆಯ ಅನಾವರಣ"
+    en: "Let Kannada breathe in a green Acharya",
+    kn: "ಹಸಿರು ಆಚಾರ್ಯದಲ್ಲಿ ಉಸಿರಾಗಲಿ ಕನ್ನಡ"
   },
   institution: {
     en: "Acharya Institute, Bengaluru",
@@ -27,8 +27,8 @@ export const siteConfig = {
     nameKn: "ನುಡಿತರಂಗ ೨೦೨೬",
     subTheme: "Karunada Vaibhava",
     subThemeKn: "ಕರುನಾಡ ವೈಭವ",
-    edition: "Grand 6-Day Cultural Festival",
-    editionKn: "ಭವ್ಯ ೬ ದಿನಗಳ ಸಾಂಸ್ಕೃತಿಕ ಮಹೋತ್ಸವ",
+    edition: "Grand 5-Day Cultural Festival",
+    editionKn: "ಭವ್ಯ ೫ ದಿನಗಳ ಸಾಂಸ್ಕೃತಿಕ ಮಹೋತ್ಸವ",
     theme: {
       en: "Karunada Vaibhava - Grand Karnataka's Cultural Extravaganza",
       kn: "ಕರುನಾಡ ವೈಭವ - ಭವ್ಯ ಕರ್ನಾಟಕದ ಸಾಂಸ್ಕೃತಿಕ ಮಹೋತ್ಸವ"
@@ -55,30 +55,13 @@ export const siteConfig = {
         dateKn: "೩೦/೧೦/೨೦೨೬",
         title: "LAUNCH",
         titleKn: "ಉದ್ಘಾಟನೆ",
-        tag: "Inaugural Day",
-        tagKn: "ಉದ್ಘಾಟನಾ ಸಮಾರಂಭ",
+        tag: "Kala Karunadu",
+        tagKn: "ಕಲಾ ಕರುನಾಡು",
         descEn: "Grand Opening & Inauguration of Karunada Vaibhava 2026, ceremonial lighting of the lamp by dignitaries, and unveiling of festival stages.",
         descKn: "ಕರುನಾಡ ವೈಭವ ೨೦೨೬ ರ ಭವ್ಯ ಉದ್ಘಾಟನೆ, ಗಣ್ಯರಿಂದ ದೀಪ ಪ್ರಜ್ವಲನೆ ಹಾಗೂ ಸಾಂಸ್ಕೃತಿಕ ಕಹಳೆ.",
         venue: "Acharya Basket Ball Court",
         venueEn: "Acharya Basket Ball Court",
         venueKn: "ಆಚಾರ್ಯ ಬ್ಯಾಸ್ಕೆಟ್‌ಬಾಲ್ ಮೈದಾನ",
-        timeEn: "9:00 AM Onwards",
-        timeKn: "ಬೆಳಿಗ್ಗೆ ೦೯:೦೦ ರಿಂದ"
-      },
-      {
-        day: "DAY 02",
-        dayKn: "ದಿನ ೦೨",
-        date: "31/10/2026",
-        dateKn: "೩೧/೧೦/೨೦೨೬",
-        title: "Navodaya",
-        titleKn: "ನವೋದಯ",
-        tag: "Literary & Youth Talents",
-        tagKn: "ಸಾಹಿತ್ಯ & ಯುವ ಪ್ರತಿಭೆ",
-        descEn: "Student literary contests, Kavana Vachana (poetry recitation), Kannada Quiz, Essay & debate competitions celebrating modern and classical literature.",
-        descKn: "ಸಾಹಿತ್ಯ ಸ್ಪರ್ಧೆಗಳು, ಕವನ ವಾಚನ, ರಸಪ್ರಶ್ನೆ, ಪ್ರಬಂಧ ಮತ್ತು ವಿದ್ಯಾರ್ಥಿ ಸೃಜನಶೀಲ ಪ್ರತಿಭೆಗಳ ಅನಾವರಣ.",
-        venue: "Mechanical Seminar Hall",
-        venueEn: "Mechanical Seminar Hall",
-        venueKn: "ಮೆಕ್ಯಾನಿಕಲ್ ಸೆಮಿನಾರ್ ಹಾಲ್",
         timeEn: "9:00 AM Onwards",
         timeKn: "ಬೆಳಿಗ್ಗೆ ೦೯:೦೦ ರಿಂದ"
       },
@@ -106,8 +89,8 @@ export const siteConfig = {
         dateKn: "೦೨/೧೧/೨೦೨೬",
         title: "Kala Ranga",
         titleKn: "ಕಲಾರಂಗ",
-        tag: "Theatre & Performing Arts",
-        tagKn: "ರಂಗಭೂಮಿ & ಪ್ರದರ್ಶನ ಕಲೆ",
+        tag: "Yuva Karunadu",
+        tagKn: "ಯುವ ಕರುನಾಡು",
         descEn: "Traditional Karnataka theatre, Yakshagana, classical Bharatanatyam, Janapada dance troupes and drama competitions on the grand stage.",
         descKn: "ಯಕ್ಷಗಾನ, ಶಾಸ್ತ್ರೀಯ ನೃತ್ಯ, ನಾಟಕ ಮತ್ತು ಪ್ರಾಚೀನ ಕಲಾ ಪ್ರಕಾರಗಳ ರೋಮಾಂಚಕ ವೇದಿಕೆ ಪ್ರದರ್ಶನ.",
         venue: "Oya Junction",
@@ -123,8 +106,8 @@ export const siteConfig = {
         dateKn: "೦೩/೧೧/೨೦೨೬",
         title: "Jatre",
         titleKn: "ಜಾತ್ರೆ",
-        tag: "Village Fair & Carnival",
-        tagKn: "ಗ್ರಾಮೀಣ ಜಾತ್ರೆ & ಮೇಳ",
+        tag: "Karunada Jatre",
+        tagKn: "ಕರುನಾಡ ಜಾತ್ರೆ",
         descEn: "Traditional Karnataka cultural fair: Native food delicacies stalls, desi games, handicraft showcases, Dollu Kunitha & Veeragase processions.",
         descKn: "ಸಾಂಪ್ರದಾಯಿಕ ಗ್ರಾಮೀಣ ಜಾತ್ರೆ: ದೇಸಿ ತಿಂಡಿ-ತಿನಿಸುಗಳ ಮಳಿಗೆಗಳು, ನಾಡಿನ ಆಟೋಟಗಳು, ಡೊಳ್ಳು ಕುಣಿತ ಮತ್ತು ವೀರಗಾಸೆ ಸಂಭ್ರಮ.",
         venue: "Acharya Campus",
@@ -140,8 +123,8 @@ export const siteConfig = {
         dateKn: "೦೪/೧೧/೨೦೨೬",
         title: "Final day",
         titleKn: "ಮಹಾ ಸಮಾರೋಪ ದಿನ",
-        tag: "Grand Valedictory & Concert",
-        tagKn: "ಮಹಾ ಸಮಾರೋಪ & ಸಂಗೀತ ಸಂಜೆ",
+        tag: "Samskruthika Karunadu",
+        tagKn: "ಸಾಂಸ್ಕೃತಿಕ ಕರುನಾಡು",
         descEn: "Grand Valedictory ceremony, felicitation of achievers, prize distributions, and Karunada Vaibhava mega star musical night concert.",
         descKn: "ಭವ್ಯ ಸಮಾರೋಪ ಸಮಾರಂಭ, ವಿಜೇತರಿಗೆ ಪ್ರಶಸ್ತಿ ಪ್ರದಾನ, ಗಣ್ಯರ ಸನ್ಮಾನ ಮತ್ತು ತಾರಾ ಕಲಾವಿದರ ನಾದ ನಮನ ಮಹಾ ಸಂಗೀತ ಸಂಜೆ.",
         venue: "Acharya Campus",
@@ -168,8 +151,8 @@ export const siteConfig = {
       {
         nameEn: "Mrs. Rakshitha BT",
         nameKn: "ಶ್ರೀಮತಿ ರಕ್ಷಿತಾ ಬಿ. ಟಿ.",
-        roleEn: "Faculty Advisor, AKV",
-        roleKn: "ಅಧ್ಯಾಪಕ ಸಂಚಾಲಕರು, ಆ.ಕಂ.ವೇ",
+        roleEn: "Faculty Advisor, Acharya Kannada Vedike",
+        roleKn: "ಆಚಾರ್ಯ ಕನ್ನಡ ವೇದಿಕೆಯ ಅಧ್ಯಾಪಕ ಸಂಚಾಲಕರು",
         dept: "Department of Computer Science & Engineering",
         deptEn: "Department of Computer Science & Engineering",
         deptKn: "ಕಂಪ್ಯೂಟರ್ ಸೈನ್ಸ್ & ಎಂಜಿನಿಯರಿಂಗ್ ವಿಭಾಗ",

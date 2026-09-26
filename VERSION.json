@@ -1,11 +1,21 @@
 {
-  "production_version": "2.2.32",
-  "staged_version": "2.2.33",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.2.34",
+  "staged_version": "2.2.35",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.34",
+      "released_at": "2026-09-27T00:57:08+0530",
+      "description": "Production release version 2.2.34"
+    },
+    {
+      "version": "2.2.33",
+      "released_at": "2026-09-27T00:56:37+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.33: Added the AKV tagline, dedicated bilingual General Rules page, clearer club branding, responsive dashboard navigation, and developer attribution links.; Removed standalone developer portfolio actions and linked Ayush H Mane's name to the portfolio.; Enforced mandatory registration photos and Working Committee AKV domains with domain-scoped admin attendance rosters.; Locked future attendance dates, enforced the one-hour check-out minimum, and exposed attendance timestamps, actors, and domains in audit views.; Updated the homepage hero and About copy, removed the date strip and public abbreviation, surfaced programme taglines, added Superadmin schedule event add/edit/delete controls, and condensed bilingual rules to ten key points.; Localized festival programme taglines in Kannada and English and removed duplicate tagline display, including legacy schedule labels.; Added a prominent bilingual tenth-year grand celebration line beneath the hero title and enhanced it with a red-and-gold spotlight treatment.; Updated the hero logo badge to identify Acharya Institutions and Acharya Kannada Vedike according to the selected language."
+    },
     {
       "version": "2.2.32",
       "released_at": "2026-09-26T09:08:03+0530",

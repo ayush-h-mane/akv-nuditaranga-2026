@@ -51,11 +51,16 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
+  const [showRegisterConfirmPassword, setShowRegisterConfirmPassword] = useState(false);
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
+  const [showAdminConfirmPassword, setShowAdminConfirmPassword] = useState(false);
   const [showSuperadminPassword, setShowSuperadminPassword] = useState(false);
 
   // Status & Error
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const credentialError = /incorrect|invalid (?:username|password|admin|superadmin)|could not validate/i.test(errorMessage);
   const [successData, setSuccessData] = useState(null); // For student registration success card
   const [adminNotice, setAdminNotice] = useState(null); // For admin registration pending approval notice
 
@@ -107,6 +112,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
     phone: "",
     institute: ACHARYA_INSTITUTES[0],
     department: STANDARD_DEPARTMENTS[0],
+    volunteer_domain: "Promotions",
     photo_url: "",
     password: "",
     confirmPassword: ""
@@ -149,6 +155,10 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
 
     if (studentRegisterForm.password.length < 6) {
       setErrorMessage("Password must be at least 6 characters long.");
+      return;
+    }
+    if (!studentRegisterForm.photo_url) {
+      setErrorMessage("Profile photo is mandatory. Please upload your photo before continuing.");
       return;
     }
 
@@ -241,6 +251,14 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
       setErrorMessage("Desired username is required.");
       return;
     }
+    if (!adminForm.photo_url) {
+      setErrorMessage("Profile photo is mandatory. Please upload your photo before continuing.");
+      return;
+    }
+    if (!isFaculty && !adminForm.volunteer_domain?.trim()) {
+      setErrorMessage("A Working Committee domain is required.");
+      return;
+    }
 
     setLoading(true);
 
@@ -258,6 +276,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
         phone: adminForm.phone.trim(),
         institute: adminForm.institute.trim(),
         department: adminForm.department.trim(),
+        volunteer_domain: isFaculty ? null : adminForm.volunteer_domain.trim(),
         photo_url: adminForm.photo_url || null,
         password: adminForm.password,
         confirm_password: adminForm.confirmPassword
@@ -346,7 +365,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
             title="Browse festival schedule, gallery, and public information"
           >
             <Compass className="w-3.5 h-3.5 text-amber-400 group-hover:rotate-45 transition-transform" />
-            <span className="hidden sm:inline">Explore AKV Website</span>
+            <span className="hidden sm:inline">Explore Acharya Kannada Vedike Website</span>
             <span className="sm:hidden">Explore</span>
             <ArrowRight className="w-3 h-3 text-amber-400" />
           </button>
@@ -472,11 +491,11 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                           value={studentLoginForm.auid}
                           onChange={(e) => setStudentLoginForm({ ...studentLoginForm, auid: e.target.value })}
                           placeholder="e.g. AIT22CS001 or student@acharya.ac.in"
-                          className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm"
+                          className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm ${credentialError ? "border-red-500 bg-red-50" : "border-stone-300"}`}
                         />
                       </div>
                       <p className="text-[11px] text-stone-500 mt-1">
-                        Enter your college AUID, registered college email, or AKV Registration ID.
+                        Enter your college AUID, registered college email, or registration ID.
                       </p>
                     </div>
 
@@ -501,7 +520,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                           value={studentLoginForm.password}
                           onChange={(e) => setStudentLoginForm({ ...studentLoginForm, password: e.target.value })}
                           placeholder="Enter your student password"
-                          className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm"
+                          className={`w-full pl-10 pr-10 py-2.5 rounded-xl border focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm ${credentialError ? "border-red-500 bg-red-50" : "border-stone-300"}`}
                         />
                         <button
                           type="button"
@@ -783,7 +802,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                         {studentRegisterForm.role === "VOLUNTEER" && (
                           <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200 space-y-2.5 animate-fade-in">
                             <label className="block text-xs font-bold text-amber-950 uppercase tracking-wider">
-                              Choose AKV Domain / ಕಾರ್ಯಕ್ಷೇತ್ರ *
+                              Choose Working Committee Domain / ಕಾರ್ಯಕ್ಷೇತ್ರ *
                             </label>
                             <select
                               value={studentRegisterForm.volunteer_domain}
@@ -802,7 +821,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                                 required
                                 value={studentRegisterForm.custom_domain}
                                 onChange={(e) => setStudentRegisterForm({ ...studentRegisterForm, custom_domain: e.target.value })}
-                                placeholder="Enter custom AKV domain (e.g. Stage Management)"
+                                placeholder="Enter custom domain (e.g. Stage Management)"
                                 className="w-full px-3.5 py-2 rounded-xl border-2 border-kar-red/60 bg-white text-xs sm:text-sm text-stone-900"
                               />
                             )}
@@ -818,30 +837,40 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                             <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
                               Password *
                             </label>
+                            <div className="relative">
                             <input
-                              type="password"
+                              type={showRegisterPassword ? "text" : "password"}
                               required
                               minLength={6}
                               value={studentRegisterForm.password}
                               onChange={(e) => setStudentRegisterForm({ ...studentRegisterForm, password: e.target.value })}
                               placeholder="Min. 6 characters"
-                              className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm"
+                              className="w-full px-3.5 pr-10 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm"
                             />
+                            <button type="button" onClick={() => setShowRegisterPassword(!showRegisterPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400" aria-label="Show or hide password">
+                              {showRegisterPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                            </div>
                           </div>
 
                           <div>
                             <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
                               Confirm Password *
                             </label>
+                            <div className="relative">
                             <input
-                              type="password"
+                              type={showRegisterConfirmPassword ? "text" : "password"}
                               required
                               minLength={6}
                               value={studentRegisterForm.confirmPassword}
                               onChange={(e) => setStudentRegisterForm({ ...studentRegisterForm, confirmPassword: e.target.value })}
                               placeholder="Re-enter password"
-                              className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm"
+                              className="w-full px-3.5 pr-10 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm"
                             />
+                            <button type="button" onClick={() => setShowRegisterConfirmPassword(!showRegisterConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400" aria-label="Show or hide password confirmation">
+                              {showRegisterConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                            </div>
                           </div>
                         </div>
 
@@ -926,7 +955,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                     </h3>
                     <p className="text-xs text-stone-600 leading-relaxed max-w-md mx-auto">
                       Your administrator request for username <strong>{adminNotice.username}</strong> has been registered.
-                      Per AKV security governance, an approval alert has been transmitted to the Super Administrator.
+                      Per security policy, an approval alert has been transmitted to the Super Administrator.
                       You will be notified by email once approved.
                     </p>
                     <button
@@ -951,7 +980,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                           value={adminForm.username}
                           onChange={(e) => setAdminForm({ ...adminForm, username: e.target.value.toLowerCase() })}
                           placeholder="Enter admin username or college email"
-                          className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm"
+                          className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm ${credentialError ? "border-red-500 bg-red-50" : "border-stone-300"}`}
                         />
                       </div>
                     </div>
@@ -971,14 +1000,19 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                       </div>
                       <div className="relative">
                         <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                        <div className="relative">
                         <input
-                          type="password"
+                          type={showAdminPassword ? "text" : "password"}
                           required
                           value={adminForm.password}
                           onChange={(e) => setAdminForm({ ...adminForm, password: e.target.value })}
                           placeholder="Enter admin password"
-                          className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm"
+                          className={`w-full pl-10 pr-10 py-2.5 rounded-xl border focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm ${credentialError ? "border-red-500 bg-red-50" : "border-stone-300"}`}
                         />
+                        <button type="button" onClick={() => setShowAdminPassword(!showAdminPassword)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-400" aria-label="Show or hide admin password">
+                          {showAdminPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                        </div>
                       </div>
                     </div>
 
@@ -1172,35 +1206,61 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                       onDepartmentChange={(dept) => setAdminForm({ ...adminForm, department: dept })}
                     />
 
+                    {adminForm.adminType === "WORKING_COMMITTEE" && (
+                      <div>
+                        <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                          Working Committee Domain *
+                        </label>
+                        <select
+                          required
+                          value={adminForm.volunteer_domain}
+                          onChange={(e) => setAdminForm({ ...adminForm, volunteer_domain: e.target.value })}
+                          className="w-full px-3 py-2 rounded-xl border border-stone-300 bg-white text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden"
+                        >
+                          {AKV_DOMAINS.map((domain) => <option key={domain} value={domain}>{domain}</option>)}
+                        </select>
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
                           Password *
                         </label>
+                        <div className="relative">
                         <input
-                          type="password"
+                          type={showAdminPassword ? "text" : "password"}
                           required
                           minLength={6}
                           value={adminForm.password}
                           onChange={(e) => setAdminForm({ ...adminForm, password: e.target.value })}
                           placeholder="Min. 6 characters"
-                          className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden"
+                          className="w-full px-3 pr-10 py-2 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden"
                         />
+                        <button type="button" onClick={() => setShowAdminPassword(!showAdminPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400" aria-label="Show or hide password">
+                          {showAdminPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                        </div>
                       </div>
 
                       <div>
                         <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
                           Confirm Password *
                         </label>
+                        <div className="relative">
                         <input
-                          type="password"
+                          type={showAdminConfirmPassword ? "text" : "password"}
                           required
                           minLength={6}
                           value={adminForm.confirmPassword}
                           onChange={(e) => setAdminForm({ ...adminForm, confirmPassword: e.target.value })}
                           placeholder="Re-enter password"
-                          className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden"
+                          className="w-full px-3 pr-10 py-2 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden"
                         />
+                        <button type="button" onClick={() => setShowAdminConfirmPassword(!showAdminConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400" aria-label="Show or hide password confirmation">
+                          {showAdminConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                        </div>
                       </div>
                     </div>
 
@@ -1324,7 +1384,10 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
       {/* Footer Navigation Note */}
       <footer className="relative z-10 w-full max-w-6xl mx-auto px-4 py-4 text-center text-xs text-stone-500">
         <p>
-          Acharya Kannada Vedike (AKV) • Nuditaranga 2026 Cultural Fest • Protected by Role-Based Access Control
+          Acharya Kannada Vedike • Nuditaranga 2026 Cultural Fest • Protected by Role-Based Access Control
+        </p>
+        <p className="mt-2 text-stone-400">
+          Designed &amp; Developed by <a href="https://ayushhmane.vercel.app/" target="_blank" rel="noreferrer" className="font-bold text-amber-400 hover:text-amber-300 underline underline-offset-2">Ayush H Mane</a>
         </p>
       </footer>
 

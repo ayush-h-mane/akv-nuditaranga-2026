@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useLanguage } from "../context/LanguageContext";
 import { siteConfig } from "../config/siteConfig";
-import { MapPin, Mail, Phone, Send, CheckCircle, UserCheck, ExternalLink } from "lucide-react";
+import { MapPin, Mail, Phone, Send, CheckCircle, UserCheck } from "lucide-react";
 
 export const ContactSection = () => {
   const { lang, t } = useLanguage();
@@ -54,9 +54,15 @@ export const ContactSection = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {siteConfig.coordinators.faculty.map((c, i) => (
                   <div key={i} className="p-4 rounded-2xl bg-white border border-stone-200/80 shadow-sm">
-                    <span className="text-sm font-bold text-stone-900 block font-display">
-                      {lang === "kn" ? c.nameKn : c.nameEn}
-                    </span>
+                    {c.nameEn === "Ayush H Mane" ? (
+                      <a href={c.portfolio} target="_blank" rel="noreferrer" className="text-sm font-bold text-stone-900 block font-display hover:text-kar-red hover:underline underline-offset-2">
+                        {lang === "kn" ? c.nameKn : c.nameEn}
+                      </a>
+                    ) : (
+                      <span className="text-sm font-bold text-stone-900 block font-display">
+                        {lang === "kn" ? c.nameKn : c.nameEn}
+                      </span>
+                    )}
                     <span className="text-xs font-semibold text-kar-red block mt-0.5">
                       {lang === "kn" ? c.roleKn : c.roleEn}
                     </span>
@@ -111,18 +117,6 @@ export const ContactSection = () => {
                         >
                           <Mail className="w-3.5 h-3.5 text-stone-400 group-hover:text-kar-red transition-colors shrink-0" />
                           <span className="group-hover:underline truncate">{c.email}</span>
-                        </a>
-                      )}
-                      {c.portfolio && (
-                        <a 
-                          href={c.portfolio} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="flex items-center gap-1.5 text-amber-700 hover:text-amber-900 font-bold transition-colors group text-[11px]"
-                          title="View Portfolio"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                          <span className="group-hover:underline">Portfolio Website</span>
                         </a>
                       )}
                     </div>

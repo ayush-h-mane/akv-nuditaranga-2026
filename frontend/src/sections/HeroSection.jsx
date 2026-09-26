@@ -9,11 +9,11 @@ import {
   Flame
 } from "lucide-react";
 
-export const HeroSection = ({ onExploreNuditaranga, onKnowAbout }) => {
+export const HeroSection = ({ onExploreNuditaranga, onKnowAbout, onOpenAuthTab, setCurrentView }) => {
   const { lang, t } = useLanguage();
 
   return (
-    <section className="relative pt-28 pb-16 lg:pt-36 lg:pb-24 overflow-hidden bg-gradient-to-b from-amber-50/70 via-stone-50 to-white">
+    <section className="relative pt-24 pb-12 sm:pt-28 sm:pb-16 lg:pt-36 lg:pb-24 overflow-hidden bg-gradient-to-b from-amber-50/70 via-stone-50 to-white">
       {/* Karnataka Decorative Background Accents */}
       <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-r from-red-200/40 via-amber-200/40 to-yellow-200/30 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -top-12 -right-12 w-80 h-80 bg-red-100/50 rounded-full blur-2xl pointer-events-none" />
@@ -28,18 +28,14 @@ export const HeroSection = ({ onExploreNuditaranga, onKnowAbout }) => {
         
         {/* Dual Brand Crest: Acharya Institutes & Acharya Kannada Vedike with Karnataka flags */}
         <div className="flex items-center justify-center gap-4 sm:gap-6 mb-5 animate-fade-in">
-          <div className="p-2 sm:p-3 rounded-2xl bg-white/90 shadow-md border border-amber-200/80 hover:shadow-lg transition-all transform hover:-translate-y-0.5">
-            <img
-              src="/images/acharya-logo.png?v=2026"
-              alt="Acharya Institutes"
-              className="h-12 sm:h-16 w-auto object-contain filter-none"
-            />
+          <div className="p-2 sm:p-3 rounded-2xl bg-white/90 shadow-md border border-amber-200/80">
+            <img src="/images/acharya-logo.png?v=2026" alt="Acharya" className="h-12 sm:h-16 w-auto object-contain" />
           </div>
           <div className="h-10 w-[2px] bg-gradient-to-b from-kar-red to-kar-yellow rounded-full hidden sm:block" />
           <div className="p-1 sm:p-2 rounded-2xl bg-white/90 shadow-md border border-amber-200/80 hover:shadow-lg transition-all transform hover:-translate-y-0.5">
             <img
               src="/images/akv-logo.png"
-              alt="Acharya Kannada Vedike with Karnataka Flags"
+              alt="Acharya Kannada Vedike"
               className="h-14 sm:h-20 w-auto object-contain drop-shadow"
             />
           </div>
@@ -47,12 +43,15 @@ export const HeroSection = ({ onExploreNuditaranga, onKnowAbout }) => {
 
         {/* Top Campus Badge */}
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-extrabold bg-white border border-amber-300/80 text-amber-900 shadow-sm mb-6 animate-fade-in">
-          <span className="w-2 h-2 rounded-full bg-kar-red animate-ping" />
-          <span>{lang === "kn" ? "ಆಚಾರ್ಯ ಇನ್‌ಸ್ಟಿಟ್ಯೂಟ್ಸ್ • ಆಚಾರ್ಯ ಕನ್ನಡ ವೇದಿಕೆ" : "Acharya Institutes • Acharya Kannada Vedike"}</span>
+          <span className="w-2 h-2 rounded-full bg-kar-red animate-ping shrink-0" />
+          <span>{lang === "kn" ? "ಆಚಾರ್ಯ ವಿದ್ಯಾಸಂಸ್ಥೆಗಳು • ಆಚಾರ್ಯ ಕನ್ನಡ ವೇದಿಕೆ" : "Acharya Institutions • Acharya Kannada Vedike"}</span>
         </div>
 
         {/* Main Headings */}
         <div className="mb-4">
+          <p className="text-2xl sm:text-4xl lg:text-5xl font-black text-kar-red font-display mb-2 tracking-tight">
+            {lang === "kn" ? siteConfig.name.kn : siteConfig.name.en}
+          </p>
           <p className="text-sm sm:text-lg font-extrabold text-amber-800 uppercase tracking-widest font-mono">
             {lang === "kn" ? "ನುಡಿತರಂಗ - ೨೦೨೬" : "Nuditaranga - 2026"}
           </p>
@@ -61,11 +60,15 @@ export const HeroSection = ({ onExploreNuditaranga, onKnowAbout }) => {
               ಕರುನಾಡ ವೈಭವ
             </span>
           </h1>
-          <div className="inline-block mt-3 px-4 py-1 rounded-xl bg-amber-100 text-amber-950 font-mono text-xs sm:text-sm font-black border border-amber-300/70">
-            {lang === "kn" 
-              ? "೩೦/೧೦/೨೦೨೬ ರಿಂದ ೦೪/೧೧/೨೦೨೬ • ೬ ದಿನಗಳ ಸಾಂಸ್ಕೃತಿಕ ಹಬ್ಬ" 
-              : "30/10/2026 to 04/11/2026 • 6-Day Cultural Extravaganza"}
-          </div>
+        </div>
+
+        <div className="relative inline-flex w-fit max-w-[calc(100vw-2rem)] items-center justify-center gap-2 sm:gap-5 mt-1 mb-5 px-4 sm:px-9 py-2.5 sm:py-4 rounded-2xl sm:rounded-3xl border-2 border-amber-300 bg-gradient-to-r from-red-800 via-kar-red to-red-800 shadow-[0_12px_35px_rgba(127,29,29,0.28)]">
+          <span className="absolute inset-0 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-transparent via-white/10 to-transparent pointer-events-none" />
+          <Sparkles className="relative w-5 h-5 sm:w-8 sm:h-8 text-amber-300 motion-safe:animate-pulse" aria-hidden="true" />
+          <p className="relative text-3xl sm:text-6xl lg:text-7xl font-black font-kannada-serif tracking-wide text-center leading-tight text-amber-200 drop-shadow-[0_2px_8px_rgba(255,215,0,0.5)]">
+            {lang === "kn" ? "ದಶಕೋತ್ಸವ" : "10th Year’s Grand Celebration"}
+          </p>
+          <Sparkles className="relative w-5 h-5 sm:w-8 sm:h-8 text-amber-300 motion-safe:animate-pulse" aria-hidden="true" />
         </div>
 
         {/* Tagline */}
@@ -79,13 +82,21 @@ export const HeroSection = ({ onExploreNuditaranga, onKnowAbout }) => {
         </p>
 
         {/* Dual Primary Call-To-Action Buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-14">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 sm:gap-4 mb-10 sm:mb-14 max-w-md sm:max-w-none mx-auto">
+          <button
+            onClick={() => { onOpenAuthTab?.("student-login"); setCurrentView?.("auth"); }}
+            className="w-full sm:w-auto px-7 py-3.5 rounded-2xl text-sm sm:text-base font-extrabold text-white shadow-lg bg-stone-900 hover:bg-stone-800 transition-all flex items-center justify-center"
+          >{lang === "kn" ? "ಲಾಗಿನ್" : "Login"}</button>
+          <button
+            onClick={() => { onOpenAuthTab?.("student-register"); setCurrentView?.("auth"); }}
+            className="w-full sm:w-auto px-7 py-3.5 rounded-2xl text-sm sm:text-base font-extrabold text-kar-red bg-white border-2 border-kar-red/30 hover:border-kar-red transition-all flex items-center justify-center"
+          >{lang === "kn" ? "ನೋಂದಣಿ" : "Register"}</button>
           <button
             onClick={onExploreNuditaranga}
             className="w-full sm:w-auto px-7 py-3.5 rounded-2xl text-sm sm:text-base font-extrabold text-white shadow-lg shadow-red-600/20 hover:shadow-xl hover:shadow-red-600/30 transition-all transform hover:-translate-y-0.5 active:scale-95 bg-gradient-to-r from-kar-red via-red-600 to-kar-yellow flex items-center justify-center gap-2.5"
           >
             <Sparkles className="w-5 h-5 text-amber-200" />
-            <span>{lang === "kn" ? "೬ ದಿನಗಳ ಕರುನಾಡ ವೈಭವ ಪಟ್ಟಿ" : "Explore 6-Day Schedule"}</span>
+            <span>{lang === "kn" ? "೫ ದಿನಗಳ ಕರುನಾಡ ವೈಭವ ಪಟ್ಟಿ" : "Explore 5-Day Schedule"}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
 

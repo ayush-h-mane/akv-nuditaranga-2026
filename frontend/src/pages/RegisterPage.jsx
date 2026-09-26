@@ -90,7 +90,7 @@ export const RegisterPage = ({
               Portal Account Required
             </h3>
             <p className="text-xs text-stone-600 mt-2 leading-relaxed">
-              Per AKV fest rules, you must be registered in the Student Portal before registering for any cultural or literary competitions.
+              Per festival rules, you must be registered in the Student Portal before registering for any cultural or literary competitions.
               This provides your official verified badge and instant access passes.
             </p>
           </div>

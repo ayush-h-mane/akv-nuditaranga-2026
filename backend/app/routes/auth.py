@@ -67,7 +67,7 @@ class StudentRegisterRequest(BaseModel):
     section: str = Field("A", min_length=1, max_length=10)
     gender: str = Field("Male")
     role: str = Field("PARTICIPANT")  # VOLUNTEER, PARTICIPANT, SPECTATOR
-    photo_url: Optional[str] = None
+    photo_url: str = Field(..., min_length=20)
     volunteer_domain: Optional[str] = None
     password: str = Field(..., min_length=6)
     confirm_password: str = Field(..., min_length=6)
@@ -115,7 +115,8 @@ class AdminRegisterRequest(BaseModel):
     phone: str = Field(..., min_length=10, max_length=15)
     institute: str = Field("Acharya Institute of Technology", min_length=2, max_length=150)
     department: str = Field(..., min_length=2, max_length=100)
-    photo_url: Optional[str] = None
+    photo_url: str = Field(..., min_length=20)
+    volunteer_domain: Optional[str] = None
     password: str = Field(..., min_length=6)
     confirm_password: str = Field(..., min_length=6)
 
@@ -202,6 +203,9 @@ def register_student(
 ):
     if payload.password != payload.confirm_password:
         raise HTTPException(status_code=400, detail="Passwords do not match.")
+
+    if payload.role == "VOLUNTEER" and not payload.volunteer_domain:
+        raise HTTPException(status_code=400, detail="AKV domain is required for volunteers.")
 
     # Check unique AUID
     clean_auid = payload.auid.strip().upper()
@@ -500,6 +504,8 @@ def register_admin(
 
     # Resolve username and faculty ID based on admin_type
     admin_type = payload.admin_type or "WORKING_COMMITTEE"
+    if admin_type == "WORKING_COMMITTEE" and not payload.volunteer_domain:
+        raise HTTPException(status_code=400, detail="AKV domain is required for Working Committee admins.")
     clean_fac_id = payload.faculty_id.strip().upper() if payload.faculty_id else None
     
     if payload.username and payload.username.strip():
@@ -540,6 +546,7 @@ def register_admin(
         gender="Other",
         role="ADMIN",
         photo_url=payload.photo_url,
+        volunteer_domain=payload.volunteer_domain.strip() if payload.volunteer_domain else None,
         admin_type=admin_type,
         faculty_id=clean_fac_id,
         registration_id=reg_id,

@@ -34,6 +34,17 @@ from ..utils.timezone import (
 
 router = APIRouter(prefix="/attendance", tags=["Attendance"])
 
+def attendance_units(check_in_at, check_out_at) -> float:
+    """Convert completed attendance duration into full-day units."""
+    if not check_in_at or not check_out_at:
+        return 0.0
+    hours = (check_out_at - check_in_at).total_seconds() / 3600
+    if hours >= 8:
+        return 1.0
+    if hours >= 4:
+        return 0.5
+    return 0.0
+
 # ==============================================================================
 # PYDANTIC SCHEMAS
 # ==============================================================================
@@ -81,6 +92,15 @@ def verify_session_not_locked(db: Session, date_str: str, current_user: User):
                 detail="Attendance has been submitted and is locked. Only Superadmin can modify it."
             )
     return session
+
+def verify_attendance_date_is_open(date_str: str):
+    """Attendance can only be marked for today, never for a future date."""
+    today = get_current_ist_date_str()
+    if date_str > today:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Attendance cannot be marked before the selected date arrives."
+        )
 
 
 # ==============================================================================
@@ -196,6 +216,8 @@ def get_attendance_roster(
         user_query = user_query.filter(User.institute == institute)
     if akv_dept and akv_dept != "all":
         user_query = user_query.filter(User.volunteer_domain == akv_dept)
+    elif current_user.role == "ADMIN" and current_user.volunteer_domain:
+        user_query = user_query.filter(User.volunteer_domain == current_user.volunteer_domain)
     if role_filter and role_filter != "all":
         user_query = user_query.filter(User.role == role_filter.upper())
 
@@ -249,6 +271,11 @@ def get_attendance_roster(
 
         cin_time = format_to_ist_time(rec.check_in_at) if rec and rec.check_in_at else None
         cout_time = format_to_ist_time(rec.check_out_at) if rec and rec.check_out_at else None
+        units = attendance_units(rec.check_in_at, rec.check_out_at) if rec else 0.0
+        check_out_available = bool(
+            rec and rec.check_in_at and not rec.check_out_at and
+            (get_current_utc_datetime() - rec.check_in_at).total_seconds() >= 3600
+        )
 
         participants_output.append({
             "id": rec.id if rec else None,
@@ -264,6 +291,8 @@ def get_attendance_roster(
             "photo_url": u.photo_url,
             "check_in_time": cin_time,
             "check_out_time": cout_time,
+            "check_out_available": check_out_available,
+            "attendance_units": units,
             "status": current_status,
             "submitted": is_submitted or (rec.submitted if rec else False),
             "submitted_by": rec.submitted_by if rec else submitted_by,
@@ -309,6 +338,7 @@ def mark_check_in(
     Protected against duplicate requests and locked dates.
     """
     target_date = payload.date.strip() if payload.date else get_current_ist_date_str()
+    verify_attendance_date_is_open(target_date)
     
     # Check lock state
     verify_session_not_locked(db, target_date, current_user)
@@ -316,6 +346,11 @@ def mark_check_in(
     user = db.query(User).filter(User.id == payload.user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Participant not found")
+    if current_user.role == "ADMIN" and current_user.volunteer_domain != user.volunteer_domain:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can mark attendance only for volunteers in your AKV domain."
+        )
 
     now_utc = get_current_utc_datetime()
 
@@ -334,7 +369,7 @@ def mark_check_in(
         if rec.check_in_at is not None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Participant is already checked in. Proceed to Check-Out."
+                detail=f"Attendance/check-in is already marked by {rec.last_modified_by or 'another admin'}."
             )
         # Update existing record
         rec.check_in_at = now_utc
@@ -394,6 +429,7 @@ def mark_check_out(
     Transitions status to COMPLETED. Subsequent attempts rejected.
     """
     target_date = payload.date.strip() if payload.date else get_current_ist_date_str()
+    verify_attendance_date_is_open(target_date)
     
     # Check lock state
     verify_session_not_locked(db, target_date, current_user)
@@ -401,6 +437,11 @@ def mark_check_out(
     user = db.query(User).filter(User.id == payload.user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Participant not found")
+    if current_user.role == "ADMIN" and current_user.volunteer_domain != user.volunteer_domain:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can mark attendance only for volunteers in your AKV domain."
+        )
 
     now_utc = get_current_utc_datetime()
 
@@ -419,6 +460,14 @@ def mark_check_out(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Attendance already completed for today."
+        )
+
+    elapsed = now_utc - rec.check_in_at
+    if elapsed.total_seconds() < 3600:
+        remaining_minutes = max(1, 60 - int(elapsed.total_seconds() // 60))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Check-Out will be available after one hour of Check-In. Please wait {remaining_minutes} more minute(s)."
         )
 
     rec.check_out_at = now_utc
@@ -758,11 +807,13 @@ def get_attendance_audit_logs(
 
     output = []
     for l in logs:
+        audited_user = db.query(User).filter(User.id == l.user_id).first()
         output.append({
             "id": l.id,
             "attendance_id": l.attendance_id,
             "user_id": l.user_id,
             "participant_name": l.participant_name,
+            "akv_dept": audited_user.volunteer_domain if audited_user else "--",
             "date": l.attendance_date,
             "date_dmy": iso_date_to_dmy(l.attendance_date),
             "old_check_in": l.old_check_in,
@@ -1011,8 +1062,8 @@ def export_attendance_excel(
             date_times.append(time_in_str)
             date_times.append(time_out_str)
 
-            if rec and rec.check_in_at and rec.check_out_at:
-                days_present += 1
+            if rec:
+                days_present += attendance_units(rec.check_in_at, rec.check_out_at)
 
             if rec and rec.submitted_by:
                 managed_by_set.add(rec.submitted_by)

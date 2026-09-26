@@ -58,6 +58,8 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
   const [volunteersList, setVolunteersList] = useState([]);
   const [attendanceData, setAttendanceData] = useState({ records: [], available_dates: [] });
   const [eventsList, setEventsList] = useState([]);
+  const [festivalSchedule, setFestivalSchedule] = useState([]);
+  const [scheduleSaving, setScheduleSaving] = useState(false);
   const [auditLogs, setAuditLogs] = useState([]);
 
   // Major Activities State (v2.1.0)
@@ -125,6 +127,28 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
   const [attendanceActionLoading, setAttendanceActionLoading] = useState(false);
   const [officialExportLoading, setOfficialExportLoading] = useState(false);
   const [csvExportLoading, setCsvExportLoading] = useState(false);
+
+  const loadFestivalSchedule = async () => {
+    try {
+      const data = await api.getFestivalSchedule();
+      setFestivalSchedule(data.schedule || []);
+    } catch (err) {
+      notify("error", err.message || "Unable to load Karunada Vaibhava schedule.");
+    }
+  };
+
+  const saveFestivalSchedule = async () => {
+    setScheduleSaving(true);
+    try {
+      const data = await api.updateFestivalSchedule(festivalSchedule);
+      setFestivalSchedule(data.schedule || []);
+      notify("success", "Karunada Vaibhava schedule updated.");
+    } catch (err) {
+      notify("error", err.message || "Unable to update Karunada Vaibhava schedule.");
+    } finally {
+      setScheduleSaving(false);
+    }
+  };
 
   // Dedicated Working Committee Attendance State
   const [wcAttendanceRoster, setWcAttendanceRoster] = useState([]);
@@ -364,12 +388,16 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
   const loadAuditLogs = async () => {
     try {
-      const [generalLogs, attendanceAuditRes] = await Promise.all([
+      const [generalLogs, attendanceAuditRes, wcAuditRes] = await Promise.all([
         api.getAuditLogs({ action: auditActionFilter !== "all" ? auditActionFilter : "" }).catch(() => []),
-        api.getAttendanceAudit().catch(() => ({ audit_logs: [] }))
+        api.getAttendanceAudit().catch(() => ({ audit_logs: [] })),
+        api.getWorkingCommitteeAudit().catch(() => ({ audit_logs: [] }))
       ]);
       setAuditLogs(generalLogs || []);
-      setAttendanceAuditLogs(attendanceAuditRes?.audit_logs || []);
+      setAttendanceAuditLogs([
+        ...(attendanceAuditRes?.audit_logs || []),
+        ...(wcAuditRes?.audit_logs || [])
+      ].sort((a, b) => String(b.modified_at_ist || "").localeCompare(String(a.modified_at_ist || ""))));
     } catch (e) {
       console.error(e);
     }
@@ -411,6 +439,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
     else if (activeSection === "attendance") loadAttendance();
     else if (activeSection === "working-committee") loadWcAttendance();
     else if (activeSection === "events") loadEvents();
+    else if (activeSection === "festival-schedule") loadFestivalSchedule();
     else if (activeSection === "audit-logs") loadAuditLogs();
   };
 
@@ -981,7 +1010,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
           {[
             { id: "overview", label: "Dashboard Overview", icon: BarChart3 },
             { id: "admins", label: `Admin Approvals ${metrics?.pending_admins ? `(${metrics.pending_admins})` : ""}`, icon: ShieldCheck, alert: metrics?.pending_admins > 0 },
-            { id: "activities", label: "Major AKV Activities", icon: Sparkles },
+            { id: "activities", label: "Major Vedike Activities", icon: Sparkles },
             { id: "reels", label: "Reels & Posts", icon: Film },
             { id: "students", label: "Student Directory", icon: Users },
             { id: "volunteers", label: "Volunteer Management", icon: UserCheck },
@@ -989,6 +1018,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
             { id: "working-committee", label: "Working Committee", icon: Briefcase },
             { id: "exports", label: "Attendance & Data Exports", icon: FileSpreadsheet },
             { id: "events", label: "Event Configuration", icon: Calendar },
+            { id: "festival-schedule", label: "Karunada Vaibhava Schedule", icon: MapPin },
             { id: "audit-logs", label: "Security Audit Trail", icon: History }
           ].map((tab) => {
             const Icon = tab.icon;
@@ -1508,7 +1538,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
         })()}
 
           {/* ==================================================== */}
-          {/* SECTION: MAJOR AKV ACTIVITIES (v2.1.0)               */}
+          {/* SECTION: MAJOR VEDIKE ACTIVITIES (v2.1.0)             */}
           {/* ==================================================== */}
           {activeSection === "activities" && (
             <div className="bg-white p-6 sm:p-7 rounded-3xl border border-stone-200 shadow-xs space-y-5 animate-fade-in">
@@ -1516,7 +1546,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                 <div>
                   <h3 className="font-extrabold text-base text-stone-900 flex items-center gap-2">
                     <Sparkles className="w-5 h-5 text-amber-500" />
-                    <span>Major AKV Activities ({activitiesList.length})</span>
+                    <span>Major Vedike Activities ({activitiesList.length})</span>
                   </h3>
                   <p className="text-xs text-stone-500">
                     Manage key flagship activities, cultural drives, and annual milestones displayed across the website.
@@ -2164,7 +2194,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                     onChange={(e) => setAttendanceAkvDeptFilter(e.target.value)}
                     className="py-1.5 px-3 rounded-xl border border-stone-300 text-xs bg-white font-bold text-stone-700"
                   >
-                    <option value="all">All AKV Depts</option>
+                    <option value="all">All Departments</option>
                     <option value="Promotion">Promotion</option>
                     <option value="Stage">Stage</option>
                     <option value="Hospitality">Hospitality</option>
@@ -2214,7 +2244,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                           <th className="w-[15%] py-2 px-1.5 sm:px-2 whitespace-nowrap">Reg ID</th>
                           <th className="w-[23%] py-2 px-1.5 sm:px-2 whitespace-nowrap">Name</th>
                           <th className="w-[17%] py-2 px-1.5 sm:px-2 whitespace-nowrap">AUID</th>
-                          <th className="w-[17%] py-2 px-1.5 sm:px-2 whitespace-nowrap">AKV Dept</th>
+                          <th className="w-[17%] py-2 px-1.5 sm:px-2 whitespace-nowrap">Department</th>
                           <th className="w-[12%] py-2 px-1.5 sm:px-2 whitespace-nowrap">Status</th>
                           <th className="w-[16%] py-2 px-1.5 sm:px-2 text-right whitespace-nowrap">Power</th>
                         </tr>
@@ -2559,6 +2589,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                             </td>
                             <td className="py-3 px-4">
                               <p className="font-extrabold text-stone-900">{m.name}</p>
+                              <p className="text-[11px] text-purple-700 font-bold">Working Committee Domain: {m.akv_dept || "--"}</p>
                               <p className="text-[11px] text-stone-500">
                                 {m.auid ? `AUID: ${m.auid} • ` : ""}{m.phone || "No phone"}
                               </p>
@@ -2869,6 +2900,46 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
             </div>
           )}
 
+          {activeSection === "festival-schedule" && (
+            <div className="bg-white p-5 sm:p-7 rounded-3xl border border-stone-200 shadow-xs space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-100 pb-4">
+                <div>
+                  <h3 className="font-extrabold text-base text-stone-900">Karunada Vaibhava Schedule</h3>
+                  <p className="text-xs text-stone-500">Change each public programme’s date, time, title and location.</p>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => setFestivalSchedule((items) => [...items, { day: `DAY ${String(items.length + 1).padStart(2, "0")}`, dayKn: `ದಿನ ${String(items.length + 1).padStart(2, "0")}`, date: "", dateKn: "", title: "New programme", titleKn: "ಹೊಸ ಕಾರ್ಯಕ್ರಮ", tag: "", tagKn: "", descEn: "", descKn: "", venue: "", venueEn: "", venueKn: "", timeEn: "", timeKn: "" }])} className="px-4 py-2.5 rounded-xl border border-stone-300 text-stone-700 text-xs font-bold">Add Event</button>
+                  <button onClick={saveFestivalSchedule} disabled={scheduleSaving || !festivalSchedule.length} className="px-4 py-2.5 rounded-xl bg-kar-red text-white text-xs font-bold disabled:opacity-50">
+                    {scheduleSaving ? "Saving…" : "Save Schedule"}
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-4">
+                {festivalSchedule.map((day, index) => (
+                  <div key={day.id || index} className="relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4 pr-14 rounded-2xl bg-stone-50 border border-stone-200">
+                    <button type="button" onClick={() => setFestivalSchedule((items) => items.filter((_, i) => i !== index))} className="absolute top-3 right-3 px-2 py-1 rounded-lg text-xs font-bold text-red-700 hover:bg-red-50" aria-label={`Delete ${day.title || "event"}`}>Delete</button>
+                    {[
+                      ["Event title", "title"], ["Date (DD/MM/YYYY)", "date"], ["Time", "timeEn"], ["Location", "venueEn"]
+                    ].map(([label, field]) => (
+                      <label key={field} className="text-[10px] uppercase font-bold text-stone-500">{label}
+                        <input value={day[field] || ""} onChange={(e) => setFestivalSchedule((items) => items.map((item, i) => i === index ? { ...item, [field]: e.target.value } : item))} className="mt-1 w-full rounded-lg border border-stone-300 bg-white px-2.5 py-2 text-sm text-stone-900" />
+                      </label>
+                    ))}
+                    <label className="text-[10px] uppercase font-bold text-stone-500 sm:col-span-2 lg:col-span-4">Kannada title
+                      <input value={day.titleKn || ""} onChange={(e) => setFestivalSchedule((items) => items.map((item, i) => i === index ? { ...item, titleKn: e.target.value } : item))} className="mt-1 w-full rounded-lg border border-stone-300 bg-white px-2.5 py-2 text-sm text-stone-900" />
+                    </label>
+                    {[["English tagline", "tag"], ["Kannada tagline", "tagKn"], ["Kannada date", "dateKn"], ["Kannada time", "timeKn"], ["Kannada location", "venueKn"]].map(([label, field]) => (
+                      <label key={field} className="text-[10px] uppercase font-bold text-stone-500">{label}<input value={day[field] || ""} onChange={(e) => setFestivalSchedule((items) => items.map((item, i) => i === index ? { ...item, [field]: e.target.value } : item))} className="mt-1 w-full rounded-lg border border-stone-300 bg-white px-2.5 py-2 text-sm text-stone-900" /></label>
+                    ))}
+                    {[ ["English description", "descEn"], ["Kannada description", "descKn"] ].map(([label, field]) => (
+                      <label key={field} className="text-[10px] uppercase font-bold text-stone-500 sm:col-span-2">{label}<textarea value={day[field] || ""} onChange={(e) => setFestivalSchedule((items) => items.map((item, i) => i === index ? { ...item, [field]: e.target.value } : item))} rows={3} className="mt-1 w-full rounded-lg border border-stone-300 bg-white px-2.5 py-2 text-sm text-stone-900" /></label>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* ==================================================== */}
           {/* SECTION 8: AUDIT TRAIL                              */}
           {/* ==================================================== */}
@@ -2917,6 +2988,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                         <tr className="border-b border-stone-200 text-stone-400 uppercase tracking-wider font-extrabold">
                           <th className="py-3 px-3">Modified At (IST)</th>
                           <th className="py-3 px-3">Participant</th>
+                          <th className="py-3 px-3">Working Committee Domain</th>
                           <th className="py-3 px-3">Event Date</th>
                           <th className="py-3 px-3">Action</th>
                           <th className="py-3 px-3">Old Time</th>
@@ -2929,11 +3001,14 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                         {attendanceAuditLogs.map((log) => (
                           <tr key={log.id} className="hover:bg-stone-50/80">
                             <td className="py-3 px-3 font-mono text-stone-600 font-bold whitespace-nowrap">
-                              {log.modified_at}
+                              {log.modified_at_ist || log.modified_at}
                             </td>
                             <td className="py-3 px-3">
-                              <span className="font-bold text-stone-900 block">{log.user_name}</span>
+                              <span className="font-bold text-stone-900 block">{log.participant_name || log.user_name}</span>
                               <span className="text-[10px] text-stone-400 font-mono">{log.reg_id || log.auid}</span>
+                            </td>
+                            <td className="py-3 px-3 font-bold text-purple-700">
+                              {log.akv_dept || "--"}
                             </td>
                             <td className="py-3 px-3 font-mono font-semibold text-stone-700">
                               {log.attendance_date_dmy || log.attendance_date}
@@ -3719,7 +3794,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
             <div className="flex items-center justify-between border-b border-stone-200 pb-3">
               <h3 className="font-extrabold text-base text-stone-900 flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-amber-500" />
-                <span>{activityModal === "new" ? "Add Major AKV Activity" : "Edit Major AKV Activity"}</span>
+                <span>{activityModal === "new" ? "Add Major Vedike Activity" : "Edit Major Vedike Activity"}</span>
               </h3>
               <button
                 type="button"

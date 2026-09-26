@@ -16,7 +16,6 @@ import {
   Building2,
   Sparkles,
   KeyRound,
-  Globe
 } from "lucide-react";
 
 export const PortalSettingsModal = ({
@@ -143,27 +142,15 @@ export const PortalSettingsModal = ({
                     <span className="text-[10px] font-black tracking-widest uppercase px-2 py-0.5 bg-amber-200/80 text-amber-900 rounded-md">
                       Lead Systems Architect & Developer
                     </span>
-                    <h5 className="text-sm font-extrabold text-stone-900 mt-0.5">
+                    <a href="https://ayushhmane.vercel.app/" target="_blank" rel="noopener noreferrer" className="text-sm font-extrabold text-stone-900 mt-0.5 hover:text-kar-red hover:underline underline-offset-2">
                       Ayush H Mane
-                    </h5>
+                    </a>
                     <p className="text-[11px] text-stone-500 font-medium">
                       Full-Stack Developer • AIML Engineer
                     </p>
                   </div>
                 </div>
 
-                {/* Portfolio Link Button */}
-                <a
-                  href="https://ayushhmane.vercel.app/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 text-xs font-black shadow-xs hover:shadow-sm transition-all group cursor-pointer"
-                  title="Open Ayush H Mane's Portfolio"
-                >
-                  <Globe className="w-3.5 h-3.5 text-stone-950 group-hover:rotate-12 transition-transform" />
-                  <span>Portfolio</span>
-                  <ExternalLink className="w-3 h-3 text-stone-950" />
-                </a>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-xs">

@@ -17,7 +17,8 @@ from .routes import (
     superadmin,
     reels,
     attendance,
-    working_committee_attendance
+    working_committee_attendance,
+    festival_schedule,
 )
 
 # Ensure schema integrity and automatic migrations for SQLite and PostgreSQL
@@ -167,6 +168,7 @@ app.include_router(gallery.router, prefix=settings.API_PREFIX)
 app.include_router(reels.router, prefix=settings.API_PREFIX)
 app.include_router(attendance.router, prefix=settings.API_PREFIX)
 app.include_router(working_committee_attendance.router, prefix=settings.API_PREFIX)
+app.include_router(festival_schedule.router, prefix=settings.API_PREFIX)
 
 @app.get("/api/health")
 def health_check():

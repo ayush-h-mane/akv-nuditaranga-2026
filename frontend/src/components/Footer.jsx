@@ -82,6 +82,14 @@ export const Footer = ({ setCurrentView }) => {
               </li>
               <li>
                 <button
+                  onClick={() => { setCurrentView("rules"); scrollToTop(); }}
+                  className="hover:text-kar-yellow transition-colors"
+                >
+                  {lang === "kn" ? "ಸಾಮಾನ್ಯ ನಿಯಮಗಳು" : "General Rules"}
+                </button>
+              </li>
+              <li>
+                <button
                   onClick={() => { setCurrentView("about"); scrollToTop(); }}
                   className="hover:text-kar-yellow transition-colors"
                 >
@@ -175,7 +183,7 @@ export const Footer = ({ setCurrentView }) => {
               <div className="flex items-center gap-2 pt-1">
                 <Mail className="w-4 h-4 text-amber-400 flex-shrink-0" />
                 <a href={`mailto:${siteConfig.social.email}`} className="hover:text-white transition-colors">
-                  {siteConfig.social.email}
+                  {lang === "kn" ? "ಆಚಾರ್ಯ ಕನ್ನಡ ವೇದಿಕೆಗೆ ಇಮೇಲ್ ಮಾಡಿ" : "Email Acharya Kannada Vedike"}
                 </a>
               </div>
             </div>
@@ -186,6 +194,13 @@ export const Footer = ({ setCurrentView }) => {
         <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-stone-400">
           <p className="font-kannada text-center md:text-left text-amber-200/90 font-medium">
             {t("footer.quote")}
+          </p>
+
+          <p className="text-center">
+            {lang === "kn" ? "ವಿನ್ಯಾಸ ಮತ್ತು ಅಭಿವೃದ್ಧಿ: " : "Designed & Developed by "}
+            <a href={siteConfig.coordinators.students.find((person) => person.nameEn === "Ayush H Mane")?.portfolio} target="_blank" rel="noreferrer" className="text-amber-300 hover:text-white font-bold underline underline-offset-2">
+              Ayush H Mane
+            </a>
           </p>
 
           <div className="flex items-center gap-4">

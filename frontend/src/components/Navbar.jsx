@@ -33,6 +33,7 @@ export const Navbar = ({ currentView, setCurrentView, onOpenAuthTab }) => {
     { id: "activities", label: t("nav.activities") },
     { id: "nuditaranga", label: lang === "kn" ? "ಕರುನಾಡ ವೈಭವ" : "Karunada Vaibhava" },
     { id: "events", label: t("nav.events") },
+    { id: "rules", label: lang === "kn" ? "ನಿಯಮಗಳು" : "Rules" },
     { id: "gallery", label: t("nav.gallery") },
     { id: "contact", label: t("nav.contact") },
   ];
@@ -112,6 +113,9 @@ export const Navbar = ({ currentView, setCurrentView, onOpenAuthTab }) => {
                 ? "ನುಡಿತರಂಗ ೨೦೨೬ • ಕರುನಾಡ ವೈಭವ" 
                 : "Nuditaranga 2026 • Karunada Vaibhava"}
             </p>
+            <p className="hidden md:block text-[9px] text-kar-red font-bold mt-0.5">
+              {lang === "kn" ? "ಹಸಿರು ಆಚಾರ್ಯದಲ್ಲಿ ಉಸಿರಾಗಲಿ ಕನ್ನಡ" : "Let Kannada breathe in a green Acharya"}
+            </p>
           </div>
         </div>
 
@@ -190,10 +194,10 @@ export const Navbar = ({ currentView, setCurrentView, onOpenAuthTab }) => {
           {/* Primary CTA: Login/Register */}
           <button
             onClick={handleRegisterCTA}
-            className="shrink-0 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-extrabold text-white shadow-md hover:shadow-lg transition-all transform active:scale-95 bg-gradient-to-r from-kar-red via-red-600 to-kar-yellow flex items-center gap-1.5 whitespace-nowrap"
+            className="shrink-0 px-2.5 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-extrabold text-white shadow-md hover:shadow-lg transition-all transform active:scale-95 bg-gradient-to-r from-kar-red via-red-600 to-kar-yellow flex items-center gap-1.5 whitespace-nowrap max-w-[145px]"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-200" />
-            <span>{user ? "My Dashboard" : t("nav.registerNow")}</span>
+            <span className="truncate">{user ? "My Dashboard" : t("nav.registerNow")}</span>
           </button>
         </div>
 
