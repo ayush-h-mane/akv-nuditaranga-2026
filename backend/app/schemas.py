@@ -6,9 +6,19 @@ from .utils.email_validation import validate_acharya_email
 
 class TeamMemberSchema(BaseModel):
     name: str = Field(..., min_length=2)
-    auid: Optional[str] = None
+    auid: str = Field(..., min_length=3, max_length=30)
     usn: Optional[str] = None
     phone: Optional[str] = None
+
+    @field_validator("auid", "usn", mode="before")
+    @classmethod
+    def normalize_team_member_id(cls, value):
+        if value is None or not str(value).strip():
+            return value
+        normalized = str(value).strip().upper()
+        if not re.fullmatch(r"[A-Z0-9]{3,30}", normalized):
+            raise ValueError("AUID/USN must contain letters and numbers only (e.g., AIT23BEAI129)")
+        return normalized
 
 class EventBase(BaseModel):
     id: Optional[str] = None
@@ -70,7 +80,7 @@ import json
 class RegistrationCreate(BaseModel):
     event_id: str
     full_name: str = Field(..., min_length=2, max_length=100)
-    auid: Optional[str] = None
+    auid: str = Field(..., min_length=3, max_length=30)
     usn: Optional[str] = None
     institute: str = Field("Acharya Institute of Technology", min_length=2, max_length=150)
     department: str = Field(..., min_length=2, max_length=100)
@@ -94,9 +104,12 @@ class RegistrationCreate(BaseModel):
         if not v:
             usn_val = info.data.get("usn")
             if usn_val:
-                return str(usn_val).strip().upper()
-            return "GUEST"
+                v = usn_val
+            else:
+                raise ValueError("AUID is required and must contain letters and numbers only (e.g., AIT23BEAI129)")
         cleaned = str(v).strip().upper()
+        if not re.fullmatch(r"[A-Z0-9]{3,30}", cleaned):
+            raise ValueError("AUID must contain 3-30 letters and numbers only (e.g., AIT23BEAI129)")
         return cleaned
 
     @field_validator("usn", mode="before")
@@ -106,8 +119,11 @@ class RegistrationCreate(BaseModel):
             auid_val = info.data.get("auid")
             if auid_val:
                 return str(auid_val).strip().upper()
-            return "GUEST"
-        return str(v).strip().upper()
+            raise ValueError("AUID is required and must contain letters and numbers only (e.g., AIT23BEAI129)")
+        cleaned = str(v).strip().upper()
+        if not re.fullmatch(r"[A-Z0-9]{3,30}", cleaned):
+            raise ValueError("USN must contain 3-30 letters and numbers only (e.g., AIT23BEAI129)")
+        return cleaned
 
     @field_validator("phone")
     @classmethod

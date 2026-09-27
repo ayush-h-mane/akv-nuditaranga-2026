@@ -1,4 +1,5 @@
 import os
+import ssl
 import smtplib
 import time
 from email.mime.text import MIMEText
@@ -101,19 +102,26 @@ def send_via_relay(relay: Dict[str, Any], msg: MIMEMultipart, to_email: Union[st
     to_addrs = [to_email] if isinstance(to_email, str) else list(to_email)
 
     if port == 465:
-        server = smtplib.SMTP_SSL(host, port, timeout=5)
+        server = smtplib.SMTP_SSL(host, port, timeout=20, context=ssl.create_default_context())
     else:
-        server = smtplib.SMTP(host, port, timeout=5)
-        try:
-            server.starttls()
-        except Exception as tls_err:
-            print(f"[{relay['name']} TLS NOTICE] {tls_err}")
+        server = smtplib.SMTP(host, port, timeout=20)
+        server.starttls(context=ssl.create_default_context())
 
-    if username and password:
-        server.login(username, password)
-
-    server.sendmail(settings.EMAIL_FROM, to_addrs, msg.as_string())
-    server.quit()
+    accepted_by_server = False
+    try:
+        if username and password:
+            server.login(username, password)
+        server.sendmail(settings.EMAIL_FROM, to_addrs, msg.as_string())
+        accepted_by_server = True
+    finally:
+        if accepted_by_server:
+            try:
+                server.quit()
+            except Exception:
+                # SMTP has already accepted the message; don't trigger a duplicate relay retry.
+                server.close()
+        else:
+            server.close()
 
 def send_email(
     to_email: Union[str, List[str]],

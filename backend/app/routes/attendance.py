@@ -244,16 +244,15 @@ def get_attendance_roster(
     records_by_uid = {r.user_id: r for r in records}
 
     # 4. Global statistics for this date (across all participants, regardless of filters)
-    total_eligible = db.query(func.count(User.id)).filter(
-        User.role.in_(["PARTICIPANT", "VOLUNTEER", "STUDENT", "SPECTATOR"])
-    ).scalar() or 0
+    eligible_roles = ["PARTICIPANT", "VOLUNTEER", "STUDENT", "SPECTATOR"]
+    total_eligible = db.query(func.count(User.id)).filter(User.role.in_(eligible_roles)).scalar() or 0
 
-    all_date_records = db.query(AttendanceRecord).filter(
-        AttendanceRecord.attendance_date == target_date
-    ).all()
-    
-    count_checked_in = sum(1 for r in all_date_records if r.status == "CHECKED_IN")
-    count_completed = sum(1 for r in all_date_records if r.status == "COMPLETED")
+    status_counts = dict(db.query(AttendanceRecord.status, func.count(AttendanceRecord.id))
+        .join(User, AttendanceRecord.user_id == User.id)
+        .filter(AttendanceRecord.attendance_date == target_date, User.role.in_(eligible_roles))
+        .group_by(AttendanceRecord.status).all())
+    count_checked_in = status_counts.get("CHECKED_IN", 0)
+    count_completed = status_counts.get("COMPLETED", 0)
     count_not_marked = total_eligible - (count_checked_in + count_completed)
     if count_not_marked < 0:
         count_not_marked = 0
@@ -279,6 +278,7 @@ def get_attendance_roster(
 
         participants_output.append({
             "id": rec.id if rec else None,
+            "record_id": rec.id if rec else None,
             "user_id": u.id,
             "reg_id": u.registration_id,
             "name": u.name,
@@ -934,6 +934,10 @@ def populate_attendance_worksheet(
             if col_name == "Total Days Present":
                 cell.font = font_bold_data
                 cell.alignment = align_center
+            elif col_name == "AUID":
+                cell.number_format = "@"
+                if cell.value is not None:
+                    cell.value = str(cell.value)
 
     ws.freeze_panes = "A5"
     if end_data_row > header_row_idx:

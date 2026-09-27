@@ -199,10 +199,10 @@ export const RegisterPage = ({
     
     // AUID Validation
     const cleanAuid = formData.auid.trim().toUpperCase();
-    if (!/^[0-9A-Z\-]{3,30}$/.test(cleanAuid)) {
+    if (!/^[0-9A-Z]{3,30}$/.test(cleanAuid)) {
       return lang === "kn" 
-        ? "ದಯವಿಟ್ಟು ಮಾನ್ಯವಾದ ಆಚಾರ್ಯ ಯೂನಿಕ್ ಐಡಿ (AUID) ನಮೂದಿಸಿ (ಉದಾ: AIT22BE123)." 
-        : "Please enter a valid Acharya Unique ID (AUID) (e.g., AIT22BE123).";
+        ? "ಅಕ್ಷರ ಮತ್ತು ಅಂಕಿಗಳನ್ನು ಮಾತ್ರ ಹೊಂದಿರುವ ಮಾನ್ಯ AUID ನಮೂದಿಸಿ (ಉದಾ: AIT23BEAI129)."
+        : "Enter an alphanumeric AUID using letters and numbers only (e.g., AIT23BEAI129).";
     }
 
     // Institute Validation
@@ -257,6 +257,11 @@ export const RegisterPage = ({
           return lang === "kn" 
             ? `ದಯವಿಟ್ಟು ತಂಡದ ಸದಸ್ಯ #${toKannadaDigits(i + 2)} ರ ಹೆಸರು ಮತ್ತು AUID ಭರ್ತಿ ಮಾಡಿ.` 
             : `Please fill name and AUID for Team Member #${i + 2}.`;
+        }
+        if (!/^[0-9A-Z]{3,30}$/.test((m.auid || m.usn).trim().toUpperCase())) {
+          return lang === "kn"
+            ? `ತಂಡದ ಸದಸ್ಯ #${toKannadaDigits(i + 2)} ರ AUID ಅಕ್ಷರ ಮತ್ತು ಅಂಕಿಗಳನ್ನು ಮಾತ್ರ ಹೊಂದಿರಬೇಕು.`
+            : `Team Member #${i + 2} AUID must contain letters and numbers only.`;
         }
       }
     }
@@ -600,9 +605,13 @@ export const RegisterPage = ({
                 <input
                   type="text"
                   required
+                  minLength={3}
+                  maxLength={30}
+                  pattern="[A-Za-z0-9]{3,30}"
+                  title="Use 3–30 letters and numbers only, for example AIT23BEAI129."
                   value={formData.auid}
                   onChange={(e) => setFormData({ ...formData, auid: e.target.value.toUpperCase(), usn: e.target.value.toUpperCase() })}
-                  placeholder={lang === "kn" ? "ಉದಾ: AIT22BE123" : "e.g. AIT22BE123"}
+                  placeholder={lang === "kn" ? "ಉದಾ: AIT23BEAI129" : "e.g. AIT23BEAI129"}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 uppercase font-mono focus:outline-none focus:ring-2 focus:ring-kar-red/20 focus:border-kar-red"
                 />
               </div>

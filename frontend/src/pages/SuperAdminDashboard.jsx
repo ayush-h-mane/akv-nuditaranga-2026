@@ -45,6 +45,7 @@ import {
   UserPlus
 } from "lucide-react";
 import { EventImageUpload } from "../components/EventImageUpload";
+import { MyProfileAttendance } from "../components/MyProfileAttendance";
 
 export const SuperAdminDashboard = ({ onNavigateHome }) => {
   const { user, logout } = useAuth();
@@ -53,6 +54,9 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
   const [loading, setLoading] = useState(false);
   const [metrics, setMetrics] = useState(null);
+  const [myAccountData, setMyAccountData] = useState(null);
+  const [myAccountLoading, setMyAccountLoading] = useState(false);
+  const [myAccountError, setMyAccountError] = useState("");
   const [adminsList, setAdminsList] = useState([]);
   const [studentsData, setStudentsData] = useState({ total: 0, students: [] });
   const [volunteersList, setVolunteersList] = useState([]);
@@ -98,6 +102,12 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
   const [attendanceDeptFilter, setAttendanceDeptFilter] = useState("all");
   const [auditActionFilter, setAuditActionFilter] = useState("all");
   const [adminApprovalFilter, setAdminApprovalFilter] = useState("all"); // "all", "pending", "approved"
+  const [idCardRecords, setIdCardRecords] = useState([]);
+  const [idCardSearch, setIdCardSearch] = useState("");
+  const [idCardsLoading, setIdCardsLoading] = useState(false);
+  const [idCardDownloading, setIdCardDownloading] = useState("");
+  const [registrationExportEvent, setRegistrationExportEvent] = useState("all");
+  const [registrationExportLoading, setRegistrationExportLoading] = useState(false);
 
   // Official Multi-Day Attendance State (v2.1.2)
   const [attendanceConfigDates, setAttendanceConfigDates] = useState([]);
@@ -125,6 +135,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
   const [unlockModal, setUnlockModal] = useState(null);
   const [resetModal, setResetModal] = useState(null);
   const [attendanceActionLoading, setAttendanceActionLoading] = useState(false);
+  const [attendanceMarkingIds, setAttendanceMarkingIds] = useState([]);
   const [officialExportLoading, setOfficialExportLoading] = useState(false);
   const [csvExportLoading, setCsvExportLoading] = useState(false);
 
@@ -261,6 +272,18 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
       setVolunteersList(data);
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const loadIdCards = async (search = idCardSearch) => {
+    try {
+      setIdCardsLoading(true);
+      const data = await api.getSuperAdminIdCards(search);
+      setIdCardRecords(data.cards || []);
+    } catch (err) {
+      notify("error", err.message || "Failed to load ID cards.");
+    } finally {
+      setIdCardsLoading(false);
     }
   };
 
@@ -429,16 +452,16 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
   // Master refresh depending on active section
   const refreshCurrentSection = () => {
-    loadStats();
-    loadWcAttendance();
-    loadAdmins();
-    if (activeSection === "activities") loadActivities();
+    if (activeSection === "overview") loadStats();
+    else if (activeSection === "admins") { loadStats(); loadAdmins(); }
+    else if (activeSection === "activities") loadActivities();
     else if (activeSection === "reels") loadReels();
     else if (activeSection === "students") loadStudents();
     else if (activeSection === "volunteers") loadVolunteers();
     else if (activeSection === "attendance") loadAttendance();
     else if (activeSection === "working-committee") loadWcAttendance();
-    else if (activeSection === "events") loadEvents();
+    else if (activeSection === "events" || activeSection === "exports") loadEvents();
+    else if (activeSection === "id-cards") loadIdCards();
     else if (activeSection === "festival-schedule") loadFestivalSchedule();
     else if (activeSection === "audit-logs") loadAuditLogs();
   };
@@ -446,6 +469,47 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
   useEffect(() => {
     refreshCurrentSection();
   }, [activeSection, studentRoleFilter, attendanceDateFilter, attendanceDeptFilter, auditActionFilter, wcRoleFilter, wcStatusFilter]);
+
+  useEffect(() => {
+    let mounted = true;
+    setMyAccountLoading(true);
+    api.getStudentDashboard()
+      .then((data) => { if (mounted) setMyAccountData(data); })
+      .catch((err) => { if (mounted) setMyAccountError(err.message || "Could not load your profile and attendance."); })
+      .finally(() => { if (mounted) setMyAccountLoading(false); });
+    return () => { mounted = false; };
+  }, []);
+
+  useEffect(() => {
+    if (activeSection !== "id-cards") return undefined;
+    const timer = setTimeout(() => loadIdCards(idCardSearch), 250);
+    return () => clearTimeout(timer);
+  }, [idCardSearch]);
+
+  const handleIdCardDownload = async (card) => {
+    const key = `${card.source_type}:${card.source_id}`;
+    setIdCardDownloading(key);
+    try {
+      await api.downloadSuperAdminIdCard(card.source_type, card.source_id);
+      notify("success", `ID card downloaded for ${card.name}.`);
+    } catch (err) {
+      notify("error", err.message || "Failed to download the ID card.");
+    } finally {
+      setIdCardDownloading("");
+    }
+  };
+
+  const handleEventRegistrationExport = async () => {
+    setRegistrationExportLoading(true);
+    try {
+      await api.exportEventRegistrationsXlsx(registrationExportEvent);
+      notify("success", "Event registration workbook downloaded.");
+    } catch (err) {
+      notify("error", err.message || "Failed to export event registrations.");
+    } finally {
+      setRegistrationExportLoading(false);
+    }
+  };
 
   // Handlers for Admin Approvals
   const handleApproveAdmin = async (id, uname) => {
@@ -655,22 +719,55 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
   // Official Multi-Day Attendance Action Handlers (v2.1.2)
   const handleSuperAdminCheckIn = async (participantUserId) => {
+    if (attendanceMarkingIds.includes(participantUserId)) return;
+    setAttendanceMarkingIds((ids) => [...ids, participantUserId]);
     try {
       const res = await api.markAttendanceCheckIn(participantUserId, selectedOfficialDate);
       notify("success", res.message || "Check-In recorded in IST.");
-      loadOfficialAttendance();
+      setOfficialAttendanceRoster((rows) => rows.map((row) => row.user_id === participantUserId ? {
+        ...row,
+        id: res.record?.id ?? row.id,
+        record_id: res.record?.id ?? row.record_id,
+        status: "CHECKED_IN",
+        check_in_time: res.record?.check_in_time || row.check_in_time,
+        check_out_time: null,
+      } : row));
+      setOfficialAttendanceSummary((summary) => ({
+        ...summary,
+        checked_in: summary.checked_in + 1,
+        not_marked: Math.max(0, summary.not_marked - 1),
+      }));
     } catch (err) {
       notify("error", err.message || "Check-In failed.");
+    } finally {
+      setAttendanceMarkingIds((ids) => ids.filter((id) => id !== participantUserId));
     }
   };
 
   const handleSuperAdminCheckOut = async (participantUserId) => {
+    if (attendanceMarkingIds.includes(participantUserId)) return;
+    setAttendanceMarkingIds((ids) => [...ids, participantUserId]);
     try {
       const res = await api.markAttendanceCheckOut(participantUserId, selectedOfficialDate);
       notify("success", res.message || "Check-Out recorded in IST.");
-      loadOfficialAttendance();
+      setOfficialAttendanceRoster((rows) => rows.map((row) => row.user_id === participantUserId ? {
+        ...row,
+        id: res.record?.id ?? row.id,
+        record_id: res.record?.id ?? row.record_id,
+        status: "COMPLETED",
+        check_in_time: res.record?.check_in_time || row.check_in_time,
+        check_out_time: res.record?.check_out_time || row.check_out_time,
+        can_mark: false,
+      } : row));
+      setOfficialAttendanceSummary((summary) => ({
+        ...summary,
+        checked_in: Math.max(0, summary.checked_in - 1),
+        completed: summary.completed + 1,
+      }));
     } catch (err) {
       notify("error", err.message || "Check-Out failed.");
+    } finally {
+      setAttendanceMarkingIds((ids) => ids.filter((id) => id !== participantUserId));
     }
   };
 
@@ -1009,11 +1106,13 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
           {[
             { id: "overview", label: "Dashboard Overview", icon: BarChart3 },
+            { id: "my-account", label: "My Profile & Attendance", icon: UserPlus },
             { id: "admins", label: `Admin Approvals ${metrics?.pending_admins ? `(${metrics.pending_admins})` : ""}`, icon: ShieldCheck, alert: metrics?.pending_admins > 0 },
             { id: "activities", label: "Major Vedike Activities", icon: Sparkles },
             { id: "reels", label: "Reels & Posts", icon: Film },
             { id: "students", label: "Student Directory", icon: Users },
             { id: "volunteers", label: "Volunteer Management", icon: UserCheck },
+            { id: "id-cards", label: "Participant ID Cards", icon: ShieldCheck },
             { id: "attendance", label: "Daily Attendance Records", icon: Clock },
             { id: "working-committee", label: "Working Committee", icon: Briefcase },
             { id: "exports", label: "Attendance & Data Exports", icon: FileSpreadsheet },
@@ -2237,16 +2336,18 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                   <p className="text-xs text-stone-500">Try adjusting your filters or date selection.</p>
                 </div>
               ) : (
-                <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white max-w-full">
-                  <table className="w-full table-fixed text-left text-[10px] sm:text-xs">
+                <div className="overflow-x-auto rounded-2xl border border-stone-200 bg-white max-w-full">
+                  <table className="w-full min-w-[1050px] table-fixed text-left text-[10px] sm:text-xs">
                       <thead className="bg-stone-50 text-stone-400 uppercase tracking-wider font-extrabold border-b border-stone-200">
                         <tr>
-                          <th className="w-[15%] py-2 px-1.5 sm:px-2 whitespace-nowrap">Reg ID</th>
-                          <th className="w-[23%] py-2 px-1.5 sm:px-2 whitespace-nowrap">Name</th>
-                          <th className="w-[17%] py-2 px-1.5 sm:px-2 whitespace-nowrap">AUID</th>
-                          <th className="w-[17%] py-2 px-1.5 sm:px-2 whitespace-nowrap">Department</th>
-                          <th className="w-[12%] py-2 px-1.5 sm:px-2 whitespace-nowrap">Status</th>
-                          <th className="w-[16%] py-2 px-1.5 sm:px-2 text-right whitespace-nowrap">Power</th>
+                          <th className="w-[10%] py-2 px-1.5 sm:px-2 whitespace-nowrap">Reg ID</th>
+                          <th className="w-[17%] py-2 px-1.5 sm:px-2 whitespace-nowrap">Name</th>
+                          <th className="w-[13%] py-2 px-1.5 sm:px-2 whitespace-nowrap">AUID</th>
+                          <th className="w-[13%] py-2 px-1.5 sm:px-2 whitespace-nowrap">Department</th>
+                          <th className="w-[11%] py-2 px-1.5 sm:px-2 whitespace-nowrap">Check-In</th>
+                          <th className="w-[11%] py-2 px-1.5 sm:px-2 whitespace-nowrap">Check-Out</th>
+                          <th className="w-[11%] py-2 px-1.5 sm:px-2 whitespace-nowrap">Status</th>
+                          <th className="w-[14%] py-2 px-1.5 sm:px-2 text-right whitespace-nowrap">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-stone-100 bg-white">
@@ -2266,6 +2367,8 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                                 {p.akv_dept || p.akv_department || "--"}
                               </span>
                             </td>
+                            <td className="py-2 px-1.5 sm:px-2 whitespace-nowrap font-mono text-stone-700">{p.check_in_time || "—"}</td>
+                            <td className="py-2 px-1.5 sm:px-2 whitespace-nowrap font-mono text-stone-700">{p.check_out_time || "—"}</td>
                             <td className="py-2 px-1.5 sm:px-2 truncate">
                               <span className={`px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-extrabold inline-block max-w-full truncate ${
                                 p.status === "COMPLETED"
@@ -2286,20 +2389,22 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                                   <button
                                     type="button"
                                     onClick={() => handleSuperAdminCheckIn(p.user_id)}
+                                    disabled={attendanceMarkingIds.includes(p.user_id)}
                                     className="px-1.5 py-1 rounded-lg text-[9px] font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs cursor-pointer"
                                     title="Superadmin Check-In"
                                   >
-                                    Check In
+                                    {attendanceMarkingIds.includes(p.user_id) ? "…" : "Check In"}
                                   </button>
                                 )}
                                 {p.status === "CHECKED_IN" && (
                                   <button
                                     type="button"
                                     onClick={() => handleSuperAdminCheckOut(p.user_id)}
+                                    disabled={attendanceMarkingIds.includes(p.user_id)}
                                     className="px-1.5 py-1 rounded-lg text-[9px] font-extrabold bg-amber-500 hover:bg-amber-600 text-stone-950 shadow-xs cursor-pointer"
                                     title="Superadmin Check-Out"
                                   >
-                                    Check Out
+                                    {attendanceMarkingIds.includes(p.user_id) ? "…" : "Check Out"}
                                   </button>
                                 )}
 
@@ -2727,6 +2832,83 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
             </div>
           )}
 
+          {activeSection === "id-cards" && (
+            <div className="bg-white p-6 sm:p-8 rounded-3xl border border-stone-200 shadow-xs space-y-5">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h3 className="font-extrabold text-lg text-stone-900">Participant & Volunteer ID Cards</h3>
+                  <p className="mt-1 text-xs text-stone-500">Find and download cards for participants, volunteers, and Working Committee members.</p>
+                </div>
+                <div className="relative w-full sm:max-w-sm">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                  <input
+                    type="search"
+                    value={idCardSearch}
+                    onChange={(event) => setIdCardSearch(event.target.value)}
+                    placeholder="Search name, AUID, role, or registration ID"
+                    className="w-full rounded-xl border border-stone-300 py-2.5 pl-9 pr-3 text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-xs text-stone-500">
+                <span>{idCardsLoading ? "Loading ID cards…" : `${idCardRecords.length} ID card records`}</span>
+                <button type="button" onClick={() => loadIdCards()} disabled={idCardsLoading} className="inline-flex items-center gap-1.5 rounded-lg border border-stone-300 px-3 py-1.5 font-bold hover:bg-stone-50 disabled:opacity-50">
+                  <RefreshCw className={`h-3.5 w-3.5 ${idCardsLoading ? "animate-spin" : ""}`} />Refresh
+                </button>
+              </div>
+
+              <div className="overflow-x-auto rounded-2xl border border-stone-200">
+                <table className="w-full min-w-[780px] text-left text-xs">
+                  <thead className="bg-stone-50 text-[10px] uppercase tracking-wider text-stone-500">
+                    <tr>
+                      <th className="px-4 py-3">Name / Registration</th>
+                      <th className="px-4 py-3">AUID</th>
+                      <th className="px-4 py-3">Role</th>
+                      <th className="px-4 py-3">Event / Department</th>
+                      <th className="px-4 py-3">Email</th>
+                      <th className="px-4 py-3 text-right">ID Card</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-stone-100">
+                    {idCardRecords.map((card) => {
+                      const key = `${card.source_type}:${card.source_id}`;
+                      return (
+                        <tr key={key} className="hover:bg-amber-50/40">
+                          <td className="px-4 py-3">
+                            <span className="block font-bold text-stone-900">{card.name}</span>
+                            <span className="font-mono text-[10px] text-stone-500">{card.registration_id}</span>
+                          </td>
+                          <td className="px-4 py-3 font-mono font-semibold text-stone-700">{card.auid || "—"}</td>
+                          <td className="px-4 py-3"><span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-extrabold text-amber-900">{card.role}</span></td>
+                          <td className="px-4 py-3 text-stone-600">{card.event || card.department || "—"}</td>
+                          <td className="px-4 py-3 text-stone-600">{card.email}</td>
+                          <td className="px-4 py-3 text-right">
+                            <button type="button" onClick={() => handleIdCardDownload(card)} disabled={idCardDownloading === key} className="inline-flex items-center gap-1.5 rounded-lg bg-kar-red px-3 py-2 font-bold text-white hover:bg-red-800 disabled:opacity-50">
+                              <Download className="h-3.5 w-3.5" />{idCardDownloading === key ? "Preparing…" : "Download PDF"}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {!idCardsLoading && idCardRecords.length === 0 && (
+                      <tr><td colSpan={6} className="px-4 py-10 text-center text-stone-500">No matching ID cards found.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {activeSection === "my-account" && (
+            <MyProfileAttendance
+              profile={myAccountData?.profile || user}
+              attendanceData={myAccountData}
+              loading={myAccountLoading}
+              error={myAccountError}
+            />
+          )}
+
           {/* ==================================================== */}
           {/* SECTION 6: ATTENDANCE & DATA EXPORTS                */}
           {/* ==================================================== */}
@@ -2739,7 +2921,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-4 gap-6">
                 {/* Excel XLSX Export Card */}
                 <div className="p-6 rounded-3xl border-2 border-emerald-200 bg-emerald-50/40 space-y-4 flex flex-col justify-between">
                   <div className="space-y-4">
@@ -2762,6 +2944,27 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                     <Download className="w-4 h-4" />
                     <span>{officialExportLoading ? "Generating Official Workbook..." : "Download Official XLSX (15 Sheets)"}</span>
                   </button>
+                </div>
+
+                <div className="p-6 rounded-3xl border-2 border-amber-200 bg-amber-50/50 space-y-4 flex flex-col justify-between">
+                  <div className="space-y-4">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-md">
+                      <Users className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-base text-stone-900">Event Participant Details (.xlsx)</h4>
+                      <p className="mt-1 text-xs leading-relaxed text-stone-600">Exports every registration detail into separate sheets for each event. Choose one event or include all events.</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <select value={registrationExportEvent} onChange={(event) => setRegistrationExportEvent(event.target.value)} className="w-full rounded-xl border border-amber-300 bg-white px-3 py-2.5 text-xs font-semibold text-stone-800">
+                      <option value="all">All events — separate sheets</option>
+                      {eventsList.map((event) => <option key={event.id} value={event.id}>{event.title_en || event.id}</option>)}
+                    </select>
+                    <button type="button" onClick={handleEventRegistrationExport} disabled={registrationExportLoading} className="w-full rounded-xl bg-amber-600 py-3 text-xs font-extrabold text-white shadow-md transition-colors hover:bg-amber-700 disabled:opacity-50">
+                      <Download className="mr-2 inline h-4 w-4" />{registrationExportLoading ? "Building workbook…" : "Download Event Registrations"}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Working Committee Excel XLSX Export Card */}

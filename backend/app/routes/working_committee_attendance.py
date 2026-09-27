@@ -181,17 +181,15 @@ def get_working_committee_attendance(
     records_by_uid = {r.working_committee_member_id: r for r in records}
 
     # 4. Global statistics across ALL Working Committee members for this date
-    all_wc_users = get_wc_members_query(db).all()
-    total_wc_count = len(all_wc_users)
-    all_wc_user_ids = [u.id for u in all_wc_users]
+    wc_user_ids = get_wc_members_query(db).with_entities(User.id).subquery()
+    total_wc_count = db.query(func.count()).select_from(wc_user_ids).scalar() or 0
+    global_status_counts = dict(db.query(WorkingCommitteeAttendance.status, func.count(WorkingCommitteeAttendance.id))
+        .join(wc_user_ids, wc_user_ids.c.id == WorkingCommitteeAttendance.working_committee_member_id)
+        .filter(WorkingCommitteeAttendance.attendance_date == target_date)
+        .group_by(WorkingCommitteeAttendance.status).all())
 
-    all_date_records = db.query(WorkingCommitteeAttendance).filter(
-        WorkingCommitteeAttendance.attendance_date == target_date,
-        WorkingCommitteeAttendance.working_committee_member_id.in_(all_wc_user_ids) if all_wc_user_ids else False
-    ).all()
-
-    count_checked_in = sum(1 for r in all_date_records if r.status == "CHECKED_IN")
-    count_completed = sum(1 for r in all_date_records if r.status == "COMPLETED")
+    count_checked_in = global_status_counts.get("CHECKED_IN", 0)
+    count_completed = global_status_counts.get("COMPLETED", 0)
     count_not_marked = total_wc_count - (count_checked_in + count_completed)
     if count_not_marked < 0:
         count_not_marked = 0
@@ -1111,6 +1109,10 @@ def export_working_committee_excel(
             if col_name == "Total Days Present":
                 cell.font = font_bold_data
                 cell.alignment = align_center
+            elif col_name == "AUID":
+                cell.number_format = "@"
+                if cell.value is not None:
+                    cell.value = str(cell.value)
 
     ws.freeze_panes = "A5"
     if end_data_row > header_row_idx:

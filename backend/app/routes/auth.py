@@ -81,8 +81,8 @@ class StudentRegisterRequest(BaseModel):
     @classmethod
     def clean_auid(cls, v: str) -> str:
         cleaned = v.strip().upper()
-        if not re.match(r"^[0-9A-Z\-]{3,30}$", cleaned):
-            raise ValueError("AUID must contain 3-30 valid alphanumeric characters (e.g., AIT22BE123)")
+        if not re.fullmatch(r"[0-9A-Z]{3,30}", cleaned):
+            raise ValueError("AUID must contain 3-30 letters and numbers only (e.g., AIT23BEAI129)")
         return cleaned
 
     @field_validator("phone")
@@ -429,6 +429,12 @@ def forgot_password(
     )
     if not delivery_ok:
         print(f"[PASSWORD RESET EMAIL ERROR] Delivery failed for user {user.id}.", flush=True)
+        db.delete(reset_record)
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="The password reset email could not be sent. Please try again shortly or contact the administrator."
+        )
 
     return {
         "success": True,

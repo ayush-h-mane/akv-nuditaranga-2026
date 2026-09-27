@@ -3,6 +3,7 @@ import confetti from "canvas-confetti";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../services/api";
 import { DigitalPass } from "../components/DigitalPass";
+import { MyProfileAttendance } from "../components/MyProfileAttendance";
 import { 
   User, 
   Calendar, 
@@ -20,11 +21,8 @@ import {
   ChevronRight,
   QrCode,
   X,
-  Plus,
-  Printer,
-  ShieldCheck
+  Plus
 } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
 
 export const StudentDashboard = ({ onNavigateHome }) => {
   const { user, logout } = useAuth();
@@ -341,6 +339,18 @@ export const StudentDashboard = ({ onNavigateHome }) => {
           </button>
 
           <button
+            onClick={() => setActiveTab("my-profile")}
+            className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold whitespace-nowrap transition-all flex items-center gap-2 ${
+              activeTab === "my-profile"
+                ? "bg-stone-900 text-white shadow-xs"
+                : "text-stone-600 hover:bg-stone-100"
+            }`}
+          >
+            <Clock className="w-4 h-4 text-amber-400" />
+            <span>My Profile & Attendance</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab("browse-events")}
             className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold whitespace-nowrap transition-all flex items-center gap-2 ${
               activeTab === "browse-events"
@@ -499,129 +509,6 @@ export const StudentDashboard = ({ onNavigateHome }) => {
                   <span>Register for Cultural Events</span>
                   <ChevronRight className="w-3.5 h-3.5" />
                 </button>
-              </div>
-            </div>
-
-            {/* ==================================================== */}
-            {/* OFFICIAL VERIFICATION ID CARD & ALL-INFO QR CODE    */}
-            {/* Required for Volunteer & Participant (v2.1.0)       */}
-            {/* ==================================================== */}
-            <div className="bg-white rounded-3xl p-6 sm:p-7 border-2 border-amber-300 shadow-md space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200 pb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-kar-red to-amber-500 text-white flex items-center justify-center shadow-xs">
-                    <ShieldCheck className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="font-extrabold text-base text-stone-900">
-                      Official Candidate ID Card & Verification QR
-                    </h3>
-                    <p className="text-xs text-stone-500">
-                      Contains complete verified candidate credentials for desk attendance & campus security check-in.
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      await api.downloadStudentIdCard();
-                    } catch (err) {
-                      console.error("ID card download failed:", err);
-                      window.print();
-                    }
-                  }}
-                  className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold flex items-center gap-1.5 transition-colors self-start cursor-pointer shadow-xs"
-                >
-                  <Printer className="w-3.5 h-3.5 text-kar-red" />
-                  <span>Download ID Card</span>
-                </button>
-              </div>
-
-              {/* ID Card Box */}
-              <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-stone-50 via-white to-amber-50/50 border border-stone-200 shadow-xs flex flex-col md:flex-row items-center justify-between gap-6">
-                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5 text-center sm:text-left flex-1">
-                  {/* Photo */}
-                  <div className="w-24 h-28 sm:w-28 sm:h-32 rounded-2xl overflow-hidden border-2 border-kar-red bg-stone-100 shadow-md shrink-0">
-                    {profile?.photo_url ? (
-                      <img
-                        src={profile.photo_url}
-                        alt={profile.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-stone-400 bg-stone-100">
-                        <User className="w-10 h-10" />
-                        <span className="text-[10px] font-bold mt-1">No Photo</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Details */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-kar-red text-white uppercase shadow-2xs">
-                        {profile?.role}
-                      </span>
-                      {profile?.volunteer_domain && (
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-amber-400 text-stone-900 shadow-2xs">
-                          {profile.volunteer_domain}
-                        </span>
-                      )}
-                      <span className="font-mono text-xs font-bold text-stone-500 bg-stone-100 px-2 py-0.5 rounded">
-                        {profile?.registration_id}
-                      </span>
-                    </div>
-
-                    <h4 className="text-xl font-black text-stone-900 tracking-tight">
-                      {profile?.name}
-                    </h4>
-
-                    <p className="text-xs font-bold text-kar-red font-mono">
-                      AUID: {profile?.auid}
-                    </p>
-
-                    <p className="text-xs font-bold text-stone-800">
-                      {profile?.institute}
-                    </p>
-
-                    <p className="text-xs text-stone-600 font-semibold">
-                      {profile?.department} • Sem {profile?.semester} (Sec {profile?.section})
-                    </p>
-
-                    <p className="text-[11px] text-stone-500 font-mono">
-                      {profile?.email} • {profile?.phone}
-                    </p>
-                  </div>
-                </div>
-
-                {/* QR Code Container */}
-                <div className="flex flex-col items-center p-3.5 bg-white rounded-2xl border-2 border-stone-900 shadow-md shrink-0">
-                  <QRCodeSVG
-                    value={JSON.stringify({
-                      reg_id: profile?.registration_id,
-                      name: profile?.name,
-                      auid: profile?.auid,
-                      role: profile?.role,
-                      domain: profile?.volunteer_domain || "N/A",
-                      institute: profile?.institute,
-                      department: profile?.department,
-                      semester: profile?.semester,
-                      section: profile?.section,
-                      email: profile?.email,
-                      phone: profile?.phone,
-                      verified_by: "Acharya Kannada Vedike Nuditaranga 2026"
-                    })}
-                    size={130}
-                    level="M"
-                    includeMargin={false}
-                  />
-                  <span className="text-[10px] font-mono font-extrabold text-stone-800 mt-2 tracking-wide uppercase">
-                    Scan to Verify
-                  </span>
-                  <span className="text-[9px] text-stone-400">Official Fest Credential</span>
-                </div>
               </div>
             </div>
 
@@ -884,6 +771,10 @@ export const StudentDashboard = ({ onNavigateHome }) => {
               })}
             </div>
           </div>
+        )}
+
+        {activeTab === "my-profile" && (
+          <MyProfileAttendance profile={profile} attendanceData={dashboardData} loading={loading} />
         )}
 
         {/* ==================================================== */}

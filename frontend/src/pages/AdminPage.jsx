@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { CameraQRScanner } from "../components/CameraQRScanner";
 import { EventImageUpload } from "../components/EventImageUpload";
+import { MyProfileAttendance } from "../components/MyProfileAttendance";
 
 export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
   const { user, role, logout } = useAuth();
@@ -40,6 +41,9 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
   
   const [activeTab, setActiveTab] = useState("attendance"); // "overview", "attendance", "checkin"
   const [overview, setOverview] = useState(null);
+  const [myAccountData, setMyAccountData] = useState(null);
+  const [myAccountLoading, setMyAccountLoading] = useState(false);
+  const [myAccountError, setMyAccountError] = useState("");
   const [volunteers, setVolunteers] = useState([]);
   const [todayDate, setTodayDate] = useState("");
   const [loading, setLoading] = useState(true);
@@ -169,6 +173,16 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
   useEffect(() => {
     loadAdminData();
   }, [deptFilter, akvDeptFilter, statusFilter, selectedDate]);
+
+  useEffect(() => {
+    let mounted = true;
+    setMyAccountLoading(true);
+    api.getStudentDashboard()
+      .then((data) => { if (mounted) setMyAccountData(data); })
+      .catch((err) => { if (mounted) setMyAccountError(err.message || "Could not load your profile and attendance."); })
+      .finally(() => { if (mounted) setMyAccountLoading(false); });
+    return () => { mounted = false; };
+  }, []);
 
   // Check-In Handler
   const handleCheckIn = async (participantUserId) => {
@@ -461,6 +475,16 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
         {/* Section Tabs */}
         <div className="flex items-center gap-2 border-b border-stone-200 mb-6 overflow-x-auto pb-2">
           <button
+            onClick={() => setActiveTab("my-account")}
+            className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold whitespace-nowrap transition-all flex items-center gap-2 ${
+              activeTab === "my-account" ? "bg-stone-900 text-white shadow-xs" : "text-stone-600 hover:bg-white"
+            }`}
+          >
+            <Users className="w-4 h-4 text-amber-400" />
+            <span>My Profile & Attendance</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab("attendance")}
             className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold whitespace-nowrap transition-all flex items-center gap-2 ${
               activeTab === "attendance"
@@ -499,6 +523,15 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
             <span>Cultural Gallery</span>
           </button>
         </div>
+
+        {activeTab === "my-account" && (
+          <MyProfileAttendance
+            profile={myAccountData?.profile || user}
+            attendanceData={myAccountData}
+            loading={myAccountLoading}
+            error={myAccountError}
+          />
+        )}
 
         {/* ==================================================== */}
         {/* TAB 1: VOLUNTEER ATTENDANCE (TODAY ONLY)             */}
