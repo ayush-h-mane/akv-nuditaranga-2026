@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.36",
-  "staged_version": "2.2.37",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.2.37",
+  "staged_version": "2.2.38",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.37",
+      "released_at": "2026-09-27T13:03:00+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.37: Added the full sitting NOGRAJ pose to the home-page celebration banner, removed its checkerboard background, and tuned the seat alignment and mobile Kannada headline size.; Made password-reset requests report SMTP failures instead of claiming offline success; moved downloadable ID cards to a Super Admin directory; added per-event participant Excel exports; enforced alphanumeric AUID registration; and reduced attendance queries and refreshes while showing check-in/out times.; Added a self-service profile and attendance history view for students, volunteers, working committee members, admins, and superadmins."
+    },
     {
       "version": "2.2.36",
       "released_at": "2026-09-27T02:09:54+0530",

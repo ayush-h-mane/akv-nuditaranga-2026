@@ -7,11 +7,12 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
 
 from ..database import get_db
-from ..models import User, Event, Registration, VolunteerAttendance, AuditLog
+from ..models import User, Event, Registration, VolunteerAttendance, WorkingCommitteeAttendance, AttendanceRecord, AuditLog
 from ..schemas import TeamMemberSchema
 from ..auth_deps import require_student, get_password_hash, verify_password
 from ..routes.registrations import generate_unique_reg_id
 from ..services.id_card_service import generate_candidate_id_card_pdf
+from ..utils.timezone import format_to_ist_time, iso_date_to_dmy, get_current_ist_date_str
 
 router = APIRouter(prefix="/student", tags=["Student"])
 
@@ -86,10 +87,22 @@ def get_student_dashboard(
                 "marked_by": rec.marked_by
             })
 
-    # Official event attendance records (Check-In & Check-Out)
-    from ..models import AttendanceRecord
-    from ..utils.timezone import format_to_ist_time, iso_date_to_dmy, get_current_ist_date_str
+    working_committee_attendance_records = []
+    if current_user.is_working_committee or current_user.role in ("WORKING_COMMITTEE", "ADMIN", "SUPERADMIN"):
+        wc_records = db.query(WorkingCommitteeAttendance).filter(
+            WorkingCommitteeAttendance.working_committee_member_id == current_user.id
+        ).order_by(WorkingCommitteeAttendance.attendance_date.desc()).all()
+        for rec in wc_records:
+            working_committee_attendance_records.append({
+                "date": rec.attendance_date,
+                "date_dmy": iso_date_to_dmy(rec.attendance_date),
+                "status": rec.status,
+                "check_in_time": format_to_ist_time(rec.check_in_at) if rec.check_in_at else None,
+                "check_out_time": format_to_ist_time(rec.check_out_at) if rec.check_out_at else None,
+                "submitted": rec.submitted,
+            })
 
+    # Official event attendance records (Check-In & Check-Out)
     attendance_records = []
     official_records = db.query(AttendanceRecord).filter(
         AttendanceRecord.user_id == current_user.id
@@ -126,7 +139,12 @@ def get_student_dashboard(
             "section": current_user.section,
             "gender": current_user.gender,
             "role": current_user.role,
-            "registration_id": current_user.registration_id
+            "registration_id": current_user.registration_id,
+            "volunteer_domain": current_user.volunteer_domain,
+            "is_working_committee": current_user.is_working_committee,
+            "working_committee_role": current_user.working_committee_role,
+            "admin_type": current_user.admin_type,
+            "faculty_id": current_user.faculty_id,
         },
         "stats": {
             "registered_events_count": len(registered_events),
@@ -142,7 +160,10 @@ def get_student_dashboard(
             "is_volunteer": current_user.role == "VOLUNTEER",
             "today_attendance": today_status or "NOT_MARKED",
             "attendance_history": volunteer_attendance_records
-        } if current_user.role == "VOLUNTEER" else None
+        } if current_user.role == "VOLUNTEER" else None,
+        "working_committee_info": {
+            "attendance_history": working_committee_attendance_records
+        } if current_user.is_working_committee or current_user.role in ("WORKING_COMMITTEE", "ADMIN", "SUPERADMIN") else None
     }
 
 @router.get("/my-registrations")
@@ -299,31 +320,6 @@ def student_register_event(
         "event_date": event.event_date,
         "event_time": event.event_time
     }
-
-
-@router.get("/id-card")
-def download_student_id_card(current_user: User = Depends(require_student)):
-    pdf_payload = {
-        "name": current_user.name,
-        "auid": current_user.auid,
-        "registration_id": current_user.registration_id,
-        "role": current_user.role,
-        "institute": current_user.institute,
-        "department": current_user.department,
-        "semester": current_user.semester,
-        "section": current_user.section,
-        "email": current_user.email,
-        "phone": current_user.phone,
-        "volunteer_domain": current_user.volunteer_domain,
-        "photo_url": current_user.photo_url,
-    }
-    pdf_bytes = generate_candidate_id_card_pdf(pdf_payload)
-    filename = f"AKV_ID_Card_{current_user.registration_id}.pdf"
-    return Response(
-        content=pdf_bytes,
-        media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
-    )
 
 
 @router.get("/event-pass/{registration_id}")

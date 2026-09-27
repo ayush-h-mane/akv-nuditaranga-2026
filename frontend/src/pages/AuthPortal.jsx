@@ -652,6 +652,10 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                             <input
                               type="text"
                               required
+                              minLength={3}
+                              maxLength={30}
+                              pattern="[A-Za-z0-9]{3,30}"
+                              title="Use 3–30 letters and numbers only, for example AIT23BEAI129."
                               value={studentRegisterForm.auid}
                               onChange={(e) => setStudentRegisterForm({ ...studentRegisterForm, auid: e.target.value.toUpperCase() })}
                               placeholder="e.g. AIT22CS001"

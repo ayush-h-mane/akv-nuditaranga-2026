@@ -13,6 +13,7 @@ from ..database import get_db
 from ..models import User, Admin, Event, Registration, VolunteerAttendance, AuditLog
 from ..auth_deps import require_superadmin
 from ..services.email_service import send_admin_approval_email
+from ..services.id_card_service import generate_candidate_id_card_pdf
 
 router = APIRouter(prefix="/superadmin", tags=["Super Admin"])
 
@@ -462,20 +463,20 @@ def list_all_volunteers(
 
     volunteers = query.order_by(User.name.asc()).all()
     today_str = datetime.date.today().strftime("%Y-%m-%d")
+    volunteer_ids = [v.id for v in volunteers]
+    today_records = db.query(VolunteerAttendance).filter(
+        VolunteerAttendance.date == today_str,
+        VolunteerAttendance.user_id.in_(volunteer_ids) if volunteer_ids else False,
+    ).all()
+    today_by_user = {record.user_id: record for record in today_records}
+    present_counts = dict(db.query(VolunteerAttendance.user_id, func.count(VolunteerAttendance.id))
+        .filter(VolunteerAttendance.status == "PRESENT", VolunteerAttendance.user_id.in_(volunteer_ids) if volunteer_ids else False)
+        .group_by(VolunteerAttendance.user_id).all())
 
     results = []
     for v in volunteers:
-        # Check today's attendance
-        today_att = db.query(VolunteerAttendance).filter(
-            VolunteerAttendance.user_id == v.id,
-            VolunteerAttendance.date == today_str
-        ).first()
-
-        # Count total days present
-        total_present = db.query(func.count(VolunteerAttendance.id)).filter(
-            VolunteerAttendance.user_id == v.id,
-            VolunteerAttendance.status == "PRESENT"
-        ).scalar() or 0
+        today_att = today_by_user.get(v.id)
+        total_present = present_counts.get(v.id, 0)
 
         results.append({
             "user_id": v.id,
@@ -802,6 +803,10 @@ def export_attendance_xlsx(
                     cell.font = Font(bold=True, color="15803D")
                 elif cell.value == "ABSENT":
                     cell.font = Font(bold=True, color="B91C1C")
+            if cell.column == 2:  # Keep alphanumeric AUIDs as text in Excel.
+                cell.number_format = "@"
+                if cell.value is not None:
+                    cell.value = str(cell.value)
 
     # Adjust column widths
     column_widths = {
@@ -883,4 +888,205 @@ def reset_database_endpoint(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to reset database: {str(e)}"
         )
+
+
+@router.get("/registrations/export-xlsx")
+def export_event_registrations_xlsx(
+    event_id: Optional[str] = None,
+    current_user: User = Depends(require_superadmin),
+    db: Session = Depends(get_db),
+):
+    """Export full registration details into one Excel sheet per festival event."""
+    events_query = db.query(Event).order_by(Event.title_en.asc())
+    if event_id and event_id != "all":
+        events_query = events_query.filter(Event.id == event_id)
+    events = events_query.all()
+    if event_id and event_id != "all" and not events:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    registrations = db.query(Registration).order_by(Registration.created_at.asc()).all()
+    registrations_by_event = {}
+    for registration in registrations:
+        registrations_by_event.setdefault(registration.event_id, []).append(registration)
+
+    wb = openpyxl.Workbook()
+    wb.remove(wb.active)
+    headers = [
+        "Event", "Event ID", "Registration ID", "Record ID", "Full Name", "AUID", "USN",
+        "Institute", "Department", "Semester", "Section", "Email", "Phone",
+        "Gender", "Team Registration", "Team Name", "Team Members (JSON)", "Photo URL",
+        "Status", "Check-In Time", "Checked In By", "Account User ID", "Registered At",
+    ]
+    header_fill = PatternFill(start_color="991B1B", end_color="991B1B", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF")
+    thin_border = Border(bottom=Side(style="thin", color="E7E5E4"))
+
+    for index, event in enumerate(events):
+        base_title = (event.title_en or event.id or f"Event {index + 1}").strip()
+        safe_title = "".join(ch for ch in base_title if ch not in "[]:*?/\\")[:25].strip() or f"Event {index + 1}"
+        sheet_title = f"{safe_title} {index + 1}"[:31]
+        ws = wb.create_sheet(title=sheet_title)
+        ws.append(headers)
+        for cell in ws[1]:
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        for registration in registrations_by_event.get(event.id, []):
+            ws.append([
+                event.title_en or event.id,
+                str(event.id),
+                str(registration.registration_id or ""),
+                str(registration.id),
+                registration.full_name or "",
+                str(registration.auid or ""),
+                str(registration.usn or ""),
+                registration.institute or "",
+                registration.department or "",
+                registration.semester,
+                registration.section or "",
+                registration.email or "",
+                registration.phone or "",
+                registration.gender or "",
+                "Yes" if registration.is_team else "No",
+                registration.team_name or "",
+                registration.team_members or "",
+                registration.photo_url or "",
+                registration.status or "",
+                registration.checkin_time.isoformat(sep=" ") if registration.checkin_time else "",
+                registration.checked_in_by or "",
+                registration.user_id or "",
+                registration.created_at.isoformat(sep=" ") if registration.created_at else "",
+            ])
+        for row in ws.iter_rows(min_row=2):
+            for cell in row:
+                cell.border = thin_border
+                cell.alignment = Alignment(vertical="top", wrap_text=True)
+                if cell.data_type == "f":
+                    cell.value = "'" + str(cell.value)
+            for column in (6, 7):
+                ws.cell(row=row[0].row, column=column).number_format = "@"
+        ws.freeze_panes = "A2"
+        ws.auto_filter.ref = ws.dimensions
+        for column, width in enumerate([28, 18, 18, 12, 26, 18, 18, 30, 28, 12, 12, 32, 16, 14, 18, 24, 40, 36, 16, 23, 22, 16, 23], start=1):
+            ws.column_dimensions[openpyxl.utils.get_column_letter(column)].width = width
+        ws.row_dimensions[1].height = 32
+
+    if not events:
+        ws = wb.create_sheet("No Events")
+        ws.append(["No events are currently configured."])
+
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    filename = "AKV_Event_Registrations.xlsx" if not event_id or event_id == "all" else f"AKV_Event_Registrations_{event_id}.xlsx"
+    return Response(
+        content=output.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+def _id_card_user_query(db: Session):
+    return db.query(User).filter(or_(
+        User.role.in_(["PARTICIPANT", "STUDENT", "VOLUNTEER", "SPECTATOR"]),
+        User.is_working_committee == True,
+        (User.admin_type == "WORKING_COMMITTEE") & (User.role.in_(["ADMIN", "WORKING_COMMITTEE"])),
+        User.role == "WORKING_COMMITTEE",
+        User.volunteer_domain == "Working Committee",
+    ))
+
+
+@router.get("/id-cards")
+def list_superadmin_id_cards(
+    search: Optional[str] = None,
+    current_user: User = Depends(require_superadmin),
+    db: Session = Depends(get_db),
+):
+    """List printable ID-card records for students, volunteers, and working committee members."""
+    user_query = _id_card_user_query(db)
+    if search and search.strip():
+        term = f"%{search.strip().lower()}%"
+        user_query = user_query.filter(or_(
+            func.lower(User.name).like(term),
+            func.lower(User.auid).like(term),
+            func.lower(User.email).like(term),
+            func.lower(User.registration_id).like(term),
+            func.lower(User.role).like(term),
+            func.lower(User.working_committee_role).like(term),
+        ))
+
+    cards = []
+    for person in user_query.order_by(User.name.asc()).all():
+        role = person.working_committee_role if person.is_working_committee or person.role in ("ADMIN", "WORKING_COMMITTEE") else person.role
+        cards.append({
+            "source_type": "user", "source_id": person.id, "name": person.name,
+            "auid": person.auid, "registration_id": person.registration_id,
+            "role": role or person.role, "email": person.email,
+            "department": person.department, "event": "",
+        })
+
+    registration_query = db.query(Registration, Event.title_en).join(Event, Registration.event_id == Event.id).filter(Registration.user_id.is_(None))
+    if search and search.strip():
+        term = f"%{search.strip().lower()}%"
+        registration_query = registration_query.filter(or_(
+            func.lower(Registration.full_name).like(term),
+            func.lower(Registration.auid).like(term),
+            func.lower(Registration.usn).like(term),
+            func.lower(Registration.email).like(term),
+            func.lower(Registration.registration_id).like(term),
+        ))
+    for registration, event_title in registration_query.order_by(Registration.full_name.asc()).all():
+        cards.append({
+            "source_type": "registration", "source_id": registration.id,
+            "name": registration.full_name, "auid": registration.auid or registration.usn,
+            "registration_id": registration.registration_id, "role": "PARTICIPANT",
+            "email": registration.email, "department": registration.department,
+            "event": event_title or registration.event_id,
+        })
+
+    cards.sort(key=lambda card: (card["name"] or "").casefold())
+    return {"cards": cards, "total": len(cards)}
+
+
+@router.get("/id-cards/{source_type}/{source_id}/download")
+def download_superadmin_id_card(
+    source_type: str,
+    source_id: int,
+    current_user: User = Depends(require_superadmin),
+    db: Session = Depends(get_db),
+):
+    if source_type == "user":
+        person = _id_card_user_query(db).filter(User.id == source_id).first()
+        if not person:
+            raise HTTPException(status_code=404, detail="ID card record not found")
+        card_data = {
+            "name": person.name, "auid": person.auid, "registration_id": person.registration_id,
+            "role": person.working_committee_role if person.is_working_committee else person.role,
+            "institute": person.institute, "department": person.department,
+            "semester": person.semester, "section": person.section, "email": person.email,
+            "phone": person.phone, "volunteer_domain": person.volunteer_domain,
+            "photo_url": person.photo_url,
+        }
+        filename_id = person.registration_id or person.auid
+    elif source_type == "registration":
+        registration = db.query(Registration).filter(Registration.id == source_id, Registration.user_id.is_(None)).first()
+        if not registration:
+            raise HTTPException(status_code=404, detail="ID card record not found")
+        card_data = {
+            "name": registration.full_name, "auid": registration.auid or registration.usn,
+            "registration_id": registration.registration_id, "role": "PARTICIPANT",
+            "institute": registration.institute, "department": registration.department,
+            "semester": registration.semester, "section": registration.section,
+            "email": registration.email, "phone": registration.phone,
+            "photo_url": registration.photo_url,
+        }
+        filename_id = registration.registration_id
+    else:
+        raise HTTPException(status_code=400, detail="Invalid ID card source")
+
+    return Response(
+        content=generate_candidate_id_card_pdf(card_data),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="AKV_ID_Card_{filename_id}.pdf"'},
+    )
 

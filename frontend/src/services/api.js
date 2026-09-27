@@ -278,53 +278,33 @@ export const api = {
   },
 
   async forgotPassword(identifier) {
-    try {
-      const res = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identifier })
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.detail || "Failed to process forgot password request");
-      }
-      return data;
-    } catch (err) {
-      if (isNetworkError(err)) {
-        return {
-          success: true,
-          message: "If an account exists with this AUID, email, or username, a 10-minute password reset link has been dispatched from akv@acharya.ac.in to your registered college email."
-        };
-      }
-      throw err;
+    const res = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ identifier })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.detail || "Failed to send the password reset email.");
     }
+    return data;
   },
 
   async resetPassword(token, newPassword, confirmPassword) {
-    try {
-      const res = await fetch(`${API_BASE_URL}/auth/reset-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token,
-          new_password: newPassword,
-          confirm_password: confirmPassword
-        })
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.detail || "Failed to reset password");
-      }
-      return data;
-    } catch (err) {
-      if (isNetworkError(err)) {
-        return {
-          success: true,
-          message: "Password successfully reset. You can now log in with your new password."
-        };
-      }
-      throw err;
+    const res = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token,
+        new_password: newPassword,
+        confirm_password: confirmPassword
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.detail || "Failed to reset password");
     }
+    return data;
   },
 
   async adminRegister(payload) {
@@ -581,41 +561,6 @@ export const api = {
       }
       throw err;
     }
-  },
-
-  async downloadStudentIdCard() {
-    const res = await fetch(`${API_BASE_URL}/student/id-card`, {
-      headers: { ...getAuthHeaders() }
-    });
-    if (!res.ok) {
-      let errorMsg = "Failed to download ID card";
-      try {
-        const errData = await res.json();
-        if (errData.detail) errorMsg = errData.detail;
-      } catch {
-        try {
-          const text = await res.text();
-          if (text) errorMsg = text.slice(0, 150);
-        } catch {}
-      }
-      throw new Error(errorMsg);
-    }
-    const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    const disposition = res.headers.get("Content-Disposition");
-    let filename = `AKV_ID_Card_${new Date().toISOString().split("T")[0]}.pdf`;
-    if (disposition && disposition.includes("filename=")) {
-      const match = disposition.match(/filename=["']?([^"';]+)["']?/);
-      if (match && match[1]) filename = match[1];
-    }
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => window.URL.revokeObjectURL(url), 1000);
-    return true;
   },
 
   async downloadEventPass(registrationId) {
@@ -1216,6 +1161,58 @@ export const api = {
     document.body.appendChild(a);
     a.click();
     a.remove();
+    setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+    return true;
+  },
+
+  async exportEventRegistrationsXlsx(eventId = "all") {
+    const query = new URLSearchParams({ event_id: eventId || "all" });
+    const res = await fetch(`${API_BASE_URL}/superadmin/registrations/export-xlsx?${query}`, {
+      headers: { ...getAuthHeaders() }
+    });
+    if (!res.ok) {
+      const data = await readApiResponse(res);
+      throw new Error(data.detail || "Failed to export event registrations.");
+    }
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = eventId && eventId !== "all" ? `AKV_Event_Registrations_${eventId}.xlsx` : "AKV_Event_Registrations.xlsx";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+    return true;
+  },
+
+  async getSuperAdminIdCards(search = "") {
+    const query = new URLSearchParams();
+    if (search.trim()) query.set("search", search.trim());
+    const res = await fetch(`${API_BASE_URL}/superadmin/id-cards${query.size ? `?${query}` : ""}`, {
+      headers: { ...getAuthHeaders() }
+    });
+    const data = await readApiResponse(res);
+    if (!res.ok) throw new Error(data.detail || "Failed to load the ID card directory.");
+    return data;
+  },
+
+  async downloadSuperAdminIdCard(sourceType, sourceId) {
+    const res = await fetch(`${API_BASE_URL}/superadmin/id-cards/${encodeURIComponent(sourceType)}/${encodeURIComponent(sourceId)}/download`, {
+      headers: { ...getAuthHeaders() }
+    });
+    if (!res.ok) {
+      const data = await readApiResponse(res);
+      throw new Error(data.detail || "Failed to generate the ID card.");
+    }
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `AKV_ID_Card_${sourceId}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
     setTimeout(() => window.URL.revokeObjectURL(url), 1000);
     return true;
   },

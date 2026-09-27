@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useLanguage } from "../context/LanguageContext";
 import { siteConfig } from "../config/siteConfig";
 import { CountdownTimer } from "../components/CountdownTimer";
@@ -11,6 +11,7 @@ import {
 
 export const HeroSection = ({ onExploreNuditaranga, onKnowAbout, onOpenAuthTab, setCurrentView }) => {
   const { lang, t } = useLanguage();
+  const [mascotGreeting, setMascotGreeting] = useState(false);
 
   return (
     <section className="relative pt-24 pb-12 sm:pt-28 sm:pb-16 lg:pt-36 lg:pb-24 overflow-hidden bg-gradient-to-b from-amber-50/70 via-stone-50 to-white">
@@ -62,13 +63,31 @@ export const HeroSection = ({ onExploreNuditaranga, onKnowAbout, onOpenAuthTab, 
           </h1>
         </div>
 
-        <div className="relative inline-flex w-fit max-w-[calc(100vw-2rem)] items-center justify-center gap-2 sm:gap-5 mt-1 mb-5 px-4 sm:px-9 py-2.5 sm:py-4 rounded-2xl sm:rounded-3xl border-2 border-amber-300 bg-gradient-to-r from-red-800 via-kar-red to-red-800 shadow-[0_12px_35px_rgba(127,29,29,0.28)]">
+        <div className="relative isolate inline-flex min-h-28 w-full max-w-[calc(100vw-2rem)] items-center justify-center gap-2 overflow-visible sm:min-h-40 sm:gap-5 mt-1 mb-5 px-3 sm:px-9 py-2.5 sm:py-4 rounded-2xl sm:rounded-3xl border-2 border-amber-300 bg-gradient-to-r from-red-800 via-kar-red to-red-800 shadow-[0_12px_35px_rgba(127,29,29,0.28)]">
           <span className="absolute inset-0 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-transparent via-white/10 to-transparent pointer-events-none" />
-          <Sparkles className="relative w-5 h-5 sm:w-8 sm:h-8 text-amber-300 motion-safe:animate-pulse" aria-hidden="true" />
-          <p className="relative text-3xl sm:text-6xl lg:text-7xl font-black font-kannada-serif tracking-wide text-center leading-tight text-amber-200 drop-shadow-[0_2px_8px_rgba(255,215,0,0.5)]">
+          <Sparkles className="relative z-10 hidden w-4 h-4 shrink-0 sm:block sm:w-8 sm:h-8 text-amber-300 motion-safe:animate-pulse" aria-hidden="true" />
+          <p className={`relative z-10 text-center font-black font-kannada-serif tracking-wide leading-tight text-amber-200 drop-shadow-[0_2px_8px_rgba(255,215,0,0.5)] ${lang === "kn" ? "max-w-[80%] text-[clamp(1.8rem,8.5vw,3rem)] sm:text-5xl lg:text-6xl" : "max-w-[74%] text-2xl sm:text-5xl lg:text-6xl"}`}>
             {lang === "kn" ? "ದಶಕೋತ್ಸವ" : "10th Year’s Grand Celebration"}
           </p>
-          <Sparkles className="relative w-5 h-5 sm:w-8 sm:h-8 text-amber-300 motion-safe:animate-pulse" aria-hidden="true" />
+          <Sparkles className="relative z-10 hidden w-4 h-4 shrink-0 sm:block sm:w-8 sm:h-8 text-amber-300 motion-safe:animate-pulse" aria-hidden="true" />
+          <button
+            type="button"
+            onClick={() => setMascotGreeting((value) => !value)}
+            aria-label={lang === "kn" ? "ನೋಗ್ರಾಜ್ ಜೊತೆ ಮಾತನಾಡಿ" : "Talk to NOGRAJ"}
+            aria-expanded={mascotGreeting}
+            className="absolute -right-1 -top-24 z-20 w-32 sm:-right-2 sm:-top-28 sm:w-36 lg:-top-36 lg:w-44 cursor-pointer rounded-full focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-amber-300"
+          >
+            {mascotGreeting && (
+              <span role="status" className="absolute -left-32 top-3 w-32 rounded-2xl border border-amber-200 bg-white px-3 py-2 text-xs font-bold leading-snug text-stone-800 shadow-lg sm:-left-44 sm:w-44 sm:text-sm">
+                {lang === "kn" ? "ನಮಸ್ಕಾರ! ಕರುನಾಡ ವೈಭವಕ್ಕೆ ಸ್ವಾಗತ." : "Namaskara! Welcome to Karunada Vaibhava."}
+              </span>
+            )}
+            <img
+              src="/images/nograj-sitting-transparent.png"
+              alt={lang === "kn" ? "ಕೆಂಪು ವೇದಿಕೆಯ ಮೇಲೆ ಕುಳಿತಿರುವ ನೋಗ್ರಾಜ್" : "NOGRAJ sitting on the red celebration wall"}
+              className="block h-auto w-full drop-shadow-[0_10px_15px_rgba(75,12,0,0.42)] transition-transform duration-300 hover:-translate-y-1"
+            />
+          </button>
         </div>
 
         {/* Tagline */}
