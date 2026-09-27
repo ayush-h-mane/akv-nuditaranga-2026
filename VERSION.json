@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.41",
-  "staged_version": "2.2.42",
+  "production_version": "2.2.42",
+  "staged_version": "2.2.43",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.42",
+      "released_at": "2026-09-27T23:06:54+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.42: Fix authenticated event quick registration being blocked by an email check on a request that intentionally relies on the signed-in student profile."
+    },
     {
       "version": "2.2.41",
       "released_at": "2026-09-27T22:46:19+0530",

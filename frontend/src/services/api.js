@@ -599,9 +599,6 @@ export const api = {
   },
 
   async studentRegisterEvent(payload) {
-    if (!isAcharyaEmail(payload.email)) {
-      throw new Error(ACHARYA_EMAIL_ERROR);
-    }
     try {
       const res = await fetch(`${API_BASE_URL}/student/register-event`, {
         method: "POST",
