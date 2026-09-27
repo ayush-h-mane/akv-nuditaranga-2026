@@ -75,7 +75,7 @@ export const HeroSection = ({ onExploreNuditaranga, onKnowAbout, onOpenAuthTab, 
             onClick={() => setMascotGreeting((value) => !value)}
             aria-label={lang === "kn" ? "ನೋಗ್ರಾಜ್ ಜೊತೆ ಮಾತನಾಡಿ" : "Talk to NOGRAJ"}
             aria-expanded={mascotGreeting}
-            className="absolute -left-2 -top-[6.5rem] z-20 w-36 sm:left-auto sm:-right-2 sm:-top-28 sm:w-36 lg:-top-44 lg:w-56 cursor-pointer rounded-full focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-amber-300"
+            className="absolute -left-2 -top-[6.5rem] z-20 w-36 sm:left-auto sm:-right-2 sm:-top-28 sm:w-36 lg:top-auto lg:bottom-0 lg:w-72 cursor-pointer rounded-full focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-amber-300"
           >
             {mascotGreeting && (
               <span role="status" className="absolute -left-32 top-3 w-32 rounded-2xl border border-amber-200 bg-white px-3 py-2 text-xs font-bold leading-snug text-stone-800 shadow-lg sm:-left-44 sm:w-44 sm:text-sm">
@@ -83,8 +83,8 @@ export const HeroSection = ({ onExploreNuditaranga, onKnowAbout, onOpenAuthTab, 
               </span>
             )}
             <img
-              src="/images/nograj-sitting-transparent.png"
-              alt={lang === "kn" ? "ಕೆಂಪು ವೇದಿಕೆಯ ಮೇಲೆ ಕುಳಿತಿರುವ ನೋಗ್ರಾಜ್" : "NOGRAJ sitting on the red celebration wall"}
+              src="/images/comin-for-web-3d-original.png"
+              alt={lang === "kn" ? "ಕರ್ನಾಟಕ ಧ್ವಜ ಹಿಡಿದಿರುವ ನೋಗ್ರಾಜ್" : "NOGRAJ holding the Karnataka flag"}
               className="block h-auto w-full drop-shadow-[0_10px_15px_rgba(75,12,0,0.42)] transition-transform duration-300 hover:-translate-y-1"
             />
           </button>

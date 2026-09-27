@@ -1,11 +1,21 @@
 {
-  "production_version": "2.2.39",
-  "staged_version": "2.2.40",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.2.41",
+  "staged_version": "2.2.42",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.41",
+      "released_at": "2026-09-27T22:46:19+0530",
+      "description": "Production release version 2.2.41"
+    },
+    {
+      "version": "2.2.40",
+      "released_at": "2026-09-27T22:45:54+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.40: Use the Karnataka-flag comic image for NOGRAJ throughout the homepage; enlarge the desktop hero image while anchoring it to the red banner bottom and keep its mobile size unchanged."
+    },
     {
       "version": "2.2.39",
       "released_at": "2026-09-27T15:44:04+0530",
