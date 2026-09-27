@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.38",
-  "staged_version": "2.2.39",
+  "production_version": "2.2.39",
+  "staged_version": "2.2.40",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.39",
+      "released_at": "2026-09-27T15:44:04+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.39: Increased NOGRAJ size on desktop and adjusted his offset to keep the seated pose aligned with the banner."
+    },
     {
       "version": "2.2.38",
       "released_at": "2026-09-27T15:26:01+0530",

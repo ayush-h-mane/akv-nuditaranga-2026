@@ -75,7 +75,7 @@ export const HeroSection = ({ onExploreNuditaranga, onKnowAbout, onOpenAuthTab, 
             onClick={() => setMascotGreeting((value) => !value)}
             aria-label={lang === "kn" ? "ನೋಗ್ರಾಜ್ ಜೊತೆ ಮಾತನಾಡಿ" : "Talk to NOGRAJ"}
             aria-expanded={mascotGreeting}
-            className="absolute -left-2 -top-[6.5rem] z-20 w-36 sm:left-auto sm:-right-2 sm:-top-28 sm:w-36 lg:-top-[8.5rem] lg:w-44 cursor-pointer rounded-full focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-amber-300"
+            className="absolute -left-2 -top-[6.5rem] z-20 w-36 sm:left-auto sm:-right-2 sm:-top-28 sm:w-36 lg:-top-44 lg:w-56 cursor-pointer rounded-full focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-amber-300"
           >
             {mascotGreeting && (
               <span role="status" className="absolute -left-32 top-3 w-32 rounded-2xl border border-amber-200 bg-white px-3 py-2 text-xs font-bold leading-snug text-stone-800 shadow-lg sm:-left-44 sm:w-44 sm:text-sm">
@@ -162,6 +162,7 @@ export const HeroSection = ({ onExploreNuditaranga, onKnowAbout, onOpenAuthTab, 
     </section>
   );
 };
+
 
 
 
