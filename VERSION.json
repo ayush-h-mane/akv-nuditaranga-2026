@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.37",
-  "staged_version": "2.2.38",
+  "production_version": "2.2.38",
+  "staged_version": "2.2.39",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.38",
+      "released_at": "2026-09-27T15:26:01+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.38: Moved NOGRAJ to the left of the mobile home-page banner and layered his flag behind the Kannada Karunada Vaibhava title; desktop placement remains on the right.; Repaired NOGRAJ's transparent cutout around the seated dhoti and refined the silhouette edge while preserving the full pose on the red banner.; Lowered NOGRAJ slightly at mobile and desktop breakpoints so his seated pose overlaps the red banner edge and reads as resting on it.; Updated the home-page NOGRAJ cutout with the new transparent sitting-pose image."
+    },
     {
       "version": "2.2.37",
       "released_at": "2026-09-27T13:03:00+0530",
@@ -198,7 +203,7 @@
     },
     {
       "version": "2.0.0",
-      "released_at": "2026-09-24T18:00:00+05:30",
+      "released_at": "2026-09-24T18:00:00+0530",
       "commit": "c74d0ea",
       "description": "Production PostgreSQL migration, authentication improvements, and architecture documentation."
     }
