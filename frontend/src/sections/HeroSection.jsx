@@ -49,7 +49,7 @@ export const HeroSection = ({ onExploreNuditaranga, onKnowAbout, onOpenAuthTab, 
         </div>
 
         {/* Main Headings */}
-        <div className="mb-4">
+        <div className="relative z-30 mb-4">
           <p className="text-2xl sm:text-4xl lg:text-5xl font-black text-kar-red font-display mb-2 tracking-tight">
             {lang === "kn" ? siteConfig.name.kn : siteConfig.name.en}
           </p>
@@ -63,19 +63,19 @@ export const HeroSection = ({ onExploreNuditaranga, onKnowAbout, onOpenAuthTab, 
           </h1>
         </div>
 
-        <div className="relative isolate inline-flex min-h-28 w-full max-w-[calc(100vw-2rem)] items-center justify-center gap-2 overflow-visible sm:min-h-40 sm:gap-5 mt-1 mb-5 px-3 sm:px-9 py-2.5 sm:py-4 rounded-2xl sm:rounded-3xl border-2 border-amber-300 bg-gradient-to-r from-red-800 via-kar-red to-red-800 shadow-[0_12px_35px_rgba(127,29,29,0.28)]">
+        <div className="relative inline-flex min-h-28 w-full max-w-[calc(100vw-2rem)] items-center justify-center gap-2 overflow-visible sm:min-h-40 sm:gap-5 mt-1 mb-5 px-3 sm:px-9 py-2.5 sm:py-4 rounded-2xl sm:rounded-3xl border-2 border-amber-300 bg-gradient-to-r from-red-800 via-kar-red to-red-800 shadow-[0_12px_35px_rgba(127,29,29,0.28)]">
           <span className="absolute inset-0 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-transparent via-white/10 to-transparent pointer-events-none" />
-          <Sparkles className="relative z-10 hidden w-4 h-4 shrink-0 sm:block sm:w-8 sm:h-8 text-amber-300 motion-safe:animate-pulse" aria-hidden="true" />
-          <p className={`relative z-10 text-center font-black font-kannada-serif tracking-wide leading-tight text-amber-200 drop-shadow-[0_2px_8px_rgba(255,215,0,0.5)] ${lang === "kn" ? "max-w-[80%] text-[clamp(1.8rem,8.5vw,3rem)] sm:text-5xl lg:text-6xl" : "max-w-[74%] text-2xl sm:text-5xl lg:text-6xl"}`}>
+          <Sparkles className="relative z-30 hidden w-4 h-4 shrink-0 sm:block sm:w-8 sm:h-8 text-amber-300 motion-safe:animate-pulse" aria-hidden="true" />
+          <p className={`relative z-30 text-center font-black font-kannada-serif tracking-wide leading-tight text-amber-200 drop-shadow-[0_2px_8px_rgba(255,215,0,0.5)] ${lang === "kn" ? "max-w-[80%] text-[clamp(1.8rem,8.5vw,3rem)] sm:text-5xl lg:text-6xl" : "max-w-[74%] text-2xl sm:text-5xl lg:text-6xl"}`}>
             {lang === "kn" ? "ದಶಕೋತ್ಸವ" : "10th Year’s Grand Celebration"}
           </p>
-          <Sparkles className="relative z-10 hidden w-4 h-4 shrink-0 sm:block sm:w-8 sm:h-8 text-amber-300 motion-safe:animate-pulse" aria-hidden="true" />
+          <Sparkles className="relative z-30 hidden w-4 h-4 shrink-0 sm:block sm:w-8 sm:h-8 text-amber-300 motion-safe:animate-pulse" aria-hidden="true" />
           <button
             type="button"
             onClick={() => setMascotGreeting((value) => !value)}
             aria-label={lang === "kn" ? "ನೋಗ್ರಾಜ್ ಜೊತೆ ಮಾತನಾಡಿ" : "Talk to NOGRAJ"}
             aria-expanded={mascotGreeting}
-            className="absolute -right-1 -top-24 z-20 w-32 sm:-right-2 sm:-top-28 sm:w-36 lg:-top-36 lg:w-44 cursor-pointer rounded-full focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-amber-300"
+            className="absolute -left-2 -top-[6.5rem] z-20 w-36 sm:left-auto sm:-right-2 sm:-top-28 sm:w-36 lg:-top-[8.5rem] lg:w-44 cursor-pointer rounded-full focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-amber-300"
           >
             {mascotGreeting && (
               <span role="status" className="absolute -left-32 top-3 w-32 rounded-2xl border border-amber-200 bg-white px-3 py-2 text-xs font-bold leading-snug text-stone-800 shadow-lg sm:-left-44 sm:w-44 sm:text-sm">
@@ -162,3 +162,8 @@ export const HeroSection = ({ onExploreNuditaranga, onKnowAbout, onOpenAuthTab, 
     </section>
   );
 };
+
+
+
+
+
