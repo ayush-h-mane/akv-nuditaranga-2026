@@ -14,7 +14,8 @@
     "Convert Instagram Reels into a compact side-by-side sweeping carousel on mobile.",
     "Compact coordinator contact boxes and the 'Send a message' contact form for mobile screens.",
     "Render clean, minimal mobile-only footer keeping only AKV & Acharya logos, Acharya Kannada Vedike, email ID, celebration motto, author link, and copyright.",
-    "Preserve 100% of original layouts, grids, and components on laptop and desktop screens without modification."
+    "Preserve 100% of original layouts, grids, and components on laptop and desktop screens without modification.",
+    "Remove Login and Register CTA buttons on home page (HeroSection) after logging in across both desktop and mobile viewports."
   ],
   "history": [
     {

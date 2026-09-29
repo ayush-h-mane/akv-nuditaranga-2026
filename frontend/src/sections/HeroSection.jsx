@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useLanguage } from "../context/LanguageContext";
+import { useAuth } from "../context/AuthContext";
 import { siteConfig } from "../config/siteConfig";
 import { CountdownTimer } from "../components/CountdownTimer";
 import { 
@@ -11,6 +12,7 @@ import {
 
 export const HeroSection = ({ onExploreNuditaranga, onKnowAbout, onOpenAuthTab, setCurrentView }) => {
   const { lang, t } = useLanguage();
+  const { user } = useAuth();
   const [mascotGreeting, setMascotGreeting] = useState(false);
 
   return (
@@ -102,14 +104,18 @@ export const HeroSection = ({ onExploreNuditaranga, onKnowAbout, onOpenAuthTab, 
 
         {/* Dual Primary Call-To-Action Buttons */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 sm:gap-4 mb-10 sm:mb-14 max-w-md sm:max-w-none mx-auto">
-          <button
-            onClick={() => { onOpenAuthTab?.("student-login"); setCurrentView?.("auth"); }}
-            className="w-full sm:w-auto px-7 py-3.5 rounded-2xl text-sm sm:text-base font-extrabold text-white shadow-lg bg-stone-900 hover:bg-stone-800 transition-all flex items-center justify-center"
-          >{lang === "kn" ? "ಲಾಗಿನ್" : "Login"}</button>
-          <button
-            onClick={() => { onOpenAuthTab?.("student-register"); setCurrentView?.("auth"); }}
-            className="w-full sm:w-auto px-7 py-3.5 rounded-2xl text-sm sm:text-base font-extrabold text-kar-red bg-white border-2 border-kar-red/30 hover:border-kar-red transition-all flex items-center justify-center"
-          >{lang === "kn" ? "ನೋಂದಣಿ" : "Register"}</button>
+          {!user && (
+            <>
+              <button
+                onClick={() => { onOpenAuthTab?.("student-login"); setCurrentView?.("auth"); }}
+                className="w-full sm:w-auto px-7 py-3.5 rounded-2xl text-sm sm:text-base font-extrabold text-white shadow-lg bg-stone-900 hover:bg-stone-800 transition-all flex items-center justify-center"
+              >{lang === "kn" ? "ಲಾಗಿನ್" : "Login"}</button>
+              <button
+                onClick={() => { onOpenAuthTab?.("student-register"); setCurrentView?.("auth"); }}
+                className="w-full sm:w-auto px-7 py-3.5 rounded-2xl text-sm sm:text-base font-extrabold text-kar-red bg-white border-2 border-kar-red/30 hover:border-kar-red transition-all flex items-center justify-center"
+              >{lang === "kn" ? "ನೋಂದಣಿ" : "Register"}</button>
+            </>
+          )}
           <button
             onClick={onExploreNuditaranga}
             className="w-full sm:w-auto px-7 py-3.5 rounded-2xl text-sm sm:text-base font-extrabold text-white shadow-lg shadow-red-600/20 hover:shadow-xl hover:shadow-red-600/30 transition-all transform hover:-translate-y-0.5 active:scale-95 bg-gradient-to-r from-kar-red via-red-600 to-kar-yellow flex items-center justify-center gap-2.5"
