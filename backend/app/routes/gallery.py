@@ -1,5 +1,5 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import GalleryItem
@@ -8,11 +8,13 @@ from ..schemas import GalleryItemOut, GalleryItemCreate, GalleryItemUpdate
 router = APIRouter(prefix="/gallery", tags=["Gallery"])
 
 @router.get("", response_model=List[GalleryItemOut])
-def get_gallery_items(db: Session = Depends(get_db)):
+def get_gallery_items(response: Response, db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "public, max-age=60, s-maxage=300, stale-while-revalidate=600"
     return db.query(GalleryItem).order_by(GalleryItem.id.desc()).all()
 
 @router.get("/{item_id}", response_model=GalleryItemOut)
-def get_gallery_item(item_id: int, db: Session = Depends(get_db)):
+def get_gallery_item(item_id: int, response: Response, db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "public, max-age=60, s-maxage=300, stale-while-revalidate=600"
     item = db.query(GalleryItem).filter(GalleryItem.id == item_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Gallery item not found")

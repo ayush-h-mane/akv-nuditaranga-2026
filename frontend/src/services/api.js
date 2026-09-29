@@ -1,5 +1,6 @@
 import { initialEvents } from "../config/eventsData";
 import { isAcharyaEmail, ACHARYA_EMAIL_ERROR } from "../utils/emailValidation";
+import { siteConfig } from "../config/siteConfig";
 
 // Determine base API endpoint
 // When running in production (e.g. Vercel) without explicit VITE_API_URL, use same-origin relative path "/api"
@@ -11,6 +12,10 @@ const API_BASE_URL = (() => {
   return "/api";
 })();
 
+// High-speed In-Memory & LocalStorage Cache with Stale-While-Revalidate
+const memCache = new Map();
+const inflightRequests = new Map();
+
 // Local fallback storage keys
 const STORAGE_EVENTS_KEY = "akv_events_cache_v2";
 const STORAGE_REGS_KEY = "akv_registrations_cache_v2";
@@ -18,6 +23,43 @@ const STORAGE_USERS_KEY = "akv_users_cache_v2";
 const STORAGE_ADMINS_KEY = "akv_admins_cache_v2";
 const STORAGE_ATTENDANCE_KEY = "akv_attendance_cache_v2";
 const STORAGE_AUDIT_KEY = "akv_audit_logs_cache_v2";
+const STORAGE_ACTIVITIES_KEY = "akv_activities_cache_v2";
+const STORAGE_GALLERY_KEY = "akv_gallery_cache_v2";
+const STORAGE_SCHEDULE_KEY = "akv_schedule_cache_v2";
+const STORAGE_REELS_KEY = "akv_reels_cache_v2";
+const STORAGE_STUDENT_DASH_PREFIX = "akv_dash_";
+
+function readLocalJson(key, fallback = null) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeLocalJson(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {}
+}
+
+const defaultActivities = [
+  {
+    id: 1,
+    category: "nuditaranga",
+    title_en: "Nuditaranga Annual Inter-College Fest",
+    title_kn: "ನುಡಿತರಂಗ ವಾರ್ಷಿಕ ಸಾಂಸ್ಕೃತಿಕ ಹಬ್ಬ",
+    desc_en: "Flagship cultural extravaganza with over 25+ events spanning literature, classical singing, folk dances, rangoli, and street theatre.",
+    desc_kn: "ಸಾಹಿತ್ಯ, ಸುಗಮ ಸಂಗೀತ, ಜಾನಪದ ನೃತ್ಯ, ರಂಗೋಲಿ ಮತ್ತು ಬೀದಿ ನಾಟಕಗಳನ್ನೊಳಗೊಂಡ ೨೫ಕ್ಕೂ ಹೆಚ್ಚು ಸ್ಪರ್ಧೆಗಳ ಮಹಾಸಂಗಮ.",
+    image: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80",
+    activity_date: "2026-10-30",
+    tag_en: "Cultural Fest",
+    tag_kn: "ವಾರ್ಷಿಕ ಹಬ್ಬ",
+    icon: "Music",
+    is_active: true
+  }
+];
 
 // Zero preloaded demo users
 const defaultDemoUsers = [];
@@ -71,20 +113,23 @@ function saveLocalAttendance(att) {
 }
 
 function getLocalEvents() {
-  try {
-    const data = localStorage.getItem(STORAGE_EVENTS_KEY);
-    return data ? JSON.parse(data) : [...initialEvents];
-  } catch (e) {
-    return [...initialEvents];
+  if (memCache.has("events")) {
+    return memCache.get("events");
   }
+  const data = readLocalJson(STORAGE_EVENTS_KEY, null);
+  if (data && Array.isArray(data) && data.length > 0) {
+    memCache.set("events", data);
+    return data;
+  }
+  memCache.set("events", [...initialEvents]);
+  writeLocalJson(STORAGE_EVENTS_KEY, initialEvents);
+  return [...initialEvents];
 }
 
 function saveLocalEvents(events) {
-  try {
-    localStorage.setItem(STORAGE_EVENTS_KEY, JSON.stringify(events));
-  } catch (e) {
-    console.error("Local storage error:", e);
-  }
+  if (!events || !Array.isArray(events)) return;
+  memCache.set("events", events);
+  writeLocalJson(STORAGE_EVENTS_KEY, events);
 }
 
 function getLocalRegistrations() {
@@ -531,57 +576,108 @@ export const api = {
   // ==========================================
   // STUDENT DASHBOARD APIs
   // ==========================================
-  async getStudentDashboard() {
-    try {
-      const res = await fetch(`${API_BASE_URL}/student/dashboard`, {
-        headers: { ...getAuthHeaders() }
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Failed to fetch student dashboard");
-      return data;
-    } catch (err) {
-      if (isNetworkError(err)) {
+  getCachedStudentDashboard(auid = null) {
+    let targetAuid = auid;
+    if (!targetAuid) {
+      try {
         const rawUser = localStorage.getItem("akv_user");
-        const currentUser = rawUser ? JSON.parse(rawUser) : defaultDemoUsers[0];
-        const allRegs = getLocalRegistrations();
-        const userRegs = allRegs.filter(r => r.auid?.toUpperCase() === currentUser.auid?.toUpperCase());
+        if (rawUser) {
+          const parsed = JSON.parse(rawUser);
+          targetAuid = parsed.auid;
+        }
+      } catch {}
+    }
+    if (!targetAuid) return null;
+    const cacheKey = "dash_" + targetAuid.toUpperCase();
+    if (memCache.has(cacheKey)) {
+      return memCache.get(cacheKey);
+    }
+    const stored = readLocalJson(STORAGE_STUDENT_DASH_PREFIX + targetAuid.toUpperCase(), null);
+    if (stored) {
+      memCache.set(cacheKey, stored);
+      return stored;
+    }
+    return null;
+  },
 
-        return {
-          success: true,
-          profile: currentUser,
-          stats: {
-            registered_events_count: userRegs.length,
-            total_available_events: getLocalEvents().length,
-            volunteer_days_present: currentUser.role === "VOLUNTEER" ? 1 : 0
-          },
-          registered_events: userRegs.map(r => ({
-            registration_id: r.registration_id || `REG-${r.event_id}`,
-            event_id: r.event_id,
-            event_title_en: r.event_name || r.event_id,
-            event_title_kn: "",
-            category: "cultural",
-            venue: "Main Auditorium",
-            event_date: "November 01, 2026",
-            event_time: "10:00 AM",
-            is_team: false,
-            status: "CONFIRMED"
-          })),
-          registered_event_ids: userRegs.map(r => r.event_id),
-          volunteer_info: currentUser.role === "VOLUNTEER" ? {
-            is_volunteer: true,
-            today_attendance: "NOT_MARKED",
-            attendance_history: [
-              {
-                date: new Date().toISOString().split("T")[0],
-                status: "PRESENT",
-                check_in_time: "09:15 AM",
-                marked_by: "System Check-in"
-              }
-            ]
-          } : null
-        };
+  hasCachedStudentDashboard(auid = null) {
+    return Boolean(this.getCachedStudentDashboard(auid));
+  },
+
+  async getStudentDashboard() {
+    const key = "student_dashboard";
+    if (inflightRequests.has(key)) {
+      return await inflightRequests.get(key);
+    }
+
+    const fetchPromise = (async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/student/dashboard`, {
+          headers: { ...getAuthHeaders() }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Failed to fetch student dashboard");
+
+        if (data && data.profile && data.profile.auid) {
+          const auid = data.profile.auid.toUpperCase();
+          memCache.set("dash_" + auid, data);
+          writeLocalJson(STORAGE_STUDENT_DASH_PREFIX + auid, data);
+        }
+        return data;
+      } catch (err) {
+        const cached = this.getCachedStudentDashboard();
+        if (cached) return cached;
+
+        if (isNetworkError(err)) {
+          const rawUser = localStorage.getItem("akv_user");
+          const currentUser = rawUser ? JSON.parse(rawUser) : defaultDemoUsers[0];
+          const allRegs = getLocalRegistrations();
+          const userRegs = allRegs.filter(r => r.auid?.toUpperCase() === currentUser.auid?.toUpperCase());
+
+          return {
+            success: true,
+            profile: currentUser,
+            stats: {
+              registered_events_count: userRegs.length,
+              total_available_events: getLocalEvents().length,
+              volunteer_days_present: currentUser.role === "VOLUNTEER" ? 1 : 0
+            },
+            registered_events: userRegs.map(r => ({
+              registration_id: r.registration_id || `REG-${r.event_id}`,
+              event_id: r.event_id,
+              event_title_en: r.event_name || r.event_id,
+              event_title_kn: "",
+              category: "cultural",
+              venue: "Main Auditorium",
+              event_date: "November 01, 2026",
+              event_time: "10:00 AM",
+              is_team: false,
+              status: "CONFIRMED"
+            })),
+            registered_event_ids: userRegs.map(r => r.event_id),
+            volunteer_info: currentUser.role === "VOLUNTEER" ? {
+              is_volunteer: true,
+              today_attendance: "NOT_MARKED",
+              attendance_history: [
+                {
+                  date: new Date().toISOString().split("T")[0],
+                  status: "PRESENT",
+                  check_in_time: "09:15 AM",
+                  marked_by: "System Check-in"
+                }
+              ]
+            } : null
+          };
+        }
+        throw err;
       }
-      throw err;
+    })();
+
+    inflightRequests.set(key, fetchPromise);
+    try {
+      return await fetchPromise;
+    } finally {
+      inflightRequests.delete(key);
     }
   },
 
@@ -1678,27 +1774,54 @@ export const api = {
   // ==========================================
   // EXISTING EVENTS, CHECK-IN & GALLERY APIs
   // ==========================================
-  async getEvents(category = "all", activeOnly = true) {
-    try {
-      const params = new URLSearchParams();
-      if (category && category !== "all") params.append("category", category);
-      if (!activeOnly) params.append("active_only", "false");
-      const queryString = params.toString() ? `?${params.toString()}` : "";
-      
-      const res = await fetch(`${API_BASE_URL}/events${queryString}`);
-      if (res.ok) {
-        const data = await res.json();
-        saveLocalEvents(data);
-        return data;
-      }
-    } catch (err) {
-      console.warn("Backend unavailable, using client dataset for events:", err.message);
-    }
+  getCachedEvents(category = "all", activeOnly = true) {
     let list = getLocalEvents();
     if (activeOnly) {
-      list = list.filter(e => e.is_active);
+      list = list.filter(e => e.is_active !== false);
     }
     return category === "all" ? list : list.filter(e => e.category === category);
+  },
+
+  hasCachedEvents(category = "all", activeOnly = true) {
+    const cached = this.getCachedEvents(category, activeOnly);
+    return Boolean(cached && cached.length > 0);
+  },
+
+  async getEvents(category = "all", activeOnly = true) {
+    const cacheKey = `events_${category}_${activeOnly}`;
+    if (inflightRequests.has("events_all")) {
+      await inflightRequests.get("events_all").catch(() => {});
+      return this.getCachedEvents(category, activeOnly);
+    }
+
+    const fetchPromise = (async () => {
+      try {
+        const params = new URLSearchParams();
+        if (category && category !== "all") params.append("category", category);
+        if (!activeOnly) params.append("active_only", "false");
+        const queryString = params.toString() ? `?${params.toString()}` : "";
+        
+        const res = await fetch(`${API_BASE_URL}/events${queryString}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            saveLocalEvents(data);
+            return this.getCachedEvents(category, activeOnly);
+          }
+        }
+      } catch (err) {
+        console.warn("Backend unavailable, using client dataset for events:", err.message);
+      }
+      return this.getCachedEvents(category, activeOnly);
+    })();
+
+    const reqKey = category === "all" ? "events_all" : cacheKey;
+    inflightRequests.set(reqKey, fetchPromise);
+    try {
+      return await fetchPromise;
+    } finally {
+      inflightRequests.delete(reqKey);
+    }
   },
 
   async getEvent(id) {
@@ -1960,30 +2083,49 @@ export const api = {
     }
   },
 
-  async getActivities(category = "all", activeOnly = true) {
-    try {
-      const url = `${API_BASE_URL}/activities?category=${category}&active_only=${activeOnly}`;
-      const res = await fetch(url);
-      if (res.ok) return await res.json();
-    } catch (err) {
-      console.warn("Backend unavailable, using fallback activities list:", err.message);
+  getCachedActivities(category = "all", activeOnly = true) {
+    let list = memCache.get("activities");
+    if (!list) {
+      list = readLocalJson(STORAGE_ACTIVITIES_KEY, defaultActivities);
+      memCache.set("activities", list);
     }
-    return [
-      {
-        id: 1,
-        category: "nuditaranga",
-        title_en: "Nuditaranga Annual Inter-College Fest",
-        title_kn: "ನುಡಿತರಂಗ ವಾರ್ಷಿಕ ಸಾಂಸ್ಕೃತಿಕ ಹಬ್ಬ",
-        desc_en: "Flagship cultural extravaganza with over 25+ events spanning literature, classical singing, folk dances, rangoli, and street theatre.",
-        desc_kn: "ಸಾಹಿತ್ಯ, ಸುಗಮ ಸಂಗೀತ, ಜಾನಪದ ನೃತ್ಯ, ರಂಗೋಲಿ ಮತ್ತು ಬೀದಿ ನಾಟಕಗಳನ್ನೊಳಗೊಂಡ ೨೫ಕ್ಕೂ ಹೆಚ್ಚು ಸ್ಪರ್ಧೆಗಳ ಮಹಾಸಂಗಮ.",
-        image: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80",
-        activity_date: "2026-10-30",
-        tag_en: "Cultural Fest",
-        tag_kn: "ವಾರ್ಷಿಕ ಹಬ್ಬ",
-        icon: "Music",
-        is_active: true
+    if (activeOnly) {
+      list = list.filter(a => a.is_active !== false);
+    }
+    return category === "all" ? list : list.filter(a => a.category?.toLowerCase() === category.toLowerCase());
+  },
+
+  async getActivities(category = "all", activeOnly = true) {
+    const key = "activities";
+    if (inflightRequests.has(key)) {
+      await inflightRequests.get(key).catch(() => {});
+      return this.getCachedActivities(category, activeOnly);
+    }
+
+    const fetchPromise = (async () => {
+      try {
+        const url = `${API_BASE_URL}/activities?category=${category}&active_only=${activeOnly}`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            memCache.set("activities", data);
+            writeLocalJson(STORAGE_ACTIVITIES_KEY, data);
+            return this.getCachedActivities(category, activeOnly);
+          }
+        }
+      } catch (err) {
+        console.warn("Backend unavailable, using fallback activities list:", err.message);
       }
-    ];
+      return this.getCachedActivities(category, activeOnly);
+    })();
+
+    inflightRequests.set(key, fetchPromise);
+    try {
+      return await fetchPromise;
+    } finally {
+      inflightRequests.delete(key);
+    }
   },
 
   async createActivity(activityData) {
@@ -2017,17 +2159,48 @@ export const api = {
     return data;
   },
 
-  async getGallery(category = "all") {
-    try {
-      const url = category && category !== "all" 
-        ? `${API_BASE_URL}/gallery?category=${category}` 
-        : `${API_BASE_URL}/gallery`;
-      const res = await fetch(url);
-      if (res.ok) return await res.json();
-    } catch (err) {
-      console.warn("Backend unavailable, using empty gallery list:", err.message);
+  getCachedGallery(category = "all") {
+    let list = memCache.get("gallery");
+    if (!list) {
+      list = readLocalJson(STORAGE_GALLERY_KEY, []);
+      memCache.set("gallery", list);
     }
-    return [];
+    return category === "all" ? list : list.filter(g => g.category?.toLowerCase() === category.toLowerCase());
+  },
+
+  async getGallery(category = "all") {
+    const key = "gallery";
+    if (inflightRequests.has(key)) {
+      await inflightRequests.get(key).catch(() => {});
+      return this.getCachedGallery(category);
+    }
+
+    const fetchPromise = (async () => {
+      try {
+        const url = category && category !== "all" 
+          ? `${API_BASE_URL}/gallery?category=${category}` 
+          : `${API_BASE_URL}/gallery`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            memCache.set("gallery", data);
+            writeLocalJson(STORAGE_GALLERY_KEY, data);
+            return this.getCachedGallery(category);
+          }
+        }
+      } catch (err) {
+        console.warn("Backend unavailable, using cached gallery list:", err.message);
+      }
+      return this.getCachedGallery(category);
+    })();
+
+    inflightRequests.set(key, fetchPromise);
+    try {
+      return await fetchPromise;
+    } finally {
+      inflightRequests.delete(key);
+    }
   },
 
   async createGalleryItem(itemData) {
@@ -2063,16 +2236,37 @@ export const api = {
 
   // REELS & SOCIAL POSTS APIs
   async getReels(postType = "all") {
-    try {
-      const url = postType && postType !== "all"
-        ? `${API_BASE_URL}/reels?post_type=${postType}`
-        : `${API_BASE_URL}/reels`;
-      const res = await fetch(url);
-      if (res.ok) return await res.json();
-    } catch (err) {
-      console.warn("Backend unavailable, using fallback reels:", err.message);
+    const key = "reels";
+    if (inflightRequests.has(key)) {
+      return await inflightRequests.get(key);
     }
-    return [];
+
+    const fetchPromise = (async () => {
+      try {
+        const url = postType && postType !== "all"
+          ? `${API_BASE_URL}/reels?post_type=${postType}`
+          : `${API_BASE_URL}/reels`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            memCache.set("reels", data);
+            writeLocalJson(STORAGE_REELS_KEY, data);
+            return data;
+          }
+        }
+      } catch (err) {
+        console.warn("Backend unavailable, using fallback reels:", err.message);
+      }
+      return memCache.get("reels") || readLocalJson(STORAGE_REELS_KEY, []);
+    })();
+
+    inflightRequests.set(key, fetchPromise);
+    try {
+      return await fetchPromise;
+    } finally {
+      inflightRequests.delete(key);
+    }
   },
 
   async createReel(reelData) {
@@ -2106,11 +2300,60 @@ export const api = {
     return data;
   },
 
+  getCachedFestivalSchedule() {
+    let schedule = memCache.get("festival_schedule");
+    if (!schedule) {
+      schedule = readLocalJson(STORAGE_SCHEDULE_KEY, null);
+      if (schedule) memCache.set("festival_schedule", schedule);
+    }
+    return schedule;
+  },
+
   async getFestivalSchedule() {
-    const res = await fetch(`${API_BASE_URL}/festival-schedule`);
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Failed to load festival schedule");
-    return data;
+    const key = "festival_schedule";
+    if (inflightRequests.has(key)) {
+      return await inflightRequests.get(key);
+    }
+
+    const fetchPromise = (async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/festival-schedule`);
+        if (res.ok) {
+          const data = await res.json();
+          memCache.set("festival_schedule", data);
+          writeLocalJson(STORAGE_SCHEDULE_KEY, data);
+          return data;
+        }
+      } catch (err) {
+        console.warn("Backend unavailable, using cached schedule:", err.message);
+      }
+      return this.getCachedFestivalSchedule() || { schedule: siteConfig.festival.schedule || [] };
+    })();
+
+    inflightRequests.set(key, fetchPromise);
+    try {
+      return await fetchPromise;
+    } finally {
+      inflightRequests.delete(key);
+    }
+  },
+
+  prefetchAll(user = null) {
+    try {
+      const tasks = [
+        this.getEvents("all", false).catch(() => {}),
+        this.getFestivalSchedule().catch(() => {}),
+        this.getActivities("all", false).catch(() => {}),
+        this.getGallery("all").catch(() => {}),
+        this.getReels("all").catch(() => {})
+      ];
+      if (user && user.role !== "SUPERADMIN" && user.role !== "ADMIN") {
+        tasks.push(this.getStudentDashboard().catch(() => {}));
+      }
+      Promise.allSettled(tasks);
+    } catch (e) {
+      console.warn("Prefetch warning:", e);
+    }
   },
 
   async updateFestivalSchedule(days) {

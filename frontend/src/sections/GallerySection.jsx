@@ -7,7 +7,7 @@ import { X, ZoomIn, Image as ImageIcon } from "lucide-react";
 export const GallerySection = () => {
   const { lang, t } = useLanguage();
   const [selectedImage, setSelectedImage] = useState(null);
-  const [gallery, setGallery] = useState([]);
+  const [gallery, setGallery] = useState(() => api.getCachedGallery());
   const [loading, setLoading] = useState(false);
 
   useHistoryModal(Boolean(selectedImage), () => setSelectedImage(null));
@@ -18,13 +18,12 @@ export const GallerySection = () => {
 
   const loadGallery = async () => {
     try {
-      setLoading(true);
       const data = await api.getGallery();
-      setGallery(data || []);
+      if (data && Array.isArray(data) && data.length > 0) {
+        setGallery(data);
+      }
     } catch (err) {
       console.warn("Failed to load gallery items:", err);
-    } finally {
-      setLoading(false);
     }
   };
 

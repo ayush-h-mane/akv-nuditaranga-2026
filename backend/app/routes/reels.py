@@ -1,5 +1,5 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import SocialPost
@@ -9,10 +9,12 @@ router = APIRouter(prefix="/reels", tags=["Reels & Posts"])
 
 @router.get("", response_model=List[SocialPostOut])
 def get_reels(
+    response: Response,
     post_type: Optional[str] = None,
     active_only: bool = True,
     db: Session = Depends(get_db)
 ):
+    response.headers["Cache-Control"] = "public, max-age=60, s-maxage=300, stale-while-revalidate=600"
     query = db.query(SocialPost)
     if active_only:
         query = query.filter(SocialPost.is_active == True)
@@ -21,7 +23,8 @@ def get_reels(
     return query.order_by(SocialPost.id.desc()).all()
 
 @router.get("/{reel_id}", response_model=SocialPostOut)
-def get_reel(reel_id: int, db: Session = Depends(get_db)):
+def get_reel(reel_id: int, response: Response, db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "public, max-age=60, s-maxage=300, stale-while-revalidate=600"
     post = db.query(SocialPost).filter(SocialPost.id == reel_id).first()
     if not post:
         raise HTTPException(status_code=404, detail="Reel/post not found")

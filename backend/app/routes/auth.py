@@ -5,7 +5,7 @@ import datetime
 from typing import Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field, field_validator
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, or_
 
 from ..database import get_db
@@ -344,8 +344,13 @@ def login_student(payload: StudentLoginRequest, db: Session = Depends(get_db)):
 
     # Strictly isolate: Student login is for Students/Participants/Volunteers ONLY.
     # Reject any user with Admin or Superadmin role, or any user associated with an Admin profile.
-    has_admin_profile = db.query(Admin).filter(Admin.user_id == user.id).first()
-    if user.role in ["ADMIN", "SUPERADMIN"] or has_admin_profile:
+    if user.role in ["ADMIN", "SUPERADMIN"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access restricted: This account belongs to an Administrator. Please log in via the Admin / Super Admin Portal."
+        )
+    has_admin_profile = db.query(Admin.id).filter(Admin.user_id == user.id).first()
+    if has_admin_profile:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access restricted: This account belongs to an Administrator. Please log in via the Admin / Super Admin Portal."
@@ -710,7 +715,7 @@ def login_admin(payload: AdminLoginRequest, db: Session = Depends(get_db)):
             )
 
     # 2. Fast indexed lookup by username, email, or AUID
-    admin_entry = db.query(Admin).join(User, Admin.user_id == User.id).filter(
+    admin_entry = db.query(Admin).options(joinedload(Admin.user)).join(User, Admin.user_id == User.id).filter(
         or_(
             Admin.username == clean_uname,
             User.email == clean_uname,
@@ -720,10 +725,10 @@ def login_admin(payload: AdminLoginRequest, db: Session = Depends(get_db)):
     ).first()
 
     if not admin_entry:
-        admin_entry = db.query(Admin).filter(Admin.username == clean_uname).first()
+        admin_entry = db.query(Admin).options(joinedload(Admin.user)).filter(Admin.username == clean_uname).first()
 
     if not admin_entry:
-        admin_entry = db.query(Admin).join(User, Admin.user_id == User.id).filter(
+        admin_entry = db.query(Admin).options(joinedload(Admin.user)).join(User, Admin.user_id == User.id).filter(
             or_(
                 func.lower(Admin.username) == clean_uname,
                 func.lower(User.email) == clean_uname

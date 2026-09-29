@@ -6,18 +6,7 @@ import { ArrowUpRight, Sparkles, Calendar, X } from "lucide-react";
 
 export const ActivitiesSection = () => {
   const { lang, t } = useLanguage();
-  const [activities, setActivities] = useState([
-    {
-      id: 1,
-      category: "Nuditaranga",
-      title_en: "Nuditaranga Annual Inter-College Fest",
-      title_kn: "ನುಡಿತರಂಗ ವಾರ್ಷಿಕ ಸಾಂಸ್ಕೃತಿಕ ಹಬ್ಬ",
-      desc_en: "Flagship cultural extravaganza with over 25+ events spanning literature, classical singing, folk dances, rangoli, and street theatre.",
-      desc_kn: "ಸಾಹಿತ್ಯ, ಸುಗಮ ಸಂಗೀತ, ಜಾನಪದ ನೃತ್ಯ, ರಂಗೋಲಿ ಮತ್ತು ಬೀದಿ ನಾಟಕಗಳನ್ನೊಳಗೊಂಡ ೨೫ಕ್ಕೂ ಹೆಚ್ಚು ಸ್ಪರ್ಧೆಗಳ ಮಹಾಸಂಗಮ.",
-      image: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80",
-      is_active: true
-    }
-  ]);
+  const [activities, setActivities] = useState(() => api.getCachedActivities("all", true));
   const [loading, setLoading] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState(null);
 
@@ -29,15 +18,12 @@ export const ActivitiesSection = () => {
 
   const loadActivities = async () => {
     try {
-      setLoading(true);
       const data = await api.getActivities("all", true);
       if (data && data.length > 0) {
         setActivities(data);
       }
     } catch (err) {
       console.warn("Failed to load activities from API, using default:", err);
-    } finally {
-      setLoading(false);
     }
   };
 
