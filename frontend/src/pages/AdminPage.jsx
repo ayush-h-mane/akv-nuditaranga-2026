@@ -598,7 +598,7 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
             </div>
 
             {/* Event Date Selector Pills */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 max-w-4xl xl:max-w-5xl">
               <span className="text-xs font-extrabold text-stone-400 uppercase tracking-wider whitespace-nowrap mr-1">
                 Event Date:
               </span>
@@ -628,7 +628,7 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
 
             {/* Submission Lock Banner */}
             {attendanceSession.is_submitted && (
-              <div className="p-4 bg-amber-50/90 border border-amber-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-950">
+              <div className="p-4 bg-amber-50/90 border border-amber-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-950 max-w-4xl xl:max-w-5xl">
                 <div className="flex items-start gap-2.5">
                   <Lock className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
                   <div>
@@ -649,7 +649,7 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
             )}
 
             {/* Metrics Dashboard */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 max-w-4xl xl:max-w-5xl">
               <div className="bg-stone-50 p-3.5 rounded-2xl border border-stone-200">
                 <span className="text-[10px] font-extrabold text-stone-400 uppercase tracking-wider block">
                   Total Participants
@@ -711,7 +711,7 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
             </div>
 
             {/* Filters & Search */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-stone-100">
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-stone-100 max-w-4xl xl:max-w-5xl">
               <div className="flex flex-wrap items-center gap-2">
                 <div className="relative">
                   <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
@@ -721,16 +721,16 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && loadAttendanceRoster()}
-                    className="pl-8 pr-3 py-1.5 rounded-xl border border-stone-300 text-xs w-52 sm:w-64"
+                    className="pl-8 pr-3 py-1.5 rounded-xl border border-stone-300 text-xs w-48 sm:w-56"
                   />
                 </div>
 
                 <select
                   value={deptFilter}
                   onChange={(e) => setDeptFilter(e.target.value)}
-                  className="py-1.5 px-3 rounded-xl border border-stone-300 text-xs bg-white font-bold text-stone-700"
+                  className="py-1.5 px-2.5 rounded-xl border border-stone-300 text-xs bg-white font-bold text-stone-700"
                 >
-                  <option value="all">All Departments</option>
+                  <option value="all">All Academic Depts</option>
                   {departments.map((d) => (
                     <option key={d} value={d}>{d}</option>
                   ))}
@@ -739,9 +739,9 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
                 <select
                   value={akvDeptFilter}
                   onChange={(e) => setAkvDeptFilter(e.target.value)}
-                  className="py-1.5 px-3 rounded-xl border border-stone-300 text-xs bg-white font-bold text-stone-700"
+                  className="py-1.5 px-2.5 rounded-xl border border-stone-300 text-xs bg-white font-bold text-stone-700"
                 >
-                  <option value="all">All Departments</option>
+                  <option value="all">All AKV Teams</option>
                   <option value="Promotion">Promotion</option>
                   <option value="Stage">Stage</option>
                   <option value="Hospitality">Hospitality</option>
@@ -753,7 +753,7 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="py-1.5 px-3 rounded-xl border border-stone-300 text-xs bg-white font-bold text-stone-700"
+                  className="py-1.5 px-2.5 rounded-xl border border-stone-300 text-xs bg-white font-bold text-stone-700"
                 >
                   <option value="all">All Statuses</option>
                   <option value="NOT_MARKED">Not Marked</option>
@@ -771,14 +771,14 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
                 </button>
               </div>
 
-              <div className="text-xs text-stone-500 font-medium">
+              <div className="text-xs text-stone-500 font-medium whitespace-nowrap">
                 Showing <strong>{attendanceRoster.length}</strong> participants
               </div>
             </div>
 
             {/* Attendance Roster Table */}
             {attendanceRoster.length === 0 ? (
-              <div className="text-center py-12 space-y-2 bg-stone-50/50 rounded-2xl border border-stone-100">
+              <div className="text-center py-12 space-y-2 bg-stone-50/50 rounded-2xl border border-stone-100 max-w-4xl xl:max-w-5xl">
                 <Users className="w-9 h-9 text-stone-300 mx-auto" />
                 <p className="text-sm font-bold text-stone-700">No participants found</p>
                 <p className="text-xs text-stone-500">
@@ -786,14 +786,20 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto rounded-2xl border border-stone-200">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-stone-50 text-stone-400 uppercase tracking-wider font-extrabold border-b border-stone-200">
+              <div className="overflow-x-auto rounded-2xl border border-stone-200 bg-white max-w-4xl xl:max-w-5xl shadow-2xs">
+                <table className="w-full min-w-[620px] text-left text-xs table-fixed">
+                  <colgroup>
+                    <col className="w-[36%]" />
+                    <col className="w-[22%]" />
+                    <col className="w-[18%]" />
+                    <col className="w-[24%]" />
+                  </colgroup>
+                  <thead className="bg-stone-50 text-stone-600 uppercase tracking-wider font-extrabold border-b border-stone-200">
                     <tr>
-                      <th className="py-3 px-4">Participant Name</th>
-                      <th className="py-3 px-4">AUID</th>
-                      <th className="py-3 px-4">Status</th>
-                      <th className="py-3 px-4 text-right">Attendance Action</th>
+                      <th className="py-2.5 px-3.5">Participant Name</th>
+                      <th className="py-2.5 px-3.5">AUID</th>
+                      <th className="py-2.5 px-3.5">Status</th>
+                      <th className="py-2.5 px-3.5 text-right">Attendance Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100 bg-white">
@@ -803,28 +809,35 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
 
                       return (
                         <tr key={p.user_id} className="hover:bg-stone-50/80 transition-colors">
-                          <td className="py-3 px-4">
-                            <span className="font-bold text-stone-900 block text-sm">{p.name}</span>
+                          <td className="py-2.5 px-3.5 font-bold text-stone-900 truncate" title={p.name}>
+                            <span className="font-bold text-stone-900 block truncate text-sm">{p.name}</span>
                           </td>
-                          <td className="py-3 px-4 font-mono text-stone-800 font-bold text-sm">
+                          <td className="py-2.5 px-3.5 font-mono text-stone-800 font-bold text-sm truncate" title={p.auid}>
                             {p.auid}
                           </td>
-                          <td className="py-3 px-4">
-                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold ${
-                              p.status === "COMPLETED"
-                                ? "bg-blue-100 text-blue-800 border border-blue-200"
-                                : p.status === "CHECKED_IN"
-                                ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                                : "bg-stone-100 text-stone-500"
-                            }`}>
-                              {p.status === "COMPLETED" && "COMPLETED"}
-                              {p.status === "CHECKED_IN" && "CHECKED IN"}
-                              {p.status === "NOT_MARKED" && "NOT MARKED"}
-                            </span>
+                          <td className="py-2.5 px-3.5">
+                            <div className="flex flex-col items-start gap-0.5">
+                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold inline-block ${
+                                p.status === "COMPLETED"
+                                  ? "bg-blue-100 text-blue-800 border border-blue-200"
+                                  : p.status === "CHECKED_IN"
+                                  ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                  : "bg-stone-100 text-stone-500"
+                              }`}>
+                                {p.status === "COMPLETED" && "COMPLETED"}
+                                {p.status === "CHECKED_IN" && "CHECKED IN"}
+                                {p.status === "NOT_MARKED" && "NOT MARKED"}
+                              </span>
+                              {p.check_in_time && (
+                                <span className="text-[10px] text-stone-400 font-mono font-semibold pl-0.5">
+                                  In: {p.check_in_time}
+                                </span>
+                              )}
+                            </div>
                           </td>
-                          <td className="py-3 px-4 text-right">
+                          <td className="py-2.5 px-3.5 text-right">
                             {isLocked || selectedDateIsFuture ? (
-                              <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-[11px] font-bold text-stone-400 bg-stone-100 border border-stone-200 cursor-not-allowed">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-bold text-stone-400 bg-stone-100 border border-stone-200 cursor-not-allowed">
                                 <Lock className="w-3.5 h-3.5" />
                                 <span>{selectedDateIsFuture ? "Opens on this date" : "Locked"}</span>
                               </span>
@@ -833,7 +846,7 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
                                 type="button"
                                 onClick={() => handleCheckIn(p.user_id)}
                                 disabled={isMarking}
-                                className="px-3.5 py-1.5 rounded-xl text-[11px] font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all flex items-center gap-1.5 ml-auto disabled:opacity-50 cursor-pointer"
+                                className="px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all flex items-center gap-1.5 ml-auto disabled:opacity-50 cursor-pointer active:scale-95"
                               >
                                 <Check className="w-3.5 h-3.5" />
                                 <span>{isMarking ? "Recording..." : "CHECK IN"}</span>
@@ -843,15 +856,15 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
                                 type="button"
                                 onClick={() => handleCheckOut(p.user_id)}
                                 disabled={isMarking || !p.check_in_time || (p.check_in_time && !p.check_out_available)}
-                                className="px-3.5 py-1.5 rounded-xl text-[11px] font-extrabold bg-amber-500 hover:bg-amber-600 text-stone-950 shadow-xs transition-all flex items-center gap-1.5 ml-auto disabled:opacity-50 cursor-pointer"
+                                className="px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-amber-500 hover:bg-amber-600 text-stone-950 shadow-xs transition-all flex items-center gap-1.5 ml-auto disabled:opacity-50 cursor-pointer active:scale-95"
                               >
                                 <Clock className="w-3.5 h-3.5" />
-                                <span>{isMarking ? "Recording..." : p.check_out_available === false ? "AVAILABLE AFTER 1 HOUR" : "CHECK OUT"}</span>
+                                <span>{isMarking ? "Recording..." : p.check_out_available === false ? "AFTER 1 HR" : "CHECK OUT"}</span>
                               </button>
                             ) : (
-                              <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200">
                                 <CheckCheck className="w-3.5 h-3.5" />
-                                <span>Attendance Completed</span>
+                                <span>Completed</span>
                               </span>
                             )}
                           </td>
