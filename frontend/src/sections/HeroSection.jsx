@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useLanguage } from "../context/LanguageContext";
+import { useAuth } from "../context/AuthContext";
 import { siteConfig } from "../config/siteConfig";
 import { CountdownTimer } from "../components/CountdownTimer";
 import { 
@@ -11,6 +12,7 @@ import {
 
 export const HeroSection = ({ onExploreNuditaranga, onKnowAbout, onOpenAuthTab, setCurrentView }) => {
   const { lang, t } = useLanguage();
+  const { user } = useAuth();
   const [mascotGreeting, setMascotGreeting] = useState(false);
 
   return (
@@ -49,21 +51,21 @@ export const HeroSection = ({ onExploreNuditaranga, onKnowAbout, onOpenAuthTab, 
         </div>
 
         {/* Main Headings */}
-        <div className="relative z-30 mb-4">
+        <div className="relative z-30 mb-7 sm:mb-4">
           <p className="text-2xl sm:text-4xl lg:text-5xl font-black text-kar-red font-display mb-2 tracking-tight">
             {lang === "kn" ? siteConfig.name.kn : siteConfig.name.en}
           </p>
           <p className="text-sm sm:text-lg font-extrabold text-amber-800 uppercase tracking-widest font-mono">
             {lang === "kn" ? "ನುಡಿತರಂಗ - ೨೦೨೬" : "Nuditaranga - 2026"}
           </p>
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-stone-900 tracking-tight font-display mt-1">
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-stone-900 tracking-tight font-display mt-1 pb-1">
             <span className="block text-transparent bg-clip-text bg-gradient-to-r from-kar-red via-red-600 to-amber-600 font-kannada-serif font-black">
               ಕರುನಾಡ ವೈಭವ
             </span>
           </h1>
         </div>
 
-        <div className="relative inline-flex min-h-28 w-full max-w-[calc(100vw-2rem)] items-center justify-center gap-2 overflow-visible sm:min-h-40 sm:gap-5 mt-1 mb-5 px-3 sm:px-9 py-2.5 sm:py-4 rounded-2xl sm:rounded-3xl border-2 border-amber-300 bg-gradient-to-r from-red-800 via-kar-red to-red-800 shadow-[0_12px_35px_rgba(127,29,29,0.28)]">
+        <div className="relative inline-flex min-h-28 w-full max-w-[calc(100vw-2rem)] items-center justify-center gap-2 overflow-visible sm:min-h-40 sm:gap-5 mt-6 sm:mt-1 mb-5 px-3 sm:px-9 py-2.5 sm:py-4 rounded-2xl sm:rounded-3xl border-2 border-amber-300 bg-gradient-to-r from-red-800 via-kar-red to-red-800 shadow-[0_12px_35px_rgba(127,29,29,0.28)]">
           <span className="absolute inset-0 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-transparent via-white/10 to-transparent pointer-events-none" />
           <Sparkles className="relative z-30 hidden w-4 h-4 shrink-0 sm:block sm:w-8 sm:h-8 text-amber-300 motion-safe:animate-pulse" aria-hidden="true" />
           <p className={`relative z-30 text-center font-black font-kannada-serif tracking-wide leading-tight text-amber-200 drop-shadow-[0_2px_8px_rgba(255,215,0,0.5)] ${lang === "kn" ? "max-w-[80%] text-[clamp(1.8rem,8.5vw,3rem)] sm:text-5xl lg:text-6xl" : "max-w-[74%] text-2xl sm:text-5xl lg:text-6xl"}`}>
@@ -75,7 +77,7 @@ export const HeroSection = ({ onExploreNuditaranga, onKnowAbout, onOpenAuthTab, 
             onClick={() => setMascotGreeting((value) => !value)}
             aria-label={lang === "kn" ? "ನೋಗ್ರಾಜ್ ಜೊತೆ ಮಾತನಾಡಿ" : "Talk to NOGRAJ"}
             aria-expanded={mascotGreeting}
-            className="absolute -left-2 -top-[6.5rem] z-20 w-36 sm:left-auto sm:-right-2 sm:-top-28 sm:w-36 lg:top-auto lg:bottom-0 lg:w-72 cursor-pointer rounded-full focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-amber-300"
+            className="absolute -left-2 -top-20 z-20 w-32 sm:left-auto sm:-right-2 sm:-top-28 sm:w-36 lg:top-auto lg:bottom-0 lg:w-72 cursor-pointer rounded-full focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-amber-300"
           >
             {mascotGreeting && (
               <span role="status" className="absolute -left-32 top-3 w-32 rounded-2xl border border-amber-200 bg-white px-3 py-2 text-xs font-bold leading-snug text-stone-800 shadow-lg sm:-left-44 sm:w-44 sm:text-sm">
@@ -102,14 +104,18 @@ export const HeroSection = ({ onExploreNuditaranga, onKnowAbout, onOpenAuthTab, 
 
         {/* Dual Primary Call-To-Action Buttons */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 sm:gap-4 mb-10 sm:mb-14 max-w-md sm:max-w-none mx-auto">
-          <button
-            onClick={() => { onOpenAuthTab?.("student-login"); setCurrentView?.("auth"); }}
-            className="w-full sm:w-auto px-7 py-3.5 rounded-2xl text-sm sm:text-base font-extrabold text-white shadow-lg bg-stone-900 hover:bg-stone-800 transition-all flex items-center justify-center"
-          >{lang === "kn" ? "ಲಾಗಿನ್" : "Login"}</button>
-          <button
-            onClick={() => { onOpenAuthTab?.("student-register"); setCurrentView?.("auth"); }}
-            className="w-full sm:w-auto px-7 py-3.5 rounded-2xl text-sm sm:text-base font-extrabold text-kar-red bg-white border-2 border-kar-red/30 hover:border-kar-red transition-all flex items-center justify-center"
-          >{lang === "kn" ? "ನೋಂದಣಿ" : "Register"}</button>
+          {!user && (
+            <>
+              <button
+                onClick={() => { onOpenAuthTab?.("student-login"); setCurrentView?.("auth"); }}
+                className="w-full sm:w-auto px-7 py-3.5 rounded-2xl text-sm sm:text-base font-extrabold text-white shadow-lg bg-stone-900 hover:bg-stone-800 transition-all flex items-center justify-center"
+              >{lang === "kn" ? "ಲಾಗಿನ್" : "Login"}</button>
+              <button
+                onClick={() => { onOpenAuthTab?.("student-register"); setCurrentView?.("auth"); }}
+                className="w-full sm:w-auto px-7 py-3.5 rounded-2xl text-sm sm:text-base font-extrabold text-kar-red bg-white border-2 border-kar-red/30 hover:border-kar-red transition-all flex items-center justify-center"
+              >{lang === "kn" ? "ನೋಂದಣಿ" : "Register"}</button>
+            </>
+          )}
           <button
             onClick={onExploreNuditaranga}
             className="w-full sm:w-auto px-7 py-3.5 rounded-2xl text-sm sm:text-base font-extrabold text-white shadow-lg shadow-red-600/20 hover:shadow-xl hover:shadow-red-600/30 transition-all transform hover:-translate-y-0.5 active:scale-95 bg-gradient-to-r from-kar-red via-red-600 to-kar-yellow flex items-center justify-center gap-2.5"

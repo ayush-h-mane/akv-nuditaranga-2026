@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.43",
-  "staged_version": "2.2.44",
+  "production_version": "2.2.44",
+  "staged_version": "2.2.45",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.44",
+      "released_at": "2026-09-29T22:06:31+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.44: Keep generous space between '\u0c95\u0cb0\u0cc1\u0ca8\u0cbe\u0ca1 \u0cb5\u0cc8\u0cad\u0cb5' title and the red celebration banner on mobile to ensure title visibility without mascot overlap.; Add interactive inline dialogue boxes directly beneath tapped schedule cards (LAUNCH, Flag hoist + Cultural events, etc.) on mobile.; Display 'Coming soon.......' with a close option when tapping 'View Official Draft poster' on mobile.; Arrange 4 pillars in About Acharya Kannada Vedike section into a 2x2 grid (2 in row 1, 2 in row 2) on mobile.; Compact activities section on mobile with a full-details dialog modal triggered on 'View Details' or card tap.; Convert Cultural Gallery into a horizontal side-by-side sweeping carousel with compact photo cards on mobile, freeing downward vertical space.; Convert Instagram Reels into a compact side-by-side sweeping carousel on mobile.; Compact coordinator contact boxes and the 'Send a message' contact form for mobile screens.; Render clean, minimal mobile-only footer keeping only AKV & Acharya logos, Acharya Kannada Vedike, email ID, celebration motto, author link, and copyright.; Preserve 100% of original layouts, grids, and components on laptop and desktop screens without modification.; Remove Login and Register CTA buttons on home page (HeroSection) after logging in across both desktop and mobile viewports."
+    },
     {
       "version": "2.2.43",
       "released_at": "2026-09-29T16:52:40+0530",

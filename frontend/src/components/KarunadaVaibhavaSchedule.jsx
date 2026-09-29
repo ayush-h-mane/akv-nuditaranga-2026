@@ -45,6 +45,8 @@ export const KarunadaVaibhavaSchedule = ({ onRegisterClick }) => {
     }
   };
 
+  const [mobileExpandedIndex, setMobileExpandedIndex] = useState(null);
+
   const selectedDay = scheduleDays[selectedDayIndex] || scheduleDays[0];
   const localizedTagline = (day) => {
     const canonicalTaglines = {
@@ -115,8 +117,126 @@ export const KarunadaVaibhavaSchedule = ({ onRegisterClick }) => {
           </div>
         </div>
 
-        {/* Programme grid / tabs */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-10">
+        {/* Mobile View: Event cards with inline dialogue boxes beneath each event */}
+        <div className="flex sm:hidden flex-col gap-3 mb-8">
+          {scheduleDays.map((item, idx) => {
+            const isExpanded = mobileExpandedIndex === idx;
+            const isDay3Rajyotsava = idx === 1;
+
+            return (
+              <div key={idx} className="flex flex-col">
+                <div
+                  onClick={() => setMobileExpandedIndex(isExpanded ? null : idx)}
+                  className={`cursor-pointer rounded-2xl p-4 transition-all duration-300 relative border flex flex-col justify-between ${
+                    isExpanded
+                      ? "bg-gradient-to-b from-amber-500/25 to-red-600/25 border-amber-400 shadow-xl shadow-amber-500/10"
+                      : "bg-stone-900/80 hover:bg-stone-800/90 border-stone-800"
+                  } ${isDay3Rajyotsava ? "ring-1 ring-amber-400/50" : ""}`}
+                >
+                  {isDay3Rajyotsava && (
+                    <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full text-[9px] font-black bg-kar-red text-white uppercase tracking-wider shadow">
+                      {lang === "kn" ? "ರಾಜ್ಯೋತ್ಸವ" : "Rajyotsava"}
+                    </span>
+                  )}
+
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[11px] font-mono font-bold text-amber-400">
+                        {lang === "kn" ? item.dayKn : item.day}
+                      </span>
+                      <span className="p-1 rounded-lg bg-white/5">
+                        {getDayIcon(idx)}
+                      </span>
+                    </div>
+
+                    <h3 className="font-extrabold text-white text-sm leading-snug">
+                      {lang === "kn" ? item.titleKn : item.title}
+                    </h3>
+                    {localizedTagline(item) && (
+                      <p className="mt-1 text-[11px] font-bold tracking-wide text-amber-300">
+                        {localizedTagline(item)}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="mt-3 pt-2 border-t border-stone-800/80 flex items-center justify-between text-[11px] text-stone-400">
+                    <span className="font-mono">{lang === "kn" ? (item.dateKn || formatKannadaDate(item.date)) : item.date}</span>
+                    <span className="text-amber-400 text-[10px] font-bold">
+                      {isExpanded ? (lang === "kn" ? "ಮುಚ್ಚಿ ▲" : "Close ▲") : (lang === "kn" ? "ವಿವರ ವೀಕ್ಷಿಸಿ ▼" : "View Details ▼")}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Mobile Dialogue Box directly beneath the tapped event card */}
+                {isExpanded && (
+                  <div className="mt-2 mb-3 p-4 rounded-2xl bg-stone-900 border-2 border-amber-400/60 shadow-2xl relative animate-fade-in text-left">
+                    <div className="flex items-center justify-between border-b border-stone-800 pb-2 mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-black bg-kar-red text-white uppercase tracking-wider">
+                          {lang === "kn" ? item.dayKn : item.day}
+                        </span>
+                        <span className="text-xs text-stone-300 font-mono">
+                          {lang === "kn" ? (item.dateKn || formatKannadaDate(item.date)) : item.date}
+                        </span>
+                      </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setMobileExpandedIndex(null); }}
+                        className="p-1 rounded-lg bg-stone-800 text-stone-300 hover:text-white"
+                        title={lang === "kn" ? "ಮುಚ್ಚಿ" : "Close"}
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <h4 className="text-base font-black text-white font-display">
+                      {lang === "kn" ? item.titleKn : item.title}
+                    </h4>
+                    {localizedTagline(item) && (
+                      <p className="text-xs font-bold text-amber-300 mb-2">
+                        {localizedTagline(item)}
+                      </p>
+                    )}
+
+                    <p className="text-xs text-stone-300 font-kannada leading-relaxed mb-3">
+                      {lang === "kn" ? item.descKn : item.descEn}
+                    </p>
+
+                    <div className="flex flex-col gap-1.5 text-[11px] text-stone-300 pt-2 border-t border-stone-800/80 mb-3">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-3.5 h-3.5 text-kar-red shrink-0" />
+                        <span>{lang === "kn" ? (item.venueKn || formatKannadaVenue(item.venue)) : (item.venueEn || item.venue)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-3.5 h-3.5 text-kar-yellow shrink-0" />
+                        <span>{lang === "kn" ? (item.timeKn || formatKannadaTime("9:00 AM Onwards")) : (item.timeEn || "9:00 AM Onwards")}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                      {onRegisterClick && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onRegisterClick(); }}
+                          className="flex-1 py-2 rounded-xl bg-gradient-to-r from-kar-red to-kar-yellow text-white text-xs font-black shadow hover:opacity-95"
+                        >
+                          {lang === "kn" ? "ಈ ದಿನದ ಸ್ಪರ್ಧೆಗೆ ನೋಂದಣಿ" : "Register for Day Events"}
+                        </button>
+                      )}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setMobileExpandedIndex(null); }}
+                        className="px-3 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-bold"
+                      >
+                        {lang === "kn" ? "ಮುಚ್ಚಿ" : "Close"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Laptop/Desktop Programme grid / tabs (Unchanged) */}
+        <div className="hidden sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-10">
           {scheduleDays.map((item, idx) => {
             const isSelected = idx === selectedDayIndex;
             const isDay3Rajyotsava = idx === 1; // Day 2: 1 November Rajyotsava
@@ -166,9 +286,9 @@ export const KarunadaVaibhavaSchedule = ({ onRegisterClick }) => {
           })}
         </div>
 
-        {/* Selected Day Spotlight Card */}
+        {/* Laptop/Desktop Selected Day Spotlight Card (Unchanged) */}
         {selectedDay && (
-          <div className="bg-stone-900/90 rounded-3xl border-2 border-amber-400/30 p-6 sm:p-10 shadow-2xl relative overflow-hidden backdrop-blur-md">
+          <div className="hidden sm:block bg-stone-900/90 rounded-3xl border-2 border-amber-400/30 p-6 sm:p-10 shadow-2xl relative overflow-hidden backdrop-blur-md">
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-kar-red via-kar-yellow to-kar-red" />
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
@@ -252,7 +372,38 @@ export const KarunadaVaibhavaSchedule = ({ onRegisterClick }) => {
       {/* Modal for Full-Size Poster Inspection */}
       {posterModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-fade-in">
-          <div className="relative max-w-2xl w-full bg-stone-950 rounded-3xl overflow-hidden border border-amber-400/40 shadow-2xl flex flex-col max-h-[90vh]">
+          {/* Mobile version: Coming soon... with close option */}
+          <div className="block sm:hidden relative max-w-sm w-full bg-stone-950 rounded-3xl overflow-hidden border border-amber-400/40 shadow-2xl p-6 text-center">
+            <button
+              onClick={() => setPosterModalOpen(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-xl hover:bg-stone-800 text-stone-400 hover:text-white transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-400/30 flex items-center justify-center mx-auto mb-4 text-amber-400">
+              <Sparkles className="w-7 h-7" />
+            </div>
+            <h4 className="text-base font-bold text-white mb-2">
+              {lang === "kn" ? "ಕರಡು ಪೋಸ್ಟರ್" : "Official Draft Poster"}
+            </h4>
+            <p className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-kar-yellow via-amber-300 to-kar-red font-mono tracking-wider mb-2">
+              Coming soon.......
+            </p>
+            <p className="text-xs text-stone-400 font-kannada mb-5">
+              {lang === "kn" 
+                ? "ಅಧಿಕೃತ ಕರಡು ಪೋಸ್ಟರ್ ಶೀಘ್ರದಲ್ಲೇ ಅಪ್‌ಲೋಡ್ ಆಗಲಿದೆ." 
+                : "The official draft poster will be updated and released shortly."}
+            </p>
+            <button
+              onClick={() => setPosterModalOpen(false)}
+              className="w-full py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-white text-xs font-bold transition-colors"
+            >
+              {lang === "kn" ? "ಮುಚ್ಚಿ" : "Close"}
+            </button>
+          </div>
+
+          {/* Desktop/Laptop version: Unchanged with original poster image */}
+          <div className="hidden sm:flex relative max-w-2xl w-full bg-stone-950 rounded-3xl overflow-hidden border border-amber-400/40 shadow-2xl flex-col max-h-[90vh]">
             <div className="p-4 bg-stone-900 border-b border-stone-800 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-kar-red" />

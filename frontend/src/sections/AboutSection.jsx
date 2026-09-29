@@ -37,35 +37,37 @@ export const AboutSection = () => {
           </p>
         </div>
 
-        {/* 4 Pillars Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* 4 Pillars Grid - 2x2 on mobile, 4 in 1 row on laptop */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
           {pillars.map((pillar, index) => (
             <div
               key={index}
-              className="relative bg-stone-50/90 rounded-3xl p-6 border border-stone-200/80 shadow-sm hover:shadow-xl hover:border-amber-400 hover:-translate-y-1 transition-all duration-300 group flex flex-col justify-between"
+              className="relative bg-stone-50/90 rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 border border-stone-200/80 shadow-sm hover:shadow-xl hover:border-amber-400 hover:-translate-y-1 transition-all duration-300 group flex flex-col justify-between"
             >
               {/* Pillar Accent Line */}
-              <div className="absolute top-0 left-8 right-8 h-1 bg-gradient-to-r from-kar-red to-kar-yellow rounded-b-full opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute top-0 left-4 right-4 sm:left-8 sm:right-8 h-1 bg-gradient-to-r from-kar-red to-kar-yellow rounded-b-full opacity-0 group-hover:opacity-100 transition-opacity" />
 
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-white shadow-md border border-amber-200 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                  {pillarIcons[index % pillarIcons.length]}
+                <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white shadow-md border border-amber-200 flex items-center justify-center mb-3 sm:mb-5 group-hover:scale-110 transition-transform">
+                  {React.cloneElement(pillarIcons[index % pillarIcons.length], {
+                    className: "w-5 h-5 sm:w-6 sm:h-6 text-kar-red"
+                  })}
                 </div>
 
-                <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400 block mb-1">
+                <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-stone-400 block mb-1">
                   {pillar.subtitle}
                 </span>
 
-                <h3 className="text-xl font-bold text-stone-900 font-display mb-3 group-hover:text-kar-red transition-colors">
+                <h3 className="text-sm sm:text-xl font-bold text-stone-900 font-display mb-1.5 sm:mb-3 group-hover:text-kar-red transition-colors">
                   {pillar.title}
                 </h3>
 
-                <p className="text-xs sm:text-sm text-stone-600 font-kannada leading-relaxed">
+                <p className="text-[11px] sm:text-sm text-stone-600 font-kannada leading-relaxed">
                   {pillar.desc}
                 </p>
               </div>
 
-              <div className="pt-4 mt-6 border-t border-stone-200/60 flex items-center text-xs font-bold text-amber-800">
+              <div className="pt-2 sm:pt-4 mt-3 sm:mt-6 border-t border-stone-200/60 flex items-center text-[10px] sm:text-xs font-bold text-amber-800">
                 <span>{lang === "kn" ? `೦${["೧", "೨", "೩", "೪"][index] || index + 1}` : `0${index + 1}`}</span>
               </div>
             </div>

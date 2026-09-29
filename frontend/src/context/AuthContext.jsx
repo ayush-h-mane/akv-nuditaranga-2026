@@ -4,7 +4,14 @@ import { api } from "../services/api";
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    try {
+      const stored = localStorage.getItem("akv_user");
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
   const [token, setToken] = useState(() => localStorage.getItem("akv_token") || null);
   const [role, setRole] = useState(() => localStorage.getItem("akv_role") || null);
   const [loading, setLoading] = useState(true);
