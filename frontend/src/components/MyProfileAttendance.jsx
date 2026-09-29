@@ -28,9 +28,9 @@ export const MyProfileAttendance = ({ profile, attendanceData, loading, error })
       kind: "Working committee attendance",
     })),
   ].sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
-  const roleLabel = profile?.is_working_committee
-    ? profile?.working_committee_role || "WORKING_COMMITTEE"
-    : profile?.role;
+  const domainLabel = profile?.is_working_committee
+    ? (profile?.volunteer_domain || profile?.akv_dept || profile?.working_committee_role || "General")
+    : (profile?.volunteer_domain || profile?.role);
 
   return (
     <div className="space-y-6">
@@ -45,12 +45,12 @@ export const MyProfileAttendance = ({ profile, attendanceData, loading, error })
           <Field label="Registration ID" value={profile?.registration_id} />
           <Field label="Email" value={profile?.email} />
           <Field label="Phone" value={profile?.phone} />
-          <Field label="Role" value={roleLabel} />
+          <Field label="AKV_DOMAIN" value={domainLabel} />
           <Field label="Institute" value={profile?.institute} />
           <Field label="Department" value={profile?.department} />
-          <Field label="Semester / Section" value={[profile?.semester ? `Sem ${profile.semester}` : "", profile?.section ? `Sec ${profile.section}` : ""].filter(Boolean).join(" • ")} />
-          {(profile?.admin_type || profile?.faculty_id || profile?.volunteer_domain) && (
-            <Field label="Assignment / ID" value={[profile?.admin_type, profile?.faculty_id, profile?.volunteer_domain].filter(Boolean).join(" • ")} />
+          <Field label="Semester" value={profile?.semester ? `Sem ${profile.semester}` : "—"} />
+          {(profile?.admin_type || profile?.faculty_id) && (
+            <Field label="Assignment / ID" value={[profile?.admin_type, profile?.faculty_id].filter(Boolean).join(" • ")} />
           )}
         </div>
       </section>

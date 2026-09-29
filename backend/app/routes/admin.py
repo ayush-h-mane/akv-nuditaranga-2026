@@ -94,7 +94,10 @@ def get_today_volunteers(
     """
     query = db.query(User).filter(User.role == "VOLUNTEER")
 
-    if department and department != "all":
+    # In admin portal while marking attendance of the volunteer, Display only the admin's AKV_DOMAIN's volunteers, dont display all.
+    if current_user.role == "ADMIN" and current_user.volunteer_domain:
+        query = query.filter(User.volunteer_domain == current_user.volunteer_domain)
+    elif department and department != "all":
         query = query.filter(User.department == department)
     if search:
         s = f"%{search.strip().lower()}%"

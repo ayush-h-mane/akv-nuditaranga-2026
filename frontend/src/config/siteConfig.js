@@ -163,9 +163,9 @@ export const siteConfig = {
         nameKn: "ಶ್ರೀ ತೇಜಸ್ ಕೆ.",
         roleEn: "Cultural Officer",
         roleKn: "ಸಾಂಸ್ಕೃತಿಕ ಅಧಿಕಾರಿ",
-        dept: "Student Affairs",
-        deptEn: "Student Affairs",
-        deptKn: "ವಿದ್ಯಾರ್ಥಿ ಕ್ಷೇಮಾಭಿವೃದ್ಧಿ ವಿಭಾಗ",
+        dept: "Department of Student Activities",
+        deptEn: "Department of Student Activities",
+        deptKn: "ವಿದ್ಯಾರ್ಥಿ ಚಟುವಟಿಕೆಗಳ ಇಲಾಖೆ",
         contact: "+91 94498 90035"
       }
     ],

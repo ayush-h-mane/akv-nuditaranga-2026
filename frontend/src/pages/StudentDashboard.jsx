@@ -269,7 +269,6 @@ export const StudentDashboard = ({ onNavigateHome }) => {
                   <span className="text-amber-200 text-xs font-bold">
                     {profile?.role === "VOLUNTEER" && "ಸ್ವಯಂಸೇವಕ ವಿಭಾಗ"}
                     {profile?.role === "PARTICIPANT" && "ಸ್ಪರ್ಧಾ ವಿಭಾಗ"}
-                    {profile?.role === "SPECTATOR" && "ವೀಕ್ಷಕರ ವಿಭಾಗ"}
                   </span>
                   {profile?.volunteer_domain && (
                     <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-400 text-stone-900 shadow-2xs">
@@ -426,8 +425,8 @@ export const StudentDashboard = ({ onNavigateHome }) => {
                   </div>
 
                   <div>
-                    <span className="text-stone-400 font-bold block text-[11px] uppercase">Semester & Section</span>
-                    <span className="font-semibold text-stone-800">Sem {profile?.semester} • Sec {profile?.section}</span>
+                    <span className="text-stone-400 font-bold block text-[11px] uppercase">Semester</span>
+                    <span className="font-semibold text-stone-800">Sem {profile?.semester}</span>
                   </div>
 
                   <div>
@@ -451,14 +450,13 @@ export const StudentDashboard = ({ onNavigateHome }) => {
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     {profile?.role === "VOLUNTEER" && <HeartHandshake className="w-5 h-5 text-kar-red" />}
-                    {profile?.role === "PARTICIPANT" && <Trophy className="w-5 h-5 text-amber-600" />}
-                    {profile?.role === "SPECTATOR" && <Users className="w-5 h-5 text-stone-700" />}
+                    {profile?.role !== "VOLUNTEER" && <Trophy className="w-5 h-5 text-amber-600" />}
                     <h3 className="font-extrabold text-sm text-stone-900 uppercase tracking-wide">
-                      {profile?.role} BRIEFING
+                      {profile?.role || "PARTICIPANT"} BRIEFING
                     </h3>
                   </div>
 
-                  {profile?.role === "VOLUNTEER" && (
+                  {profile?.role === "VOLUNTEER" ? (
                     <div className="space-y-3 text-xs text-stone-700 leading-relaxed">
                       <p>
                         🌟 <strong>You are an official volunteer for Nuditaranga 2026.</strong>
@@ -473,9 +471,7 @@ export const StudentDashboard = ({ onNavigateHome }) => {
                         Daily volunteer attendance is verified by faculty coordinators at the hospitality desk.
                       </p>
                     </div>
-                  )}
-
-                  {profile?.role === "PARTICIPANT" && (
+                  ) : (
                     <div className="space-y-3 text-xs text-stone-700 leading-relaxed">
                       <p>
                         🎯 <strong>Welcome to the cultural arena!</strong>
@@ -487,17 +483,6 @@ export const StudentDashboard = ({ onNavigateHome }) => {
                         <span className="font-bold text-stone-900 block">Certificate Eligibility:</span>
                         <span>Participation e-certificates will be provided post fest.</span>
                       </div>
-                    </div>
-                  )}
-
-                  {profile?.role === "SPECTATOR" && (
-                    <div className="space-y-3 text-xs text-stone-700 leading-relaxed">
-                      <p>
-                        🎉 <strong>Welcome Spectator!</strong>
-                      </p>
-                      <p>
-                        Enjoy traditional dance, literary debate, street plays, and classical singing across all college auditoriums.
-                      </p>
                     </div>
                   )}
                 </div>

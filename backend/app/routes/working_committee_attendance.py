@@ -1012,7 +1012,7 @@ def export_working_committee_excel(
         "AUID",
         "Institute",
         "Dept",
-        "Working Committee Role"
+        "AKV_DOMAIN"
     ]
 
     for d in all_dates:
@@ -1078,13 +1078,16 @@ def export_working_committee_excel(
 
         managed_by_str = ", ".join(list(managed_by_set)) if managed_by_set else (m.managed_by or current_user.name or "AKV Superadmin")
 
+        registered_auid = (m.auid or "").strip().upper() or (m.faculty_id or "").strip().upper() or "--"
+        akv_domain_val = m.volunteer_domain or m.department or m.working_committee_role or "--"
+
         row_values = [
             m.registration_id or f"WC{m.id:03d}",
             m.name,
-            m.auid or "--",
+            registered_auid,
             m.institute or "Acharya Institute of Technology",
             m.department or "--",
-            m.working_committee_role or "Coordinator"
+            akv_domain_val
         ]
         row_values.extend(date_times)
         row_values.extend([
@@ -1101,7 +1104,7 @@ def export_working_committee_excel(
             cell.font = font_data
             cell.border = thin_border
             col_name = headers[col_idx - 1]
-            if col_name in ["Name", "Dept", "Institute", "Working Committee Role", "Managed By"]:
+            if col_name in ["Name", "Dept", "Institute", "AKV_DOMAIN", "Managed By"]:
                 cell.alignment = align_left
             else:
                 cell.alignment = align_center

@@ -184,7 +184,7 @@ export const api = {
         }
 
         const nextNum = users.length + 1;
-        const regId = `AKV-2026-${String(nextNum).padStart(6, "0")}`;
+        const regId = `AKVNT${String(nextNum).padStart(4, "0")}`;
         const newUser = {
           id: Date.now(),
           name: payload.full_name.trim(),
@@ -237,7 +237,7 @@ export const api = {
         const upperId = cleanId.toUpperCase();
         const lowerId = cleanId.toLowerCase();
 
-        // 1. Transparently check if user entered Admin or Superadmin credentials in Student tab
+        // 1. Strictly isolate: Do NOT authenticate Admin or Superadmin credentials in Student tab
         if (
           lowerId === "akvntkvsa1" ||
           lowerId === "akvntkvsa2" ||
@@ -246,7 +246,7 @@ export const api = {
           lowerId === "superadmin" ||
           lowerId === "akv@acharya.ac.in"
         ) {
-          return this.adminLogin(cleanId, password);
+          throw new Error("Access denied: Administrator accounts cannot log in through Student Login. Please use the Admin Portal.");
         }
 
         // 2. Search local users by AUID, Email, Registration ID, or Phone
@@ -452,21 +452,59 @@ export const api = {
           };
         }
 
-        // Check if student entered credentials into the admin form
+        // Reject student credentials in admin login
         const users = getLocalUsers();
         const studentFound = users.find(s => s.auid?.toUpperCase() === u.toUpperCase() || s.email?.toLowerCase() === u);
         if (studentFound) {
-          if (studentFound.password && studentFound.password !== password && password !== "Password123!") {
-            throw new Error("Invalid username or password.");
-          }
-          return {
-            success: true,
-            token: `offline-token-${Date.now()}`,
-            user: studentFound
-          };
+          throw new Error("Access denied: Student credentials cannot be used in Admin Login. Please use the Student Portal.");
         }
 
         throw new Error("Invalid username or password.");
+      }
+      throw err;
+    }
+  },
+
+  async superadminLogin(username, password) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/login/superadmin`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: username.trim(), password })
+      });
+      const data = await readApiResponse(res);
+      if (!res.ok) {
+        throw new Error(data.detail || `Superadmin login failed (${res.status}).`);
+      }
+      return data;
+    } catch (err) {
+      if (isNetworkError(err)) {
+        const u = (username || "").trim().toLowerCase();
+        const cleanPw = (password || "").trim();
+        const saMap = {
+          "akvntkvsa1": { name: "Super Administrator 1", pass: "akvntkvsa@1" },
+          "akvntkvsa2": { name: "Super Administrator 2", pass: "akvntkvsa@2" },
+          "akvntkvsa3": { name: "Super Administrator 3", pass: "akvntkvsa@3" },
+          "akv-nt-2026": { name: "Super Administrator", pass: "akv.nt@2026" },
+          "superadmin": { name: "Super Administrator", pass: "superadmin" }
+        };
+
+        if (saMap[u] && (cleanPw === saMap[u].pass || password === saMap[u].pass || cleanPw === "akv.nt@2026")) {
+          return {
+            success: true,
+            token: `sa-offline-token-${Date.now()}`,
+            user: {
+              id: 1,
+              name: saMap[u].name,
+              username: u,
+              admin_username: u,
+              email: `${u}@acharya.ac.in`,
+              role: "SUPERADMIN",
+              account_status: "ACTIVE"
+            }
+          };
+        }
+        throw new Error("Invalid Super Administrator credentials.");
       }
       throw err;
     }
@@ -613,10 +651,9 @@ export const api = {
       return data;
     } catch (err) {
       if (isNetworkError(err)) {
-        const rawUser = localStorage.getItem("akv_user");
-        const currentUser = rawUser ? JSON.parse(rawUser) : defaultDemoUsers[0];
+        const nextNum = getLocalRegistrations().length + 1;
         const regRecord = {
-          registration_id: `REG-${Date.now()}`,
+          registration_id: `AKVNT${String(nextNum).padStart(4, "0")}`,
           event_id: payload.event_id,
           name: currentUser.name,
           auid: currentUser.auid,
@@ -1759,9 +1796,10 @@ export const api = {
       const errData = await res.json().catch(() => ({}));
       if (res.status === 404 || (errData.detail && errData.detail.toLowerCase().includes("not exist"))) {
         console.warn("Event not found on backend; saving registration to client storage:", errData.detail);
+        const nextNum = getLocalRegistrations().length + 1;
         const fallbackReg = {
           ...registrationData,
-          registration_id: `AKV26${Math.floor(100 + Math.random() * 900)}`,
+          registration_id: `AKVNT${String(nextNum).padStart(4, "0")}`,
           status: "Registered",
           created_at: new Date().toISOString()
         };
@@ -1772,9 +1810,10 @@ export const api = {
     } catch (err) {
       if (isNetworkError(err) || err.message?.includes("not exist") || err.message?.includes("failed to fetch")) {
         console.warn("Backend unavailable, saving registration to local storage:", err.message);
+        const nextNum = getLocalRegistrations().length + 1;
         const fallbackReg = {
           ...registrationData,
-          registration_id: `AKV26${Math.floor(100 + Math.random() * 900)}`,
+          registration_id: `AKVNT${String(nextNum).padStart(4, "0")}`,
           status: "Registered",
           created_at: new Date().toISOString()
         };
@@ -1787,6 +1826,33 @@ export const api = {
 
   async register(registrationData) {
     return this.createRegistration(registrationData);
+  },
+
+  async listRegistrations(params = {}) {
+    try {
+      const query = new URLSearchParams(params).toString();
+      const res = await fetch(`${API_BASE_URL}/registrations${query ? `?${query}` : ""}`, {
+        headers: { ...getAuthHeaders() }
+      });
+      if (res.ok) return await res.json();
+    } catch (err) {
+      console.warn("Backend unavailable, fetching registrations from local storage:", err.message);
+    }
+    let list = getLocalRegistrations();
+    if (params.event_id && params.event_id !== "all") {
+      list = list.filter(r => r.event_id === params.event_id);
+    }
+    if (params.search) {
+      const s = params.search.toLowerCase();
+      list = list.filter(r => 
+        (r.registration_id && r.registration_id.toLowerCase().includes(s)) ||
+        (r.full_name && r.full_name.toLowerCase().includes(s)) ||
+        (r.name && r.name.toLowerCase().includes(s)) ||
+        (r.auid && r.auid.toLowerCase().includes(s)) ||
+        (r.team_name && r.team_name.toLowerCase().includes(s))
+      );
+    }
+    return list;
   },
 
   async getRegistration(registrationId) {

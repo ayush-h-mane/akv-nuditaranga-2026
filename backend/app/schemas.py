@@ -8,6 +8,7 @@ class TeamMemberSchema(BaseModel):
     name: str = Field(..., min_length=2)
     auid: str = Field(..., min_length=3, max_length=30)
     usn: Optional[str] = None
+    department: Optional[str] = None
     phone: Optional[str] = None
 
     @field_validator("auid", "usn", mode="before")
@@ -84,8 +85,8 @@ class RegistrationCreate(BaseModel):
     usn: Optional[str] = None
     institute: str = Field("Acharya Institute of Technology", min_length=2, max_length=150)
     department: str = Field(..., min_length=2, max_length=100)
-    semester: int = Field(6, ge=1, le=8)
-    section: str = Field("A", min_length=1, max_length=10)
+    semester: Optional[int] = Field(6, ge=1, le=8)
+    section: Optional[str] = Field("A", min_length=1, max_length=10)
     email: EmailStr
     phone: str = Field(..., min_length=10, max_length=15)
     gender: str = Field("Other")

@@ -171,7 +171,7 @@ export const RegisterPage = ({
     }
     setFormData(prev => ({
       ...prev,
-      teamMembers: [...prev.teamMembers, { name: "", auid: "", usn: "", phone: "" }]
+      teamMembers: [...prev.teamMembers, { name: "", auid: "", usn: "", department: "", phone: "" }]
     }));
   };
 
@@ -198,40 +198,11 @@ export const RegisterPage = ({
     }
     
     // AUID Validation
-    const cleanAuid = formData.auid.trim().toUpperCase();
+    const cleanAuid = (formData.auid || "").trim().toUpperCase();
     if (!/^[0-9A-Z]{3,30}$/.test(cleanAuid)) {
       return lang === "kn" 
         ? "ಅಕ್ಷರ ಮತ್ತು ಅಂಕಿಗಳನ್ನು ಮಾತ್ರ ಹೊಂದಿರುವ ಮಾನ್ಯ AUID ನಮೂದಿಸಿ (ಉದಾ: AIT23BEAI129)."
         : "Enter an alphanumeric AUID using letters and numbers only (e.g., AIT23BEAI129).";
-    }
-
-    // Institute Validation
-    if (!formData.institute.trim()) {
-      return lang === "kn" 
-        ? "ದಯವಿಟ್ಟು ನಿಮ್ಮ ಸಂಸ್ಥೆ / ಕಾಲೇಜು ಹೆಸರನ್ನು ನಮೂದಿಸಿ." 
-        : "Please enter your Institute / College name.";
-    }
-
-    // Department Validation (Manual entry)
-    if (!formData.department.trim()) {
-      return lang === "kn" 
-        ? "ದಯವಿಟ್ಟು ನಿಮ್ಮ ವಿಭಾಗ / ಕೋರ್ಸ್ ನಮೂದಿಸಿ." 
-        : "Please enter your Department / Branch.";
-    }
-
-    // Phone Validation (10 digits)
-    const cleanPhone = formData.phone.replace(/\D/g, "");
-    if (cleanPhone.length !== 10) {
-      return lang === "kn" 
-        ? "ದಯವಿಟ್ಟು ಮಾನ್ಯವಾದ ೧೦ ಅಂಕಿಗಳ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ." 
-        : "Please enter a valid 10-digit mobile number.";
-    }
-
-    // Email Validation
-    if (!isAcharyaEmail(formData.email)) {
-      return lang === "kn" 
-        ? "ದಯವಿಟ್ಟು @acharya.ac.in ನಲ್ಲಿ ಕೊನೆಗೊಳ್ಳುವ ಅಧಿಕೃತ ಇಮೇಲ್ ಬಳಸಿ."
-        : ACHARYA_EMAIL_ERROR;
     }
 
     // Team Validations if event is team or group mode selected
@@ -243,25 +214,30 @@ export const RegisterPage = ({
       }
       const minRequired = selectedEvent.format === "both" 
         ? (selectedEvent.min_team_size || 2) 
-        : selectedEvent.min_team_size;
+        : (selectedEvent?.min_team_size || 2);
       const totalTeamCount = formData.teamMembers.length + 1;
       if (totalTeamCount < minRequired) {
         return lang === "kn" 
           ? `ಈ ಸ್ಪರ್ಧೆಗೆ ಗುಂಪು ನೋಂದಣಿಗೆ ಕನಿಷ್ಠ ${toKannadaDigits(minRequired)} ಸದಸ್ಯರು ಅಗತ್ಯ. ದಯವಿಟ್ಟು ತಂಡದ ಸದಸ್ಯರನ್ನು ಸೇರಿಸಿ.` 
           : `Group participation for this event requires a minimum of ${minRequired} members. Please add team members.`;
       }
-      // Check each member info
+      // Check each member info: Name, AUID/Faculty ID, Department
       for (let i = 0; i < formData.teamMembers.length; i++) {
         const m = formData.teamMembers[i];
-        if (!m.name.trim() || !(m.auid || m.usn)?.trim()) {
+        if (!m.name?.trim()) {
           return lang === "kn" 
-            ? `ದಯವಿಟ್ಟು ತಂಡದ ಸದಸ್ಯ #${toKannadaDigits(i + 2)} ರ ಹೆಸರು ಮತ್ತು AUID ಭರ್ತಿ ಮಾಡಿ.` 
-            : `Please fill name and AUID for Team Member #${i + 2}.`;
+            ? `ದಯವಿಟ್ಟು ತಂಡದ ಸದಸ್ಯ #${toKannadaDigits(i + 2)} ರ ಹೆಸರು ಭರ್ತಿ ಮಾಡಿ.` 
+            : `Please fill name for Team Member #${i + 2}.`;
         }
-        if (!/^[0-9A-Z]{3,30}$/.test((m.auid || m.usn).trim().toUpperCase())) {
-          return lang === "kn"
-            ? `ತಂಡದ ಸದಸ್ಯ #${toKannadaDigits(i + 2)} ರ AUID ಅಕ್ಷರ ಮತ್ತು ಅಂಕಿಗಳನ್ನು ಮಾತ್ರ ಹೊಂದಿರಬೇಕು.`
-            : `Team Member #${i + 2} AUID must contain letters and numbers only.`;
+        if (!(m.auid || m.usn)?.trim()) {
+          return lang === "kn" 
+            ? `ದಯವಿಟ್ಟು ತಂಡದ ಸದಸ್ಯ #${toKannadaDigits(i + 2)} ರ AUID / Faculty ID ಭರ್ತಿ ಮಾಡಿ.` 
+            : `Please fill AUID / Faculty ID for Team Member #${i + 2}.`;
+        }
+        if (!m.department?.trim()) {
+          return lang === "kn" 
+            ? `ದಯವಿಟ್ಟು ತಂಡದ ಸದಸ್ಯ #${toKannadaDigits(i + 2)} ರ ವಿಭಾಗ (Dept) ಭರ್ತಿ ಮಾಡಿ.` 
+            : `Please fill Department for Team Member #${i + 2}.`;
         }
       }
     }
@@ -321,6 +297,7 @@ export const RegisterPage = ({
               name: m.name.trim(),
               auid: (m.auid || m.usn || "").trim().toUpperCase(),
               usn: (m.auid || m.usn || "").trim().toUpperCase(),
+              department: (m.department || "").trim(),
               phone: (m.phone || "").trim()
             }))
           : []
@@ -579,185 +556,86 @@ export const RegisterPage = ({
               </div>
             )}
 
-            {/* Form Fields Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs sm:text-sm">
-              
-              {/* Full Name */}
-              <div>
-                <label className="block font-bold text-stone-700 mb-1">
-                  {t("registration.fullName")} *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.fullName}
-                  onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                  placeholder={lang === "kn" ? "ಉದಾ: ಪ್ರಜ್ವಲ್ ಗೌಡ" : "e.g. Prajwal Gowda"}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-none focus:ring-2 focus:ring-kar-red/20 focus:border-kar-red"
-                />
-              </div>
-
-              {/* AUID */}
-              <div>
-                <label className="block font-bold text-stone-700 mb-1">
-                  {t("registration.auid") || (lang === "kn" ? "ಆಚಾರ್ಯ ಯೂನಿಕ್ ಐಡಿ (AUID) *" : "Acharya Unique ID (AUID) *")}
-                </label>
-                <input
-                  type="text"
-                  required
-                  minLength={3}
-                  maxLength={30}
-                  pattern="[A-Za-z0-9]{3,30}"
-                  title="Use 3–30 letters and numbers only, for example AIT23BEAI129."
-                  value={formData.auid}
-                  onChange={(e) => setFormData({ ...formData, auid: e.target.value.toUpperCase(), usn: e.target.value.toUpperCase() })}
-                  placeholder={lang === "kn" ? "ಉದಾ: AIT23BEAI129" : "e.g. AIT23BEAI129"}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 uppercase font-mono focus:outline-none focus:ring-2 focus:ring-kar-red/20 focus:border-kar-red"
-                />
-              </div>
-
-              {/* Institute */}
-              <div>
-                <label className="block font-bold text-stone-700 mb-1">
-                  {t("registration.institute") || (lang === "kn" ? "ಸಂಸ್ಥೆ / ಕಾಲೇಜು *" : "Institute / College Name *")}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.institute}
-                  onChange={(e) => setFormData({ ...formData, institute: e.target.value })}
-                  placeholder={lang === "kn" ? "ಉದಾ: ಆಚಾರ್ಯ ಇನ್‌ಸ್ಟಿಟ್ಯೂಟ್ ಆಫ್ ಟೆಕ್ನಾಲಜಿ" : "e.g. Acharya Institute of Technology"}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-none focus:ring-2 focus:ring-kar-red/20 focus:border-kar-red"
-                />
-              </div>
-
-              {/* Department (Manual Entry) */}
-              <div>
-                <label className="block font-bold text-stone-700 mb-1">
-                  {t("registration.department") || (lang === "kn" ? "ವಿಭಾಗ / ಕೋರ್ಸ್ *" : "Department / Course *")}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.department}
-                  onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                  placeholder={lang === "kn" ? "ಉದಾ: ಕಂಪ್ಯೂಟರ್ ಸೈನ್ಸ್, ಇಇಇ, ಎಂಬಿಎ..." : "e.g. Computer Science & Engineering, MBA..."}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-none focus:ring-2 focus:ring-kar-red/20 focus:border-kar-red bg-white"
-                />
-              </div>
-
-              {/* Semester & Section Row */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-stone-700 mb-1">
-                    {t("registration.semester")} *
-                  </label>
-                  <select
-                    value={formData.semester}
-                    onChange={(e) => setFormData({ ...formData, semester: Number(e.target.value) })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-none focus:ring-2 focus:ring-kar-red/20 focus:border-kar-red bg-white"
-                  >
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
-                      <option key={num} value={num}>
-                        {lang === "kn" ? `${toKannadaDigits(num)}ನೇ ಸೆಮಿಸ್ಟರ್` : `Sem ${num}`}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-stone-700 mb-1">
-                    {t("registration.section")} *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.section}
-                    onChange={(e) => setFormData({ ...formData, section: e.target.value.toUpperCase() })}
-                    placeholder={lang === "kn" ? "ಉದಾ: A" : "e.g. A"}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 uppercase focus:outline-none focus:ring-2 focus:ring-kar-red/20 focus:border-kar-red"
-                  />
-                </div>
-              </div>
-
-              {/* College Email */}
-              <div>
-                <label className="block font-bold text-stone-700 mb-1">
-                  {t("registration.email")} *
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder={lang === "kn" ? "ಉದಾ: yourname@acharya.ac.in" : "e.g. yourname@acharya.ac.in"}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-none focus:ring-2 focus:ring-kar-red/20 focus:border-kar-red"
-                />
-              </div>
-
-              {/* Phone (WhatsApp) */}
-              <div>
-                <label className="block font-bold text-stone-700 mb-1">
-                  {t("registration.phone")} *
-                </label>
-                <input
-                  type="tel"
-                  required
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder={lang === "kn" ? "೧೦ ಅಂಕಿಗಳ ಮೊಬೈಲ್ ಸಂಖ್ಯೆ" : "10-digit mobile number"}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 font-mono focus:outline-none focus:ring-2 focus:ring-kar-red/20 focus:border-kar-red"
-                />
-              </div>
-
-              {/* Gender */}
-              <div className="sm:col-span-2">
-                <label className="block font-bold text-stone-700 mb-1">
-                  {t("registration.gender")} *
-                </label>
-                <div className="flex items-center gap-6 pt-1">
-                  {["Male", "Female", "Other"].map((g) => (
-                    <label key={g} className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="gender"
-                        value={g}
-                        checked={formData.gender === g}
-                        onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                        className="text-kar-red focus:ring-kar-red"
-                      />
-                      <span className="font-semibold text-stone-700">
-                        {g === "Male" ? t("registration.genderMale") : g === "Female" ? t("registration.genderFemale") : t("registration.genderOther")}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-            </div>
-
-            {/* Team Members Section (if Team Event or Group mode selected) */}
-            {isTeamRegistration && (
-              <div className="p-5 rounded-2xl bg-amber-50/50 border border-amber-200/80 space-y-4 pt-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-5 h-5 text-amber-600" />
-                    <h4 className="font-bold text-stone-900 text-sm">
-                      {t("registration.teamDetails")} ({lang === "kn" ? "ಗಾತ್ರ: " : "Size: "} {lang === "kn" ? toKannadaDigits(selectedEvent.format === "both" ? (selectedEvent.min_team_size || 2) : selectedEvent.min_team_size) : (selectedEvent.format === "both" ? (selectedEvent.min_team_size || 2) : selectedEvent.min_team_size)} {lang === "kn" ? "ರಿಂದ" : "to"} {lang === "kn" ? toKannadaDigits(selectedEvent.max_team_size) : selectedEvent.max_team_size})
+            {/* Solo Confirmation or Group Registration Details */}
+            {!isTeamRegistration ? (
+              /* SOLO REGISTRATION: Don't ask for any info, use verified account profile */
+              <div className="p-6 rounded-3xl bg-gradient-to-br from-amber-50/90 via-white to-red-50/60 border border-amber-200/90 shadow-sm space-y-4 animate-fade-in">
+                <div className="flex items-center gap-3 border-b border-amber-100 pb-3">
+                  <div className="w-10 h-10 rounded-2xl bg-kar-red text-white flex items-center justify-center font-bold shadow-sm">
+                    <User className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-800">
+                      {lang === "kn" ? "ದೃಢೀಕರಿಸಿದ ಪ್ರೊಫೈಲ್ ವಿವರಗಳು (ಖಾತೆಯಿಂದ)" : "Verified Participant Profile"}
+                    </span>
+                    <h4 className="text-base font-extrabold text-stone-900 font-display">
+                      {formData.fullName || user?.name}
                     </h4>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleAddMember}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-200 text-amber-900 text-xs font-bold hover:bg-amber-300 transition-colors"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>{t("registration.addMember")}</span>
-                  </button>
                 </div>
 
-                <div>
-                  <label className="block font-bold text-stone-700 text-xs mb-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="p-3 rounded-xl bg-white border border-stone-200">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-0.5">
+                      AUID / Faculty ID
+                    </span>
+                    <span className="font-mono font-bold text-stone-900">{formData.auid || user?.auid}</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-white border border-stone-200">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-0.5">
+                      Institute
+                    </span>
+                    <span className="font-bold text-stone-900">{formData.institute || user?.institute}</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-white border border-stone-200">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-0.5">
+                      Department & Semester
+                    </span>
+                    <span className="font-bold text-stone-900">
+                      {formData.department || user?.department || "General"} {formData.semester ? `(Sem ${formData.semester})` : ""}
+                    </span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-white border border-stone-200">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-0.5">
+                      Contact & Email
+                    </span>
+                    <span className="font-medium text-stone-700">
+                      {formData.phone || user?.phone} • {formData.email || user?.email}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2.5 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium">
+                  <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-600" />
+                  <span>
+                    {lang === "kn" 
+                      ? "ಇದು ಏಕವ್ಯಕ್ತಿ (Solo) ಸ್ಪರ್ಧೆಯಾಗಿದ್ದು, ನಿಮ್ಮ ಖಾತೆಯ ವಿವರಗಳನ್ನು ನೇರವಾಗಿ ಬಳಸಲಾಗುತ್ತದೆ. ಯಾವುದೇ ಹೆಚ್ಚುವರಿ ಮಾಹಿತಿ ನಮೂದಿಸುವ ಅಗತ್ಯವಿಲ್ಲ."
+                      : "This is a Solo competition. Your verified account profile will be used directly. No additional information is required."}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              /* GROUP REGISTRATION: Ask only Team Name & Team Members' Name, Faculty ID / AUID, Dept */
+              <div className="space-y-4 animate-fade-in">
+                {/* Team Lead Indicator */}
+                <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200 text-xs flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-800 block mb-0.5">
+                      {lang === "kn" ? "ತಂಡದ ನಾಯಕ (ನಿಮ್ಮ ಖಾತೆ)" : "Team Lead (Your Account)"}
+                    </span>
+                    <span className="font-bold text-stone-900 text-sm">{formData.fullName || user?.name}</span>
+                    <span className="text-stone-500 block text-xs mt-0.5 font-mono">
+                      {formData.auid || user?.auid} • {formData.department || user?.department || "General"}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-kar-red text-white uppercase tracking-wider">
+                    {lang === "kn" ? "ನಾಯಕ" : "Lead"}
+                  </span>
+                </div>
+
+                {/* Team Name */}
+                <div className="p-4 rounded-2xl bg-white border border-stone-200 space-y-1">
+                  <label className="block font-bold text-stone-800 text-xs uppercase tracking-wider">
                     {t("registration.teamName")} *
                   </label>
                   <input
@@ -766,66 +644,100 @@ export const RegisterPage = ({
                     value={formData.teamName}
                     onChange={(e) => setFormData({ ...formData, teamName: e.target.value })}
                     placeholder={lang === "kn" ? "ಉದಾ: ನುಡಿ ಸಿಂಹಗಳು" : "e.g. Nudi Simhagalu"}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs sm:text-sm bg-white"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-kar-red/20 focus:border-kar-red font-semibold"
                   />
                 </div>
 
-                {/* Team Lead Indicator */}
-                <div className="p-2.5 rounded-xl bg-white border border-stone-200 text-xs flex items-center justify-between">
-                  <div>
-                    <span className="font-bold text-stone-900">{lang === "kn" ? "ಸದಸ್ಯ #೧ (ತಂಡದ ನಾಯಕ): " : "Member #1 (Team Lead): "}</span>
-                    <span className="text-stone-600">{formData.fullName || (lang === "kn" ? "ನಿಮ್ಮ ವಿವರಗಳು (ಮೇಲೆ ನೀಡಲಾಗಿದೆ)" : "Your Details (above)")}</span>
-                  </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-kar-red text-white uppercase">
-                    {lang === "kn" ? "ನಾಯಕ" : "Lead"}
-                  </span>
-                </div>
-
                 {/* Additional Team Members */}
-                {formData.teamMembers.map((member, index) => (
-                  <div key={index} className="p-3.5 rounded-xl bg-white border border-stone-200 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-stone-800 text-xs">
-                        {lang === "kn" ? `ಸದಸ್ಯ #${toKannadaDigits(index + 2)}` : `Member #${index + 2}`}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveMember(index)}
-                        className="text-red-500 hover:text-red-700 text-xs font-bold flex items-center gap-1"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>{t("registration.removeMember")}</span>
-                      </button>
+                <div className="p-5 rounded-2xl bg-stone-50 border border-stone-200 space-y-4">
+                  <div className="flex items-center justify-between border-b border-stone-200 pb-3">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-5 h-5 text-amber-600" />
+                      <h4 className="font-bold text-stone-900 text-xs sm:text-sm">
+                        {t("registration.teamDetails")} ({lang === "kn" ? "ಗಾತ್ರ: " : "Size: "} {lang === "kn" ? toKannadaDigits(selectedEvent.format === "both" ? (selectedEvent.min_team_size || 2) : (selectedEvent.min_team_size || 2)) : (selectedEvent.format === "both" ? (selectedEvent.min_team_size || 2) : (selectedEvent.min_team_size || 2))} {lang === "kn" ? "ರಿಂದ" : "to"} {lang === "kn" ? toKannadaDigits(selectedEvent.max_team_size || 4) : (selectedEvent.max_team_size || 4)})
+                      </h4>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      <input
-                        type="text"
-                        placeholder={t("registration.memberName")}
-                        value={member.name}
-                        onChange={(e) => handleMemberChange(index, "name", e.target.value)}
-                        className="px-3 py-2 rounded-lg border border-stone-300 text-xs"
-                      />
-                      <input
-                        type="text"
-                        placeholder={t("registration.memberAuid") || (lang === "kn" ? "ಸದಸ್ಯರ AUID" : "Member AUID")}
-                        value={member.auid || member.usn || ""}
-                        onChange={(e) => {
-                          const val = e.target.value.toUpperCase();
-                          handleMemberChange(index, "auid", val);
-                          handleMemberChange(index, "usn", val);
-                        }}
-                        className="px-3 py-2 rounded-lg border border-stone-300 text-xs uppercase font-mono"
-                      />
-                      <input
-                        type="tel"
-                        placeholder={t("registration.memberPhone")}
-                        value={member.phone || ""}
-                        onChange={(e) => handleMemberChange(index, "phone", e.target.value)}
-                        className="px-3 py-2 rounded-lg border border-stone-300 text-xs font-mono"
-                      />
-                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAddMember}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-200 text-amber-900 text-xs font-bold hover:bg-amber-300 transition-colors shadow-xs"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>{t("registration.addMember")}</span>
+                    </button>
                   </div>
-                ))}
+
+                  {formData.teamMembers.length === 0 ? (
+                    <p className="text-xs text-stone-500 py-3 text-center">
+                      {lang === "kn" 
+                        ? "ಹೆಚ್ಚುವರಿ ಸದಸ್ಯರನ್ನು ಸೇರಿಸಲು 'ಸದಸ್ಯರನ್ನು ಸೇರಿಸಿ' ಕ್ಲಿಕ್ ಮಾಡಿ (ಹೆಸರು, AUID/Faculty ID, ವಿಭಾಗ ಮಾತ್ರ ಅಗತ್ಯ)." 
+                        : "Click '+ Add Member' to add team members (only Name, AUID/Faculty ID, and Dept required)."}
+                    </p>
+                  ) : (
+                    formData.teamMembers.map((member, index) => (
+                      <div key={index} className="p-3.5 rounded-xl bg-white border border-stone-200 space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-stone-800 text-xs">
+                            {lang === "kn" ? `ಸದಸ್ಯ #${toKannadaDigits(index + 2)}` : `Team Member #${index + 2}`}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveMember(index)}
+                            className="text-red-500 hover:text-red-700 text-xs font-bold flex items-center gap-1"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>{t("registration.removeMember")}</span>
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                          <div>
+                            <label className="block text-[10px] font-bold text-stone-600 uppercase mb-1">
+                              Name *
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              placeholder={lang === "kn" ? "ಪೂರ್ಣ ಹೆಸರು" : "Member Full Name"}
+                              value={member.name}
+                              onChange={(e) => handleMemberChange(index, "name", e.target.value)}
+                              className="w-full px-3 py-2 rounded-lg border border-stone-300 text-xs focus:ring-1 focus:ring-kar-red"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-stone-600 uppercase mb-1">
+                              AUID / Faculty ID *
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="e.g. AIT23BEAI129"
+                              value={member.auid || member.usn || ""}
+                              onChange={(e) => {
+                                const val = e.target.value.toUpperCase();
+                                handleMemberChange(index, "auid", val);
+                                handleMemberChange(index, "usn", val);
+                              }}
+                              className="w-full px-3 py-2 rounded-lg border border-stone-300 text-xs uppercase font-mono focus:ring-1 focus:ring-kar-red"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-stone-600 uppercase mb-1">
+                              Department *
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              placeholder={lang === "kn" ? "ವಿಭಾಗ (Dept)" : "e.g. CSE / EEE / MBA"}
+                              value={member.department || ""}
+                              onChange={(e) => handleMemberChange(index, "department", e.target.value)}
+                              className="w-full px-3 py-2 rounded-lg border border-stone-300 text-xs focus:ring-1 focus:ring-kar-red"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             )}
 
@@ -911,7 +823,7 @@ export const RegisterPage = ({
                   <div>
                     <span className="text-stone-400 block text-xs">{t("registration.department")}:</span>
                     <span className="font-semibold text-stone-800">
-                      {formData.department} ({lang === "kn" ? `${toKannadaDigits(formData.semester)}ನೇ ಸೆಮ್, ವಿಭಾಗ ${formData.section}` : `Sem ${formData.semester}, Sec ${formData.section}`})
+                      {formData.department || "General"} {formData.semester ? `(${lang === "kn" ? `${toKannadaDigits(formData.semester)}ನೇ ಸೆಮ್` : `Sem ${formData.semester}`})` : ""}
                     </span>
                   </div>
                   <div>
@@ -937,7 +849,9 @@ export const RegisterPage = ({
                   <div className="space-y-1 text-xs text-stone-600">
                     <div>{lang === "kn" ? "೧. " : "1. "}{formData.fullName} ({formData.auid || formData.usn}) - {lang === "kn" ? "ತಂಡದ ನಾಯಕ" : "Team Lead"}</div>
                     {formData.teamMembers.map((m, i) => (
-                      <div key={i}>{lang === "kn" ? `${toKannadaDigits(i + 2)}. ` : `${i + 2}. `}{m.name} ({m.auid || m.usn})</div>
+                      <div key={i}>
+                        {lang === "kn" ? `${toKannadaDigits(i + 2)}. ` : `${i + 2}. `}{m.name} ({m.auid || m.usn}){m.department ? ` - ${m.department}` : ""}
+                      </div>
                     ))}
                   </div>
                 </div>

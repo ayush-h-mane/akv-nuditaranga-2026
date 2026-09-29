@@ -133,7 +133,16 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
       });
 
       if (res && res.success) {
-        setAttendanceRoster(res.participants || []);
+        let participants = res.participants || [];
+        const adminDomain = user?.volunteer_domain || user?.akv_dept;
+        if (role !== "SUPERADMIN" && adminDomain) {
+          participants = participants.filter(p => 
+            p.type !== "VOLUNTEER" || 
+            p.akv_department === adminDomain || 
+            p.volunteer_domain === adminDomain
+          );
+        }
+        setAttendanceRoster(participants);
         setAttendanceSession(res.session || {
           is_submitted: false,
           submitted_at: null,
@@ -141,7 +150,7 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
           locked_for_admin: false
         });
         setAttendanceSummary(res.summary || {
-          total_participants: res.participants?.length || 0,
+          total_participants: participants.length,
           checked_in: 0,
           completed: 0,
           not_marked: 0,
@@ -438,7 +447,7 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
         )}
 
         {/* Overview Metric Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 mb-8">
           <div className="bg-white p-4 rounded-2xl border border-stone-200 shadow-xs">
             <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Students</span>
             <p className="text-xl font-extrabold text-stone-900 mt-1">{overview?.total_students || 0}</p>
@@ -452,11 +461,6 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
           <div className="bg-white p-4 rounded-2xl border border-stone-200 shadow-xs">
             <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Participants</span>
             <p className="text-xl font-extrabold text-amber-600 mt-1">{overview?.total_participants || 0}</p>
-          </div>
-
-          <div className="bg-white p-4 rounded-2xl border border-stone-200 shadow-xs">
-            <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Spectators</span>
-            <p className="text-xl font-extrabold text-stone-700 mt-1">{overview?.total_spectators || 0}</p>
           </div>
 
           <div className="bg-white p-4 rounded-2xl border border-stone-200 shadow-xs">
@@ -777,14 +781,10 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
                 <table className="w-full text-left text-xs">
                   <thead className="bg-stone-50 text-stone-400 uppercase tracking-wider font-extrabold border-b border-stone-200">
                     <tr>
-                      <th className="py-3 px-3">Reg ID</th>
-                      <th className="py-3 px-3">Participant</th>
-                      <th className="py-3 px-3">AUID</th>
-                      <th className="py-3 px-3">Department / Domain</th>
-                      <th className="py-3 px-3">Check-In</th>
-                      <th className="py-3 px-3">Check-Out</th>
-                      <th className="py-3 px-3">Status</th>
-                      <th className="py-3 px-3 text-right">Attendance Action</th>
+                      <th className="py-3 px-4">Participant Name</th>
+                      <th className="py-3 px-4">AUID</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-right">Attendance Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100 bg-white">
@@ -794,45 +794,13 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
 
                       return (
                         <tr key={p.user_id} className="hover:bg-stone-50/80 transition-colors">
-                          <td className="py-3 px-3 font-mono font-bold text-stone-900">
-                            {p.reg_id}
+                          <td className="py-3 px-4">
+                            <span className="font-bold text-stone-900 block text-sm">{p.name}</span>
                           </td>
-                          <td className="py-3 px-3">
-                            <span className="font-bold text-stone-900 block">{p.name}</span>
-                            <span className="text-[11px] text-stone-400">{p.email}</span>
-                          </td>
-                          <td className="py-3 px-3 font-mono text-stone-700 font-semibold">
+                          <td className="py-3 px-4 font-mono text-stone-800 font-bold text-sm">
                             {p.auid}
                           </td>
-                          <td className="py-3 px-3">
-                            <span className="font-medium text-stone-800 block truncate max-w-[140px]" title={p.department}>
-                              {p.department || "--"}
-                            </span>
-                            {p.akv_department && (
-                              <span className="text-[10px] text-amber-700 font-bold bg-amber-50 px-1.5 py-0.5 rounded">
-                                {p.akv_department}
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-3 px-3 font-mono font-semibold">
-                            {p.check_in_time ? (
-                              <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
-                                {p.check_in_time}
-                              </span>
-                            ) : (
-                              <span className="text-stone-300">--</span>
-                            )}
-                          </td>
-                          <td className="py-3 px-3 font-mono font-semibold">
-                            {p.check_out_time ? (
-                              <span className="text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
-                                {p.check_out_time}
-                              </span>
-                            ) : (
-                              <span className="text-stone-300">--</span>
-                            )}
-                          </td>
-                          <td className="py-3 px-3">
+                          <td className="py-3 px-4">
                             <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold ${
                               p.status === "COMPLETED"
                                 ? "bg-blue-100 text-blue-800 border border-blue-200"
@@ -845,7 +813,7 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
                               {p.status === "NOT_MARKED" && "NOT MARKED"}
                             </span>
                           </td>
-                          <td className="py-3 px-3 text-right">
+                          <td className="py-3 px-4 text-right">
                             {isLocked || selectedDateIsFuture ? (
                               <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-[11px] font-bold text-stone-400 bg-stone-100 border border-stone-200 cursor-not-allowed">
                                 <Lock className="w-3.5 h-3.5" />
@@ -1185,8 +1153,16 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
         {/* Submit Attendance Confirmation Modal */}
         {showSubmitModal && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full border border-stone-200 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
-              <div className="flex items-start gap-3.5">
+            <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full border border-stone-200 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200 relative">
+              <button
+                type="button"
+                onClick={() => setShowSubmitModal(false)}
+                className="absolute top-4 right-4 p-1.5 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors cursor-pointer"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <div className="flex items-start gap-3.5 pr-8">
                 <div className="p-3 bg-red-100 text-kar-red rounded-2xl shrink-0">
                   <ShieldAlert className="w-6 h-6" />
                 </div>

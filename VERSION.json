@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.42",
-  "staged_version": "2.2.43",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.2.43",
+  "staged_version": "2.2.44",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.43",
+      "released_at": "2026-09-29T14:13:18+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.43: Prevent automated browser translation distortion by adding notranslate meta tags and attributes across the app (resolves 'Instagram' for Institute and 'Triyanka' for Priyanka S Reddy).; Lock countdown timer calculation to Indian Standard Time (IST) with robust fallback to ensure both English and Kannada countdowns display reliably.; Format registration IDs consistently as AKVNT0001, AKVNT0002... across student accounts, event registrations, and offline fallbacks.; Enforce strict portal authentication isolation: completely separate Student, Admin, and Super Admin logins to reject cross-portal credentials.; Streamline event registration: 1-click verified profile confirmation for solo events; ask only team name and member details (Name, AUID/Faculty ID, Department) for group events.; In Admin and Super Admin attendance marking views, display ONLY Name & AUID (+ Status and Actions) for fast marking; retain all full details in exported sheets.; Ensure exported Excel/CSV attendance sheets display registered AUID (not username) formatted as text.; Display AKV_DOMAIN in place of Role for Working Committee members across portal tables and exported Excel sheets.; Restrict volunteer attendance roster in Admin portal strictly to the logged-in admin's assigned AKV_DOMAIN.; Add live Cultural Event Registrations roster module in Super Admin Dashboard to view all registered competition participants and team members.; Support real-time like count and views count inputs and display badges in Super Admin Reels module.; Remove Spectator role option completely from student registration, briefing cards, and admin directory filters.; Remove Semester field when Faculty Coordinator role is selected in Admin registration.; Remove Section/Division completely from Student portal and event registration forms.; Default Institute, Department, and Semester select dropdowns to 'Select' placeholder.; Equip all dialog popups and modals with compact layouts and explicit close (X) buttons.; Fix missing Trophy icon import in SuperAdminDashboard to prevent ReferenceError crash on dashboard load."
+    },
     {
       "version": "2.2.42",
       "released_at": "2026-09-27T23:06:54+0530",

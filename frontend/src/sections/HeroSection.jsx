@@ -83,7 +83,7 @@ export const HeroSection = ({ onExploreNuditaranga, onKnowAbout, onOpenAuthTab, 
               </span>
             )}
             <img
-              src="/images/comin-for-web-3d-original.png"
+              src="/images/nograj.png"
               alt={lang === "kn" ? "ಕರ್ನಾಟಕ ಧ್ವಜ ಹಿಡಿದಿರುವ ನೋಗ್ರಾಜ್" : "NOGRAJ holding the Karnataka flag"}
               className="block h-auto w-full drop-shadow-[0_10px_15px_rgba(75,12,0,0.42)] transition-transform duration-300 hover:-translate-y-1"
             />

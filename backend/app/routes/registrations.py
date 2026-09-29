@@ -12,23 +12,31 @@ from ..services.email_service import send_event_registration_confirmation_email
 router = APIRouter(prefix="/registrations", tags=["Registrations"])
 
 def generate_unique_reg_id(db: Session) -> str:
-    # Format: AKV26001, AKV26002, AKV26003, ...
+    # Format: AKVNT0001, AKVNT0002, AKVNT0003, ...
     existing_ids = db.query(Registration.registration_id).all()
     max_num = 0
     for (rid,) in existing_ids:
-        if rid and rid.startswith("AKV26"):
-            try:
-                num = int(rid[5:])
-                if num > max_num:
-                    max_num = num
-            except (ValueError, TypeError):
-                pass
+        if rid:
+            if rid.startswith("AKVNT"):
+                try:
+                    num = int(rid[5:])
+                    if num > max_num:
+                        max_num = num
+                except (ValueError, TypeError):
+                    pass
+            elif rid.startswith("AKV26"):
+                try:
+                    num = int(rid[5:])
+                    if num > max_num:
+                        max_num = num
+                except (ValueError, TypeError):
+                    pass
     next_num = max(max_num + 1, 1)
-    reg_id = f"AKV26{next_num:03d}"
+    reg_id = f"AKVNT{next_num:04d}"
     # Verify uniqueness
     while db.query(Registration).filter(Registration.registration_id == reg_id).first():
         next_num += 1
-        reg_id = f"AKV26{next_num:03d}"
+        reg_id = f"AKVNT{next_num:04d}"
     return reg_id
 
 @router.post("", response_model=RegistrationOut)
@@ -104,8 +112,8 @@ def register_participant(
         auid=auid_val,
         institute=reg_data.institute.strip() if reg_data.institute else "Acharya Institute of Technology",
         department=reg_data.department.strip(),
-        semester=reg_data.semester,
-        section=reg_data.section.strip().upper(),
+        semester=reg_data.semester or 6,
+        section=reg_data.section.strip().upper() if reg_data.section else "A",
         email=reg_data.email.strip().lower(),
         phone=reg_data.phone.strip(),
         gender=reg_data.gender,
