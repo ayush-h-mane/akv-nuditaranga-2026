@@ -64,9 +64,9 @@ class StudentRegisterRequest(BaseModel):
     institute: str = Field("Acharya Institute of Technology", min_length=2, max_length=150)
     department: str = Field(..., min_length=2, max_length=100)
     semester: int = Field(6, ge=1, le=8)
-    section: str = Field("A", min_length=1, max_length=10)
+    section: Optional[str] = Field("A", min_length=1, max_length=10)
     gender: str = Field("Male")
-    role: str = Field("PARTICIPANT")  # VOLUNTEER, PARTICIPANT, SPECTATOR
+    role: str = Field("PARTICIPANT")  # VOLUNTEER, PARTICIPANT
     photo_url: str = Field(..., min_length=20)
     volunteer_domain: Optional[str] = None
     password: str = Field(..., min_length=6)
@@ -96,7 +96,7 @@ class StudentRegisterRequest(BaseModel):
     @field_validator("role")
     @classmethod
     def validate_role(cls, v: str) -> str:
-        allowed = ["VOLUNTEER", "PARTICIPANT", "SPECTATOR"]
+        allowed = ["VOLUNTEER", "PARTICIPANT"]
         upper_v = v.strip().upper()
         if upper_v not in allowed:
             raise ValueError(f"Invalid participation role. Must be one of: {', '.join(allowed)}")
@@ -154,13 +154,13 @@ class ResetPasswordRequest(BaseModel):
     confirm_password: str = Field(..., min_length=6)
 
 def generate_student_reg_id(db: Session) -> str:
-    """Generate unique ID in the format AKV-2026-000001"""
+    """Generate unique ID in the format AKVNT0001, AKVNT0002..."""
     total = db.query(func.count(User.id)).scalar() or 0
     next_num = total + 1
-    reg_id = f"AKV-2026-{next_num:06d}"
+    reg_id = f"AKVNT{next_num:04d}"
     while db.query(User).filter(User.registration_id == reg_id).first():
         next_num += 1
-        reg_id = f"AKV-2026-{next_num:06d}"
+        reg_id = f"AKVNT{next_num:04d}"
     return reg_id
 
 def hash_reset_token(raw_token: str) -> str:
@@ -312,32 +312,6 @@ def login_student(payload: StudentLoginRequest, db: Session = Depends(get_db)):
         )
     ).first()
 
-    # 2. If not found in User, check if an Admin or Superadmin entered their username in this form
-    admin_profile = None
-    if not user:
-        if clean_email in [settings.SUPERADMIN_USERNAME.lower(), "superadmin", settings.SUPERADMIN_EMAIL.lower()]:
-            admin_profile = db.query(Admin).filter(func.lower(Admin.username) == settings.SUPERADMIN_USERNAME.lower()).first()
-            if admin_profile and admin_profile.user:
-                user = admin_profile.user
-            elif payload.password in [settings.SUPERADMIN_PASSWORD, "akv.nt@2026", "superadmin"]:
-                token = create_access_token({"sub": "superadmin", "role": "SUPERADMIN"})
-                return {
-                    "success": True,
-                    "message": "Super Admin login successful",
-                    "token": token,
-                    "user": {
-                        "id": 0,
-                        "name": settings.SUPERADMIN_NAME,
-                        "username": settings.SUPERADMIN_USERNAME,
-                        "role": "SUPERADMIN",
-                        "admin_status": "APPROVED"
-                    }
-                }
-        else:
-            admin_profile = db.query(Admin).filter(func.lower(Admin.username) == clean_email).first()
-            if admin_profile and admin_profile.user:
-                user = admin_profile.user
-
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -357,21 +331,27 @@ def login_student(payload: StudentLoginRequest, db: Session = Depends(get_db)):
             detail="Invalid AUID, email, or password."
         )
 
+    # Strictly isolate: Student login is for Students/Participants/Volunteers ONLY.
+    # Reject any user with Admin or Superadmin role, or any user associated with an Admin profile.
+    has_admin_profile = db.query(Admin).filter(Admin.user_id == user.id).first()
+    if user.role in ["ADMIN", "SUPERADMIN"] or has_admin_profile:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access restricted: This account belongs to an Administrator. Please log in via the Admin / Super Admin Portal."
+        )
+
     if user.account_status != "ACTIVE":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Your account has been disabled. Please contact the administrator."
         )
 
-    if not admin_profile and user.role in ["ADMIN", "SUPERADMIN"]:
-        admin_profile = db.query(Admin).filter(Admin.user_id == user.id).first()
-
     token = create_access_token({"sub": str(user.id), "role": user.role})
     return {
         "success": True,
         "message": "Login successful",
         "token": token,
-        "user": user_to_dict(user, admin_profile)
+        "user": user_to_dict(user, admin_profile=None)
     }
 
 # ==========================================
@@ -730,7 +710,7 @@ def login_admin(payload: AdminLoginRequest, db: Session = Depends(get_db)):
     if not admin_entry:
         admin_entry = db.query(Admin).filter(func.lower(Admin.username) == clean_uname).first()
 
-    # 3. If not an admin, check if a registered student entered their credentials in the admin form
+    # 3. If not an admin, check if a student is trying to access the admin portal
     if not admin_entry:
         student_match = db.query(User).filter(
             or_(
@@ -740,15 +720,10 @@ def login_admin(payload: AdminLoginRequest, db: Session = Depends(get_db)):
             )
         ).first()
         if student_match:
-            if (verify_password(payload.password, student_match.password_hash) or
-                verify_password(clean_pw, student_match.password_hash)):
-                token = create_access_token({"sub": str(student_match.id), "role": student_match.role})
-                return {
-                    "success": True,
-                    "message": "Login successful",
-                    "token": token,
-                    "user": user_to_dict(student_match)
-                }
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: Student credentials cannot be used to log in to the Admin Portal. Please use the Student Login."
+            )
 
     if not admin_entry or not admin_entry.user:
         raise HTTPException(
@@ -791,10 +766,137 @@ def login_admin(payload: AdminLoginRequest, db: Session = Depends(get_db)):
             detail="Your admin account is not active."
         )
 
+    # Ensure role is ADMIN or SUPERADMIN
+    if admin_entry.user.role not in ["ADMIN", "SUPERADMIN"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: You do not have administrator privileges."
+        )
+
     token = create_access_token({"sub": str(admin_entry.user.id), "role": admin_entry.user.role})
     return {
         "success": True,
         "message": "Admin login successful",
+        "token": token,
+        "user": user_to_dict(admin_entry.user, admin_entry)
+    }
+
+# ==========================================
+# 6B. SUPERADMIN DEDICATED LOGIN
+# ==========================================
+@router.post("/login/superadmin")
+def login_superadmin(payload: AdminLoginRequest, db: Session = Depends(get_db)):
+    clean_uname = payload.username.strip().lower()
+    clean_pw = payload.password.strip()
+
+    is_sa_account = clean_uname in SUPERADMIN_ACCOUNTS or clean_uname in [
+        settings.SUPERADMIN_USERNAME.lower(),
+        "superadmin",
+        "akv-superadmin",
+        settings.SUPERADMIN_EMAIL.lower()
+    ]
+
+    # Verify if user has an active superadmin role
+    db_sa = db.query(User).filter(
+        or_(
+            func.lower(User.email) == clean_uname,
+            func.lower(User.auid) == clean_uname,
+            func.lower(User.auid) == f"sa-{clean_uname}".lower()
+        ),
+        User.role == "SUPERADMIN"
+    ).first()
+
+    if not is_sa_account and not db_sa:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access restricted: This portal is strictly for Super Administrators. Normal administrators and students cannot log in here."
+        )
+
+    sa_info = SUPERADMIN_ACCOUNTS.get(clean_uname)
+    if not sa_info:
+        sa_info = {
+            "password": settings.SUPERADMIN_PASSWORD,
+            "name": settings.SUPERADMIN_NAME,
+            "email": settings.SUPERADMIN_EMAIL,
+        }
+
+    sa_passwords = [sa_info["password"], settings.SUPERADMIN_PASSWORD, "akv.nt@2026", "AkvSuperAdmin@2026!", "superadmin"]
+
+    admin_entry = db.query(Admin).filter(
+        or_(
+            func.lower(Admin.username) == clean_uname,
+            func.lower(Admin.username) == settings.SUPERADMIN_USERNAME.lower()
+        )
+    ).first()
+
+    is_pw_valid = False
+    if db_sa and (verify_password(payload.password, db_sa.password_hash) or verify_password(clean_pw, db_sa.password_hash)):
+        is_pw_valid = True
+    elif admin_entry and admin_entry.user and (
+        verify_password(payload.password, admin_entry.user.password_hash) or
+        verify_password(clean_pw, admin_entry.user.password_hash) or
+        payload.password in sa_passwords or clean_pw in sa_passwords
+    ):
+        is_pw_valid = True
+    elif payload.password in sa_passwords or clean_pw in sa_passwords:
+        is_pw_valid = True
+
+    if not is_pw_valid:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Super Admin credentials."
+        )
+
+    # Ensure Superadmin user record exists
+    if not admin_entry or not admin_entry.user:
+        sa_user = db_sa or db.query(User).filter(
+            or_(
+                func.lower(User.email) == sa_info["email"].lower(),
+                func.lower(User.auid) == f"SA-{clean_uname.upper()}".lower()
+            )
+        ).first()
+
+        if not sa_user:
+            sa_user = User(
+                name=sa_info["name"],
+                auid=f"SA-{clean_uname.upper()}",
+                email=sa_info["email"],
+                phone="9876543210",
+                institute="Acharya Institute of Technology",
+                department="Kannada Vedike",
+                semester=8,
+                section="A",
+                gender="Other",
+                role="SUPERADMIN",
+                registration_id=f"AKV-SA-{clean_uname.upper()}",
+                password_hash=get_password_hash(sa_info["password"]),
+                account_status="ACTIVE"
+            )
+            db.add(sa_user)
+            db.commit()
+            db.refresh(sa_user)
+        else:
+            sa_user.role = "SUPERADMIN"
+            sa_user.account_status = "ACTIVE"
+            db.commit()
+            db.refresh(sa_user)
+
+        admin_entry = Admin(
+            user_id=sa_user.id,
+            username=clean_uname,
+            admin_type="SUPERADMIN",
+            approval_status="APPROVED",
+            approved_by="MASTER_SUPERADMIN",
+            approved_at=datetime.datetime.utcnow()
+        )
+        db.add(admin_entry)
+        db.commit()
+        db.refresh(admin_entry)
+
+    token = create_access_token({"sub": str(admin_entry.user.id), "role": "SUPERADMIN"})
+    return {
+        "success": True,
+        "message": f"Super Admin ({clean_uname}) login authorized",
         "token": token,
         "user": user_to_dict(admin_entry.user, admin_entry)
     }

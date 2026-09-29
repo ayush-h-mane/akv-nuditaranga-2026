@@ -1,27 +1,27 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../services/api";
-import { 
-  ShieldAlert, 
-  Users, 
-  UserCheck, 
-  Calendar, 
-  Download, 
-  Search, 
-  Filter, 
-  Plus, 
-  Pencil, 
-  Trash2, 
-  CheckCircle2, 
-  XCircle, 
-  AlertCircle, 
-  BarChart3, 
-  Clock, 
-  Eye, 
-  LogOut, 
-  FileSpreadsheet, 
-  FileText, 
-  RefreshCw, 
+import {
+  ShieldAlert,
+  Users,
+  UserCheck,
+  Calendar,
+  Download,
+  Search,
+  Filter,
+  Plus,
+  Pencil,
+  Trash2,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  BarChart3,
+  Clock,
+  Eye,
+  LogOut,
+  FileSpreadsheet,
+  FileText,
+  RefreshCw,
   Sparkles,
   MapPin,
   Check,
@@ -42,14 +42,15 @@ import {
   CheckCheck,
   CheckSquare,
   Briefcase,
-  UserPlus
+  UserPlus,
+  Trophy
 } from "lucide-react";
 import { EventImageUpload } from "../components/EventImageUpload";
 import { MyProfileAttendance } from "../components/MyProfileAttendance";
 
 export const SuperAdminDashboard = ({ onNavigateHome }) => {
   const { user, logout } = useAuth();
-  const [activeSection, setActiveSection] = useState("overview"); 
+  const [activeSection, setActiveSection] = useState("overview");
   // Sections: overview, admins, students, volunteers, attendance, exports, events, audit-logs
 
   const [loading, setLoading] = useState(false);
@@ -108,6 +109,12 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
   const [idCardDownloading, setIdCardDownloading] = useState("");
   const [registrationExportEvent, setRegistrationExportEvent] = useState("all");
   const [registrationExportLoading, setRegistrationExportLoading] = useState(false);
+
+  // Cultural Event Registrations State
+  const [eventRegistrations, setEventRegistrations] = useState([]);
+  const [eventRegLoading, setEventRegLoading] = useState(false);
+  const [eventRegSearch, setEventRegSearch] = useState("");
+  const [eventRegFilter, setEventRegFilter] = useState("all");
 
   // Official Multi-Day Attendance State (v2.1.2)
   const [attendanceConfigDates, setAttendanceConfigDates] = useState([]);
@@ -450,6 +457,21 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
     }
   };
 
+  const loadEventRegistrations = async () => {
+    try {
+      setEventRegLoading(true);
+      const params = {};
+      if (eventRegFilter && eventRegFilter !== "all") params.event_id = eventRegFilter;
+      if (eventRegSearch) params.search = eventRegSearch;
+      const data = await api.listRegistrations(params);
+      setEventRegistrations(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error("Error loading event registrations:", e);
+    } finally {
+      setEventRegLoading(false);
+    }
+  };
+
   // Master refresh depending on active section
   const refreshCurrentSection = () => {
     if (activeSection === "overview") loadStats();
@@ -457,6 +479,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
     else if (activeSection === "activities") loadActivities();
     else if (activeSection === "reels") loadReels();
     else if (activeSection === "students") loadStudents();
+    else if (activeSection === "event-registrations") { loadEvents(); loadEventRegistrations(); }
     else if (activeSection === "volunteers") loadVolunteers();
     else if (activeSection === "attendance") loadAttendance();
     else if (activeSection === "working-committee") loadWcAttendance();
@@ -468,7 +491,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
   useEffect(() => {
     refreshCurrentSection();
-  }, [activeSection, studentRoleFilter, attendanceDateFilter, attendanceDeptFilter, auditActionFilter, wcRoleFilter, wcStatusFilter]);
+  }, [activeSection, studentRoleFilter, attendanceDateFilter, attendanceDeptFilter, auditActionFilter, wcRoleFilter, wcStatusFilter, eventRegFilter]);
 
   useEffect(() => {
     let mounted = true;
@@ -1097,7 +1120,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
       {/* Main Layout: Sidebar + Workspace */}
       <div className="flex-1 max-w-7xl w-full mx-auto px-4 py-6 flex flex-col md:flex-row gap-6">
-        
+
         {/* Navigation Sidebar */}
         <aside className="w-full md:w-64 shrink-0 space-y-1 bg-white p-3 rounded-3xl border border-stone-200 shadow-xs self-start">
           <div className="px-3 py-2 text-[11px] font-extrabold uppercase tracking-wider text-stone-400">
@@ -1111,6 +1134,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
             { id: "activities", label: "Major Vedike Activities", icon: Sparkles },
             { id: "reels", label: "Reels & Posts", icon: Film },
             { id: "students", label: "Student Directory", icon: Users },
+            { id: "event-registrations", label: "Event Registrations", icon: Trophy },
             { id: "volunteers", label: "Volunteer Management", icon: UserCheck },
             { id: "id-cards", label: "Participant ID Cards", icon: ShieldCheck },
             { id: "attendance", label: "Daily Attendance Records", icon: Clock },
@@ -1126,11 +1150,10 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
               <button
                 key={tab.id}
                 onClick={() => setActiveSection(tab.id)}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all ${
-                  isActive
-                    ? "bg-gradient-to-r from-kar-red to-red-600 text-white shadow-sm"
-                    : "text-stone-700 hover:bg-stone-50"
-                }`}
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all ${isActive
+                  ? "bg-gradient-to-r from-kar-red to-red-600 text-white shadow-sm"
+                  : "text-stone-700 hover:bg-stone-50"
+                  }`}
               >
                 <div className="flex items-center gap-2.5">
                   <Icon className={`w-4 h-4 ${isActive ? "text-amber-200" : "text-stone-500"}`} />
@@ -1146,14 +1169,13 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
         {/* Workspace Content */}
         <main className="flex-1 space-y-6">
-          
+
           {/* Notifications */}
           {feedback.text && (
-            <div className={`p-4 rounded-2xl flex items-center justify-between text-xs sm:text-sm font-bold shadow-xs ${
-              feedback.type === "success" 
-                ? "bg-emerald-50 text-emerald-900 border border-emerald-200"
-                : "bg-red-50 text-red-900 border border-red-200"
-            }`}>
+            <div className={`p-4 rounded-2xl flex items-center justify-between text-xs sm:text-sm font-bold shadow-xs ${feedback.type === "success"
+              ? "bg-emerald-50 text-emerald-900 border border-emerald-200"
+              : "bg-red-50 text-red-900 border border-red-200"
+              }`}>
               <div className="flex items-center gap-2">
                 {feedback.type === "success" ? <CheckCircle2 className="w-5 h-5 text-emerald-600" /> : <AlertCircle className="w-5 h-5 text-kar-red" />}
                 <span>{feedback.text}</span>
@@ -1219,10 +1241,13 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                   <span className="text-[10px] text-stone-500 font-semibold">Fest Competitors</span>
                 </div>
 
-                <div className="bg-white p-5 rounded-3xl border border-stone-200 shadow-xs">
-                  <span className="text-[11px] font-bold text-stone-400 uppercase">Spectators</span>
-                  <p className="text-2xl font-extrabold text-stone-700 mt-1">{metrics?.total_spectators || 0}</p>
-                  <span className="text-[10px] text-stone-500 font-semibold">Audience Passes</span>
+                <div 
+                  onClick={() => setActiveSection("event-registrations")}
+                  className="bg-white p-5 rounded-3xl border border-stone-200 shadow-xs cursor-pointer hover:border-amber-400 hover:shadow-md transition-all"
+                >
+                  <span className="text-[11px] font-bold text-stone-400 uppercase">Event Passes</span>
+                  <p className="text-2xl font-extrabold text-stone-700 mt-1">{metrics?.total_event_registrations || metrics?.total_participants || 0}</p>
+                  <span className="text-[10px] text-amber-600 font-bold">View Registrations &rarr;</span>
                 </div>
               </div>
 
@@ -1276,9 +1301,8 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                       <ShieldCheck className="w-4 h-4 text-amber-500" />
                       <span>Admin Approval Queue</span>
                     </h3>
-                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-extrabold ${
-                      metrics?.pending_admins > 0 ? "bg-amber-100 text-amber-900" : "bg-stone-100 text-stone-500"
-                    }`}>
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-extrabold ${metrics?.pending_admins > 0 ? "bg-amber-100 text-amber-900" : "bg-stone-100 text-stone-500"
+                      }`}>
                       {metrics?.pending_admins || 0} Pending
                     </span>
                   </div>
@@ -1309,11 +1333,10 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                       <span className="text-[10px] font-mono font-bold text-stone-400">
                         {wcCombinedStats?.date || selectedOfficialDate}
                       </span>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-                        wcCombinedStats?.working_committee?.is_submitted
-                          ? "bg-emerald-100 text-emerald-800"
-                          : "bg-amber-100 text-amber-800"
-                      }`}>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${wcCombinedStats?.working_committee?.is_submitted
+                        ? "bg-emerald-100 text-emerald-800"
+                        : "bg-amber-100 text-amber-800"
+                        }`}>
                         Submitted: {wcCombinedStats?.working_committee?.submitted_label || "NO"}
                       </span>
                     </div>
@@ -1429,40 +1452,36 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                     <div className="inline-flex rounded-xl bg-stone-100 p-1 border border-stone-200">
                       <button
                         onClick={() => setAdminApprovalFilter("all")}
-                        className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                          adminApprovalFilter === "all"
-                            ? "bg-white text-stone-900 shadow-xs"
-                            : "text-stone-600 hover:text-stone-900"
-                        }`}
+                        className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${adminApprovalFilter === "all"
+                          ? "bg-white text-stone-900 shadow-xs"
+                          : "text-stone-600 hover:text-stone-900"
+                          }`}
                       >
                         All ({adminsList.length})
                       </button>
                       <button
                         onClick={() => setAdminApprovalFilter("pending")}
-                        className={`px-3 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
-                          adminApprovalFilter === "pending"
-                            ? "bg-amber-500 text-white shadow-xs"
-                            : pendingAdminsCount > 0
+                        className={`px-3 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer ${adminApprovalFilter === "pending"
+                          ? "bg-amber-500 text-white shadow-xs"
+                          : pendingAdminsCount > 0
                             ? "text-amber-800 bg-amber-100/70 hover:bg-amber-100"
                             : "text-stone-600 hover:text-stone-900"
-                        }`}
+                          }`}
                       >
                         <span>Pending</span>
                         {pendingAdminsCount > 0 && (
-                          <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-                            adminApprovalFilter === "pending" ? "bg-white text-amber-700" : "bg-amber-500 text-white"
-                          }`}>
+                          <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${adminApprovalFilter === "pending" ? "bg-white text-amber-700" : "bg-amber-500 text-white"
+                            }`}>
                             {pendingAdminsCount}
                           </span>
                         )}
                       </button>
                       <button
                         onClick={() => setAdminApprovalFilter("approved")}
-                        className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                          adminApprovalFilter === "approved"
-                            ? "bg-white text-stone-900 shadow-xs"
-                            : "text-stone-600 hover:text-stone-900"
-                        }`}
+                        className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${adminApprovalFilter === "approved"
+                          ? "bg-white text-stone-900 shadow-xs"
+                          : "text-stone-600 hover:text-stone-900"
+                          }`}
                       >
                         Approved ({approvedAdminsCount})
                       </button>
@@ -1518,123 +1537,121 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                         {filteredAdminsList.map((adm) => {
                           const isSuperAdmin = adm.role === "SUPERADMIN" || adm.username === "superadmin" || adm.username === "akv-nt-2026";
                           return (
-                          <tr key={adm.id} className="hover:bg-stone-50/80 transition-colors">
-                            <td className="py-3 px-3">
-                              <div className="flex items-center gap-2.5">
-                                {adm.photo_url ? (
-                                  <img
-                                    src={adm.photo_url}
-                                    alt={adm.full_name}
-                                    className="w-9 h-9 rounded-xl object-cover border border-stone-200 shadow-2xs shrink-0"
-                                  />
-                                ) : (
-                                  <div className="w-9 h-9 rounded-xl bg-stone-100 border border-stone-200 flex items-center justify-center text-stone-500 font-bold text-xs shrink-0">
-                                    {(adm.full_name || "A").charAt(0).toUpperCase()}
-                                  </div>
-                                )}
-                                <div>
-                                  <span className="font-bold text-stone-900 block">{adm.full_name}</span>
-                                  <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-                                    <span className="text-[11px] text-stone-400">{adm.email}</span>
-                                    {adm.admin_type === "FACULTY_COORDINATOR" ? (
-                                      <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200">
-                                        Faculty ({adm.faculty_id || "ID N/A"})
-                                      </span>
-                                    ) : isSuperAdmin ? (
-                                      <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-red-50 text-kar-red border border-red-200">
-                                        Super Admin
-                                      </span>
-                                    ) : (
-                                      <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-stone-100 text-stone-700 border border-stone-200">
-                                        Committee Member
-                                      </span>
-                                    )}
+                            <tr key={adm.id} className="hover:bg-stone-50/80 transition-colors">
+                              <td className="py-3 px-3">
+                                <div className="flex items-center gap-2.5">
+                                  {adm.photo_url ? (
+                                    <img
+                                      src={adm.photo_url}
+                                      alt={adm.full_name}
+                                      className="w-9 h-9 rounded-xl object-cover border border-stone-200 shadow-2xs shrink-0"
+                                    />
+                                  ) : (
+                                    <div className="w-9 h-9 rounded-xl bg-stone-100 border border-stone-200 flex items-center justify-center text-stone-500 font-bold text-xs shrink-0">
+                                      {(adm.full_name || "A").charAt(0).toUpperCase()}
+                                    </div>
+                                  )}
+                                  <div>
+                                    <span className="font-bold text-stone-900 block">{adm.full_name}</span>
+                                    <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                                      <span className="text-[11px] text-stone-400">{adm.email}</span>
+                                      {adm.admin_type === "FACULTY_COORDINATOR" ? (
+                                        <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200">
+                                          Faculty ({adm.faculty_id || "ID N/A"})
+                                        </span>
+                                      ) : isSuperAdmin ? (
+                                        <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-red-50 text-kar-red border border-red-200">
+                                          Super Admin
+                                        </span>
+                                      ) : (
+                                        <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-stone-100 text-stone-700 border border-stone-200">
+                                          Committee Member
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            </td>
-                            <td className="py-3 px-3 font-mono font-bold text-stone-800">
-                              {adm.username}
-                            </td>
-                            <td className="py-3 px-3 text-stone-600 font-medium">
-                              <div>{adm.institute || "Acharya"}</div>
-                              <div className="text-[11px] text-stone-400">{adm.department}</div>
-                            </td>
-                            <td className="py-3 px-3 text-stone-600 font-mono">
-                              {adm.phone}
-                            </td>
-                            <td className="py-3 px-3">
-                              <span className={`px-2.5 py-1 rounded-full text-[11px] font-extrabold ${
-                                adm.approval_status === "APPROVED"
+                              </td>
+                              <td className="py-3 px-3 font-mono font-bold text-stone-800">
+                                {adm.username}
+                              </td>
+                              <td className="py-3 px-3 text-stone-600 font-medium">
+                                <div>{adm.institute || "Acharya"}</div>
+                                <div className="text-[11px] text-stone-400">{adm.department}</div>
+                              </td>
+                              <td className="py-3 px-3 text-stone-600 font-mono">
+                                {adm.phone}
+                              </td>
+                              <td className="py-3 px-3">
+                                <span className={`px-2.5 py-1 rounded-full text-[11px] font-extrabold ${adm.approval_status === "APPROVED"
                                   ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
                                   : adm.approval_status === "PENDING_APPROVAL"
-                                  ? "bg-amber-100 text-amber-900 border border-amber-300 animate-pulse"
-                                  : "bg-red-100 text-red-800 border border-red-200"
-                              }`}>
-                                {adm.approval_status}
-                              </span>
-                            </td>
-                            <td className="py-3 px-3 text-right">
-                              <div className="flex items-center justify-end gap-1.5">
-                                {adm.approval_status === "PENDING_APPROVAL" && (
-                                  <>
-                                    <button
-                                      onClick={() => handleApproveAdmin(adm.id, adm.username)}
-                                      className="p-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-bold flex items-center gap-1 shadow-xs cursor-pointer"
-                                      title="Approve Admin"
-                                    >
-                                      <Check className="w-3.5 h-3.5" />
-                                      <span>Approve</span>
-                                    </button>
-                                    <button
-                                      onClick={() => handleRejectAdmin(adm.id, adm.username)}
-                                      className="p-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-kar-red text-[11px] font-bold flex items-center gap-1 cursor-pointer"
-                                      title="Reject Admin"
-                                    >
-                                      <X className="w-3.5 h-3.5" />
-                                      <span>Reject</span>
-                                    </button>
-                                  </>
-                                )}
+                                    ? "bg-amber-100 text-amber-900 border border-amber-300 animate-pulse"
+                                    : "bg-red-100 text-red-800 border border-red-200"
+                                  }`}>
+                                  {adm.approval_status}
+                                </span>
+                              </td>
+                              <td className="py-3 px-3 text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  {adm.approval_status === "PENDING_APPROVAL" && (
+                                    <>
+                                      <button
+                                        onClick={() => handleApproveAdmin(adm.id, adm.username)}
+                                        className="p-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-bold flex items-center gap-1 shadow-xs cursor-pointer"
+                                        title="Approve Admin"
+                                      >
+                                        <Check className="w-3.5 h-3.5" />
+                                        <span>Approve</span>
+                                      </button>
+                                      <button
+                                        onClick={() => handleRejectAdmin(adm.id, adm.username)}
+                                        className="p-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-kar-red text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                                        title="Reject Admin"
+                                      >
+                                        <X className="w-3.5 h-3.5" />
+                                        <span>Reject</span>
+                                      </button>
+                                    </>
+                                  )}
 
-                                {adm.approval_status === "APPROVED" && !isSuperAdmin && (
-                                  <button
-                                    onClick={() => handleToggleAdmin(adm.id)}
-                                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border cursor-pointer ${
-                                      adm.account_status === "ACTIVE"
+                                  {adm.approval_status === "APPROVED" && !isSuperAdmin && (
+                                    <button
+                                      onClick={() => handleToggleAdmin(adm.id)}
+                                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border cursor-pointer ${adm.account_status === "ACTIVE"
                                         ? "border-stone-300 text-stone-600 hover:bg-stone-100"
                                         : "border-red-300 text-red-700 bg-red-50 hover:bg-red-100"
-                                    }`}
-                                  >
-                                    {adm.account_status === "ACTIVE" ? "Deactivate" : "Activate"}
-                                  </button>
-                                )}
+                                        }`}
+                                    >
+                                      {adm.account_status === "ACTIVE" ? "Deactivate" : "Activate"}
+                                    </button>
+                                  )}
 
-                                {!isSuperAdmin ? (
-                                  <button
-                                    onClick={() => handleDeleteAdmin(adm.id, adm.username)}
-                                    className="p-1.5 text-stone-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
-                                    title="Delete Admin"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                ) : (
-                                  <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-stone-100 text-stone-500 border border-stone-200">
-                                    Protected
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          );
-        })()}
+                                  {!isSuperAdmin ? (
+                                    <button
+                                      onClick={() => handleDeleteAdmin(adm.id, adm.username)}
+                                      className="p-1.5 text-stone-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
+                                      title="Delete Admin"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  ) : (
+                                    <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-stone-100 text-stone-500 border border-stone-200">
+                                      Protected
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* ==================================================== */}
           {/* SECTION: MAJOR VEDIKE ACTIVITIES (v2.1.0)             */}
@@ -1835,10 +1852,16 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                           <span className="absolute top-2 left-2 px-2 py-0.5 rounded text-[10px] font-extrabold bg-black/75 text-white uppercase backdrop-blur-xs">
                             {post.type}
                           </span>
-                          <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded text-[10px] font-bold bg-pink-600/90 text-white backdrop-blur-xs flex items-center gap-1">
-                            <Heart className="w-3 h-3 fill-current" />
-                            {post.likes ? post.likes.toLocaleString() : 0} Likes
-                          </span>
+                          <div className="absolute bottom-2 right-2 flex items-center gap-1.5">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-pink-600/90 text-white backdrop-blur-xs flex items-center gap-1 shadow-xs">
+                              <Heart className="w-3 h-3 fill-current" />
+                              {post.likes ? Number(post.likes).toLocaleString() : 0} Likes
+                            </span>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-black/75 text-white backdrop-blur-xs flex items-center gap-1 shadow-xs">
+                              <Eye className="w-3 h-3 text-pink-400" />
+                              {post.views || 0} Views
+                            </span>
+                          </div>
                         </div>
 
                         <div className="p-4 space-y-2">
@@ -1930,7 +1953,6 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                     <option value="ALL">All Roles</option>
                     <option value="VOLUNTEER">Volunteer</option>
                     <option value="PARTICIPANT">Participant</option>
-                    <option value="SPECTATOR">Spectator</option>
                   </select>
 
                   <button
@@ -1956,64 +1978,222 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100">
-                    {studentsData.students.map((st) => (
-                      <tr key={st.id} className="hover:bg-stone-50/80">
-                        <td className="py-3 px-3">
-                          <span className="font-bold text-stone-900 block">{st.name}</span>
-                          <span className="text-[11px] text-stone-400 font-mono">{st.registration_id}</span>
-                        </td>
-                        <td className="py-3 px-3 font-mono font-bold text-stone-800">
-                          {st.auid}
-                        </td>
-                        <td className="py-3 px-3 text-stone-600">
-                          {st.department}
-                        </td>
-                        <td className="py-3 px-3 text-stone-600 font-mono">
-                          {st.phone}
-                        </td>
-                        <td className="py-3 px-3">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
-                            st.role === "VOLUNTEER"
-                              ? "bg-red-100 text-kar-red"
-                              : st.role === "PARTICIPANT"
-                              ? "bg-amber-100 text-amber-900"
-                              : "bg-stone-100 text-stone-700"
-                          }`}>
-                            {st.role}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            st.account_status === "ACTIVE"
-                              ? "bg-emerald-100 text-emerald-800"
-                              : "bg-red-100 text-red-800"
-                          }`}>
-                            {st.account_status}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <button
-                              onClick={() => setEditStudent({ ...st })}
-                              className="p-1.5 rounded-lg border border-stone-200 text-stone-600 hover:text-kar-red hover:border-kar-red"
-                              title="Edit Student"
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteStudent(st.id, st.name)}
-                              className="p-1.5 rounded-lg border border-stone-200 text-stone-400 hover:text-red-600 hover:border-red-300"
-                              title="Delete Student"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {(() => {
+                      const studentList = Array.isArray(studentsData) ? studentsData : (studentsData?.students || []);
+                      if (studentList.length === 0) {
+                        return (
+                          <tr>
+                            <td colSpan={7} className="py-8 text-center text-stone-400 text-xs">
+                              No students registered yet matching criteria.
+                            </td>
+                          </tr>
+                        );
+                      }
+                      return studentList.map((st) => (
+                        <tr key={st.id} className="hover:bg-stone-50/80">
+                          <td className="py-3 px-3">
+                            <span className="font-bold text-stone-900 block">{st.name}</span>
+                            <span className="text-[11px] text-stone-400 font-mono">{st.registration_id}</span>
+                          </td>
+                          <td className="py-3 px-3 font-mono font-bold text-stone-800">
+                            {st.auid}
+                          </td>
+                          <td className="py-3 px-3 text-stone-600">
+                            {st.department}
+                          </td>
+                          <td className="py-3 px-3 text-stone-600 font-mono">
+                            {st.phone}
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
+                              st.role === "VOLUNTEER"
+                                ? "bg-red-100 text-kar-red"
+                                : "bg-amber-100 text-amber-900"
+                            }`}>
+                              {st.role}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              st.account_status === "ACTIVE"
+                                ? "bg-emerald-100 text-emerald-800"
+                                : "bg-red-100 text-red-800"
+                            }`}>
+                              {st.account_status}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => setEditStudent({ ...st })}
+                                className="p-1.5 rounded-lg border border-stone-200 text-stone-600 hover:text-kar-red hover:border-kar-red cursor-pointer"
+                                title="Edit Student"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteStudent(st.id, st.name)}
+                                className="p-1.5 rounded-lg border border-stone-200 text-stone-400 hover:text-red-600 hover:border-red-300 cursor-pointer"
+                                title="Delete Student"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ));
+                    })()}
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+
+          {/* ==================================================== */}
+          {/* SECTION: CULTURAL EVENT REGISTRATIONS                */}
+          {/* ==================================================== */}
+          {activeSection === "event-registrations" && (
+            <div className="bg-white p-6 sm:p-7 rounded-3xl border border-stone-200 shadow-xs space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-100 pb-4">
+                <div>
+                  <h3 className="font-extrabold text-base text-stone-900 flex items-center gap-2">
+                    <Trophy className="w-5 h-5 text-amber-600" />
+                    <span>Cultural Event Registrations</span>
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-amber-100 text-amber-900">
+                      {eventRegistrations.length}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-stone-500">Live roster of students registered for solo and group competitions</p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+                    <input
+                      type="text"
+                      placeholder="Search AUID, Name, Reg ID, Team..."
+                      value={eventRegSearch}
+                      onChange={(e) => setEventRegSearch(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && loadEventRegistrations()}
+                      className="pl-8 pr-3 py-1.5 rounded-xl border border-stone-300 text-xs w-48 sm:w-64 focus:outline-hidden"
+                    />
+                  </div>
+
+                  <select
+                    value={eventRegFilter}
+                    onChange={(e) => setEventRegFilter(e.target.value)}
+                    className="py-1.5 px-3 rounded-xl border border-stone-300 text-xs bg-white font-bold text-stone-700"
+                  >
+                    <option value="all">All Events</option>
+                    {eventsList.map((ev) => (
+                      <option key={ev.id} value={ev.id}>
+                        {ev.title_en || ev.id}
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    onClick={loadEventRegistrations}
+                    disabled={eventRegLoading}
+                    className="p-1.5 rounded-xl border border-stone-300 text-stone-600 hover:bg-stone-50 cursor-pointer"
+                    title="Refresh Registrations"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${eventRegLoading ? "animate-spin" : ""}`} />
+                  </button>
+                </div>
+              </div>
+
+              {eventRegLoading ? (
+                <div className="py-12 text-center text-stone-400 text-xs">
+                  Loading event registrations...
+                </div>
+              ) : eventRegistrations.length === 0 ? (
+                <div className="py-12 text-center text-stone-400 text-xs bg-stone-50 rounded-2xl border border-dashed border-stone-200">
+                  No event registrations found matching current filter or search.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-stone-200 text-stone-400 uppercase tracking-wider font-extrabold">
+                        <th className="py-3 px-3">Reg ID</th>
+                        <th className="py-3 px-3">Event</th>
+                        <th className="py-3 px-3">Participant / Lead</th>
+                        <th className="py-3 px-3">AUID</th>
+                        <th className="py-3 px-3">Format & Team Members</th>
+                        <th className="py-3 px-3">Department & Institute</th>
+                        <th className="py-3 px-3 text-right">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-100">
+                      {eventRegistrations.map((reg) => {
+                        let members = [];
+                        if (reg.is_team && reg.team_members) {
+                          try {
+                            members = typeof reg.team_members === "string" ? JSON.parse(reg.team_members) : reg.team_members;
+                          } catch (e) {
+                            members = [];
+                          }
+                        }
+
+                        return (
+                          <tr key={reg.id || reg.registration_id} className="hover:bg-amber-50/20 transition-colors">
+                            <td className="py-3 px-3 font-mono font-bold text-amber-900">
+                              {reg.registration_id}
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className="font-extrabold text-stone-900 block">{reg.event_id}</span>
+                              <span className="text-[10px] text-stone-500">
+                                {new Date(reg.created_at || Date.now()).toLocaleDateString("en-IN")}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className="font-bold text-stone-900 block">{reg.full_name}</span>
+                              <span className="text-[11px] text-stone-500 font-mono">
+                                {reg.phone} {reg.email ? `• ${reg.email}` : ""}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 font-mono font-bold text-stone-800">
+                              {reg.auid || reg.usn}
+                            </td>
+                            <td className="py-3 px-3">
+                              {reg.is_team ? (
+                                <div className="space-y-1">
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 text-purple-800">
+                                    Team: {reg.team_name || "Group"} ({members.length + 1} members)
+                                  </span>
+                                  {members.length > 0 && (
+                                    <div className="text-[10px] text-stone-600 bg-stone-50 p-1.5 rounded-lg border border-stone-200 space-y-0.5 max-w-xs">
+                                      {members.map((m, idx) => (
+                                        <div key={idx} className="truncate">
+                                          • <strong className="text-stone-800">{m.name}</strong> ({m.auid || m.usn || m.faculty_id || "ID"}) - {m.department || "Dept"}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900">
+                                  Solo Participant
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3 px-3 text-stone-600">
+                              <span className="font-semibold block">{reg.department}</span>
+                              <span className="text-[10px] text-stone-400 block truncate max-w-xs">{reg.institute}</span>
+                            </td>
+                            <td className="py-3 px-3 text-right">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                {reg.status || "Registered"}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 
@@ -2065,13 +2245,12 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                           {vol.phone}
                         </td>
                         <td className="py-3 px-3">
-                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
-                            vol.today_attendance === "PRESENT"
-                              ? "bg-emerald-100 text-emerald-800"
-                              : vol.today_attendance === "ABSENT"
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${vol.today_attendance === "PRESENT"
+                            ? "bg-emerald-100 text-emerald-800"
+                            : vol.today_attendance === "ABSENT"
                               ? "bg-red-100 text-red-800"
                               : "bg-stone-100 text-stone-500"
-                          }`}>
+                            }`}>
                             {vol.today_attendance}
                           </span>
                         </td>
@@ -2154,11 +2333,10 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                       setSelectedOfficialDate(d.date);
                       loadOfficialAttendance(d.date);
                     }}
-                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
-                      selectedOfficialDate === d.date
-                        ? "bg-stone-900 text-white shadow-xs"
-                        : "bg-stone-100 text-stone-600 hover:bg-stone-200/80"
-                    }`}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${selectedOfficialDate === d.date
+                      ? "bg-stone-900 text-white shadow-xs"
+                      : "bg-stone-100 text-stone-600 hover:bg-stone-200/80"
+                      }`}
                   >
                     <Calendar className="w-3.5 h-3.5 text-amber-400" />
                     <span>{d.date_formatted || d.date}</span>
@@ -2233,11 +2411,10 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                   </p>
                 </div>
 
-                <div className={`p-3.5 rounded-2xl border ${
-                  officialAttendanceSession.is_submitted 
-                    ? "bg-red-50 border-red-200 text-red-900" 
-                    : "bg-amber-50 border-amber-200 text-amber-900"
-                }`}>
+                <div className={`p-3.5 rounded-2xl border ${officialAttendanceSession.is_submitted
+                  ? "bg-red-50 border-red-200 text-red-900"
+                  : "bg-amber-50 border-amber-200 text-amber-900"
+                  }`}>
                   <span className="text-[10px] font-extrabold uppercase tracking-wider block">
                     Attendance Status
                   </span>
@@ -2337,121 +2514,106 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                 </div>
               ) : (
                 <div className="overflow-x-auto rounded-2xl border border-stone-200 bg-white max-w-full">
-                  <table className="w-full min-w-[1050px] table-fixed text-left text-[10px] sm:text-xs">
-                      <thead className="bg-stone-50 text-stone-400 uppercase tracking-wider font-extrabold border-b border-stone-200">
-                        <tr>
-                          <th className="w-[10%] py-2 px-1.5 sm:px-2 whitespace-nowrap">Reg ID</th>
-                          <th className="w-[17%] py-2 px-1.5 sm:px-2 whitespace-nowrap">Name</th>
-                          <th className="w-[13%] py-2 px-1.5 sm:px-2 whitespace-nowrap">AUID</th>
-                          <th className="w-[13%] py-2 px-1.5 sm:px-2 whitespace-nowrap">Department</th>
-                          <th className="w-[11%] py-2 px-1.5 sm:px-2 whitespace-nowrap">Check-In</th>
-                          <th className="w-[11%] py-2 px-1.5 sm:px-2 whitespace-nowrap">Check-Out</th>
-                          <th className="w-[11%] py-2 px-1.5 sm:px-2 whitespace-nowrap">Status</th>
-                          <th className="w-[14%] py-2 px-1.5 sm:px-2 text-right whitespace-nowrap">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-stone-100 bg-white">
-                        {officialAttendanceRoster.map((p) => (
-                          <tr key={p.user_id} className="hover:bg-stone-50/80 transition-colors align-top">
-                            <td className="py-2 px-1.5 sm:px-2 font-mono font-bold text-stone-900 truncate">
-                              {p.reg_id}
-                            </td>
-                            <td className="py-2 px-1.5 sm:px-2 truncate">
-                              <span className="font-bold text-stone-900 block truncate" title={p.name}>{p.name}</span>
-                            </td>
-                            <td className="py-2 px-1.5 sm:px-2 font-mono text-stone-700 font-semibold truncate">
-                              {p.auid}
-                            </td>
-                            <td className="py-2 px-1.5 sm:px-2 truncate">
-                              <span className="text-[9px] sm:text-[10px] text-amber-700 font-bold bg-amber-50 px-1 py-0.5 rounded border border-amber-100 inline-block max-w-full truncate" title={p.akv_dept || p.akv_department || "--"}>
-                                {p.akv_dept || p.akv_department || "--"}
-                              </span>
-                            </td>
-                            <td className="py-2 px-1.5 sm:px-2 whitespace-nowrap font-mono text-stone-700">{p.check_in_time || "—"}</td>
-                            <td className="py-2 px-1.5 sm:px-2 whitespace-nowrap font-mono text-stone-700">{p.check_out_time || "—"}</td>
-                            <td className="py-2 px-1.5 sm:px-2 truncate">
-                              <span className={`px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-extrabold inline-block max-w-full truncate ${
-                                p.status === "COMPLETED"
-                                  ? "bg-blue-100 text-blue-800 border border-blue-200"
-                                  : p.status === "CHECKED_IN"
-                                  ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                                  : "bg-stone-100 text-stone-500"
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-stone-50 text-stone-500 uppercase tracking-wider font-extrabold border-b border-stone-200">
+                      <tr>
+                        <th className="py-3 px-4">Name</th>
+                        <th className="py-3 px-4">AUID</th>
+                        <th className="py-3 px-4">Status</th>
+                        <th className="py-3 px-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-100 bg-white">
+                      {officialAttendanceRoster.map((p) => (
+                        <tr key={p.user_id} className="hover:bg-stone-50/80 transition-colors">
+                          <td className="py-3 px-4 font-bold text-stone-900" title={p.name}>
+                            {p.name}
+                          </td>
+                          <td className="py-3 px-4 font-mono font-bold text-stone-700">
+                            {p.auid}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold inline-block ${p.status === "COMPLETED"
+                              ? "bg-blue-100 text-blue-800 border border-blue-200"
+                              : p.status === "CHECKED_IN"
+                                ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                : "bg-stone-100 text-stone-500"
                               }`}>
-                                {p.status === "COMPLETED" && "COMPLETED"}
-                                {p.status === "CHECKED_IN" && "CHECKED IN"}
-                                {p.status === "NOT_MARKED" && "NOT MARKED"}
-                              </span>
-                            </td>
-                            <td className="py-2 px-1.5 sm:px-2 text-right">
-                              <div className="flex items-center justify-end gap-0.5 flex-wrap">
-                                {/* Quick Mark controls for Superadmin */}
-                                {p.status === "NOT_MARKED" && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSuperAdminCheckIn(p.user_id)}
-                                    disabled={attendanceMarkingIds.includes(p.user_id)}
-                                    className="px-1.5 py-1 rounded-lg text-[9px] font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs cursor-pointer"
-                                    title="Superadmin Check-In"
-                                  >
-                                    {attendanceMarkingIds.includes(p.user_id) ? "…" : "Check In"}
-                                  </button>
-                                )}
-                                {p.status === "CHECKED_IN" && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSuperAdminCheckOut(p.user_id)}
-                                    disabled={attendanceMarkingIds.includes(p.user_id)}
-                                    className="px-1.5 py-1 rounded-lg text-[9px] font-extrabold bg-amber-500 hover:bg-amber-600 text-stone-950 shadow-xs cursor-pointer"
-                                    title="Superadmin Check-Out"
-                                  >
-                                    {attendanceMarkingIds.includes(p.user_id) ? "…" : "Check Out"}
-                                  </button>
-                                )}
+                              {p.status === "COMPLETED" && "COMPLETED"}
+                              {p.status === "CHECKED_IN" && "CHECKED IN"}
+                              {p.status === "NOT_MARKED" && "NOT MARKED"}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex items-center justify-end gap-0.5 flex-wrap">
+                              {/* Quick Mark controls for Superadmin */}
+                              {p.status === "NOT_MARKED" && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSuperAdminCheckIn(p.user_id)}
+                                  disabled={attendanceMarkingIds.includes(p.user_id)}
+                                  className="px-1.5 py-1 rounded-lg text-[9px] font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs cursor-pointer"
+                                  title="Superadmin Check-In"
+                                >
+                                  {attendanceMarkingIds.includes(p.user_id) ? "…" : "Check In"}
+                                </button>
+                              )}
+                              {p.status === "CHECKED_IN" && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSuperAdminCheckOut(p.user_id)}
+                                  disabled={attendanceMarkingIds.includes(p.user_id)}
+                                  className="px-1.5 py-1 rounded-lg text-[9px] font-extrabold bg-amber-500 hover:bg-amber-600 text-stone-950 shadow-xs cursor-pointer"
+                                  title="Superadmin Check-Out"
+                                >
+                                  {attendanceMarkingIds.includes(p.user_id) ? "…" : "Check Out"}
+                                </button>
+                              )}
 
-                                {/* Edit Modal Button */}
-                                {p.record_id && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setEditRecordModal({
-                                      record_id: p.record_id,
-                                      user_id: p.user_id,
-                                      name: p.name,
-                                      reg_id: p.reg_id,
-                                      auid: p.auid,
-                                      date: selectedOfficialDate,
-                                      check_in_time: p.check_in_time || "",
-                                      check_out_time: p.check_out_time || "",
-                                      reason: ""
-                                    })}
-                                    className="p-1 rounded-md border border-stone-200 hover:bg-stone-100 text-stone-700 cursor-pointer"
-                                    title="Edit Timestamps"
-                                  >
-                                    <Pencil className="w-3 h-3" />
-                                  </button>
-                                )}
+                              {/* Edit Modal Button */}
+                              {p.record_id && (
+                                <button
+                                  type="button"
+                                  onClick={() => setEditRecordModal({
+                                    record_id: p.record_id,
+                                    user_id: p.user_id,
+                                    name: p.name,
+                                    reg_id: p.reg_id,
+                                    auid: p.auid,
+                                    date: selectedOfficialDate,
+                                    check_in_time: p.check_in_time || "",
+                                    check_out_time: p.check_out_time || "",
+                                    reason: ""
+                                  })}
+                                  className="p-1 rounded-md border border-stone-200 hover:bg-stone-100 text-stone-700 cursor-pointer"
+                                  title="Edit Timestamps"
+                                >
+                                  <Pencil className="w-3 h-3" />
+                                </button>
+                              )}
 
-                                {/* Reset Button */}
-                                {p.record_id && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setResetModal({
-                                      record_id: p.record_id,
-                                      name: p.name,
-                                      auid: p.auid,
-                                      date: selectedOfficialDate,
-                                      reason: ""
-                                    })}
-                                    className="p-1 rounded-md border border-stone-200 hover:bg-red-50 text-red-600 cursor-pointer"
-                                    title="Reset Record"
-                                  >
-                                    <RotateCcw className="w-3 h-3" />
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
+                              {/* Reset Button */}
+                              {p.record_id && (
+                                <button
+                                  type="button"
+                                  onClick={() => setResetModal({
+                                    record_id: p.record_id,
+                                    name: p.name,
+                                    auid: p.auid,
+                                    date: selectedOfficialDate,
+                                    reason: ""
+                                  })}
+                                  className="p-1 rounded-md border border-stone-200 hover:bg-red-50 text-red-600 cursor-pointer"
+                                  title="Reset Record"
+                                >
+                                  <RotateCcw className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
                   </table>
                 </div>
               )}
@@ -2523,11 +2685,10 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                         setSelectedOfficialDate(d.date);
                         loadWcAttendance(d.date);
                       }}
-                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                        selectedOfficialDate === d.date
-                          ? "bg-purple-700 text-white shadow-sm ring-2 ring-purple-300"
-                          : "bg-white text-stone-700 hover:bg-stone-100 border border-stone-200"
-                      }`}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${selectedOfficialDate === d.date
+                        ? "bg-purple-700 text-white shadow-sm ring-2 ring-purple-300"
+                        : "bg-white text-stone-700 hover:bg-stone-100 border border-stone-200"
+                        }`}
                     >
                       <span>{d.date_dmy}</span>
                       {d.is_today && (
@@ -2672,11 +2833,9 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                   <table className="w-full text-left text-xs">
                     <thead className="bg-stone-50 text-stone-600 uppercase border-b border-stone-200 font-bold">
                       <tr>
-                        <th className="py-3 px-4">Reg ID</th>
                         <th className="py-3 px-4">Name</th>
-                        <th className="py-3 px-4">Role</th>
-                        <th className="py-3 px-4">Check-In</th>
-                        <th className="py-3 px-4">Check-Out</th>
+                        <th className="py-3 px-4">AUID</th>
+                        <th className="py-3 px-4">AKV_DOMAIN</th>
                         <th className="py-3 px-4">Status</th>
                         <th className="py-3 px-4 text-right">Action</th>
                       </tr>
@@ -2689,35 +2848,24 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
                         return (
                           <tr key={m.user_id} className="hover:bg-purple-50/20 transition-colors">
-                            <td className="py-3 px-4 font-mono font-bold text-purple-900">
-                              {m.registration_id}
-                            </td>
                             <td className="py-3 px-4">
                               <p className="font-extrabold text-stone-900">{m.name}</p>
-                              <p className="text-[11px] text-purple-700 font-bold">Working Committee Domain: {m.akv_dept || "--"}</p>
-                              <p className="text-[11px] text-stone-500">
-                                {m.auid ? `AUID: ${m.auid} • ` : ""}{m.phone || "No phone"}
-                              </p>
+                            </td>
+                            <td className="py-3 px-4 font-mono font-bold text-stone-700">
+                              {m.auid || "--"}
                             </td>
                             <td className="py-3 px-4">
                               <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800">
-                                {m.working_committee_role || "Coordinator"}
+                                {m.akv_dept || m.volunteer_domain || m.working_committee_role || "General"}
                               </span>
                             </td>
-                            <td className="py-3 px-4 font-mono text-stone-800">
-                              {m.check_in_time || "--"}
-                            </td>
-                            <td className="py-3 px-4 font-mono text-stone-800">
-                              {m.check_out_time || "--"}
-                            </td>
                             <td className="py-3 px-4">
-                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
-                                isCompleted
-                                  ? "bg-emerald-100 text-emerald-800"
-                                  : isCheckedIn
+                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${isCompleted
+                                ? "bg-emerald-100 text-emerald-800"
+                                : isCheckedIn
                                   ? "bg-amber-100 text-amber-800"
                                   : "bg-stone-100 text-stone-600"
-                              }`}>
+                                }`}>
                                 {isCompleted ? "Completed" : isCheckedIn ? "Checked In" : "Not Marked"}
                               </span>
                             </td>
@@ -3043,9 +3191,8 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                   <div key={ev.id} className="p-4 rounded-2xl border border-stone-200 bg-stone-50/50 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="font-mono text-xs font-bold text-stone-500">{ev.id}</span>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-                        ev.is_active ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"
-                      }`}>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${ev.is_active ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"
+                        }`}>
                         {ev.is_active ? "Active" : "Closed"}
                       </span>
                     </div>
@@ -3134,7 +3281,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                     {[["English tagline", "tag"], ["Kannada tagline", "tagKn"], ["Kannada date", "dateKn"], ["Kannada time", "timeKn"], ["Kannada location", "venueKn"]].map(([label, field]) => (
                       <label key={field} className="text-[10px] uppercase font-bold text-stone-500">{label}<input value={day[field] || ""} onChange={(e) => setFestivalSchedule((items) => items.map((item, i) => i === index ? { ...item, [field]: e.target.value } : item))} className="mt-1 w-full rounded-lg border border-stone-300 bg-white px-2.5 py-2 text-sm text-stone-900" /></label>
                     ))}
-                    {[ ["English description", "descEn"], ["Kannada description", "descKn"] ].map(([label, field]) => (
+                    {[["English description", "descEn"], ["Kannada description", "descKn"]].map(([label, field]) => (
                       <label key={field} className="text-[10px] uppercase font-bold text-stone-500 sm:col-span-2">{label}<textarea value={day[field] || ""} onChange={(e) => setFestivalSchedule((items) => items.map((item, i) => i === index ? { ...item, [field]: e.target.value } : item))} rows={3} className="mt-1 w-full rounded-lg border border-stone-300 bg-white px-2.5 py-2 text-sm text-stone-900" /></label>
                     ))}
                   </div>
@@ -3217,11 +3364,10 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                               {log.attendance_date_dmy || log.attendance_date}
                             </td>
                             <td className="py-3 px-3">
-                              <span className={`px-2 py-0.5 rounded-md font-mono text-[10px] font-extrabold ${
-                                log.action === "SUPERADMIN_RESET" ? "bg-red-100 text-red-800" :
+                              <span className={`px-2 py-0.5 rounded-md font-mono text-[10px] font-extrabold ${log.action === "SUPERADMIN_RESET" ? "bg-red-100 text-red-800" :
                                 log.action === "SUPERADMIN_UNLOCK" ? "bg-amber-100 text-amber-900" :
-                                "bg-emerald-100 text-emerald-800"
-                              }`}>
+                                  "bg-emerald-100 text-emerald-800"
+                                }`}>
                                 {log.action}
                               </span>
                             </td>
@@ -3294,8 +3440,18 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
       {/* Edit Student Modal */}
       {editStudent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 border border-stone-200 shadow-2xl">
-            <h3 className="font-extrabold text-base text-stone-900 mb-4">Edit Student Information</h3>
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 border border-stone-200 shadow-2xl relative animate-fade-in">
+            <div className="flex items-center justify-between border-b border-stone-200 pb-3 mb-4">
+              <h3 className="font-extrabold text-base text-stone-900">Edit Student Information</h3>
+              <button
+                type="button"
+                onClick={() => setEditStudent(null)}
+                className="p-1.5 text-stone-400 hover:text-stone-700 rounded-lg cursor-pointer transition-colors"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
             <form onSubmit={handleSaveStudentEdit} className="space-y-3 text-xs">
               <div>
                 <label className="font-bold text-stone-700 uppercase">Full Name</label>
@@ -3339,7 +3495,6 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                 >
                   <option value="VOLUNTEER">VOLUNTEER</option>
                   <option value="PARTICIPANT">PARTICIPANT</option>
-                  <option value="SPECTATOR">SPECTATOR</option>
                 </select>
               </div>
 
@@ -3359,13 +3514,13 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                 <button
                   type="button"
                   onClick={() => setEditStudent(null)}
-                  className="flex-1 py-2 rounded-xl border border-stone-300 font-bold"
+                  className="flex-1 py-2 rounded-xl border border-stone-300 font-bold hover:bg-stone-50 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2 rounded-xl bg-kar-red text-white font-bold"
+                  className="flex-1 py-2 rounded-xl bg-kar-red text-white font-bold cursor-pointer hover:bg-red-700 transition-colors"
                 >
                   Save Changes
                 </button>
@@ -3378,9 +3533,21 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
       {/* Edit Attendance Record Modal */}
       {editAttendance && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 border border-stone-200 shadow-2xl">
-            <h3 className="font-extrabold text-base text-stone-900 mb-1">Modify Attendance Record</h3>
-            <p className="text-xs text-stone-500 mb-4">{editAttendance.volunteer_name} ({editAttendance.date})</p>
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 border border-stone-200 shadow-2xl relative animate-fade-in">
+            <div className="flex items-center justify-between border-b border-stone-200 pb-3 mb-4">
+              <div>
+                <h3 className="font-extrabold text-base text-stone-900">Modify Attendance</h3>
+                <p className="text-[11px] text-stone-500 font-medium">{editAttendance.volunteer_name} ({editAttendance.date})</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditAttendance(null)}
+                className="p-1.5 text-stone-400 hover:text-stone-700 rounded-lg cursor-pointer transition-colors"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
             <form onSubmit={handleSaveAttendanceEdit} className="space-y-3 text-xs">
               <div>
@@ -3412,13 +3579,13 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                 <button
                   type="button"
                   onClick={() => setEditAttendance(null)}
-                  className="flex-1 py-2 rounded-xl border border-stone-300 font-bold"
+                  className="flex-1 py-2 rounded-xl border border-stone-300 font-bold hover:bg-stone-50 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2 rounded-xl bg-kar-red text-white font-bold"
+                  className="flex-1 py-2 rounded-xl bg-kar-red text-white font-bold cursor-pointer hover:bg-red-700 transition-colors"
                 >
                   Update Record
                 </button>
@@ -3431,8 +3598,18 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
       {/* Log Attendance for Date Modal */}
       {markAttendanceModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 border border-stone-200 shadow-2xl">
-            <h3 className="font-extrabold text-base text-stone-900 mb-4">Log Volunteer Attendance</h3>
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 border border-stone-200 shadow-2xl relative animate-fade-in">
+            <div className="flex items-center justify-between border-b border-stone-200 pb-3 mb-4">
+              <h3 className="font-extrabold text-base text-stone-900">Log Volunteer Attendance</h3>
+              <button
+                type="button"
+                onClick={() => setMarkAttendanceModal(false)}
+                className="p-1.5 text-stone-400 hover:text-stone-700 rounded-lg cursor-pointer transition-colors"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
             <form onSubmit={handleMarkAttendanceSubmit} className="space-y-3 text-xs">
               <div>
                 <label className="font-bold text-stone-700 uppercase">Select Volunteer</label>
@@ -3478,13 +3655,13 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                 <button
                   type="button"
                   onClick={() => setMarkAttendanceModal(false)}
-                  className="flex-1 py-2 rounded-xl border border-stone-300 font-bold"
+                  className="flex-1 py-2 rounded-xl border border-stone-300 font-bold hover:bg-stone-50 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2 rounded-xl bg-kar-red text-white font-bold"
+                  className="flex-1 py-2 rounded-xl bg-kar-red text-white font-bold cursor-pointer hover:bg-red-700 transition-colors"
                 >
                   Save
                 </button>
@@ -3508,7 +3685,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             <form onSubmit={handleCreateEventSubmit} className="space-y-3.5 text-xs pt-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
@@ -3727,7 +3904,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             <form onSubmit={handleEditEventSubmit} className="space-y-3.5 text-xs pt-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
@@ -3954,11 +4131,10 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                 <button
                   type="button"
                   onClick={() => setEditEvent({ ...editEvent, is_active: !editEvent.is_active })}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer ${
-                    editEvent.is_active 
-                      ? "bg-emerald-600 text-white" 
-                      : "bg-red-600 text-white"
-                  }`}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer ${editEvent.is_active
+                    ? "bg-emerald-600 text-white"
+                    : "bg-red-600 text-white"
+                    }`}
                 >
                   {editEvent.is_active ? "Registration Open" : "Registration Closed"}
                 </button>
@@ -4103,22 +4279,20 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                   <button
                     type="button"
                     onClick={() => setCurrentReel({ ...currentReel, type: "REEL" })}
-                    className={`py-2 rounded-xl font-bold border transition-colors cursor-pointer ${
-                      currentReel.type === "REEL"
-                        ? "bg-pink-50 border-pink-500 text-pink-700 shadow-xs"
-                        : "bg-white border-stone-200 text-stone-600"
-                    }`}
+                    className={`py-2 rounded-xl font-bold border transition-colors cursor-pointer ${currentReel.type === "REEL"
+                      ? "bg-pink-50 border-pink-500 text-pink-700 shadow-xs"
+                      : "bg-white border-stone-200 text-stone-600"
+                      }`}
                   >
                     Instagram Reel
                   </button>
                   <button
                     type="button"
                     onClick={() => setCurrentReel({ ...currentReel, type: "POST" })}
-                    className={`py-2 rounded-xl font-bold border transition-colors cursor-pointer ${
-                      currentReel.type === "POST"
-                        ? "bg-pink-50 border-pink-500 text-pink-700 shadow-xs"
-                        : "bg-white border-stone-200 text-stone-600"
-                    }`}
+                    className={`py-2 rounded-xl font-bold border transition-colors cursor-pointer ${currentReel.type === "POST"
+                      ? "bg-pink-50 border-pink-500 text-pink-700 shadow-xs"
+                      : "bg-white border-stone-200 text-stone-600"
+                      }`}
                   >
                     Standard Post
                   </button>
@@ -4133,21 +4307,21 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                 required={currentReel.type === "REEL"}
               />
 
+              <div>
+                <label className="font-bold text-stone-700 uppercase">Reel / Post Link *</label>
+                <input
+                  type="url"
+                  required
+                  value={currentReel.url}
+                  onChange={(e) => setCurrentReel({ ...currentReel, url: e.target.value })}
+                  placeholder="https://www.instagram.com/reel/..."
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 text-sm focus:ring-2 focus:ring-pink-500"
+                />
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="font-bold text-stone-700 uppercase">Reel / Post Link *</label>
-                  <input
-                    type="url"
-                    required
-                    value={currentReel.url}
-                    onChange={(e) => setCurrentReel({ ...currentReel, url: e.target.value })}
-                    placeholder="https://www.instagram.com/reel/..."
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 text-sm focus:ring-2 focus:ring-pink-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-bold text-stone-700 uppercase">Original Like Count *</label>
+                  <label className="font-bold text-stone-700 uppercase">Like Count *</label>
                   <input
                     type="number"
                     min={0}
@@ -4155,6 +4329,18 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                     value={currentReel.likes}
                     onChange={(e) => setCurrentReel({ ...currentReel, likes: parseInt(e.target.value) || 0 })}
                     placeholder="e.g. 1850"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 text-sm focus:ring-2 focus:ring-pink-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-stone-700 uppercase">Views Count *</label>
+                  <input
+                    type="text"
+                    required
+                    value={currentReel.views || ""}
+                    onChange={(e) => setCurrentReel({ ...currentReel, views: e.target.value })}
+                    placeholder="e.g. 15.2K"
                     className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 text-sm focus:ring-2 focus:ring-pink-500"
                   />
                 </div>
@@ -4299,8 +4485,16 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
       {/* ==================================================== */}
       {unlockModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in">
-            <div className="flex items-start gap-3.5">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in relative">
+            <button
+              type="button"
+              onClick={() => setUnlockModal(null)}
+              className="absolute top-4 right-4 p-1.5 text-stone-400 hover:text-stone-700 rounded-lg cursor-pointer transition-colors"
+              title="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="flex items-start gap-3.5 pr-8">
               <div className="p-3 bg-amber-100 text-amber-800 rounded-2xl shrink-0">
                 <Unlock className="w-6 h-6" />
               </div>
@@ -4355,8 +4549,16 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
       {/* ==================================================== */}
       {resetModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in">
-            <div className="flex items-start gap-3.5">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in relative">
+            <button
+              type="button"
+              onClick={() => setResetModal(null)}
+              className="absolute top-4 right-4 p-1.5 text-stone-400 hover:text-stone-700 rounded-lg cursor-pointer transition-colors"
+              title="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="flex items-start gap-3.5 pr-8">
               <div className="p-3 bg-red-100 text-kar-red rounded-2xl shrink-0">
                 <RotateCcw className="w-6 h-6" />
               </div>
@@ -4517,8 +4719,16 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
       {/* ==================================================== */}
       {wcUnlockModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in">
-            <div className="flex items-start gap-3.5">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in relative">
+            <button
+              type="button"
+              onClick={() => setWcUnlockModal(null)}
+              className="absolute top-4 right-4 p-1.5 text-stone-400 hover:text-stone-700 rounded-lg cursor-pointer transition-colors"
+              title="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="flex items-start gap-3.5 pr-8">
               <div className="p-3 bg-amber-100 text-amber-800 rounded-2xl shrink-0">
                 <Unlock className="w-6 h-6" />
               </div>
@@ -4573,8 +4783,16 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
       {/* ==================================================== */}
       {wcResetModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in">
-            <div className="flex items-start gap-3.5">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in relative">
+            <button
+              type="button"
+              onClick={() => setWcResetModal(null)}
+              className="absolute top-4 right-4 p-1.5 text-stone-400 hover:text-stone-700 rounded-lg cursor-pointer transition-colors"
+              title="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="flex items-start gap-3.5 pr-8">
               <div className="p-3 bg-red-100 text-kar-red rounded-2xl shrink-0">
                 <RotateCcw className="w-6 h-6" />
               </div>

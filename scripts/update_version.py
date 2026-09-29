@@ -119,6 +119,8 @@ def main():
         release_desc = args.message
     elif data.get("pending_changes"):
         release_desc = f"AKV Nuditaranga 2026 v{target_version}: " + "; ".join(data.get("pending_changes"))
+    elif data.get("history") and data["history"][0].get("version") == target_version and data["history"][0].get("description"):
+        release_desc = data["history"][0]["description"]
     else:
         release_desc = f"Production release version {target_version}"
 

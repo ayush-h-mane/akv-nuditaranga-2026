@@ -63,25 +63,26 @@ export const ContactSection = () => {
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {siteConfig.coordinators.faculty.map((c, i) => (
-                  <div key={i} className="p-4 rounded-2xl bg-white border border-stone-200/80 shadow-sm">
+                  <div key={i} className="p-4 rounded-2xl bg-white border border-stone-200/80 shadow-sm notranslate" translate="no">
                     {c.nameEn === "Ayush H Mane" ? (
-                      <a href={c.portfolio} target="_blank" rel="noreferrer" className="text-sm font-bold text-stone-900 block font-display hover:text-kar-red hover:underline underline-offset-2">
+                      <a href={c.portfolio} target="_blank" rel="noreferrer" className="text-sm font-bold text-stone-900 block font-display hover:text-kar-red hover:underline underline-offset-2 notranslate" translate="no">
                         {lang === "kn" ? c.nameKn : c.nameEn}
                       </a>
                     ) : (
-                      <span className="text-sm font-bold text-stone-900 block font-display">
+                      <span className="text-sm font-bold text-stone-900 block font-display notranslate" translate="no">
                         {lang === "kn" ? c.nameKn : c.nameEn}
                       </span>
                     )}
-                    <span className="text-xs font-semibold text-kar-red block mt-0.5">
+                    <span className="text-xs font-semibold text-kar-red block mt-0.5 notranslate" translate="no">
                       {lang === "kn" ? c.roleKn : c.roleEn}
                     </span>
-                    <span className="text-[11px] text-stone-500 block mt-1">
+                    <span className="text-[11px] text-stone-500 block mt-1 notranslate" translate="no">
                       {lang === "kn" ? (c.deptKn || c.dept) : (c.deptEn || c.dept)}
                     </span>
                     <a 
                       href={`tel:${c.contact.replace(/\s+/g, '')}`} 
-                      className="mt-3 pt-2 border-t border-stone-100 flex items-center gap-1.5 text-xs text-stone-700 font-mono hover:text-kar-red transition-colors group"
+                      className="mt-3 pt-2 border-t border-stone-100 flex items-center gap-1.5 text-xs text-stone-700 font-mono hover:text-kar-red transition-colors group notranslate"
+                      translate="no"
                       title={lang === "kn" ? `${c.nameKn} ಅವರಿಗೆ ಕರೆ ಮಾಡಿ` : `Call ${c.nameEn}`}
                     >
                       <Phone className="w-3.5 h-3.5 text-amber-600 group-hover:scale-110 transition-transform" />
@@ -100,17 +101,17 @@ export const ContactSection = () => {
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {siteConfig.coordinators.students.map((c, i) => (
-                  <div key={i} className="p-4 rounded-2xl bg-white border border-stone-200/80 shadow-sm">
-                    <span className="text-sm font-bold text-stone-900 block font-display">
+                  <div key={i} className="p-4 rounded-2xl bg-white border border-stone-200/80 shadow-sm notranslate" translate="no">
+                    <span className="text-sm font-bold text-stone-900 block font-display notranslate" translate="no">
                       {lang === "kn" ? c.nameKn : c.nameEn}
                     </span>
-                    <span className="text-xs font-semibold text-amber-800 block mt-0.5">
+                    <span className="text-xs font-semibold text-amber-800 block mt-0.5 notranslate" translate="no">
                       {lang === "kn" ? c.roleKn : c.roleEn}
                     </span>
-                    <span className="text-[11px] text-stone-500 block mt-1">
+                    <span className="text-[11px] text-stone-500 block mt-1 notranslate" translate="no">
                       {lang === "kn" ? (c.deptKn || c.dept) : (c.deptEn || c.dept)}
                     </span>
-                    <div className="mt-3 pt-2 border-t border-stone-100 space-y-1.5 text-xs text-stone-700 font-mono">
+                    <div className="mt-3 pt-2 border-t border-stone-100 space-y-1.5 text-xs text-stone-700 font-mono notranslate" translate="no">
                       <a 
                         href={`tel:${c.contact.replace(/\s+/g, '')}`} 
                         className="flex items-center gap-1.5 hover:text-kar-red transition-colors group"

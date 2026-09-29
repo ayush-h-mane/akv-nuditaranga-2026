@@ -679,6 +679,7 @@ def export_attendance_csv(
         query = query.filter(VolunteerAttendance.date == date)
     
     records = query.order_by(VolunteerAttendance.date.desc(), VolunteerAttendance.volunteer_name.asc()).all()
+    user_lookup = {u.id: u.auid for u in db.query(User.id, User.auid).filter(User.id.in_([r.user_id for r in records])).all()} if records else {}
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -695,9 +696,10 @@ def export_attendance_csv(
     ])
 
     for r in records:
+        registered_auid = (user_lookup.get(r.user_id) or r.auid or "").strip().upper()
         writer.writerow([
             r.id,
-            r.auid,
+            registered_auid,
             r.volunteer_name,
             r.department,
             r.date,
@@ -726,6 +728,7 @@ def export_attendance_xlsx(
         query = query.filter(VolunteerAttendance.date == date)
     
     records = query.order_by(VolunteerAttendance.date.desc(), VolunteerAttendance.volunteer_name.asc()).all()
+    user_lookup = {u.id: u.auid for u in db.query(User.id, User.auid).filter(User.id.in_([r.user_id for r in records])).all()} if records else {}
 
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -780,9 +783,10 @@ def export_attendance_xlsx(
     # Data rows
     for r in records:
         checkin_val = r.check_in_time.strftime("%I:%M %p") if r.check_in_time else "N/A"
+        registered_auid = (user_lookup.get(r.user_id) or r.auid or "").strip().upper()
         row_data = [
             r.id,
-            r.auid,
+            registered_auid,
             r.volunteer_name,
             r.department,
             r.date,

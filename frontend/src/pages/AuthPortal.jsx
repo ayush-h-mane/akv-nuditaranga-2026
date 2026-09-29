@@ -89,12 +89,12 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
     auid: "",
     email: "",
     phone: "",
-    institute: ACHARYA_INSTITUTES[0],
-    department: STANDARD_DEPARTMENTS[0],
-    semester: 6,
+    institute: "",
+    department: "",
+    semester: "",
     section: "A",
     gender: "Male",
-    role: "PARTICIPANT", // VOLUNTEER, PARTICIPANT, SPECTATOR
+    role: "PARTICIPANT", // VOLUNTEER, PARTICIPANT
     volunteer_domain: "Promotions",
     custom_domain: "",
     photo_url: "",
@@ -110,8 +110,8 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
     facultyId: "",
     email: "",
     phone: "",
-    institute: ACHARYA_INSTITUTES[0],
-    department: STANDARD_DEPARTMENTS[0],
+    institute: "",
+    department: "",
     volunteer_domain: "Promotions",
     photo_url: "",
     password: "",
@@ -127,6 +127,9 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
 
     try {
       const res = await api.studentLogin(studentLoginForm.auid.trim(), studentLoginForm.password);
+      if (res.user && (res.user.role === "ADMIN" || res.user.role === "SUPERADMIN")) {
+        throw new Error("Access restricted: Administrator accounts cannot log in through Student Login. Please use the Admin Portal.");
+      }
       login(res.user, res.token);
       if (onAuthSuccess) {
         onAuthSuccess(res.user);
@@ -211,6 +214,9 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
 
     try {
       const res = await api.adminLogin(adminForm.username.trim(), adminForm.password);
+      if (res.user && res.user.role !== "ADMIN") {
+        throw new Error("Access restricted: Student and Superadmin accounts cannot log in through Admin Portal.");
+      }
       login(res.user, res.token);
       if (onAuthSuccess) {
         onAuthSuccess(res.user);
@@ -247,10 +253,6 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
       setErrorMessage("Faculty ID is required for Faculty Coordinators.");
       return;
     }
-    if (!isFaculty && !adminForm.username?.trim()) {
-      setErrorMessage("Desired username is required.");
-      return;
-    }
     if (!adminForm.photo_url) {
       setErrorMessage("Profile photo is mandatory. Please upload your photo before continuing.");
       return;
@@ -265,7 +267,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
     try {
       const cleanUsername = isFaculty
         ? `fac_${adminForm.facultyId.trim().toLowerCase()}`
-        : adminForm.username.trim().toLowerCase();
+        : (adminForm.username?.trim().toLowerCase() || adminForm.email.split('@')[0].trim().toLowerCase());
 
       const payload = {
         full_name: adminForm.fullName.trim(),
@@ -298,7 +300,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
     setLoading(true);
 
     try {
-      const res = await api.adminLogin(superadminForm.username.trim(), superadminForm.password);
+      const res = await api.superadminLogin(superadminForm.username.trim(), superadminForm.password);
       if (res.user && res.user.role !== "SUPERADMIN") {
         throw new Error("Access restricted: This account does not possess Superadmin privileges.");
       }
@@ -705,36 +707,25 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                         </div>
 
                         {/* Semester Selection & Section */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                          <div>
-                            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                              Semester *
-                            </label>
-                            <select
-                              value={studentRegisterForm.semester}
-                              onChange={(e) => setStudentRegisterForm({ ...studentRegisterForm, semester: Number(e.target.value) })}
-                              className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm bg-white font-medium"
-                            >
-                              {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
-                                <option key={sem} value={sem}>
-                                  {sem}th Semester (Sem {sem})
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                              Section / Division
-                            </label>
-                            <input
-                              type="text"
-                              value={studentRegisterForm.section}
-                              onChange={(e) => setStudentRegisterForm({ ...studentRegisterForm, section: e.target.value.toUpperCase() })}
-                              placeholder="e.g. A"
-                              className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm font-semibold uppercase"
-                            />
-                          </div>
+                        {/* Semester Selection */}
+                        <div className="w-full">
+                          <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                            Semester *
+                          </label>
+                          <select
+                            required
+                            value={studentRegisterForm.semester}
+                            onChange={(e) => setStudentRegisterForm({ ...studentRegisterForm, semester: e.target.value ? Number(e.target.value) : "" })}
+                            className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm bg-white font-medium notranslate"
+                            translate="no"
+                          >
+                            <option value="" disabled>Select Semester</option>
+                            {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
+                              <option key={sem} value={sem}>
+                                {sem}th Semester (Sem {sem})
+                              </option>
+                            ))}
+                          </select>
                         </div>
 
                         {/* Participation Type Section: Radio Cards */}
@@ -742,7 +733,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                           <label className="block text-xs font-bold text-stone-900 uppercase tracking-wider mb-2">
                             How are you registering? / ಭಾಗವಹಿಸುವಿಕೆ ವಿಧಾನ *
                           </label>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                             {/* Option A: Volunteer */}
                             <div
                               onClick={() => setStudentRegisterForm({ ...studentRegisterForm, role: "VOLUNTEER" })}
@@ -778,25 +769,6 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                               <span className="text-[10px] text-amber-900 font-bold mt-0.5">ಸ್ಪರ್ಧಿ</span>
                               <p className="text-[10px] text-stone-500 mt-1 leading-tight">
                                 Compete in Nuditaranga cultural events.
-                              </p>
-                            </div>
-
-                            {/* Option C: Spectator */}
-                            <div
-                              onClick={() => setStudentRegisterForm({ ...studentRegisterForm, role: "SPECTATOR" })}
-                              className={`cursor-pointer p-3.5 rounded-2xl border-2 transition-all flex flex-col items-center text-center ${studentRegisterForm.role === "SPECTATOR"
-                                ? "border-kar-red bg-red-50/70 shadow-sm"
-                                : "border-stone-200 hover:border-amber-300 bg-white"
-                                }`}
-                            >
-                              <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-2 ${studentRegisterForm.role === "SPECTATOR" ? "bg-kar-red text-white" : "bg-stone-100 text-stone-600"
-                                }`}>
-                                <Users className="w-5 h-5" />
-                              </div>
-                              <span className="font-extrabold text-xs sm:text-sm text-stone-900">Spectator</span>
-                              <span className="text-[10px] text-amber-900 font-bold mt-0.5">ವೀಕ್ಷಕ</span>
-                              <p className="text-[10px] text-stone-500 mt-1 leading-tight">
-                                Audience pass to support and watch.
                               </p>
                             </div>
                           </div>
@@ -1140,34 +1112,18 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                     ) : (
                       /* Working Committee Member */
                       <>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                              Full Name *
-                            </label>
-                            <input
-                              type="text"
-                              required
-                              value={adminForm.fullName}
-                              onChange={(e) => setAdminForm({ ...adminForm, fullName: e.target.value })}
-                              placeholder="Lead / Coordinator Name"
-                              className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                              Desired Username *
-                            </label>
-                            <input
-                              type="text"
-                              required
-                              value={adminForm.username}
-                              onChange={(e) => setAdminForm({ ...adminForm, username: e.target.value.toLowerCase() })}
-                              placeholder="e.g. suresh_rao"
-                              className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden"
-                            />
-                          </div>
+                        <div>
+                          <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                            Full Name *
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={adminForm.fullName}
+                            onChange={(e) => setAdminForm({ ...adminForm, fullName: e.target.value })}
+                            placeholder="Lead / Coordinator Name"
+                            className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden"
+                          />
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1204,8 +1160,8 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
 
                     {/* Institute and Department with Manual Input support */}
                     <InstituteDepartmentSelect
-                      selectedInstitute={adminForm.institute}
-                      selectedDepartment={adminForm.department}
+                      institute={adminForm.institute}
+                      department={adminForm.department}
                       onInstituteChange={(inst) => setAdminForm({ ...adminForm, institute: inst })}
                       onDepartmentChange={(dept) => setAdminForm({ ...adminForm, department: dept })}
                     />
