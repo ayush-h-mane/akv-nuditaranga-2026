@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useLanguage } from "../context/LanguageContext";
 import { api } from "../services/api";
+import { useHistoryModal } from "../utils/useHistoryModal";
 import { X, ZoomIn, Image as ImageIcon } from "lucide-react";
 
 export const GallerySection = () => {
@@ -8,6 +9,8 @@ export const GallerySection = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [gallery, setGallery] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  useHistoryModal(Boolean(selectedImage), () => setSelectedImage(null));
 
   useEffect(() => {
     loadGallery();

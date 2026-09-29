@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthContext";
+import { useModalAlert } from "../context/ModalAlertContext";
 import { api } from "../services/api";
 import { CameraQRScanner } from "../components/CameraQRScanner";
 import { formatKannadaStatus, toKannadaDigits } from "../utils/kannadaUtils";
@@ -9,6 +10,7 @@ import { CheckCircle2, UserCheck, AlertTriangle, Clock, MapPin, RefreshCw, XCirc
 export const CheckInPage = () => {
   const { lang, t } = useLanguage();
   const { user, role } = useAuth();
+  const { showError, showSuccess } = useModalAlert();
   const [activeReg, setActiveReg] = useState(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
@@ -48,7 +50,9 @@ export const CheckInPage = () => {
       const data = await api.getRegistration(cleanId);
       setActiveReg(data);
     } catch (err) {
-      setMessage({ type: "error", text: err.message || (lang === "kn" ? "ನೋಂದಣಿ ಮಾಹಿತಿ ಕಂಡುಬಂದಿಲ್ಲ." : "Registration not found.") });
+      const errText = err.message || (lang === "kn" ? "ನೋಂದಣಿ ಮಾಹಿತಿ ಕಂಡುಬಂದಿಲ್ಲ." : "Registration not found.");
+      setMessage({ type: "error", text: errText });
+      showError(errText, lang === "kn" ? "ನೋಂದಣಿ ಕಂಡುಬಂದಿಲ್ಲ" : "Registration Not Found");
       setActiveReg(null);
     } finally {
       setLoading(false);
@@ -69,14 +73,18 @@ export const CheckInPage = () => {
     try {
       const updated = await api.checkIn(activeReg.registration_id, "Desk Coordinator");
       setActiveReg(updated);
+      const successText = lang === "kn" 
+        ? `ಭಾಗವಹಿಸಿದವರು ${updated.full_name} ಯಶಸ್ವಿಯಾಗಿ ಹಾಜರಾತಿ ದಾಖಲಿಸಿದ್ದಾರೆ!` 
+        : `Participant ${updated.full_name} checked in successfully!`;
       setMessage({ 
         type: "success", 
-        text: lang === "kn" 
-          ? `ಭಾಗವಹಿಸಿದವರು ${updated.full_name} ಯಶಸ್ವಿಯಾಗಿ ಹಾಜರಾತಿ ದಾಖಲಿಸಿದ್ದಾರೆ!` 
-          : `Participant ${updated.full_name} checked in successfully!` 
+        text: successText
       });
+      showSuccess(successText, lang === "kn" ? "ಹಾಜರಾತಿ ದಾಖಲಾಗಿದೆ" : "Attendance Recorded");
     } catch (err) {
-      setMessage({ type: "error", text: err.message || (lang === "kn" ? "ಹಾಜರಾತಿ ದಾಖಲಿಸಲು ವಿಫಲವಾಗಿದೆ." : "Failed to mark check-in.") });
+      const errText = err.message || (lang === "kn" ? "ಹಾಜರಾತಿ ದಾಖಲಿಸಲು ವಿಫಲವಾಗಿದೆ." : "Failed to mark check-in.");
+      setMessage({ type: "error", text: errText });
+      showError(errText, lang === "kn" ? "ಹಾಜರಾತಿ ದೋಷ" : "Attendance Marking Error");
     } finally {
       setLoading(false);
     }

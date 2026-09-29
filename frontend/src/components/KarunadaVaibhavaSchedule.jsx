@@ -19,11 +19,16 @@ import {
   CheckCircle2
 } from "lucide-react";
 import { api } from "../services/api";
+import { useHistoryModal } from "../utils/useHistoryModal";
 
 export const KarunadaVaibhavaSchedule = ({ onRegisterClick }) => {
   const { lang, t } = useLanguage();
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const [posterModalOpen, setPosterModalOpen] = useState(false);
+  const [mobileExpandedIndex, setMobileExpandedIndex] = useState(null);
+
+  useHistoryModal(posterModalOpen, () => setPosterModalOpen(false));
+  useHistoryModal(mobileExpandedIndex !== null, () => setMobileExpandedIndex(null));
 
   const [scheduleDays, setScheduleDays] = useState(siteConfig.festival.schedule || []);
 
@@ -44,8 +49,6 @@ export const KarunadaVaibhavaSchedule = ({ onRegisterClick }) => {
       default: return <Sparkles className="w-5 h-5 text-kar-red" />;
     }
   };
-
-  const [mobileExpandedIndex, setMobileExpandedIndex] = useState(null);
 
   const selectedDay = scheduleDays[selectedDayIndex] || scheduleDays[0];
   const localizedTagline = (day) => {

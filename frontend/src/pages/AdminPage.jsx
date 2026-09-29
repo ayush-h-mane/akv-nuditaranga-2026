@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
+import { useModalAlert } from "../context/ModalAlertContext";
 import { api } from "../services/api";
 import { 
   Shield, 
@@ -38,6 +39,7 @@ import { MyProfileAttendance } from "../components/MyProfileAttendance";
 export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
   const { user, role, logout } = useAuth();
   const { lang, t } = useLanguage();
+  const { showError, showWarning, showSuccess, showInfo } = useModalAlert();
   
   const [activeTab, setActiveTab] = useState("attendance"); // "overview", "attendance", "checkin"
   const [overview, setOverview] = useState(null);
@@ -98,6 +100,13 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
   const notify = (type, text) => {
     setFeedback({ type, text });
     setTimeout(() => setFeedback({ type: "", text: "" }), 4000);
+    if (type === "error") {
+      showError(text, "Error / ತೊಂದರೆ");
+    } else if (type === "warning") {
+      showWarning(text, "Attention / ಎಚ್ಚರಿಕೆ");
+    } else if (type === "info") {
+      showInfo(text, "Information / ಮಾಹಿತಿ");
+    }
   };
 
   const loadAttendanceDates = async () => {

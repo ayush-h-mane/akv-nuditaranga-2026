@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { LanguageProvider } from "./context/LanguageContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { ModalAlertProvider, useModalAlert } from "./context/ModalAlertContext";
 import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
 
@@ -30,13 +31,84 @@ import { ContactSection } from "./sections/ContactSection";
 export function AppContent() {
   const { user, role, loading } = useAuth();
   
-  // Application Entry Point: Default to public website home
-  const [currentView, setCurrentView] = useState("home"); 
+  // Application Entry Point: Default to public website home or state from history
+  const [currentView, setCurrentView] = useState(() => {
+    if (typeof window !== "undefined" && window.history.state && window.history.state.akvView) {
+      return window.history.state.akvView;
+    }
+    return "home";
+  }); 
+
   const [authInitialTab, setAuthInitialTab] = useState("student-login");
   const [resetToken, setResetToken] = useState("");
   
   const [selectedEventId, setSelectedEventId] = useState(null);
   const [confirmedRegistration, setConfirmedRegistration] = useState(null);
+
+  // Synchronize browser history and handle Back button navigation (popstate)
+  useEffect(() => {
+    // Ensure initial entry has base state and active state so back button never closes app unexpectedly
+    if (!window.history.state || !window.history.state.akvView) {
+      window.history.replaceState(
+        { akvView: "home", isBase: true },
+        "",
+        window.location.pathname + window.location.search + window.location.hash
+      );
+      window.history.pushState(
+        { akvView: currentView || "home", timestamp: Date.now() },
+        "",
+        window.location.pathname + window.location.search + window.location.hash
+      );
+    }
+
+    const handlePopState = (event) => {
+      // If modal dialog is open, its own popstate handler handles closing it
+      if (event.state && event.state.akvModalAlert) return;
+      if (event.state && event.state.akvModal) return;
+
+      if (event.state && event.state.akvView) {
+        if (event.state.isBase) {
+          // Re-arm base state so pressing back on home page stays within app
+          setCurrentView("home");
+          window.history.pushState(
+            { akvView: "home", timestamp: Date.now() },
+            "",
+            window.location.pathname + window.location.search + window.location.hash
+          );
+        } else {
+          setCurrentView(event.state.akvView);
+        }
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } else {
+        // Fallback safely to home view instead of closing
+        setCurrentView("home");
+        window.history.pushState(
+          { akvView: "home", timestamp: Date.now() },
+          "",
+          window.location.pathname + window.location.search + window.location.hash
+        );
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  // Navigate view with automatic browser history entry so single back press goes to recent page
+  const navigateView = useCallback((nextView, options = {}) => {
+    setCurrentView(prevView => {
+      if (prevView === nextView) return prevView;
+      const stateObj = { akvView: nextView, timestamp: Date.now() };
+      if (options.replace) {
+        window.history.replaceState(stateObj, "", window.location.pathname + window.location.search + window.location.hash);
+      } else {
+        window.history.pushState(stateObj, "", window.location.pathname + window.location.search + window.location.hash);
+      }
+      return nextView;
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
 
   // Detect #reset-token in URL hash
   useEffect(() => {
@@ -46,7 +118,7 @@ export function AppContent() {
         const token = hash.split("reset-token=")[1]?.split("&")[0];
         if (token) {
           setResetToken(token);
-          setCurrentView("reset-password");
+          navigateView("reset-password");
         }
       }
     };
@@ -54,46 +126,43 @@ export function AppContent() {
     handleHash();
     window.addEventListener("hashchange", handleHash);
     return () => window.removeEventListener("hashchange", handleHash);
-  }, []);
+  }, [navigateView]);
 
   // Redirect to home if user logs out or unauthorized user navigates to protected views
   useEffect(() => {
     if (!user && (currentView === "student-dashboard" || currentView === "admin-dashboard" || currentView === "superadmin-dashboard")) {
-      setCurrentView("home");
+      navigateView("home", { replace: true });
     }
     // Organizer Check-In Desk is restricted to administrators only
     if (currentView === "checkin" && (!user || (role !== "ADMIN" && role !== "SUPERADMIN"))) {
-      setCurrentView("home");
+      navigateView("home", { replace: true });
     }
-  }, [user, role, currentView]);
+  }, [user, role, currentView, navigateView]);
 
   // When user successfully authenticates
   const handleAuthSuccess = (authenticatedUser) => {
     if (authenticatedUser.role === "SUPERADMIN") {
-      setCurrentView("superadmin-dashboard");
+      navigateView("superadmin-dashboard");
     } else if (authenticatedUser.role === "ADMIN") {
-      setCurrentView("admin-dashboard");
+      navigateView("admin-dashboard");
     } else {
-      setCurrentView("student-dashboard");
+      navigateView("student-dashboard");
     }
-    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   // Public visitor explores main website
   const handleExplorePublic = () => {
-    setCurrentView("home");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    navigateView("home");
   };
 
   const handleRegisterNav = (eventId = null) => {
     setSelectedEventId(eventId);
     if (user) {
-      setCurrentView("student-dashboard");
+      navigateView("student-dashboard");
     } else {
       setAuthInitialTab("student-register");
-      setCurrentView("auth");
+      navigateView("auth");
     }
-    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   // Dedicated full-screen portal views (without standard public navbar/footer)
@@ -105,7 +174,7 @@ export function AppContent() {
         onAuthSuccess={handleAuthSuccess}
         onOpenResetView={(tok) => {
           setResetToken(tok);
-          setCurrentView("reset-password");
+          navigateView("reset-password");
         }}
       />
     );
@@ -121,7 +190,7 @@ export function AppContent() {
           }
           setResetToken("");
           setAuthInitialTab("student-login");
-          setCurrentView("auth");
+          navigateView("auth");
         }}
       />
     );
@@ -130,7 +199,7 @@ export function AppContent() {
   if (currentView === "superadmin-dashboard") {
     return (
       <SuperAdminDashboard
-        onNavigateHome={() => setCurrentView("home")}
+        onNavigateHome={() => navigateView("home")}
       />
     );
   }
@@ -139,10 +208,10 @@ export function AppContent() {
     <div className="min-h-screen flex flex-col bg-stone-50 text-stone-900 font-sans">
       <Navbar
         currentView={currentView}
-        setCurrentView={setCurrentView}
+        setCurrentView={navigateView}
         onOpenAuthTab={(tab) => {
           setAuthInitialTab(tab);
-          setCurrentView("auth");
+          navigateView("auth");
         }}
       />
 
@@ -151,27 +220,26 @@ export function AppContent() {
           {/* Student Dashboard */}
           {currentView === "student-dashboard" && (
             <StudentDashboard
-              onNavigateHome={() => setCurrentView("home")}
+              onNavigateHome={() => navigateView("home")}
             />
           )}
 
           {/* Admin Dashboard */}
           {currentView === "admin-dashboard" && (
             <AdminPage
-              onNavigateHome={() => setCurrentView("home")}
-              onOpenSuperAdmin={() => setCurrentView("superadmin-dashboard")}
+              onNavigateHome={() => navigateView("home")}
+              onOpenSuperAdmin={() => navigateView("superadmin-dashboard")}
             />
           )}
 
           {/* Public Website Views */}
           {currentView === "home" && (
             <HomePage
-              setCurrentView={setCurrentView}
+              setCurrentView={navigateView}
               setSelectedEventId={setSelectedEventId}
               onOpenAuthTab={(tab) => {
                 setAuthInitialTab(tab);
-                setCurrentView("auth");
-                window.scrollTo({ top: 0, behavior: "smooth" });
+                navigateView("auth");
               }}
             />
           )}
@@ -195,17 +263,14 @@ export function AppContent() {
               />
               <NuditarangaHero
                 onRegister={() => handleRegisterNav(null)}
-                onViewEvents={() => {
-                  setCurrentView("events");
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
+                onViewEvents={() => navigateView("events")}
               />
             </div>
           )}
 
           {currentView === "events" && (
             <EventsPage
-              setCurrentView={setCurrentView}
+              setCurrentView={navigateView}
               setSelectedEventId={setSelectedEventId}
             />
           )}
@@ -223,14 +288,20 @@ export function AppContent() {
           )}
 
           {currentView === "rules" && (
-            <RulesPage onBack={() => setCurrentView("home")} />
+            <RulesPage onBack={() => {
+              if (window.history.length > 1) {
+                window.history.back();
+              } else {
+                navigateView("home");
+              }
+            }} />
           )}
 
           {currentView === "register" && (
             <RegisterPage
               selectedEventId={selectedEventId}
               setSelectedEventId={setSelectedEventId}
-              setCurrentView={setCurrentView}
+              setCurrentView={navigateView}
               setConfirmedRegistration={setConfirmedRegistration}
             />
           )}
@@ -238,7 +309,7 @@ export function AppContent() {
           {currentView === "confirmation" && (
             <ConfirmationPage
               confirmedRegistration={confirmedRegistration}
-              setCurrentView={setCurrentView}
+              setCurrentView={navigateView}
             />
           )}
 
@@ -250,7 +321,7 @@ export function AppContent() {
         </div>
       </main>
 
-      <Footer setCurrentView={setCurrentView} />
+      <Footer setCurrentView={navigateView} />
     </div>
   );
 }
@@ -313,7 +384,9 @@ export default function App() {
     <ErrorBoundary>
       <LanguageProvider>
         <AuthProvider>
-          <AppContent />
+          <ModalAlertProvider>
+            <AppContent />
+          </ModalAlertProvider>
         </AuthProvider>
       </LanguageProvider>
     </ErrorBoundary>

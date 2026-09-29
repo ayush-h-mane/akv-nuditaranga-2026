@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useLanguage } from "../context/LanguageContext";
 import { api } from "../services/api";
+import { useHistoryModal } from "../utils/useHistoryModal";
 import { ArrowUpRight, Sparkles, Calendar, X } from "lucide-react";
 
 export const ActivitiesSection = () => {
@@ -19,6 +20,8 @@ export const ActivitiesSection = () => {
   ]);
   const [loading, setLoading] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState(null);
+
+  useHistoryModal(Boolean(selectedActivity), () => setSelectedActivity(null));
 
   useEffect(() => {
     loadActivities();
