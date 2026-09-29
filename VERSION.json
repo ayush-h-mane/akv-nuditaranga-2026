@@ -4,7 +4,18 @@
   "status": "STAGED_DEVELOPMENT",
   "active_branch": "develop",
   "production_branch": "main",
-  "pending_changes": [],
+  "pending_changes": [
+    "Keep generous space between 'ಕರುನಾಡ ವೈಭವ' title and the red celebration banner on mobile to ensure title visibility without mascot overlap.",
+    "Add interactive inline dialogue boxes directly beneath tapped schedule cards (LAUNCH, Flag hoist + Cultural events, etc.) on mobile.",
+    "Display 'Coming soon.......' with a close option when tapping 'View Official Draft poster' on mobile.",
+    "Arrange 4 pillars in About Acharya Kannada Vedike section into a 2x2 grid (2 in row 1, 2 in row 2) on mobile.",
+    "Compact activities section on mobile with a full-details dialog modal triggered on 'View Details' or card tap.",
+    "Convert Cultural Gallery into a horizontal side-by-side sweeping carousel with compact photo cards on mobile, freeing downward vertical space.",
+    "Convert Instagram Reels into a compact side-by-side sweeping carousel on mobile.",
+    "Compact coordinator contact boxes and the 'Send a message' contact form for mobile screens.",
+    "Render clean, minimal mobile-only footer keeping only AKV & Acharya logos, Acharya Kannada Vedike, email ID, celebration motto, author link, and copyright.",
+    "Preserve 100% of original layouts, grids, and components on laptop and desktop screens without modification."
+  ],
   "history": [
     {
       "version": "2.2.43",

@@ -115,7 +115,105 @@ export const InstagramSection = () => {
         </div>
 
         {/* Instagram Interactive Reel Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {/* Mobile View: Side-side sweeping reels (compact size) */}
+        <div className="block md:hidden">
+          <div className="flex overflow-x-auto snap-x snap-mandatory gap-3.5 pb-4 px-1 -mx-4 px-4 no-scrollbar">
+            {reels.map((post) => (
+              <a
+                key={post.id}
+                href={post.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={lang === "kn" ? "Instagram ನಲ್ಲಿ ಈ ರೀಲ್ ವೀಕ್ಷಿಸಲು ಟ್ಯಾಪ್ ಮಾಡಿ" : "Tap to watch this reel on Instagram"}
+                className="group w-60 shrink-0 snap-center rounded-2xl border border-stone-200/90 bg-white shadow-sm overflow-hidden flex flex-col cursor-pointer active:scale-[0.98] transition-transform block no-underline"
+              >
+                {/* Instagram Card Header */}
+                <div className="p-2.5 flex items-center justify-between border-b border-stone-100 bg-white">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-amber-400 via-pink-500 to-purple-600 p-0.5 shadow-xs">
+                      <img
+                        src="/images/akv-logo.png"
+                        alt="Acharya Kannada Vedike"
+                        className="w-full h-full object-contain rounded-full bg-white p-0.5"
+                      />
+                    </div>
+                    <div>
+                      <span className="text-[11px] font-bold text-stone-900 block leading-tight">
+                        acharyakannadavedike
+                      </span>
+                    </div>
+                  </div>
+                  <InstagramIcon className="w-3.5 h-3.5 text-pink-600" />
+                </div>
+
+                {/* Reel Media Container */}
+                <div className="relative h-44 bg-stone-950 overflow-hidden">
+                  <img
+                    src={post.image}
+                    alt={cleanBrandAbbreviation(post.captionEn)}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+
+                  {/* Reels Badge */}
+                  <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-xs text-white flex items-center gap-1 shadow-md">
+                    <ReelsBadgeIcon className="w-3 h-3 text-pink-400" />
+                    <span className="text-[9px] font-black uppercase">
+                      {lang === "kn" ? "ರೀಲ್" : "Reel"}
+                    </span>
+                  </div>
+
+                  {/* Views Counter */}
+                  <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-xs text-white text-[9px] font-bold shadow-md flex items-center gap-1">
+                    <Play className="w-2.5 h-2.5 fill-white text-white" />
+                    <span>{lang === "kn" ? toKannadaDigits(post.views) : post.views}</span>
+                  </div>
+
+                  {/* Play Overlay */}
+                  <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center text-pink-600 shadow-lg">
+                      <Play className="w-4 h-4 fill-pink-600 text-pink-600 ml-0.5" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Engagement & Caption */}
+                <div className="p-3 space-y-1.5 flex-1 flex flex-col justify-between bg-white">
+                  <div>
+                    <div className="flex items-center gap-2.5 text-stone-700 mb-1.5">
+                      <Heart className="w-4 h-4 text-red-500 fill-red-500" />
+                      <MessageCircle className="w-4 h-4 text-stone-600" />
+                      <Send className="w-3.5 h-3.5 text-stone-600" />
+                    </div>
+
+                    <span className="text-[11px] font-bold text-stone-900 block mb-0.5">
+                      {lang === "kn" ? `${toKannadaDigits(post.likes)} ಮೆಚ್ಚುಗೆಗಳು` : `${post.likes} likes`}
+                    </span>
+
+                    <p className="text-[11px] text-stone-700 font-kannada leading-tight line-clamp-2">
+                      <span className="font-bold text-stone-900 mr-1">akv</span>
+                      {cleanBrandAbbreviation(lang === "kn" ? post.captionKn : post.captionEn)}
+                    </p>
+                  </div>
+
+                  <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-[11px] font-bold text-pink-600">
+                    <span className="flex items-center gap-1">
+                      <InstagramIcon className="w-3 h-3" />
+                      <span>{t("social.watchReel")}</span>
+                    </span>
+                    <ExternalLink className="w-3 h-3" />
+                  </div>
+                </div>
+              </a>
+            ))}
+          </div>
+          <p className="text-center text-[11px] font-bold text-stone-600 mt-1">
+            {lang === "kn" ? "← ರೀಲ್‌ಗಳನ್ನು ವೀಕ್ಷಿಸಲು ಎಡ-ಬಲಕ್ಕೆ ಸ್ವೈಪ್ ಮಾಡಿ →" : "← Swipe sideways to watch reels on Instagram →"}
+          </p>
+        </div>
+
+        {/* Laptop/Desktop View: Unchanged 3-column grid */}
+        <div className="hidden md:grid md:grid-cols-3 gap-8">
           {reels.map((post) => (
             <a
               key={post.id}
@@ -153,7 +251,7 @@ export const InstagramSection = () => {
               <div className="relative h-64 bg-stone-950 overflow-hidden">
                 <img
                   src={post.image}
-              alt={cleanBrandAbbreviation(post.captionEn)}
+                  alt={cleanBrandAbbreviation(post.captionEn)}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-95 group-hover:opacity-100"
                   loading="lazy"
                 />

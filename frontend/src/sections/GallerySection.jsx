@@ -42,49 +42,100 @@ export const GallerySection = () => {
           </p>
         </div>
 
-        {/* Gallery Grid */}
+        {/* Gallery Display */}
         {gallery.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {gallery.map((photo) => {
-              const title = lang === "kn" ? (photo.title_kn || photo.titleKn || photo.title_en) : (photo.title_en || photo.titleEn);
-              const desc = lang === "kn" ? (photo.desc_kn || photo.descKn || photo.desc_en) : (photo.desc_en || photo.descEn);
+          <>
+            {/* Mobile View: Side-side sweeping carousel (frees vertical space) */}
+            <div className="block sm:hidden">
+              <div className="flex overflow-x-auto snap-x snap-mandatory gap-3.5 pb-4 px-1 -mx-4 px-4 no-scrollbar">
+                {gallery.map((photo) => {
+                  const title = lang === "kn" ? (photo.title_kn || photo.titleKn || photo.title_en) : (photo.title_en || photo.titleEn);
+                  const desc = lang === "kn" ? (photo.desc_kn || photo.descKn || photo.desc_en) : (photo.desc_en || photo.descEn);
 
-              return (
-                <div
-                  key={photo.id}
-                  onClick={() => setSelectedImage(photo)}
-                  className="group relative h-64 rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-300 cursor-pointer border border-stone-200/80 bg-stone-900"
-                >
-                  <img
-                    src={photo.image}
-                    alt={title}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-90 group-hover:opacity-100"
-                    loading="lazy"
-                  />
+                  return (
+                    <div
+                      key={photo.id}
+                      onClick={() => setSelectedImage(photo)}
+                      className="group relative w-60 h-40 shrink-0 snap-center rounded-2xl overflow-hidden shadow-md cursor-pointer border border-stone-200/90 bg-stone-900 active:scale-[0.98] transition-transform"
+                    >
+                      <img
+                        src={photo.image}
+                        alt={title}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
 
-                  {/* Gradient overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80 group-hover:opacity-95 transition-opacity" />
+                      {/* Gradient overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
 
-                  {/* Zoom Icon */}
-                  <div className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transform group-hover:scale-100 scale-75 transition-all">
-                    <ZoomIn className="w-4 h-4" />
+                      {/* Tap to view badge */}
+                      <div className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-xs text-[10px] font-bold text-amber-300">
+                        {lang === "kn" ? "ವಿವರ ವೀಕ್ಷಿಸಿ" : "Tap for Details"}
+                      </div>
+
+                      {/* Event Name & Description */}
+                      <div className="absolute bottom-2.5 left-2.5 right-2.5 text-white">
+                        <h4 className="text-xs font-bold font-display leading-tight line-clamp-1 mb-0.5">
+                          {title}
+                        </h4>
+                        {desc && (
+                          <p className="text-[10px] text-stone-300 font-kannada line-clamp-1">
+                            {desc}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-center text-[11px] font-bold text-stone-600 mt-1">
+                {lang === "kn" ? "← ಎಡ-ಬಲಕ್ಕೆ ಸ್ವೈಪ್ ಮಾಡಿ ವಿವರ ನೋಡಿ →" : "← Swipe sideways to view images & tap for details →"}
+              </p>
+            </div>
+
+            {/* Laptop/Desktop View: Unchanged standard 3-column grid */}
+            <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {gallery.map((photo) => {
+                const title = lang === "kn" ? (photo.title_kn || photo.titleKn || photo.title_en) : (photo.title_en || photo.titleEn);
+                const desc = lang === "kn" ? (photo.desc_kn || photo.descKn || photo.desc_en) : (photo.desc_en || photo.descEn);
+
+                return (
+                  <div
+                    key={photo.id}
+                    onClick={() => setSelectedImage(photo)}
+                    className="group relative h-64 rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-300 cursor-pointer border border-stone-200/80 bg-stone-900"
+                  >
+                    <img
+                      src={photo.image}
+                      alt={title}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-90 group-hover:opacity-100"
+                      loading="lazy"
+                    />
+
+                    {/* Gradient overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80 group-hover:opacity-95 transition-opacity" />
+
+                    {/* Zoom Icon */}
+                    <div className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transform group-hover:scale-100 scale-75 transition-all">
+                      <ZoomIn className="w-4 h-4" />
+                    </div>
+
+                    {/* Event Name & Description only */}
+                    <div className="absolute bottom-4 left-4 right-4 text-white">
+                      <h4 className="text-base font-bold font-display leading-tight mb-1">
+                        {title}
+                      </h4>
+                      {desc && (
+                        <p className="text-xs text-stone-300 font-kannada line-clamp-2">
+                          {desc}
+                        </p>
+                      )}
+                    </div>
                   </div>
-
-                  {/* Event Name & Description only (No taglines) */}
-                  <div className="absolute bottom-4 left-4 right-4 text-white">
-                    <h4 className="text-base font-bold font-display leading-tight mb-1">
-                      {title}
-                    </h4>
-                    {desc && (
-                      <p className="text-xs text-stone-300 font-kannada line-clamp-2">
-                        {desc}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          </>
         ) : (
           <div className="text-center py-16 px-4 bg-white rounded-3xl border border-dashed border-stone-300 max-w-xl mx-auto shadow-sm">
             <ImageIcon className="w-12 h-12 text-stone-300 mx-auto mb-3" />
