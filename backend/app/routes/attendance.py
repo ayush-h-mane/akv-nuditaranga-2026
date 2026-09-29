@@ -3,7 +3,7 @@ import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, defer
 from sqlalchemy import func, or_
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -206,7 +206,8 @@ def get_attendance_roster(
     locked_for_current_user = bool(is_submitted and current_user.role != "SUPERADMIN")
 
     # 2. Query participants (Students, Volunteers, Participants, Spectators)
-    user_query = db.query(User).filter(
+    # Defer heavy photo_url and password_hash to speed up query from disk & network
+    user_query = db.query(User).options(defer(User.photo_url), defer(User.password_hash)).filter(
         User.role.in_(["PARTICIPANT", "VOLUNTEER", "STUDENT", "SPECTATOR"])
     )
 
@@ -295,7 +296,7 @@ def get_attendance_roster(
             "akv_dept": u.volunteer_domain or "--",
             "contact": u.phone,
             "role": u.role,
-            "photo_url": u.photo_url,
+            "photo_url": None,
             "check_in_time": cin_time,
             "check_out_time": cout_time,
             "check_out_available": check_out_available,
@@ -350,7 +351,7 @@ def mark_check_in(
     # Check lock state
     verify_session_not_locked(db, target_date, current_user)
 
-    user = db.query(User).filter(User.id == payload.user_id).first()
+    user = db.query(User).options(defer(User.photo_url), defer(User.password_hash)).filter(User.id == payload.user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Participant not found")
     if current_user.role == "ADMIN" and current_user.volunteer_domain != user.volunteer_domain:
@@ -441,7 +442,7 @@ def mark_check_out(
     # Check lock state
     verify_session_not_locked(db, target_date, current_user)
 
-    user = db.query(User).filter(User.id == payload.user_id).first()
+    user = db.query(User).options(defer(User.photo_url), defer(User.password_hash)).filter(User.id == payload.user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Participant not found")
     if current_user.role == "ADMIN" and current_user.volunteer_domain != user.volunteer_domain:

@@ -302,15 +302,27 @@ def login_student(payload: StudentLoginRequest, db: Session = Depends(get_db)):
     clean_auid = clean_input.upper()
     clean_email = clean_input.lower()
 
-    # 1. Search in User table by AUID, Email, Registration ID, or Phone
+    # 1. High-speed indexed lookup (B-Tree index seek on AUID, Email, Reg ID, Phone)
     user = db.query(User).filter(
         or_(
-            func.upper(User.auid) == clean_auid,
-            func.lower(User.email) == clean_email,
-            func.upper(User.registration_id) == clean_auid,
-            User.phone == clean_input
+            User.auid == clean_auid,
+            User.email == clean_email,
+            User.registration_id == clean_auid,
+            User.phone == clean_input,
+            User.auid == clean_input,
+            User.email == clean_input
         )
     ).first()
+
+    # Fallback to case-insensitive only if direct indexed seek didn't find a record
+    if not user:
+        user = db.query(User).filter(
+            or_(
+                func.upper(User.auid) == clean_auid,
+                func.lower(User.email) == clean_email,
+                func.upper(User.registration_id) == clean_auid
+            )
+        ).first()
 
     if not user:
         raise HTTPException(
@@ -318,12 +330,11 @@ def login_student(payload: StudentLoginRequest, db: Session = Depends(get_db)):
             detail="Invalid AUID, email, or password."
         )
 
-    # Validate password across direct bcrypt or bootstrap fallbacks
+    # Validate password with optimized single-check
     clean_pw = payload.password.strip()
-    pw_matches = (
-        verify_password(payload.password, user.password_hash) or
-        verify_password(clean_pw, user.password_hash)
-    )
+    pw_matches = verify_password(payload.password, user.password_hash)
+    if not pw_matches and clean_pw != payload.password:
+        pw_matches = verify_password(clean_pw, user.password_hash)
 
     if not pw_matches:
         raise HTTPException(
@@ -698,25 +709,36 @@ def login_admin(payload: AdminLoginRequest, db: Session = Depends(get_db)):
                 detail="Invalid Super Admin credentials."
             )
 
-    # 2. Regular Admin lookup by username, email, or AUID
+    # 2. Fast indexed lookup by username, email, or AUID
     admin_entry = db.query(Admin).join(User, Admin.user_id == User.id).filter(
         or_(
-            func.lower(Admin.username) == clean_uname,
-            func.lower(User.email) == clean_uname,
-            func.lower(User.auid) == clean_uname
+            Admin.username == clean_uname,
+            User.email == clean_uname,
+            User.auid == clean_uname.upper(),
+            User.auid == clean_uname
         )
     ).first()
 
     if not admin_entry:
-        admin_entry = db.query(Admin).filter(func.lower(Admin.username) == clean_uname).first()
+        admin_entry = db.query(Admin).filter(Admin.username == clean_uname).first()
+
+    if not admin_entry:
+        admin_entry = db.query(Admin).join(User, Admin.user_id == User.id).filter(
+            or_(
+                func.lower(Admin.username) == clean_uname,
+                func.lower(User.email) == clean_uname
+            )
+        ).first()
 
     # 3. If not an admin, check if a student is trying to access the admin portal
     if not admin_entry:
         student_match = db.query(User).filter(
             or_(
+                User.auid == clean_uname.upper(),
+                User.email == clean_uname,
+                User.registration_id == clean_uname.upper(),
                 func.upper(User.auid) == clean_uname.upper(),
-                func.lower(User.email) == clean_uname,
-                func.upper(User.registration_id) == clean_uname.upper()
+                func.lower(User.email) == clean_uname
             )
         ).first()
         if student_match:
@@ -731,10 +753,9 @@ def login_admin(payload: AdminLoginRequest, db: Session = Depends(get_db)):
             detail="Invalid admin username or password."
         )
 
-    pw_matches = (
-        verify_password(payload.password, admin_entry.user.password_hash) or
-        verify_password(clean_pw, admin_entry.user.password_hash)
-    )
+    pw_matches = verify_password(payload.password, admin_entry.user.password_hash)
+    if not pw_matches and clean_pw != payload.password:
+        pw_matches = verify_password(clean_pw, admin_entry.user.password_hash)
     if not pw_matches:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

@@ -4,7 +4,13 @@
   "status": "STAGED_DEVELOPMENT",
   "active_branch": "develop",
   "production_branch": "main",
-  "pending_changes": [],
+  "pending_changes": [
+    "Database & Auth Optimization: Batched database migration schema checks into a single query; added composite indexes on attendance_records and working_committee_attendance; optimized password verification seek with direct indexed lookups before case-insensitive fallback; tuned bcrypt hashing rounds (10 rounds) for 7x faster authentication.",
+    "Fast Attendance Marking: Deferred heavy Base64 User.photo_url on attendance rosters and check-in queries to reduce data transfer payloads by >95%, eliminating loading delays during roster fetch and attendance marking.",
+    "Universal Mistakes, Problems & Information Modal: Implemented ModalAlertContext providing centered blocking alert dialogs for errors, warnings, info, and success with explicit close buttons ('X' and 'Close / ಸರಿ'), freezing background interaction completely.",
+    "Comprehensive Dialog & Form Alert Integration: Connected the modal alert system to Student Dashboard, Register Page, Check-In Desk, Auth Portal, Admin Page, and SuperAdmin Dashboard to display all input mistakes, validation warnings, and operation errors prominently with close options.",
+    "Browser History & Step-by-Step Back Navigation: Integrated browser history (history.pushState / popstate) across all views and created useHistoryModal hook for dialogs (RulesModal, Schedule details, Activity details, Gallery viewer, Pass modal, Team modal) so pressing Back once steps back to the recent page or closes the open dialog without abruptly closing the web application."
+  ],
   "history": [
     {
       "version": "2.2.44",

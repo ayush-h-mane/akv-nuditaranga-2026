@@ -3,7 +3,7 @@ import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, defer
 from sqlalchemy import func, or_
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -103,7 +103,7 @@ def get_wc_members_query(db: Session):
     - OR User.role == 'WORKING_COMMITTEE'
     - OR User.volunteer_domain == 'Working Committee'
     """
-    return db.query(User).filter(
+    return db.query(User).options(defer(User.photo_url), defer(User.password_hash)).filter(
         or_(
             User.is_working_committee == True,
             (User.admin_type == "WORKING_COMMITTEE") & (User.role.in_(["ADMIN", "WORKING_COMMITTEE"])),

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../services/api";
+import { useHistoryModal } from "../utils/useHistoryModal";
 import { EventCard } from "../components/EventCard";
 import { RulesModal } from "../components/RulesModal";
 import { Search, Filter, Sparkles, RefreshCw, ShieldAlert, ArrowRight } from "lucide-react";
@@ -14,6 +15,8 @@ export const EventsPage = ({ setCurrentView, setSelectedEventId }) => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [modalEvent, setModalEvent] = useState(null);
+
+  useHistoryModal(Boolean(modalEvent), () => setModalEvent(null));
 
   useEffect(() => {
     fetchEvents();

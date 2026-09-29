@@ -4,7 +4,7 @@ import datetime
 from typing import List, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, defer
 from sqlalchemy import func, or_
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -104,7 +104,7 @@ def list_students(
     current_user: User = Depends(require_superadmin),
     db: Session = Depends(get_db)
 ):
-    query = db.query(User).filter(User.role != "SUPERADMIN")
+    query = db.query(User).options(defer(User.photo_url), defer(User.password_hash)).filter(User.role != "SUPERADMIN")
 
     if role and role.upper() != "ALL":
         query = query.filter(User.role == role.upper())

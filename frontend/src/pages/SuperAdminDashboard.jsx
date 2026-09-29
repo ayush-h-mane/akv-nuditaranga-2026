@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useModalAlert } from "../context/ModalAlertContext";
 import { api } from "../services/api";
 import {
   ShieldAlert,
@@ -50,6 +51,7 @@ import { MyProfileAttendance } from "../components/MyProfileAttendance";
 
 export const SuperAdminDashboard = ({ onNavigateHome }) => {
   const { user, logout } = useAuth();
+  const { showError, showWarning, showSuccess, showInfo } = useModalAlert();
   const [activeSection, setActiveSection] = useState("overview");
   // Sections: overview, admins, students, volunteers, attendance, exports, events, audit-logs
 
@@ -240,6 +242,13 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
   const notify = (type, text) => {
     setFeedback({ type, text });
     setTimeout(() => setFeedback({ type: "", text: "" }), 5000);
+    if (type === "error") {
+      showError(text, "Error / ತೊಂದರೆ");
+    } else if (type === "warning") {
+      showWarning(text, "Attention / ಎಚ್ಚರಿಕೆ");
+    } else if (type === "info") {
+      showInfo(text, "Information / ಮಾಹಿತಿ");
+    }
   };
 
   // Load section-specific data

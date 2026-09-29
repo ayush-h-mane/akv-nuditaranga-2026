@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
 import { useAuth } from "../context/AuthContext";
+import { useModalAlert } from "../context/ModalAlertContext";
+import { useHistoryModal } from "../utils/useHistoryModal";
 import { api } from "../services/api";
 import { DigitalPass } from "../components/DigitalPass";
 import { MyProfileAttendance } from "../components/MyProfileAttendance";
@@ -26,6 +28,7 @@ import {
 
 export const StudentDashboard = ({ onNavigateHome }) => {
   const { user, logout } = useAuth();
+  const { showError, showSuccess, showWarning, showInfo } = useModalAlert();
   const [activeTab, setActiveTab] = useState("overview"); // overview, my-events, browse-events, account
   const [dashboardData, setDashboardData] = useState(null);
   const [eventsList, setEventsList] = useState([]);
@@ -40,6 +43,10 @@ export const StudentDashboard = ({ onNavigateHome }) => {
   const [teamModalEvent, setTeamModalEvent] = useState(null);
   const [teamName, setTeamName] = useState("");
   const [teamMembers, setTeamMembers] = useState([]);
+
+  // Bind modals to browser back button history
+  useHistoryModal(Boolean(viewingPassReg), () => setViewingPassReg(null));
+  useHistoryModal(Boolean(teamModalEvent), () => setTeamModalEvent(null));
 
   // Change Password State
   const [pwForm, setPwForm] = useState({
@@ -62,6 +69,7 @@ export const StudentDashboard = ({ onNavigateHome }) => {
     } catch (err) {
       console.error("Failed to load student dashboard:", err);
       setActionMessage({ type: "error", text: "Could not load dashboard data." });
+      showError("Could not load dashboard data. Please check your network connection.", "Dashboard Error");
     } finally {
       setLoading(false);
     }
@@ -91,10 +99,14 @@ export const StudentDashboard = ({ onNavigateHome }) => {
       });
 
       confetti({ particleCount: 70, spread: 60, origin: { y: 0.7 } });
-      setActionMessage({ type: "success", text: res.message || `Successfully registered for ${event.title_en}!` });
+      const successMsg = res.message || `Successfully registered for ${event.title_en}!`;
+      setActionMessage({ type: "success", text: successMsg });
+      showSuccess(successMsg, "Registration Confirmed");
       await loadData();
     } catch (err) {
-      setActionMessage({ type: "error", text: err.message || "Registration failed." });
+      const errorMsg = err.message || "Registration failed.";
+      setActionMessage({ type: "error", text: errorMsg });
+      showError(errorMsg, "Registration Problem");
     } finally {
       setRegisteringEventId(null);
     }
@@ -117,11 +129,15 @@ export const StudentDashboard = ({ onNavigateHome }) => {
       });
 
       confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
-      setActionMessage({ type: "success", text: res.message || "Team registered successfully!" });
+      const successMsg = res.message || "Team registered successfully!";
+      setActionMessage({ type: "success", text: successMsg });
+      showSuccess(successMsg, "Team Registration Confirmed");
       setTeamModalEvent(null);
       await loadData();
     } catch (err) {
-      setActionMessage({ type: "error", text: err.message || "Team registration failed." });
+      const errorMsg = err.message || "Team registration failed.";
+      setActionMessage({ type: "error", text: errorMsg });
+      showError(errorMsg, "Team Registration Problem");
     } finally {
       setRegisteringEventId(null);
     }
@@ -132,10 +148,12 @@ export const StudentDashboard = ({ onNavigateHome }) => {
     e.preventDefault();
     if (pwForm.newPassword !== pwForm.confirmPassword) {
       setPwMessage({ type: "error", text: "New passwords do not match." });
+      showError("New passwords do not match. Please verify both password fields.", "Password Mismatch");
       return;
     }
     if (pwForm.newPassword.length < 6) {
       setPwMessage({ type: "error", text: "Password must be at least 6 characters." });
+      showWarning("Password must be at least 6 characters long.", "Password Too Short");
       return;
     }
 
@@ -149,9 +167,12 @@ export const StudentDashboard = ({ onNavigateHome }) => {
         pwForm.confirmPassword
       );
       setPwMessage({ type: "success", text: "Password changed successfully." });
+      showSuccess("Your password has been changed successfully.", "Password Updated");
       setPwForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
     } catch (err) {
-      setPwMessage({ type: "error", text: err.message || "Failed to change password." });
+      const errorMsg = err.message || "Failed to change password.";
+      setPwMessage({ type: "error", text: errorMsg });
+      showError(errorMsg, "Password Change Problem");
     } finally {
       setPwLoading(false);
     }

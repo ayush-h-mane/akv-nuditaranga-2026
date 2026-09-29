@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthContext";
+import { useModalAlert } from "../context/ModalAlertContext";
 import { api } from "../services/api";
 import { ACHARYA_EMAIL_ERROR, isAcharyaEmail } from "../utils/emailValidation";
 import { 
@@ -33,6 +34,7 @@ export const RegisterPage = ({
 }) => {
   const { lang, t } = useLanguage();
   const { user } = useAuth();
+  const { showError, showWarning } = useModalAlert();
   const [currentStep, setCurrentStep] = useState(1);
   const [events, setEvents] = useState([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
@@ -162,11 +164,11 @@ export const RegisterPage = ({
     if (!selectedEvent) return;
     const maxLimit = selectedEvent.max_team_size || 4;
     if (formData.teamMembers.length >= (maxLimit - 1)) {
-      setErrorMessage(
-        lang === "kn"
-          ? `ಈ ಸ್ಪರ್ಧೆಗೆ ಗರಿಷ್ಠ ತಂಡದ ಗಾತ್ರ ${toKannadaDigits(maxLimit)} ಸದಸ್ಯರು.`
-          : `Maximum team size for this event is ${maxLimit} members.`
-      );
+      const msg = lang === "kn"
+        ? `ಈ ಸ್ಪರ್ಧೆಗೆ ಗರಿಷ್ಠ ತಂಡದ ಗಾತ್ರ ${toKannadaDigits(maxLimit)} ಸದಸ್ಯರು.`
+        : `Maximum team size for this event is ${maxLimit} members.`;
+      setErrorMessage(msg);
+      showWarning(msg, lang === "kn" ? "ತಂಡದ ಮಿತಿ" : "Team Limit");
       return;
     }
     setFormData(prev => ({
@@ -248,7 +250,9 @@ export const RegisterPage = ({
   const handleNext = () => {
     if (currentStep === 1) {
       if (!formData.eventId) {
-        setErrorMessage(t("registration.selectEventPrompt"));
+        const msg = t("registration.selectEventPrompt");
+        setErrorMessage(msg);
+        showWarning(msg, lang === "kn" ? "ಸ್ಪರ್ಧೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ" : "Select an Event");
         return;
       }
       setErrorMessage("");
@@ -258,6 +262,7 @@ export const RegisterPage = ({
       const error = validateStep2();
       if (error) {
         setErrorMessage(error);
+        showWarning(error, lang === "kn" ? "ವಿವರಗಳನ್ನು ಪರಿಶೀಲಿಸಿ" : "Required Details Missing");
         return;
       }
       setErrorMessage("");
@@ -321,7 +326,9 @@ export const RegisterPage = ({
       window.scrollTo({ top: 0, behavior: "smooth" });
 
     } catch (err) {
-      setErrorMessage(err.message || (lang === "kn" ? "ನೋಂದಣಿ ವಿಫಲವಾಗಿದೆ. ದಯವಿಟ್ಟು ವಿವರಗಳನ್ನು ಪರಿಶೀಲಿಸಿ." : "Registration failed. Please check details."));
+      const msg = err.message || (lang === "kn" ? "ನೋಂದಣಿ ವಿಫಲವಾಗಿದೆ. ದಯವಿಟ್ಟು ವಿವರಗಳನ್ನು ಪರಿಶೀಲಿಸಿ." : "Registration failed. Please check details.");
+      setErrorMessage(msg);
+      showError(msg, lang === "kn" ? "ನೋಂದಣಿ ದೋಷ" : "Registration Failed");
     } finally {
       setSubmitting(false);
     }

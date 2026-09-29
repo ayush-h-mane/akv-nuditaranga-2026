@@ -35,20 +35,26 @@ if db_url.startswith("sqlite"):
     connect_args = {"check_same_thread": False}
     engine = create_engine(db_url, connect_args=connect_args)
 else:
-    # Serverless PostgreSQL settings: pre-ping checks health, recycle drops stale idle connections
+    # Optimized PostgreSQL settings: pre-ping ensures healthy connections, pool size prevents exhaustion
     engine = create_engine(
         db_url,
         pool_pre_ping=True,
         pool_recycle=300,
-        pool_size=5,
-        max_overflow=10
+        pool_size=10,
+        max_overflow=20,
+        connect_args={"connect_timeout": 10}
     )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 
+_MIGRATIONS_DONE = False
+
 def ensure_schema_migrations(target_engine=None):
+    global _MIGRATIONS_DONE
+    if _MIGRATIONS_DONE and not target_engine:
+        return
     eng = target_engine or engine
     try:
         if eng.dialect.name == "sqlite":
@@ -94,13 +100,22 @@ def ensure_schema_migrations(target_engine=None):
                 if act_cols and "activity_date" not in act_cols:
                     conn.exec_driver_sql("ALTER TABLE activities ADD COLUMN activity_date VARCHAR")
 
+                # Fast indexes
+                conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_attendance_date_user ON attendance_records(attendance_date, user_id)")
+                conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_wc_attendance_date_user ON working_committee_attendance(attendance_date, working_committee_member_id)")
+
         elif eng.dialect.name == "postgresql":
             with eng.connect() as conn:
+                # 1 single query to fetch all existing columns across target tables
+                target_tables = ("registrations", "users", "admins", "gallery_items", "activities")
+                query_sql = (
+                    "SELECT table_name, column_name FROM information_schema.columns "
+                    "WHERE table_schema = 'public' AND table_name IN ('registrations', 'users', 'admins', 'gallery_items', 'activities')"
+                )
+                existing_cols = {(row[0].lower(), row[1].lower()) for row in conn.exec_driver_sql(query_sql).fetchall()}
+
                 def add_pg_col(table, col, col_type):
-                    res = conn.exec_driver_sql(
-                        f"SELECT column_name FROM information_schema.columns WHERE table_name = '{table}' AND column_name = '{col}'"
-                    ).fetchone()
-                    if not res:
+                    if (table.lower(), col.lower()) not in existing_cols:
                         conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}")
                         conn.commit()
 
@@ -117,6 +132,12 @@ def ensure_schema_migrations(target_engine=None):
                 add_pg_col("gallery_items", "event_date", "VARCHAR")
                 add_pg_col("activities", "activity_date", "VARCHAR")
 
+                # High performance composite indexes
+                conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_attendance_date_user ON attendance_records(attendance_date, user_id)")
+                conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_wc_attendance_date_user ON working_committee_attendance(attendance_date, user_id)")
+                conn.commit()
+
+        _MIGRATIONS_DONE = True
     except Exception as e:
         print(f"[MIGRATION NOTICE] {e}")
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
 import { useAuth } from "../context/AuthContext";
+import { useModalAlert } from "../context/ModalAlertContext";
 import { api } from "../services/api";
 import { ForgotPasswordModal } from "../components/ForgotPasswordModal";
 import { CandidatePhotoUpload } from "../components/CandidatePhotoUpload";
@@ -32,6 +33,7 @@ import {
 
 export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, initialTab = "student-login" }) => {
   const { login } = useAuth();
+  const { showError, showInfo } = useModalAlert();
 
   const getInitialActiveTab = (tab) => {
     if (tab === "student-register" || tab === "student-login" || tab === "student") return "student";
@@ -61,6 +63,13 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const credentialError = /incorrect|invalid (?:username|password|admin|superadmin)|could not validate/i.test(errorMessage);
+
+  const handleShowError = (msg, title = "Authentication Alert / ಗಮನಿಸಿ") => {
+    setErrorMessage(msg);
+    if (msg) {
+      showError(msg, title);
+    }
+  };
   const [successData, setSuccessData] = useState(null); // For student registration success card
   const [adminNotice, setAdminNotice] = useState(null); // For admin registration pending approval notice
 
@@ -135,7 +144,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
         onAuthSuccess(res.user);
       }
     } catch (err) {
-      setErrorMessage(err.message || "AUID or password is incorrect.");
+      handleShowError(err.message || "AUID or password is incorrect.");
     } finally {
       setLoading(false);
     }
@@ -147,21 +156,21 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
     setErrorMessage("");
 
     if (!isAcharyaEmail(studentRegisterForm.email)) {
-      setErrorMessage(ACHARYA_EMAIL_ERROR);
+      handleShowError(ACHARYA_EMAIL_ERROR);
       return;
     }
 
     if (studentRegisterForm.password !== studentRegisterForm.confirmPassword) {
-      setErrorMessage("Passwords do not match.");
+      handleShowError("Passwords do not match.");
       return;
     }
 
     if (studentRegisterForm.password.length < 6) {
-      setErrorMessage("Password must be at least 6 characters long.");
+      handleShowError("Password must be at least 6 characters long.");
       return;
     }
     if (!studentRegisterForm.photo_url) {
-      setErrorMessage("Profile photo is mandatory. Please upload your photo before continuing.");
+      handleShowError("Profile photo is mandatory. Please upload your photo before continuing.");
       return;
     }
 
@@ -200,7 +209,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
       // Log user in automatically so they can transition directly to dashboard
       login(res.user, res.token);
     } catch (err) {
-      setErrorMessage(err.message || "Registration failed. Please check your information.");
+      handleShowError(err.message || "Registration failed. Please check your information.");
     } finally {
       setLoading(false);
     }
@@ -222,7 +231,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
         onAuthSuccess(res.user);
       }
     } catch (err) {
-      setErrorMessage(err.message || "Invalid admin credentials.");
+      handleShowError(err.message || "Invalid admin credentials.");
     } finally {
       setLoading(false);
     }
@@ -234,31 +243,31 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
     setErrorMessage("");
 
     if (!isAcharyaEmail(adminForm.email)) {
-      setErrorMessage(ACHARYA_EMAIL_ERROR);
+      handleShowError(ACHARYA_EMAIL_ERROR);
       return;
     }
 
     if (adminForm.password !== adminForm.confirmPassword) {
-      setErrorMessage("Passwords do not match.");
+      handleShowError("Passwords do not match.");
       return;
     }
 
     if (adminForm.password.length < 6) {
-      setErrorMessage("Password must be at least 6 characters long.");
+      handleShowError("Password must be at least 6 characters long.");
       return;
     }
 
     const isFaculty = adminForm.adminType === "FACULTY_COORDINATOR";
     if (isFaculty && !adminForm.facultyId?.trim()) {
-      setErrorMessage("Faculty ID is required for Faculty Coordinators.");
+      handleShowError("Faculty ID is required for Faculty Coordinators.");
       return;
     }
     if (!adminForm.photo_url) {
-      setErrorMessage("Profile photo is mandatory. Please upload your photo before continuing.");
+      handleShowError("Profile photo is mandatory. Please upload your photo before continuing.");
       return;
     }
     if (!isFaculty && !adminForm.volunteer_domain?.trim()) {
-      setErrorMessage("A Working Committee domain is required.");
+      handleShowError("A Working Committee domain is required.");
       return;
     }
 
@@ -287,7 +296,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
       const res = await api.adminRegister(payload);
       setAdminNotice(res);
     } catch (err) {
-      setErrorMessage(err.message || "Admin registration failed.");
+      handleShowError(err.message || "Admin registration failed.");
     } finally {
       setLoading(false);
     }
@@ -309,7 +318,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
         onAuthSuccess(res.user);
       }
     } catch (err) {
-      setErrorMessage(err.message || "Invalid Superadmin credentials.");
+      handleShowError(err.message || "Invalid Superadmin credentials.");
     } finally {
       setLoading(false);
     }
