@@ -4,7 +4,9 @@
   "status": "STAGED_DEVELOPMENT",
   "active_branch": "develop",
   "production_branch": "main",
-  "pending_changes": [],
+  "pending_changes": [
+    "Hero Celebration Banner: Updated celebratory festival title from '10th Year’s Grand Celebration' to 'The Decadal Festival' in English, maintaining 'ದಶಕೋತ್ಸವ' in Kannada."
+  ],
   "history": [
     {
       "version": "2.2.46",
