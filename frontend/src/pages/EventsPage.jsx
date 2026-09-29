@@ -10,22 +10,28 @@ import { Search, Filter, Sparkles, RefreshCw, ShieldAlert, ArrowRight } from "lu
 export const EventsPage = ({ setCurrentView, setSelectedEventId }) => {
   const { lang, t } = useLanguage();
   const { user } = useAuth();
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [events, setEvents] = useState(() => api.getCachedEvents("all"));
+  const [loading, setLoading] = useState(() => !api.hasCachedEvents("all"));
   const [searchQuery, setSearchQuery] = useState("");
   const [modalEvent, setModalEvent] = useState(null);
 
   useHistoryModal(Boolean(modalEvent), () => setModalEvent(null));
 
   useEffect(() => {
-    fetchEvents();
+    fetchEvents(selectedCategory);
   }, [selectedCategory]);
 
-  const fetchEvents = async () => {
-    setLoading(true);
+  const fetchEvents = async (cat = selectedCategory) => {
+    const cached = api.getCachedEvents(cat);
+    if (cached && cached.length > 0) {
+      setEvents(cached);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     try {
-      const data = await api.getEvents(selectedCategory);
+      const data = await api.getEvents(cat);
       setEvents(data);
     } catch (err) {
       console.error("Failed to load events:", err);

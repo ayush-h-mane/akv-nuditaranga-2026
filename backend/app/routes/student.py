@@ -3,7 +3,7 @@ import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, or_
 
 from ..database import get_db
@@ -32,10 +32,11 @@ def get_student_dashboard(
     current_user: User = Depends(require_student),
     db: Session = Depends(get_db)
 ):
-    # Fetch registered events for this student
-    registrations = db.query(Registration).filter(
+    # Fetch registered events for this student with eager-loaded event details
+    registrations = db.query(Registration).options(joinedload(Registration.event)).filter(
         or_(
             Registration.user_id == current_user.id,
+            Registration.auid == current_user.auid,
             func.upper(Registration.auid) == current_user.auid.upper(),
             func.upper(Registration.email) == current_user.email.upper()
         )

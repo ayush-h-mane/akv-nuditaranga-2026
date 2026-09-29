@@ -30,9 +30,9 @@ export const StudentDashboard = ({ onNavigateHome }) => {
   const { user, logout } = useAuth();
   const { showError, showSuccess, showWarning, showInfo } = useModalAlert();
   const [activeTab, setActiveTab] = useState("overview"); // overview, my-events, browse-events, account
-  const [dashboardData, setDashboardData] = useState(null);
-  const [eventsList, setEventsList] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState(() => api.getCachedStudentDashboard(user?.auid));
+  const [eventsList, setEventsList] = useState(() => api.getCachedEvents("all", true));
+  const [loading, setLoading] = useState(() => !api.hasCachedStudentDashboard(user?.auid));
   const [registeringEventId, setRegisteringEventId] = useState(null);
   const [actionMessage, setActionMessage] = useState({ type: "", text: "" });
   
@@ -58,18 +58,22 @@ export const StudentDashboard = ({ onNavigateHome }) => {
   const [pwMessage, setPwMessage] = useState({ type: "", text: "" });
 
   const loadData = async () => {
-    try {
+    if (!dashboardData && !api.hasCachedStudentDashboard(user?.auid)) {
       setLoading(true);
+    }
+    try {
       const [dash, events] = await Promise.all([
         api.getStudentDashboard(),
         api.getEvents("all", true)
       ]);
-      setDashboardData(dash);
-      setEventsList(events);
+      if (dash) setDashboardData(dash);
+      if (events) setEventsList(events);
     } catch (err) {
       console.error("Failed to load student dashboard:", err);
-      setActionMessage({ type: "error", text: "Could not load dashboard data." });
-      showError("Could not load dashboard data. Please check your network connection.", "Dashboard Error");
+      if (!dashboardData && !api.hasCachedStudentDashboard(user?.auid)) {
+        setActionMessage({ type: "error", text: "Could not load dashboard data." });
+        showError("Could not load dashboard data. Please check your network connection.", "Dashboard Error");
+      }
     } finally {
       setLoading(false);
     }

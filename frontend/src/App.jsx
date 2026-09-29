@@ -27,6 +27,7 @@ import { NuditarangaHero } from "./sections/NuditarangaHero";
 import { KarunadaVaibhavaSchedule } from "./components/KarunadaVaibhavaSchedule";
 import { GallerySection } from "./sections/GallerySection";
 import { ContactSection } from "./sections/ContactSection";
+import { api } from "./services/api";
 
 export function AppContent() {
   const { user, role, loading } = useAuth();
@@ -44,6 +45,11 @@ export function AppContent() {
   
   const [selectedEventId, setSelectedEventId] = useState(null);
   const [confirmedRegistration, setConfirmedRegistration] = useState(null);
+
+  // Background prefetch all catalog and schedule data so every subsequent navigation is instant (0ms delay)
+  useEffect(() => {
+    api.prefetchAll(user);
+  }, [user]);
 
   // Synchronize browser history and handle Back button navigation (popstate)
   useEffect(() => {

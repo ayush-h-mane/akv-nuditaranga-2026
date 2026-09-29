@@ -30,11 +30,18 @@ export const KarunadaVaibhavaSchedule = ({ onRegisterClick }) => {
   useHistoryModal(posterModalOpen, () => setPosterModalOpen(false));
   useHistoryModal(mobileExpandedIndex !== null, () => setMobileExpandedIndex(null));
 
-  const [scheduleDays, setScheduleDays] = useState(siteConfig.festival.schedule || []);
+  const [scheduleDays, setScheduleDays] = useState(() => {
+    const cached = api.getCachedFestivalSchedule();
+    return cached?.schedule || siteConfig.festival.schedule || [];
+  });
 
   useEffect(() => {
     api.getFestivalSchedule()
-      .then((data) => setScheduleDays(data.schedule || []))
+      .then((data) => {
+        if (data?.schedule && data.schedule.length > 0) {
+          setScheduleDays(data.schedule);
+        }
+      })
       .catch(() => {});
   }, []);
 

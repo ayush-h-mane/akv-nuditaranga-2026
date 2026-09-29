@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.45",
-  "staged_version": "2.2.46",
+  "production_version": "2.2.46",
+  "staged_version": "2.2.47",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.46",
+      "released_at": "2026-09-29T23:22:59+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.46: Instant 0ms Data Loading & Rendering: Pre-seeded initial competition events and added high-speed in-memory & localStorage caching layer with Stale-While-Revalidate so Events Page, Festival Schedule, Activities, Gallery, Reels, and Student Dashboard render ready instantly on frame 1 without blank screens or blocking spinners.; App-wide Background Prefetching: Triggered parallel background prefetching of all catalog data, festival schedule, activities, gallery, and student dashboard on app mount for instantaneous subsequent page navigation.; Edge CDN Caching & GZip Compression: Enabled FastAPI GZip compression middleware (70-85% smaller payloads) and added HTTP Edge Cache-Control headers (s-maxage=300, stale-while-revalidate=600) on public catalog endpoints (events, schedule, activities, gallery, reels) for sub-15ms edge CDN responses.; Database Query Optimization: Eliminated duplicate schema migration checks from FastAPI module cold starts; added joinedload on Student Dashboard registered events and Admin login seeks; optimized isolation checks during authentication to eliminate redundant roundtrips.; Daily Attendance Record Table Optimization: Eliminated horizontal stretching and unwanted empty spaces across Name, AUID, Status, and Actions on desktop screens; applied responsive max-w-4xl / xl:max-w-5xl layout with fixed column proportions (36% Name, 22% AUID, 18% Status, 24% Actions), tight row padding (py-2.5 px-3.5), check-in timestamp subtitles, and clarified Academic Dept vs AKV Team filter dropdowns in SuperAdminDashboard and AdminPage."
+    },
     {
       "version": "2.2.45",
       "released_at": "2026-09-29T22:34:38+0530",

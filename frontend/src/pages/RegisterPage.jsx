@@ -36,8 +36,8 @@ export const RegisterPage = ({
   const { user } = useAuth();
   const { showError, showWarning } = useModalAlert();
   const [currentStep, setCurrentStep] = useState(1);
-  const [events, setEvents] = useState([]);
-  const [loadingEvents, setLoadingEvents] = useState(true);
+  const [events, setEvents] = useState(() => api.getCachedEvents());
+  const [loadingEvents, setLoadingEvents] = useState(() => !api.hasCachedEvents());
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [participationMode, setParticipationMode] = useState("solo"); // "solo" or "group"
@@ -119,6 +119,11 @@ export const RegisterPage = ({
 
   useEffect(() => {
     const loadEvents = async () => {
+      const cached = api.getCachedEvents();
+      if (cached && cached.length > 0) {
+        setEvents(cached);
+        setLoadingEvents(false);
+      }
       try {
         const data = await api.getEvents();
         setEvents(data);

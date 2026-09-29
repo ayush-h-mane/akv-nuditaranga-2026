@@ -1,5 +1,5 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import Event, Registration, CheckInLog, AuditLog
@@ -9,10 +9,12 @@ router = APIRouter(prefix="/events", tags=["Events"])
 
 @router.get("", response_model=List[EventOut])
 def get_events(
+    response: Response,
     category: Optional[str] = None,
     active_only: bool = True,
     db: Session = Depends(get_db)
 ):
+    response.headers["Cache-Control"] = "public, max-age=60, s-maxage=300, stale-while-revalidate=600"
     query = db.query(Event)
     if active_only:
         query = query.filter(Event.is_active == True)
@@ -21,7 +23,8 @@ def get_events(
     return query.all()
 
 @router.get("/{event_id}", response_model=EventOut)
-def get_event(event_id: str, db: Session = Depends(get_db)):
+def get_event(event_id: str, response: Response, db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "public, max-age=60, s-maxage=300, stale-while-revalidate=600"
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")

@@ -2330,7 +2330,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
               </div>
 
               {/* Event Date Selector Pills */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-1">
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-4xl xl:max-w-5xl">
                 <span className="text-xs font-extrabold text-stone-400 uppercase tracking-wider whitespace-nowrap mr-1">
                   Event Date:
                 </span>
@@ -2359,7 +2359,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
               {/* Submission Status Banner */}
               {officialAttendanceSession.is_submitted && (
-                <div className="p-4 bg-amber-50/90 border border-amber-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-950">
+                <div className="p-4 bg-amber-50/90 border border-amber-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-950 max-w-4xl xl:max-w-5xl">
                   <div className="flex items-start gap-2.5">
                     <Lock className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
                     <div>
@@ -2383,7 +2383,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
               )}
 
               {/* Metrics Dashboard */}
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 max-w-4xl xl:max-w-5xl">
                 <div className="bg-stone-50 p-3.5 rounded-2xl border border-stone-200">
                   <span className="text-[10px] font-extrabold text-stone-400 uppercase tracking-wider block">
                     Total Participants
@@ -2444,7 +2444,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
               </div>
 
               {/* Filters */}
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-stone-100">
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-stone-100 max-w-4xl xl:max-w-5xl">
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="relative">
                     <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
@@ -2454,16 +2454,17 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                       value={attendanceSearchQuery}
                       onChange={(e) => setAttendanceSearchQuery(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && loadOfficialAttendance()}
-                      className="pl-8 pr-3 py-1.5 rounded-xl border border-stone-300 text-xs w-52 sm:w-64"
+                      className="pl-8 pr-3 py-1.5 rounded-xl border border-stone-300 text-xs w-48 sm:w-56"
                     />
                   </div>
 
                   <select
                     value={attendanceDeptFilter}
                     onChange={(e) => setAttendanceDeptFilter(e.target.value)}
-                    className="py-1.5 px-3 rounded-xl border border-stone-300 text-xs bg-white font-bold text-stone-700"
+                    className="py-1.5 px-2.5 rounded-xl border border-stone-300 text-xs bg-white font-bold text-stone-700"
+                    title="College Academic Department"
                   >
-                    <option value="all">All Departments</option>
+                    <option value="all">All Academic Depts</option>
                     <option value="Computer Science & Engineering">CSE</option>
                     <option value="Information Science & Engineering">ISE</option>
                     <option value="Electronics & Communication Engineering">ECE</option>
@@ -2477,9 +2478,10 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                   <select
                     value={attendanceAkvDeptFilter}
                     onChange={(e) => setAttendanceAkvDeptFilter(e.target.value)}
-                    className="py-1.5 px-3 rounded-xl border border-stone-300 text-xs bg-white font-bold text-stone-700"
+                    className="py-1.5 px-2.5 rounded-xl border border-stone-300 text-xs bg-white font-bold text-stone-700"
+                    title="AKV Committee Team"
                   >
-                    <option value="all">All Departments</option>
+                    <option value="all">All AKV Teams</option>
                     <option value="Promotion">Promotion</option>
                     <option value="Stage">Stage</option>
                     <option value="Hospitality">Hospitality</option>
@@ -2491,7 +2493,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                   <select
                     value={attendanceStatusFilter}
                     onChange={(e) => setAttendanceStatusFilter(e.target.value)}
-                    className="py-1.5 px-3 rounded-xl border border-stone-300 text-xs bg-white font-bold text-stone-700"
+                    className="py-1.5 px-2.5 rounded-xl border border-stone-300 text-xs bg-white font-bold text-stone-700"
                   >
                     <option value="all">All Statuses</option>
                     <option value="NOT_MARKED">Not Marked</option>
@@ -2509,59 +2511,72 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                   </button>
                 </div>
 
-                <div className="text-xs text-stone-500 font-medium">
+                <div className="text-xs text-stone-500 font-medium whitespace-nowrap">
                   Showing <strong>{officialAttendanceRoster.length}</strong> participants
                 </div>
               </div>
 
               {/* Roster Table */}
               {officialAttendanceRoster.length === 0 ? (
-                <div className="text-center py-12 space-y-2 bg-stone-50/50 rounded-2xl border border-stone-100">
+                <div className="text-center py-12 space-y-2 bg-stone-50/50 rounded-2xl border border-stone-100 max-w-4xl xl:max-w-5xl">
                   <Users className="w-9 h-9 text-stone-300 mx-auto" />
                   <p className="text-sm font-bold text-stone-700">No participants found</p>
                   <p className="text-xs text-stone-500">Try adjusting your filters or date selection.</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto rounded-2xl border border-stone-200 bg-white max-w-full">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-stone-50 text-stone-500 uppercase tracking-wider font-extrabold border-b border-stone-200">
+                <div className="overflow-x-auto rounded-2xl border border-stone-200 bg-white max-w-4xl xl:max-w-5xl shadow-2xs">
+                  <table className="w-full min-w-[620px] text-left text-xs table-fixed">
+                    <colgroup>
+                      <col className="w-[36%]" />
+                      <col className="w-[22%]" />
+                      <col className="w-[18%]" />
+                      <col className="w-[24%]" />
+                    </colgroup>
+                    <thead className="bg-stone-50 text-stone-600 uppercase tracking-wider font-extrabold border-b border-stone-200">
                       <tr>
-                        <th className="py-3 px-4">Name</th>
-                        <th className="py-3 px-4">AUID</th>
-                        <th className="py-3 px-4">Status</th>
-                        <th className="py-3 px-4 text-right">Actions</th>
+                        <th className="py-2.5 px-3.5">Name</th>
+                        <th className="py-2.5 px-3.5">AUID</th>
+                        <th className="py-2.5 px-3.5">Status</th>
+                        <th className="py-2.5 px-3.5 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-stone-100 bg-white">
                       {officialAttendanceRoster.map((p) => (
                         <tr key={p.user_id} className="hover:bg-stone-50/80 transition-colors">
-                          <td className="py-3 px-4 font-bold text-stone-900" title={p.name}>
-                            {p.name}
+                          <td className="py-2.5 px-3.5 font-bold text-stone-900 truncate" title={p.name}>
+                            <span className="truncate block">{p.name}</span>
                           </td>
-                          <td className="py-3 px-4 font-mono font-bold text-stone-700">
+                          <td className="py-2.5 px-3.5 font-mono font-bold text-stone-700 truncate" title={p.auid}>
                             {p.auid}
                           </td>
-                          <td className="py-3 px-4">
-                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold inline-block ${p.status === "COMPLETED"
-                              ? "bg-blue-100 text-blue-800 border border-blue-200"
-                              : p.status === "CHECKED_IN"
-                                ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                                : "bg-stone-100 text-stone-500"
-                              }`}>
-                              {p.status === "COMPLETED" && "COMPLETED"}
-                              {p.status === "CHECKED_IN" && "CHECKED IN"}
-                              {p.status === "NOT_MARKED" && "NOT MARKED"}
-                            </span>
+                          <td className="py-2.5 px-3.5">
+                            <div className="flex flex-col items-start gap-0.5">
+                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold inline-block ${p.status === "COMPLETED"
+                                ? "bg-blue-100 text-blue-800 border border-blue-200"
+                                : p.status === "CHECKED_IN"
+                                  ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                  : "bg-stone-100 text-stone-500"
+                                }`}>
+                                {p.status === "COMPLETED" && "COMPLETED"}
+                                {p.status === "CHECKED_IN" && "CHECKED IN"}
+                                {p.status === "NOT_MARKED" && "NOT MARKED"}
+                              </span>
+                              {p.check_in_time && (
+                                <span className="text-[10px] text-stone-400 font-mono font-semibold pl-0.5">
+                                  In: {p.check_in_time}
+                                </span>
+                              )}
+                            </div>
                           </td>
-                          <td className="py-3 px-4 text-right">
-                            <div className="flex items-center justify-end gap-0.5 flex-wrap">
+                          <td className="py-2.5 px-3.5 text-right">
+                            <div className="flex items-center justify-end gap-1 flex-nowrap">
                               {/* Quick Mark controls for Superadmin */}
                               {p.status === "NOT_MARKED" && (
                                 <button
                                   type="button"
                                   onClick={() => handleSuperAdminCheckIn(p.user_id)}
                                   disabled={attendanceMarkingIds.includes(p.user_id)}
-                                  className="px-1.5 py-1 rounded-lg text-[9px] font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs cursor-pointer"
+                                  className="px-2 py-1 rounded-lg text-[10px] font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs cursor-pointer transition-all active:scale-95"
                                   title="Superadmin Check-In"
                                 >
                                   {attendanceMarkingIds.includes(p.user_id) ? "…" : "Check In"}
@@ -2572,7 +2587,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                                   type="button"
                                   onClick={() => handleSuperAdminCheckOut(p.user_id)}
                                   disabled={attendanceMarkingIds.includes(p.user_id)}
-                                  className="px-1.5 py-1 rounded-lg text-[9px] font-extrabold bg-amber-500 hover:bg-amber-600 text-stone-950 shadow-xs cursor-pointer"
+                                  className="px-2 py-1 rounded-lg text-[10px] font-extrabold bg-amber-500 hover:bg-amber-600 text-stone-950 shadow-xs cursor-pointer transition-all active:scale-95"
                                   title="Superadmin Check-Out"
                                 >
                                   {attendanceMarkingIds.includes(p.user_id) ? "…" : "Check Out"}
@@ -2594,7 +2609,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                                     check_out_time: p.check_out_time || "",
                                     reason: ""
                                   })}
-                                  className="p-1 rounded-md border border-stone-200 hover:bg-stone-100 text-stone-700 cursor-pointer"
+                                  className="p-1 rounded-md border border-stone-200 hover:bg-stone-100 text-stone-700 cursor-pointer transition-colors"
                                   title="Edit Timestamps"
                                 >
                                   <Pencil className="w-3 h-3" />
@@ -2612,7 +2627,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                                     date: selectedOfficialDate,
                                     reason: ""
                                   })}
-                                  className="p-1 rounded-md border border-stone-200 hover:bg-red-50 text-red-600 cursor-pointer"
+                                  className="p-1 rounded-md border border-stone-200 hover:bg-red-50 text-red-600 cursor-pointer transition-colors"
                                   title="Reset Record"
                                 >
                                   <RotateCcw className="w-3 h-3" />

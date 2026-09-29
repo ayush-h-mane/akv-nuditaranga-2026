@@ -1,6 +1,6 @@
 import json
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -160,7 +160,8 @@ class ScheduleBulkUpdate(BaseModel):
 
 
 @router.get("")
-def get_festival_schedule(db: Session = Depends(get_db)):
+def get_festival_schedule(response: Response, db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "public, max-age=60, s-maxage=300, stale-while-revalidate=600"
     ensure_default_schedule(db)
     rows = (
         db.query(KarunadaScheduleDay)

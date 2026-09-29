@@ -1,5 +1,5 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import Activity
@@ -9,10 +9,12 @@ router = APIRouter(prefix="/activities", tags=["Activities"])
 
 @router.get("", response_model=List[ActivityOut])
 def get_activities(
+    response: Response,
     category: Optional[str] = None,
     active_only: bool = True,
     db: Session = Depends(get_db)
 ):
+    response.headers["Cache-Control"] = "public, max-age=60, s-maxage=300, stale-while-revalidate=600"
     query = db.query(Activity)
     if active_only:
         query = query.filter(Activity.is_active == True)
@@ -21,7 +23,8 @@ def get_activities(
     return query.order_by(Activity.id.asc()).all()
 
 @router.get("/{activity_id}", response_model=ActivityOut)
-def get_activity(activity_id: int, db: Session = Depends(get_db)):
+def get_activity(activity_id: int, response: Response, db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "public, max-age=60, s-maxage=300, stale-while-revalidate=600"
     act = db.query(Activity).filter(Activity.id == activity_id).first()
     if not act:
         raise HTTPException(status_code=404, detail="Activity not found")
