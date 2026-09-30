@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useModalAlert } from "../context/ModalAlertContext";
 import { api } from "../services/api";
+import { siteConfig } from "../config/siteConfig";
 import {
   ShieldAlert,
   Users,
@@ -64,13 +65,13 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
   const [studentsData, setStudentsData] = useState({ total: 0, students: [] });
   const [volunteersList, setVolunteersList] = useState([]);
   const [attendanceData, setAttendanceData] = useState({ records: [], available_dates: [] });
-  const [eventsList, setEventsList] = useState([]);
-  const [festivalSchedule, setFestivalSchedule] = useState([]);
+  const [eventsList, setEventsList] = useState(() => api.getCachedEvents("all", false));
+  const [festivalSchedule, setFestivalSchedule] = useState(() => api.getCachedFestivalSchedule()?.schedule || siteConfig.festival?.schedule || []);
   const [scheduleSaving, setScheduleSaving] = useState(false);
   const [auditLogs, setAuditLogs] = useState([]);
 
   // Major Activities State (v2.1.0)
-  const [activitiesList, setActivitiesList] = useState([]);
+  const [activitiesList, setActivitiesList] = useState(() => api.getCachedActivities("all", false));
   const [activitiesLoading, setActivitiesLoading] = useState(false);
   const [activityModal, setActivityModal] = useState(null); // null, "new", "edit"
   const [currentActivity, setCurrentActivity] = useState({
@@ -83,7 +84,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
   });
 
   // Reels & Social Posts State (v2.1.0)
-  const [reelsList, setReelsList] = useState([]);
+  const [reelsList, setReelsList] = useState(() => api.getCachedReels("all"));
   const [reelsLoading, setReelsLoading] = useState(false);
   const [reelModal, setReelModal] = useState(null); // null, "new", "edit"
   const [currentReel, setCurrentReel] = useState({
@@ -119,8 +120,18 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
   const [eventRegFilter, setEventRegFilter] = useState("all");
 
   // Official Multi-Day Attendance State (v2.1.2)
-  const [attendanceConfigDates, setAttendanceConfigDates] = useState([]);
-  const [selectedOfficialDate, setSelectedOfficialDate] = useState("");
+  const [attendanceConfigDates, setAttendanceConfigDates] = useState(() => {
+    const cached = api.getCachedAttendanceConfigDates();
+    return cached?.dates || [];
+  });
+  const [selectedOfficialDate, setSelectedOfficialDate] = useState(() => {
+    const cached = api.getCachedAttendanceConfigDates();
+    if (cached?.dates && cached.dates.length > 0) {
+      const todayItem = cached.dates.find(d => d.is_today);
+      return todayItem ? todayItem.date : (cached.current_date || cached.dates[0]?.date || "");
+    }
+    return "";
+  });
   const [officialAttendanceRoster, setOfficialAttendanceRoster] = useState([]);
   const [officialAttendanceSession, setOfficialAttendanceSession] = useState({
     is_submitted: false,

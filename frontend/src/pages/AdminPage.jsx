@@ -55,8 +55,18 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
   const [statusFilter, setStatusFilter] = useState("all");
 
   // Official Attendance State (v2.1.2)
-  const [attendanceDates, setAttendanceDates] = useState([]);
-  const [selectedDate, setSelectedDate] = useState("");
+  const [attendanceDates, setAttendanceDates] = useState(() => {
+    const cached = api.getCachedAttendanceConfigDates();
+    return cached?.dates || [];
+  });
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const cached = api.getCachedAttendanceConfigDates();
+    if (cached?.dates && cached.dates.length > 0) {
+      const todayItem = cached.dates.find(d => d.is_today);
+      return todayItem ? todayItem.date : (cached.current_date || cached.dates[0]?.date || "");
+    }
+    return "";
+  });
   const [attendanceRoster, setAttendanceRoster] = useState([]);
   const [attendanceSession, setAttendanceSession] = useState({
     is_submitted: false,
@@ -87,7 +97,7 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
   const selectedDateIsFuture = Boolean(selectedDate && selectedDate > new Date().toISOString().slice(0, 10));
 
   // Cultural Gallery State
-  const [galleryItems, setGalleryItems] = useState([]);
+  const [galleryItems, setGalleryItems] = useState(() => api.getCachedGallery());
   const [galleryLoading, setGalleryLoading] = useState(false);
   const [galleryForm, setGalleryForm] = useState({
     title: "",

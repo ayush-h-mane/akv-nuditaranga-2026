@@ -56,7 +56,23 @@ export const InstagramSection = () => {
     }
   ];
 
-  const [reels, setReels] = useState(originalReels);
+  const [reels, setReels] = useState(() => {
+    const cached = api.getCachedReels();
+    if (cached && cached.length > 0) {
+      return cached.map((item) => ({
+        id: item.id,
+        type: (item.type || "reel").toLowerCase(),
+        url: item.url,
+        likes: typeof item.likes === "number" ? item.likes.toLocaleString() : (item.likes || "1,500"),
+        views: item.views || "18K",
+        comments: item.comments || "50",
+        captionEn: item.captionEn || item.description || "",
+        captionKn: item.captionKn || item.description || "",
+        image: item.image || item.cover_image || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=700&q=80"
+      }));
+    }
+    return originalReels;
+  });
   const cleanBrandAbbreviation = (caption = "") => caption.replace(/\bAKV\b/gi, "").replace(/\s{2,}/g, " ").trim();
 
   useEffect(() => {

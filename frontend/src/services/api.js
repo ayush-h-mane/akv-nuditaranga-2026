@@ -1,6 +1,12 @@
 import { initialEvents } from "../config/eventsData";
 import { isAcharyaEmail, ACHARYA_EMAIL_ERROR } from "../utils/emailValidation";
 import { siteConfig } from "../config/siteConfig";
+import { 
+  initialActivities, 
+  initialGallery, 
+  initialReels, 
+  initialAttendanceDates 
+} from "../config/catalogData";
 
 // Determine base API endpoint
 // When running in production (e.g. Vercel) without explicit VITE_API_URL, use same-origin relative path "/api"
@@ -44,22 +50,7 @@ function writeLocalJson(key, value) {
   } catch {}
 }
 
-const defaultActivities = [
-  {
-    id: 1,
-    category: "nuditaranga",
-    title_en: "Nuditaranga Annual Inter-College Fest",
-    title_kn: "ನುಡಿತರಂಗ ವಾರ್ಷಿಕ ಸಾಂಸ್ಕೃತಿಕ ಹಬ್ಬ",
-    desc_en: "Flagship cultural extravaganza with over 25+ events spanning literature, classical singing, folk dances, rangoli, and street theatre.",
-    desc_kn: "ಸಾಹಿತ್ಯ, ಸುಗಮ ಸಂಗೀತ, ಜಾನಪದ ನೃತ್ಯ, ರಂಗೋಲಿ ಮತ್ತು ಬೀದಿ ನಾಟಕಗಳನ್ನೊಳಗೊಂಡ ೨೫ಕ್ಕೂ ಹೆಚ್ಚು ಸ್ಪರ್ಧೆಗಳ ಮಹಾಸಂಗಮ.",
-    image: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80",
-    activity_date: "2026-10-30",
-    tag_en: "Cultural Fest",
-    tag_kn: "ವಾರ್ಷಿಕ ಹಬ್ಬ",
-    icon: "Music",
-    is_active: true
-  }
-];
+const defaultActivities = initialActivities;
 
 // Zero preloaded demo users
 const defaultDemoUsers = [];
@@ -118,8 +109,20 @@ function getLocalEvents() {
   }
   const data = readLocalJson(STORAGE_EVENTS_KEY, null);
   if (data && Array.isArray(data) && data.length > 0) {
-    memCache.set("events", data);
-    return data;
+    const existingIds = new Set(data.map(e => e.id));
+    let merged = [...data];
+    let added = false;
+    for (const initEv of initialEvents) {
+      if (!existingIds.has(initEv.id)) {
+        merged.push(initEv);
+        added = true;
+      }
+    }
+    if (added) {
+      writeLocalJson(STORAGE_EVENTS_KEY, merged);
+    }
+    memCache.set("events", merged);
+    return merged;
   }
   memCache.set("events", [...initialEvents]);
   writeLocalJson(STORAGE_EVENTS_KEY, initialEvents);
@@ -578,15 +581,17 @@ export const api = {
   // ==========================================
   getCachedStudentDashboard(auid = null) {
     let targetAuid = auid;
-    if (!targetAuid) {
-      try {
-        const rawUser = localStorage.getItem("akv_user");
-        if (rawUser) {
-          const parsed = JSON.parse(rawUser);
-          targetAuid = parsed.auid;
+    let localUserObj = null;
+    try {
+      const rawUser = localStorage.getItem("akv_user");
+      if (rawUser) {
+        localUserObj = JSON.parse(rawUser);
+        if (!targetAuid && localUserObj.auid) {
+          targetAuid = localUserObj.auid;
         }
-      } catch {}
-    }
+      }
+    } catch {}
+
     if (!targetAuid) return null;
     const cacheKey = "dash_" + targetAuid.toUpperCase();
     if (memCache.has(cacheKey)) {
@@ -596,6 +601,40 @@ export const api = {
     if (stored) {
       memCache.set(cacheKey, stored);
       return stored;
+    }
+    // Instant baseline synthesis from local user & registrations to eliminate any buffering
+    if (localUserObj && (localUserObj.auid?.toUpperCase() === targetAuid.toUpperCase() || !localUserObj.auid)) {
+      const allRegs = getLocalRegistrations();
+      const userRegs = allRegs.filter(r => r.auid?.toUpperCase() === targetAuid.toUpperCase() || r.email === localUserObj.email);
+      const instantDash = {
+        success: true,
+        profile: localUserObj,
+        stats: {
+          registered_events_count: userRegs.length,
+          total_available_events: getLocalEvents().length,
+          volunteer_days_present: localUserObj.role === "VOLUNTEER" ? 1 : 0
+        },
+        registered_events: userRegs.map(r => ({
+          registration_id: r.registration_id || `REG-${r.event_id}`,
+          event_id: r.event_id,
+          event_title_en: r.event_name || r.event_id,
+          event_title_kn: "",
+          category: "cultural",
+          venue: "Acharya Campus",
+          event_date: "November 02, 2026",
+          event_time: "10:00 AM",
+          is_team: false,
+          status: "CONFIRMED"
+        })),
+        registered_event_ids: userRegs.map(r => r.event_id),
+        volunteer_info: localUserObj.role === "VOLUNTEER" ? {
+          is_volunteer: true,
+          today_attendance: "NOT_MARKED",
+          attendance_history: []
+        } : null
+      };
+      memCache.set(cacheKey, instantDash);
+      return instantDash;
     }
     return null;
   },
@@ -1376,29 +1415,52 @@ export const api = {
   // ==========================================
   // OFFICIAL ATTENDANCE SYSTEM APIs
   // ==========================================
-  async getAttendanceConfigDates() {
-    try {
-      const res = await fetch(`${API_BASE_URL}/attendance/config-dates`, {
-        headers: { ...getAuthHeaders() }
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Failed to fetch event dates");
-      return data;
-    } catch (err) {
-      if (isNetworkError(err)) {
-        return {
+  getCachedAttendanceConfigDates() {
+    let cached = memCache.get("attendance_config_dates");
+    if (!cached) {
+      cached = readLocalJson(STORAGE_ATTENDANCE_KEY + "_dates", null);
+      if (!cached || !cached.dates || cached.dates.length === 0) {
+        cached = {
           success: true,
           current_date: new Date().toISOString().split("T")[0],
-          dates: [
-            { date: "2026-09-28", label: "Day 1 (28/09/2026)", dmy: "28/09/2026", is_today: false },
-            { date: "2026-09-29", label: "Day 2 (29/09/2026)", dmy: "29/09/2026", is_today: false },
-            { date: "2026-09-30", label: "Day 3 (30/09/2026)", dmy: "30/09/2026", is_today: false },
-            { date: "2026-10-01", label: "Day 4 (01/10/2026)", dmy: "01/10/2026", is_today: false },
-            { date: "2026-10-02", label: "Day 5 (02/10/2026)", dmy: "02/10/2026", is_today: false }
-          ]
+          dates: initialAttendanceDates
         };
       }
-      throw err;
+      memCache.set("attendance_config_dates", cached);
+    }
+    return cached;
+  },
+
+  async getAttendanceConfigDates() {
+    const key = "attendance_config_dates";
+    if (inflightRequests.has(key)) {
+      return await inflightRequests.get(key);
+    }
+
+    const fetchPromise = (async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/attendance/config-dates`, {
+          headers: { ...getAuthHeaders() }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && Array.isArray(data.dates) && data.dates.length > 0) {
+            memCache.set(key, data);
+            writeLocalJson(STORAGE_ATTENDANCE_KEY + "_dates", data);
+            return data;
+          }
+        }
+      } catch (err) {
+        console.warn("Backend unavailable, using cached attendance dates:", err.message);
+      }
+      return this.getCachedAttendanceConfigDates();
+    })();
+
+    inflightRequests.set(key, fetchPromise);
+    try {
+      return await fetchPromise;
+    } finally {
+      inflightRequests.delete(key);
     }
   },
 
@@ -2161,8 +2223,11 @@ export const api = {
 
   getCachedGallery(category = "all") {
     let list = memCache.get("gallery");
-    if (!list) {
-      list = readLocalJson(STORAGE_GALLERY_KEY, []);
+    if (!list || list.length === 0) {
+      list = readLocalJson(STORAGE_GALLERY_KEY, null);
+      if (!list || list.length === 0) {
+        list = initialGallery;
+      }
       memCache.set("gallery", list);
     }
     return category === "all" ? list : list.filter(g => g.category?.toLowerCase() === category.toLowerCase());
@@ -2183,7 +2248,7 @@ export const api = {
         const res = await fetch(url);
         if (res.ok) {
           const data = await res.json();
-          if (Array.isArray(data)) {
+          if (Array.isArray(data) && data.length > 0) {
             memCache.set("gallery", data);
             writeLocalJson(STORAGE_GALLERY_KEY, data);
             return this.getCachedGallery(category);
@@ -2235,6 +2300,18 @@ export const api = {
   },
 
   // REELS & SOCIAL POSTS APIs
+  getCachedReels(postType = "all") {
+    let list = memCache.get("reels");
+    if (!list || list.length === 0) {
+      list = readLocalJson(STORAGE_REELS_KEY, null);
+      if (!list || list.length === 0) {
+        list = initialReels;
+      }
+      memCache.set("reels", list);
+    }
+    return postType === "all" ? list : list.filter(r => (r.type || "reel").toLowerCase() === postType.toLowerCase());
+  },
+
   async getReels(postType = "all") {
     const key = "reels";
     if (inflightRequests.has(key)) {
@@ -2249,7 +2326,7 @@ export const api = {
         const res = await fetch(url);
         if (res.ok) {
           const data = await res.json();
-          if (Array.isArray(data)) {
+          if (Array.isArray(data) && data.length > 0) {
             memCache.set("reels", data);
             writeLocalJson(STORAGE_REELS_KEY, data);
             return data;
@@ -2258,7 +2335,7 @@ export const api = {
       } catch (err) {
         console.warn("Backend unavailable, using fallback reels:", err.message);
       }
-      return memCache.get("reels") || readLocalJson(STORAGE_REELS_KEY, []);
+      return this.getCachedReels(postType);
     })();
 
     inflightRequests.set(key, fetchPromise);
@@ -2345,7 +2422,8 @@ export const api = {
         this.getFestivalSchedule().catch(() => {}),
         this.getActivities("all", false).catch(() => {}),
         this.getGallery("all").catch(() => {}),
-        this.getReels("all").catch(() => {})
+        this.getReels("all").catch(() => {}),
+        this.getAttendanceConfigDates().catch(() => {})
       ];
       if (user && user.role !== "SUPERADMIN" && user.role !== "ADMIN") {
         tasks.push(this.getStudentDashboard().catch(() => {}));
@@ -2387,4 +2465,15 @@ export const api = {
     return data;
   }
 };
+
+// Eager non-blocking background prefetch right upon script evaluation
+if (typeof window !== "undefined") {
+  setTimeout(() => {
+    try {
+      const rawUser = localStorage.getItem("akv_user");
+      const user = rawUser ? JSON.parse(rawUser) : null;
+      api.prefetchAll(user);
+    } catch {}
+  }, 20);
+}
 
