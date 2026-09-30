@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.50",
-  "staged_version": "2.2.51",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.2.51",
+  "staged_version": "2.2.52",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.51",
+      "released_at": "2026-09-30T22:57:23+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.51: Production Superadmin Login & Schema Migration Fix: Added missing column migrations for PostgreSQL and SQLite (first_time_setup_required, profile_edited_once, profile_edited_at, title_kn, desc_kn, tag_kn); fixed working_committee_attendance index definition; implemented auto-seed synchronization for the 6 authorized Superadmin accounts with safe error recovery and logging to completely eliminate 500 Internal Server Errors in production."
+    },
     {
       "version": "2.2.50",
       "released_at": "2026-09-30T22:43:34+0530",

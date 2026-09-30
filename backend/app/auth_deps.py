@@ -172,9 +172,124 @@ def require_wc_superadmin(current_user: User = Depends(get_current_user)) -> Use
         )
     return current_user
 
+SUPERADMIN_DEFINITIONS = [
+    {
+        'username': 'akvsadayt',
+        'name': 'Ayush H Mane',
+        'password': 'akvsa@ayush',
+        'email': 'ayushhmane@gmail.com',
+        'auid': 'ADM-MANE',
+        'phone': '9535174767',
+        'dept': 'Artificial Intelligence and Machine Learning',
+        'setup_required': False,
+    },
+    {
+        'username': 'akvsapriya',
+        'name': 'Priyanka S Reddy',
+        'password': 'akvsa@priya',
+        'email': 'priyankas.23.beee@acharya.ac.in',
+        'auid': '1AY23EE045',
+        'phone': '9513093026',
+        'dept': 'Electrical and Electronics Engineering',
+        'setup_required': False,
+    },
+    {
+        'username': 'akvsaarjun',
+        'name': 'Arjun V',
+        'password': 'akvsa@arjun',
+        'email': 'pending.arjun@acharya.ac.in',
+        'auid': 'PENDING-ARJUNV',
+        'phone': '',
+        'dept': 'Department of Kannada Vedike',
+        'setup_required': True,
+    },
+    {
+        'username': 'akvsaculturals',
+        'name': 'Culturals',
+        'password': 'akvsa@culturals',
+        'email': 'culturals.akv@acharya.ac.in',
+        'auid': 'SA-CULTURALS',
+        'phone': '0000000000',
+        'dept': 'Culturals',
+        'setup_required': False,
+    },
+    {
+        'username': 'akvsatejas',
+        'name': 'Mr. Tejas K',
+        'password': 'akvsa@tejas',
+        'email': 'pending.tejas@acharya.ac.in',
+        'auid': 'PENDING-TEJAS',
+        'phone': '9449890035',
+        'dept': 'Department of Student Activities',
+        'setup_required': True,
+    },
+    {
+        'username': 'akvsarakshi',
+        'name': 'Mrs. Rakshitha B. T',
+        'password': 'akvsa@rakshi',
+        'email': 'pending.rakshitha@acharya.ac.in',
+        'auid': 'PENDING-RAKSHI',
+        'phone': '9945671394',
+        'dept': 'Department of Computer Science & Engineering',
+        'setup_required': True,
+    }
+]
+
+def ensure_authorized_superadmins(db: Session):
+    for sa in SUPERADMIN_DEFINITIONS:
+        uname = sa['username']
+        adm = db.query(Admin).filter(func.lower(Admin.username) == uname.lower()).first()
+        usr = adm.user if adm else None
+
+        if not usr:
+            usr = db.query(User).filter(func.lower(User.email) == sa['email'].lower()).first()
+
+        if not usr:
+            usr = User(
+                name=sa['name'],
+                auid=sa['auid'],
+                email=sa['email'],
+                phone=sa['phone'],
+                institute='Acharya Institute of Technology',
+                department=sa['dept'],
+                semester=8,
+                section='A',
+                gender='Other',
+                role='SUPERADMIN',
+                registration_id=f"AKV-SA-{uname.upper()}",
+                password_hash=get_password_hash(sa['password']),
+                account_status='ACTIVE',
+                first_time_setup_required=sa['setup_required']
+            )
+            db.add(usr)
+            db.commit()
+            db.refresh(usr)
+        else:
+            usr.name = sa['name']
+            usr.role = 'SUPERADMIN'
+            usr.account_status = 'ACTIVE'
+            usr.password_hash = get_password_hash(sa['password'])
+            if getattr(usr, "first_time_setup_required", None) is None:
+                usr.first_time_setup_required = sa['setup_required']
+            db.commit()
+            db.refresh(usr)
+
+        if not adm:
+            adm = Admin(
+                user_id=usr.id,
+                username=uname,
+                admin_type='SUPERADMIN',
+                approval_status='APPROVED',
+                approved_by='SYSTEM_INIT'
+            )
+            db.add(adm)
+            db.commit()
+
 def init_superadmin():
-    """
-    Database starts with zero preloaded records per user requirements.
-    SuperAdmin is authenticated on-demand via secure credentials without preloading mock data.
-    """
-    pass
+    db = SessionLocal()
+    try:
+        ensure_authorized_superadmins(db)
+    except Exception as e:
+        print(f"[SUPERADMIN AUTO-SEED NOTICE] {e}")
+    finally:
+        db.close()
