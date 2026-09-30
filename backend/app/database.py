@@ -175,6 +175,15 @@ def ensure_schema_migrations(target_engine=None):
                 except Exception:
                     pass
 
+        # Purge legacy preloaded dummy accounts (akv-nt-2026, AKV-SUPERADMIN, akv@acharya.ac.in)
+        try:
+            with eng.connect() as conn:
+                conn.exec_driver_sql("DELETE FROM admins WHERE username IN ('akv-nt-2026', 'superadmin', 'akvadmin')")
+                conn.exec_driver_sql("DELETE FROM users WHERE email = 'akv@acharya.ac.in' OR auid = 'AKV-SUPERADMIN' OR registration_id = 'AKV-SA-0001'")
+                conn.commit()
+        except Exception as cleanup_err:
+            print(f"[CLEANUP NOTICE] {cleanup_err}")
+
         _MIGRATIONS_DONE = True
     except Exception as e:
         print(f"[MIGRATION NOTICE] {e}")

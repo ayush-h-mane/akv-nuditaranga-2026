@@ -10,7 +10,7 @@ import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
 from ..database import get_db
-from ..models import User, Admin, Event, Registration, VolunteerAttendance, AuditLog
+from ..models import User, Admin, Event, Registration, VolunteerAttendance, AuditLog, AttendanceRecord, WorkingCommitteeAttendance, PasswordResetToken
 from ..auth_deps import require_superadmin
 from ..services.email_service import send_admin_approval_email
 from ..services.id_card_service import generate_candidate_id_card_pdf
@@ -55,8 +55,10 @@ def get_superadmin_stats(
     total_events = db.query(func.count(Event.id)).scalar() or 0
     total_registrations = db.query(func.count(Registration.id)).scalar() or 0
 
-    pending_admins = db.query(func.count(Admin.id)).filter(
-        Admin.approval_status == "PENDING_APPROVAL"
+    pending_admins = db.query(func.count(Admin.id)).join(User, Admin.user_id == User.id).filter(
+        Admin.approval_status == "PENDING_APPROVAL",
+        User.role != "SUPERADMIN",
+        Admin.admin_type != "SUPERADMIN"
     ).scalar() or 0
 
     today_str = datetime.date.today().strftime("%Y-%m-%d")
@@ -243,8 +245,13 @@ def list_admins(
     current_user: User = Depends(require_superadmin),
     db: Session = Depends(get_db)
 ):
-    # Retrieve all registered admins, surfacing PENDING_APPROVAL at the very top
-    admins = db.query(Admin).order_by(
+    # Retrieve all registered coordinators and faculty admins, strictly excluding SUPERADMIN accounts
+    admins = db.query(Admin).join(User, Admin.user_id == User.id).filter(
+        User.role != "SUPERADMIN",
+        Admin.admin_type != "SUPERADMIN",
+        func.lower(User.email) != "akv@acharya.ac.in",
+        func.lower(Admin.username) != "akv-nt-2026"
+    ).order_by(
         (Admin.approval_status == "PENDING_APPROVAL").desc(),
         Admin.created_at.desc()
     ).all()
@@ -404,34 +411,64 @@ def delete_admin(
     current_user: User = Depends(require_superadmin),
     db: Session = Depends(get_db)
 ):
-    admin = db.query(Admin).filter(Admin.id == admin_id).first()
-    if not admin:
-        raise HTTPException(status_code=404, detail="Admin not found")
+    try:
+        admin = db.query(Admin).filter(Admin.id == admin_id).first()
+        if not admin:
+            raise HTTPException(status_code=404, detail="Admin record not found")
 
-    username = admin.username
-    user = admin.user
+        username = admin.username or "Unknown"
+        user = admin.user
 
-    # Requirement 9: Block deleting SuperAdmin account
-    if (user and user.role == "SUPERADMIN") or (settings.SUPERADMIN_USERNAME and username.lower() == settings.SUPERADMIN_USERNAME.strip().lower()):
-        raise HTTPException(status_code=403, detail="SuperAdmin profile cannot be deleted.")
+        # 6 Canonical protected superadmins
+        PROTECTED_SUPERADMINS = ["akvsadayt", "akvsapriya", "akvsaarjun", "akvsaculturals", "akvsatejas", "akvsarakshi"]
+        if username.lower() in PROTECTED_SUPERADMINS:
+            raise HTTPException(status_code=403, detail="Official Super Administrator profile is protected and cannot be deleted.")
 
-    log = AuditLog(
-        user_id=current_user.id,
-        actor_name=current_user.name,
-        action="ADMIN_DELETED",
-        target_type="ADMIN",
-        target_id=str(admin_id),
-        previous_value=f"Admin Username: {username}",
-        new_value="DELETED"
-    )
-    db.add(log)
+        # Block self-deletion
+        if user and user.id == current_user.id:
+            raise HTTPException(status_code=403, detail="You cannot delete your own active administrator profile.")
 
-    db.delete(admin)
-    if user and user.role == "ADMIN":
-        db.delete(user)
-    db.commit()
+        actor_name = current_user.name or current_user.email or "Super Administrator"
 
-    return {"success": True, "message": f"Admin '{username}' removed successfully"}
+        log = AuditLog(
+            user_id=current_user.id,
+            actor_name=actor_name,
+            action="ADMIN_DELETED",
+            target_type="ADMIN",
+            target_id=str(admin_id),
+            previous_value=f"Admin: {username} (User: {user.name if user else 'N/A'})",
+            new_value="DELETED"
+        )
+        db.add(log)
+
+        # Delete the admin record
+        db.delete(admin)
+
+        # Handle associated user account
+        if user:
+            if user.role in ["ADMIN", "SUPERADMIN"]:
+                # Clean up dependent records before deleting user to prevent ForeignKeyViolation
+                db.query(Registration).filter(Registration.user_id == user.id).delete(synchronize_session=False)
+                db.query(AttendanceRecord).filter(AttendanceRecord.user_id == user.id).delete(synchronize_session=False)
+                db.query(VolunteerAttendance).filter(VolunteerAttendance.user_id == user.id).delete(synchronize_session=False)
+                db.query(WorkingCommitteeAttendance).filter(WorkingCommitteeAttendance.working_committee_member_id == user.id).delete(synchronize_session=False)
+                db.query(PasswordResetToken).filter(PasswordResetToken.user_id == user.id).delete(synchronize_session=False)
+                db.delete(user)
+            else:
+                # If they are a registered participant or volunteer, strip admin privileges but retain student account
+                user.admin_type = None
+                user.faculty_id = None
+                user.is_working_committee = False
+
+        db.commit()
+        return {"success": True, "message": f"Admin '{username}' removed successfully."}
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        print(f"[DELETE ADMIN ERROR] {e!r}")
+        raise HTTPException(status_code=500, detail=f"Failed to remove admin: {str(e)}")
 
 # ==========================================
 # 4. VOLUNTEER MANAGEMENT (AUTO-GENERATED)

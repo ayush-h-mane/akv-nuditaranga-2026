@@ -741,7 +741,7 @@ def login_admin(payload: AdminLoginRequest, db: Session = Depends(get_db)):
     if not admin_entry or not admin_entry.user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid admin username or password."
+            detail="Invalid admin credentials (AUID, College Email, or Password)."
         )
 
     pw_matches = verify_password(payload.password, admin_entry.user.password_hash)
@@ -750,7 +750,7 @@ def login_admin(payload: AdminLoginRequest, db: Session = Depends(get_db)):
     if not pw_matches:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid admin username or password."
+            detail="Invalid admin credentials (AUID, College Email, or Password)."
         )
 
     if admin_entry.user.account_status != "ACTIVE":
@@ -809,11 +809,23 @@ def login_superadmin(payload: AdminLoginRequest, db: Session = Depends(get_db)):
     clean_uname = payload.username.strip().lower()
     clean_pw = payload.password.strip()
 
-    # Strictly verify that username is in the 6 authorized credentials
+    # Resolve clean_uname if entered as email or AUID
+    resolved_sa = next(
+        (s for s in SUPERADMIN_DEFINITIONS if (
+            s['username'].lower() == clean_uname or
+            s['email'].lower() == clean_uname or
+            s.get('auid', '').lower() == clean_uname
+        )),
+        None
+    )
+    if resolved_sa:
+        clean_uname = resolved_sa['username'].lower()
+
+    # Strictly verify that username/access ID is in the 6 authorized credentials
     if clean_uname not in AUTHORIZED_SUPERADMIN_USERNAMES:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access restricted: This portal is strictly for authorized AKV Super Administrators only. Provided username is not an authorized Super Administrator."
+            detail="Access restricted: This portal is strictly for authorized AKV Super Administrators only. Provided ID is not an authorized Super Administrator."
         )
 
     sa_def = next((s for s in SUPERADMIN_DEFINITIONS if s['username'].lower() == clean_uname), None)

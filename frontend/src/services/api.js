@@ -182,7 +182,11 @@ async function readApiResponse(res) {
   try {
     return JSON.parse(raw);
   } catch {
-    return { detail: raw.trim() };
+    let clean = raw.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+    if (clean.length > 200) {
+      clean = clean.substring(0, 200) + "...";
+    }
+    return { detail: clean || `Server responded with status ${res.status}` };
   }
 }
 
@@ -440,7 +444,7 @@ export const api = {
             throw new Error("Your admin account is awaiting Super Admin approval.");
           }
           if (found.password && found.password !== password) {
-            throw new Error("Invalid username, AUID, or password.");
+            throw new Error("Invalid credentials (AUID, College Email, or Password).");
           }
           return {
             success: true,
@@ -465,7 +469,7 @@ export const api = {
           throw new Error("Access denied: Student credentials cannot be used in Admin Login. Please use the Student Portal.");
         }
 
-        throw new Error("Invalid username, AUID, or password.");
+        throw new Error("Invalid credentials (AUID, College Email, or Password).");
       }
       throw err;
     }
@@ -1101,7 +1105,7 @@ export const api = {
         method: "POST",
         headers: { ...getAuthHeaders() }
       });
-      const data = await res.json();
+      const data = await readApiResponse(res);
       if (!res.ok) throw new Error(data.detail || "Failed to approve admin");
       return data;
     } catch (err) {
@@ -1122,7 +1126,7 @@ export const api = {
         method: "POST",
         headers: { ...getAuthHeaders() }
       });
-      const data = await res.json();
+      const data = await readApiResponse(res);
       if (!res.ok) throw new Error(data.detail || "Failed to reject admin");
       return data;
     } catch (err) {
@@ -1143,7 +1147,7 @@ export const api = {
         method: "POST",
         headers: { ...getAuthHeaders() }
       });
-      const data = await res.json();
+      const data = await readApiResponse(res);
       if (!res.ok) throw new Error(data.detail || "Failed to toggle admin status");
       return data;
     } catch (err) {
@@ -1164,7 +1168,7 @@ export const api = {
         method: "DELETE",
         headers: { ...getAuthHeaders() }
       });
-      const data = await res.json();
+      const data = await readApiResponse(res);
       if (!res.ok) throw new Error(data.detail || "Failed to remove admin");
       return data;
     } catch (err) {

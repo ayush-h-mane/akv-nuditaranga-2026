@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.52",
-  "staged_version": "2.2.53",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.2.53",
+  "staged_version": "2.2.54",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.53",
+      "released_at": "2026-09-30T23:47:33+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.53: Purge and Exclusion of Super Admin Accounts from Admin Approvals & Directory: Permanently removed legacy accounts (akv-nt-2026 / akv@acharya.ac.in); completely excluded Superadmin profiles from the Administrator Approvals & Directory table in backend queries (GET /api/superadmin/admins, /api/superadmin/admins/pending) and frontend dashboard filtering so that Super Admin accounts are never polluted into coordinator approval rosters.; Profile Photo Upload & AKV Domain Selection in One-Time Profile Edit: Integrated CandidatePhotoUpload in MyProfileAttendance modal allowing all users (participants, volunteers, and coordinators) to update or upload their profile photo, and added AKV Domain selection for participants, volunteers, and working committee members with database synchronization and lock.; Universal Elimination of 'Username' Concept: Removed the concept of username across the entire platform UI: Admin Login now requests 'AUID or College Email' with updated placeholder and error messages; Superadmin Login uses 'Superadmin Access ID'; Admin registration notices confirm by AUID/ID; Super Admin Dashboard table column changed from 'Username' to 'College AUID / Faculty ID'; action prompts and callbacks no longer reference admin usernames; and One-Time Profile Edit modal removed the Admin Username input field entirely.; Admin Removal Foreign-Key Cascade & Safe Response Parsing Fix: Resolved 'Unexpected token I, Internal S... is not valid JSON' error when deleting administrators. Implemented cascade cleanup of dependent records (registrations, attendances, tokens) before user account deletion to prevent PostgreSQL ForeignKeyViolation errors; added global JSON exception handlers in backend/app/main.py ensuring all uncaught errors return structured JSON; and upgraded api.js (deleteAdmin, approveAdmin, rejectAdmin, toggleAdminStatus) to use readApiResponse with HTML stripping to gracefully handle any server response without crashing JSON parsers."
+    },
     {
       "version": "2.2.52",
       "released_at": "2026-09-30T23:13:19+0530",

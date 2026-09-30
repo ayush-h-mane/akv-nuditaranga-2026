@@ -13,6 +13,7 @@ import {
   Info
 } from "lucide-react";
 import { InstituteDepartmentSelect } from "./InstituteDepartmentSelect";
+import { CandidatePhotoUpload } from "./CandidatePhotoUpload";
 import { AKV_DOMAINS } from "../config/institutesData";
 import { api } from "../services/api";
 
@@ -51,11 +52,10 @@ export const MyProfileAttendance = ({ profile, attendanceData, loading, error, o
     section: activeProfile?.section || "A",
     gender: activeProfile?.gender || "Male",
     role: activeProfile?.role || "PARTICIPANT",
-    volunteer_domain: activeProfile?.volunteer_domain || "Promotions",
+    volunteer_domain: activeProfile?.volunteer_domain || "",
     photo_url: activeProfile?.photo_url || "",
     admin_type: activeProfile?.admin_type || "WORKING_COMMITTEE",
-    faculty_id: activeProfile?.faculty_id || "",
-    username: activeProfile?.admin_username || activeProfile?.username || ""
+    faculty_id: activeProfile?.faculty_id || ""
   });
 
   const handleOpenModal = () => {
@@ -70,11 +70,10 @@ export const MyProfileAttendance = ({ profile, attendanceData, loading, error, o
       section: activeProfile?.section || "A",
       gender: activeProfile?.gender || "Male",
       role: activeProfile?.role || "PARTICIPANT",
-      volunteer_domain: activeProfile?.volunteer_domain || "Promotions",
+      volunteer_domain: activeProfile?.volunteer_domain || "",
       photo_url: activeProfile?.photo_url || "",
       admin_type: activeProfile?.admin_type || "WORKING_COMMITTEE",
-      faculty_id: activeProfile?.faculty_id || "",
-      username: activeProfile?.admin_username || activeProfile?.username || ""
+      faculty_id: activeProfile?.faculty_id || ""
     });
     setConfirmedOneTime(false);
     setEditError("");
@@ -102,12 +101,11 @@ export const MyProfileAttendance = ({ profile, attendanceData, loading, error, o
         section: form.section.trim() || "A",
         gender: form.gender,
         role: form.role,
-        volunteer_domain: form.role === "VOLUNTEER" || activeProfile?.is_working_committee ? form.volunteer_domain : null,
+        volunteer_domain: form.volunteer_domain ? form.volunteer_domain.trim() : null,
         photo_url: form.photo_url || null
       };
 
       if (activeProfile?.role === "ADMIN" || activeProfile?.role === "SUPERADMIN") {
-        if (form.username) payload.username = form.username.trim().toLowerCase();
         if (form.admin_type) payload.admin_type = form.admin_type;
         if (form.faculty_id) payload.faculty_id = form.faculty_id.trim();
       }
@@ -360,6 +358,15 @@ export const MyProfileAttendance = ({ profile, attendanceData, loading, error, o
 
             {/* Form */}
             <form onSubmit={handleSaveOneTime} className="space-y-4">
+              {/* Profile Photo Upload */}
+              <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-4">
+                <CandidatePhotoUpload
+                  photoUrl={form.photo_url}
+                  onPhotoChange={(url) => setForm({ ...form, photo_url: url })}
+                  label="Candidate / Profile Photo"
+                />
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 mb-1">
@@ -471,7 +478,7 @@ export const MyProfileAttendance = ({ profile, attendanceData, loading, error, o
                 </div>
               </div>
 
-              {/* Role selection for students/volunteers */}
+              {/* Role and AKV domain selection for students/volunteers */}
               {activeProfile?.role !== "ADMIN" && activeProfile?.role !== "SUPERADMIN" && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
@@ -489,42 +496,29 @@ export const MyProfileAttendance = ({ profile, attendanceData, loading, error, o
                     </select>
                   </div>
 
-                  {(form.role === "VOLUNTEER" || activeProfile?.is_working_committee) && (
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 mb-1">
-                        AKV Domain *
-                      </label>
-                      <select
-                        value={form.volunteer_domain}
-                        onChange={(e) => setForm({ ...form, volunteer_domain: e.target.value })}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden bg-white"
-                      >
-                        {AKV_DOMAINS.map((dom) => (
-                          <option key={dom} value={dom}>
-                            {dom}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 mb-1">
+                      AKV Domain {form.role === "VOLUNTEER" ? "*" : "(Optional)"}
+                    </label>
+                    <select
+                      value={form.volunteer_domain || ""}
+                      onChange={(e) => setForm({ ...form, volunteer_domain: e.target.value })}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden bg-white"
+                    >
+                      <option value="">-- Select AKV Domain --</option>
+                      {AKV_DOMAINS.map((dom) => (
+                        <option key={dom} value={dom}>
+                          {dom}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               )}
 
               {/* Admin specific fields if applicable */}
               {(activeProfile?.role === "ADMIN" || activeProfile?.role === "SUPERADMIN") && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-stone-100 pt-3">
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 mb-1">
-                      Admin Username
-                    </label>
-                    <input
-                      type="text"
-                      value={form.username}
-                      onChange={(e) => setForm({ ...form, username: e.target.value })}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden"
-                    />
-                  </div>
-
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 mb-1">
                       Admin Type
@@ -536,6 +530,24 @@ export const MyProfileAttendance = ({ profile, attendanceData, loading, error, o
                     >
                       <option value="WORKING_COMMITTEE">Working Committee</option>
                       <option value="FACULTY_COORDINATOR">Faculty Coordinator</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 mb-1">
+                      AKV Domain
+                    </label>
+                    <select
+                      value={form.volunteer_domain || ""}
+                      onChange={(e) => setForm({ ...form, volunteer_domain: e.target.value })}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden bg-white"
+                    >
+                      <option value="">-- Select AKV Domain --</option>
+                      {AKV_DOMAINS.map((dom) => (
+                        <option key={dom} value={dom}>
+                          {dom}
+                        </option>
+                      ))}
                     </select>
                   </div>
 
