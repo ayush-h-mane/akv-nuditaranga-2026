@@ -9,13 +9,14 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, or_
 
-from ..database import get_db
+from ..database import get_db, ensure_schema_migrations
 from ..models import User, Admin, PasswordResetToken, AuditLog
 from ..auth_deps import (
     verify_password,
     get_password_hash,
     create_access_token,
-    get_current_user
+    get_current_user,
+    ensure_authorized_superadmins
 )
 from ..utils.email_validation import validate_acharya_email
 from ..services.email_service import (
@@ -159,6 +160,13 @@ ONE_TIME_EDIT_DEADLINE_IST_STR = "October 5, 2026, 11:59 PM IST (05/10/2026 23:5
 def is_profile_edit_window_open() -> bool:
     return datetime.datetime.utcnow() <= ONE_TIME_EDIT_DEADLINE_UTC
 
+def _safe_iso(val):
+    if not val:
+        return None
+    if hasattr(val, "isoformat"):
+        return val.isoformat()
+    return str(val)
+
 def user_to_dict(user: User, admin_profile: Optional[Admin] = None) -> dict:
     has_edited = bool(getattr(user, "profile_edited_once", False))
     window_open = is_profile_edit_window_open()
@@ -184,12 +192,12 @@ def user_to_dict(user: User, admin_profile: Optional[Admin] = None) -> dict:
         "admin_username": admin_profile.username if admin_profile else None,
         "username": admin_profile.username if admin_profile else user.auid,
         "profile_edited_once": has_edited,
-        "profile_edited_at": user.profile_edited_at.isoformat() if getattr(user, "profile_edited_at", None) else None,
+        "profile_edited_at": _safe_iso(getattr(user, "profile_edited_at", None)),
         "one_time_edit_deadline": "2026-10-05T23:59:59+05:30",
         "one_time_edit_deadline_str": ONE_TIME_EDIT_DEADLINE_IST_STR,
         "can_edit_profile": (not has_edited) and window_open,
         "first_time_setup_required": bool(getattr(user, "first_time_setup_required", False)) if getattr(admin_profile, "username", "").lower() != "akvsaculturals" else False,
-        "created_at": user.created_at.isoformat() if user.created_at else None
+        "created_at": _safe_iso(getattr(user, "created_at", None))
     }
 
 
@@ -814,42 +822,64 @@ def login_superadmin(payload: AdminLoginRequest, db: Session = Depends(get_db)):
             detail="Access restricted: This portal is strictly for authorized AKV Super Administrators only. Provided username is not an authorized Super Administrator."
         )
 
-    # Fast lookup of authorized SuperAdmin account
-    admin_entry = db.query(Admin).options(joinedload(Admin.user)).filter(
-        func.lower(Admin.username) == clean_uname
-    ).first()
+    try:
+        # Fast lookup of authorized SuperAdmin account
+        admin_entry = db.query(Admin).options(joinedload(Admin.user)).filter(
+            func.lower(Admin.username) == clean_uname
+        ).first()
 
-    if not admin_entry or not admin_entry.user or admin_entry.user.role != "SUPERADMIN":
+        if not admin_entry or not admin_entry.user or admin_entry.user.role != "SUPERADMIN":
+            # Auto-seed authorized superadmin accounts into database if not yet present
+            try:
+                ensure_schema_migrations()
+                ensure_authorized_superadmins(db)
+                admin_entry = db.query(Admin).options(joinedload(Admin.user)).filter(
+                    func.lower(Admin.username) == clean_uname
+                ).first()
+            except Exception as seed_err:
+                print(f"[SUPERADMIN AUTO-SEED ON LOGIN ERROR] {seed_err}")
+
+        if not admin_entry or not admin_entry.user or admin_entry.user.role != "SUPERADMIN":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access restricted: This portal is strictly for Super Administrators."
+            )
+
+        db_sa = admin_entry.user
+
+        is_pw_valid = False
+        if verify_password(payload.password, db_sa.password_hash) or verify_password(clean_pw, db_sa.password_hash):
+            is_pw_valid = True
+
+        if not is_pw_valid:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid Super Admin credentials."
+            )
+
+        if db_sa.account_status != "ACTIVE":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Your Super Admin account has been deactivated."
+            )
+
+        token = create_access_token({"sub": str(db_sa.id), "role": "SUPERADMIN"})
+        user_dict = user_to_dict(db_sa, admin_entry)
+        return {
+            "success": True,
+            "message": f"Super Admin ({clean_uname}) login authorized",
+            "token": token,
+            "user": user_dict
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access restricted: This portal is strictly for Super Administrators."
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Superadmin authentication encountered an internal error: {str(e)}"
         )
-
-    db_sa = admin_entry.user
-
-    is_pw_valid = False
-    if verify_password(payload.password, db_sa.password_hash) or verify_password(clean_pw, db_sa.password_hash):
-        is_pw_valid = True
-
-    if not is_pw_valid:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid Super Admin credentials."
-        )
-
-    if db_sa.account_status != "ACTIVE":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Your Super Admin account has been deactivated."
-        )
-
-    token = create_access_token({"sub": str(db_sa.id), "role": "SUPERADMIN"})
-    return {
-        "success": True,
-        "message": f"Super Admin ({clean_uname}) login authorized",
-        "token": token,
-        "user": user_to_dict(db_sa, admin_entry)
-    }
 
 # ==========================================
 # 6C. SUPERADMIN FIRST-TIME ONBOARDING (Credentials 5 & 6)

@@ -81,6 +81,12 @@ def ensure_schema_migrations(target_engine=None):
                         conn.exec_driver_sql("ALTER TABLE users ADD COLUMN working_committee_role VARCHAR DEFAULT 'Coordinator'")
                     if "managed_by" not in user_cols:
                         conn.exec_driver_sql("ALTER TABLE users ADD COLUMN managed_by VARCHAR")
+                    if "profile_edited_once" not in user_cols:
+                        conn.exec_driver_sql("ALTER TABLE users ADD COLUMN profile_edited_once BOOLEAN DEFAULT 0")
+                    if "profile_edited_at" not in user_cols:
+                        conn.exec_driver_sql("ALTER TABLE users ADD COLUMN profile_edited_at TIMESTAMP")
+                    if "first_time_setup_required" not in user_cols:
+                        conn.exec_driver_sql("ALTER TABLE users ADD COLUMN first_time_setup_required BOOLEAN DEFAULT 0")
 
                 # 3. admins table
                 admin_cols = [c[1] for c in conn.exec_driver_sql("PRAGMA table_info(admins)").fetchall()]
@@ -97,12 +103,25 @@ def ensure_schema_migrations(target_engine=None):
 
                 # 5. activities table
                 act_cols = [c[1] for c in conn.exec_driver_sql("PRAGMA table_info(activities)").fetchall()]
-                if act_cols and "activity_date" not in act_cols:
-                    conn.exec_driver_sql("ALTER TABLE activities ADD COLUMN activity_date VARCHAR")
+                if act_cols:
+                    if "activity_date" not in act_cols:
+                        conn.exec_driver_sql("ALTER TABLE activities ADD COLUMN activity_date VARCHAR")
+                    if "title_kn" not in act_cols:
+                        conn.exec_driver_sql("ALTER TABLE activities ADD COLUMN title_kn VARCHAR DEFAULT ''")
+                    if "desc_kn" not in act_cols:
+                        conn.exec_driver_sql("ALTER TABLE activities ADD COLUMN desc_kn TEXT DEFAULT ''")
+                    if "tag_kn" not in act_cols:
+                        conn.exec_driver_sql("ALTER TABLE activities ADD COLUMN tag_kn VARCHAR DEFAULT ''")
 
                 # Fast indexes
-                conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_attendance_date_user ON attendance_records(attendance_date, user_id)")
-                conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_wc_attendance_date_user ON working_committee_attendance(attendance_date, working_committee_member_id)")
+                try:
+                    conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_attendance_date_user ON attendance_records(attendance_date, user_id)")
+                except Exception:
+                    pass
+                try:
+                    conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_wc_attendance_date_user ON working_committee_attendance(attendance_date, working_committee_member_id)")
+                except Exception:
+                    pass
 
         elif eng.dialect.name == "postgresql":
             with eng.connect() as conn:
@@ -112,12 +131,18 @@ def ensure_schema_migrations(target_engine=None):
                     "SELECT table_name, column_name FROM information_schema.columns "
                     "WHERE table_schema = 'public' AND table_name IN ('registrations', 'users', 'admins', 'gallery_items', 'activities')"
                 )
-                existing_cols = {(row[0].lower(), row[1].lower()) for row in conn.exec_driver_sql(query_sql).fetchall()}
+                try:
+                    existing_cols = {(row[0].lower(), row[1].lower()) for row in conn.exec_driver_sql(query_sql).fetchall()}
+                except Exception:
+                    existing_cols = set()
 
                 def add_pg_col(table, col, col_type):
                     if (table.lower(), col.lower()) not in existing_cols:
-                        conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}")
-                        conn.commit()
+                        try:
+                            conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col} {col_type}")
+                            conn.commit()
+                        except Exception as col_err:
+                            print(f"[PG MIGRATE COL NOTICE] {table}.{col}: {col_err}")
 
                 add_pg_col("registrations", "user_id", "INTEGER REFERENCES users(id)")
                 add_pg_col("users", "photo_url", "TEXT")
@@ -127,15 +152,28 @@ def ensure_schema_migrations(target_engine=None):
                 add_pg_col("users", "is_working_committee", "BOOLEAN DEFAULT FALSE")
                 add_pg_col("users", "working_committee_role", "VARCHAR DEFAULT 'Coordinator'")
                 add_pg_col("users", "managed_by", "VARCHAR")
+                add_pg_col("users", "profile_edited_once", "BOOLEAN DEFAULT FALSE")
+                add_pg_col("users", "profile_edited_at", "TIMESTAMP")
+                add_pg_col("users", "first_time_setup_required", "BOOLEAN DEFAULT FALSE")
                 add_pg_col("admins", "admin_type", "VARCHAR DEFAULT 'WORKING_COMMITTEE'")
                 add_pg_col("admins", "faculty_id", "VARCHAR")
                 add_pg_col("gallery_items", "event_date", "VARCHAR")
                 add_pg_col("activities", "activity_date", "VARCHAR")
+                add_pg_col("activities", "title_kn", "VARCHAR DEFAULT ''")
+                add_pg_col("activities", "desc_kn", "TEXT DEFAULT ''")
+                add_pg_col("activities", "tag_kn", "VARCHAR DEFAULT ''")
 
                 # High performance composite indexes
-                conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_attendance_date_user ON attendance_records(attendance_date, user_id)")
-                conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_wc_attendance_date_user ON working_committee_attendance(attendance_date, user_id)")
-                conn.commit()
+                try:
+                    conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_attendance_date_user ON attendance_records(attendance_date, user_id)")
+                    conn.commit()
+                except Exception:
+                    pass
+                try:
+                    conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_wc_attendance_date_user ON working_committee_attendance(attendance_date, working_committee_member_id)")
+                    conn.commit()
+                except Exception:
+                    pass
 
         _MIGRATIONS_DONE = True
     except Exception as e:
