@@ -39,24 +39,26 @@ export const Navbar = ({ currentView, setCurrentView, onOpenAuthTab }) => {
   ];
 
   const handleNavClick = (id) => {
-    setCurrentView(id);
+    const path = id === "home" ? "/" : `/${id}`;
+    setCurrentView(path);
     setMobileMenuOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleDashboardNav = () => {
     if (!user) {
-      if (onOpenAuthTab) onOpenAuthTab("student-login");
-      setCurrentView("auth");
+      setCurrentView("/student");
+      setMobileMenuOpen(false);
+      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
 
     if (role === "SUPERADMIN") {
-      setCurrentView("superadmin-dashboard");
+      setCurrentView("/superadmin");
     } else if (role === "ADMIN") {
-      setCurrentView("admin-dashboard");
+      setCurrentView("/admin");
     } else {
-      setCurrentView("student-dashboard");
+      setCurrentView("/student");
     }
     setMobileMenuOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -64,12 +66,9 @@ export const Navbar = ({ currentView, setCurrentView, onOpenAuthTab }) => {
 
   const handleRegisterCTA = () => {
     if (user) {
-      // If already logged in as student, navigate directly to dashboard
       handleDashboardNav();
     } else {
-      // If not logged in, open Auth Portal with registration tab
-      if (onOpenAuthTab) onOpenAuthTab("student-register");
-      setCurrentView("auth");
+      setCurrentView("/student", { subMode: "register" });
       setMobileMenuOpen(false);
       window.scrollTo({ top: 0, behavior: "smooth" });
     }

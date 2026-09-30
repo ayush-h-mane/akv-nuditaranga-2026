@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.53",
-  "staged_version": "2.2.54",
+  "production_version": "2.2.54",
+  "staged_version": "2.2.55",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.54",
+      "released_at": "2026-10-01T02:31:23+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.54: Dedicated Portal URL Routing: Assigned individual, distinct URL paths to each portal on the same domain: `/student` for student login, registration, and participant dashboard; `/admin` for coordinator & admin login and dashboard; `/superadmin` for executive superadmin master security login and dashboard; `/faculty` as the dedicated faculty coordinator portal mapping cleanly into the coordinator flow; and `/` strictly as the public festival homepage.; Strict Portal Isolation & Removal of Cross-Portal Links: Stripped cross-portal login and registration links across all portals (no admin or superadmin tabs or links in the student portal, no student tabs on admin/faculty portals, and no public portal switchers in the superadmin portal); removed backdoor PortalSettingsModal from authentication views to prevent superadmin account exposure.; Faculty Role & Portal Architecture: Inspected codebase and confirmed Faculty Coordinator is an admin_type under the ADMIN role (User.admin_type = 'FACULTY_COORDINATOR') rather than an invented standalone role; configured /faculty to pre-select Faculty Coordinator mode with tailored Faculty ID inputs, Acharya email validation, and coordinator dashboard access.; Robust Role-Based Route Guards & Access Denied Views: Enforced client-side and server-side role verification across all portal URLs; authenticated users visiting an unauthorized portal (e.g., students navigating to /admin or /superadmin) are safely blocked with a bilingual Access Notice dialog offering direct navigation to their own dashboard, safe account switching, or returning home without granting unauthorized access.; Session & Post-Login Synchronization: Preserved session handling, 10-minute token password resets (#reset-token), and post-login redirects so users land on their portal's dashboard; configured logout handlers across all dashboards (StudentDashboard, AdminPage, SuperAdminDashboard, Navbar) to cleanly return users to that portal's own dedicated login view.; Vercel SPA Rewrites Verification: Verified vercel.json SPA rewrites (/api/(.*) -> api/index.py, /(.*) -> index.html) so direct visits, browser bookmarks, and page refreshes on /student, /admin, /superadmin, and /faculty work reliably in production while backend API routes remain untouched."
+    },
     {
       "version": "2.2.53",
       "released_at": "2026-09-30T23:47:33+0530",
