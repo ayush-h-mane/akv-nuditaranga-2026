@@ -2,6 +2,10 @@ import os
 import ssl
 import smtplib
 import time
+import base64
+import json
+import urllib.request
+import urllib.error
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
@@ -101,10 +105,11 @@ def send_via_relay(relay: Dict[str, Any], msg: MIMEMultipart, to_email: Union[st
 
     to_addrs = [to_email] if isinstance(to_email, str) else list(to_email)
 
+    # 8-second network timeout for fast responsive dispatch
     if port == 465:
-        server = smtplib.SMTP_SSL(host, port, timeout=20, context=ssl.create_default_context())
+        server = smtplib.SMTP_SSL(host, port, timeout=8, context=ssl.create_default_context())
     else:
-        server = smtplib.SMTP(host, port, timeout=20)
+        server = smtplib.SMTP(host, port, timeout=8)
         server.starttls(context=ssl.create_default_context())
 
     accepted_by_server = False
@@ -123,6 +128,57 @@ def send_via_relay(relay: Dict[str, Any], msg: MIMEMultipart, to_email: Union[st
         else:
             server.close()
 
+def send_via_resend(
+    api_key: str,
+    from_addr: str,
+    to_addrs: List[str],
+    subject: str,
+    html_content: str,
+    text_content: str = "",
+    reply_to: Optional[str] = None,
+    attachments: Optional[List[Dict[str, Any]]] = None
+) -> Dict[str, Any]:
+    """Dispatches email via Resend REST API (https://resend.com) with sub-second HTTPS delivery."""
+    url = "https://api.resend.com/emails"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "User-Agent": f"AKV-Nuditaranga/{settings.APP_VERSION}"
+    }
+
+    payload: Dict[str, Any] = {
+        "from": from_addr,
+        "to": to_addrs,
+        "subject": subject,
+        "html": html_content
+    }
+    if text_content:
+        payload["text"] = text_content
+    if reply_to:
+        payload["reply_to"] = reply_to
+
+    if attachments:
+        resend_atts = []
+        for att in attachments:
+            content = att.get("content", b"")
+            if isinstance(content, bytes):
+                content_b64 = base64.b64encode(content).decode("utf-8")
+            elif isinstance(content, str):
+                content_b64 = base64.b64encode(content.encode("utf-8")).decode("utf-8")
+            else:
+                continue
+            resend_atts.append({
+                "filename": att.get("filename", "document.pdf"),
+                "content": content_b64
+            })
+        if resend_atts:
+            payload["attachments"] = resend_atts
+
+    req_data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(url, data=req_data, headers=headers, method="POST")
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
 def send_email(
     to_email: Union[str, List[str]],
     subject: str,
@@ -132,7 +188,8 @@ def send_email(
     reply_to: Optional[str] = None
 ) -> bool:
     """
-    Sends an email using configured SMTP server pool with automatic round-robin rotation,
+    Sends an email using Resend REST API (if RESEND_API_KEY configured) or
+    the configured SMTP server pool with automatic round-robin rotation,
     circuit-breaker cooldown, and seamless failover.
     Supports binary attachments (e.g. PDF ID cards).
     """
@@ -155,17 +212,41 @@ def send_email(
     }
     DEBUG_EMAIL_OUTBOX.append(record)
 
+    # 1. Primary Strategy: Resend REST API (if RESEND_API_KEY configured)
+    if settings.RESEND_API_KEY and settings.RESEND_API_KEY.strip():
+        sender_email = (settings.RESEND_FROM or settings.EMAIL_FROM).strip()
+        from_formatted = f"{settings.EMAIL_FROM_NAME} <{sender_email}>"
+        try:
+            res = send_via_resend(
+                api_key=settings.RESEND_API_KEY.strip(),
+                from_addr=from_formatted,
+                to_addrs=to_addrs,
+                subject=subject,
+                html_content=html_content,
+                text_content=text_content,
+                reply_to=reply_to or settings.EMAIL_FROM,
+                attachments=attachments
+            )
+            print(f"[EMAIL DISPATCH - RESEND API] Live email delivered to {to_header} (ID: {res.get('id', 'ok')}) from {sender_email}")
+            return True
+        except urllib.error.HTTPError as http_err:
+            err_body = http_err.read().decode("utf-8") if http_err.fp else str(http_err)
+            print(f"[RESEND API ERROR] HTTP {http_err.code}: {err_body}")
+        except Exception as resend_err:
+            print(f"[RESEND API ERROR] {type(resend_err).__name__}: {resend_err}")
+
+    # 2. Secondary Strategy: Multi-Relay SMTP Pool
     all_relays = get_smtp_relays()
 
     # If no SMTP host configured, print debug summary and notice
     if not all_relays:
         att_str = f" [Attached: {', '.join(a['filename'] for a in record['attachments'])}]" if record["attachments"] else ""
-        print(f"\n[EMAIL DISPATCH - DEV SIMULATION (REAL SMTP UNCONFIGURED)]{att_str}")
+        print(f"\n[EMAIL DISPATCH - DEV SIMULATION (REAL SMTP/RESEND UNCONFIGURED)]{att_str}")
         print(f"To: {to_header}")
         print(f"From: {settings.EMAIL_FROM}")
         print(f"Subject: {subject}")
         print(f"Summary: {text_content[:200]}...")
-        print(f"[EMAIL WARNING] No SMTP relays configured. Configure SMTP_HOST in .env.")
+        print(f"[EMAIL WARNING] No active email provider configured. Set RESEND_API_KEY or SMTP_PASSWORD in .env.")
         return False
 
     now = time.time()
@@ -440,34 +521,71 @@ def send_event_registration_confirmation_email(
     return send_email(to_email, subject, html, text, attachments=attachments)
 
 def send_password_reset_email(to_email: str, student_name: str, reset_link: str, expires_minutes: int = 10):
-    subject = "AKV Nuditaranga 2026 – Password Reset (Valid for 10 Minutes)"
+    subject = "AKV Nuditaranga 2026 – Password Reset Link (Valid for 10 Minutes)"
     content = f"""
-        <h2 style="color: #b91c1c; margin-top: 0;">Password Reset Request</h2>
-        <p>Hello <strong>{student_name}</strong>,</p>
-        <p>We received a request to reset the password for your Acharya Kannada Vedike account associated with this email address.</p>
-        
-        <div style="text-align: center; margin: 28px 0;">
-            <a href="{reset_link}" style="background-color: #b91c1c; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: bold; font-size: 15px; display: inline-block; box-shadow: 0 2px 6px rgba(185, 28, 28, 0.3);">Reset My Password</a>
+        <div style="text-align: center; margin-bottom: 24px;">
+            <span style="display: inline-block; padding: 4px 14px; background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 9999px; font-size: 12px; font-weight: 700; color: #b91c1c; text-transform: uppercase; letter-spacing: 0.5px;">
+                🔐 ಭದ್ರತಾ ಅಧಿಸೂಚನೆ • Security Notification
+            </span>
+            <h2 style="color: #991b1b; margin: 14px 0 6px 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;">
+                ಪಾಸ್‌ವರ್ಡ್ ಮರುಹೊಂದಿಸುವ ವಿನಂತಿ<br>
+                <span style="font-size: 16px; font-weight: 600; color: #78716c;">Password Reset Request</span>
+            </h2>
         </div>
 
-        <div style="background-color: #fff7ed; border-left: 4px solid #ea580c; padding: 12px 16px; margin: 20px 0; font-size: 13px; color: #9a3412;">
-            <p style="margin: 0 0 6px 0;"><strong>Security Notice:</strong></p>
+        <p style="font-size: 15px; margin-bottom: 12px; color: #1c1917;">ನಮಸ್ಕಾರ / Hello <strong>{student_name}</strong>,</p>
+        
+        <p style="font-size: 14px; color: #44403c; line-height: 1.6; margin-bottom: 12px;">
+            ನಿಮ್ಮ <strong>ಆಚಾರ್ಯ ಕನ್ನಡ ವೇದಿಕೆ (ನುಡಿತರಂಗ ೨೦೨೬)</strong> ಖಾತೆಯ ಪಾಸ್‌ವರ್ಡ್ ಮರುಹೊಂದಿಸಲು ಸ್ವಯಂಚಾಲಿತ ವಿನಂತಿ ಬಂದಿದೆ. ಕೆಳಗಿನ ಬಟನ್ ಕ್ಲಿಕ್ ಮಾಡುವ ಮೂಲಕ ನಿಮ್ಮ ಹೊಸ ಪಾಸ್‌ವರ್ಡ್ ಅನ್ನು ತಕ್ಷಣ ಹೊಂದಿಸಿಕೊಳ್ಳಬಹುದು.
+        </p>
+        <p style="font-size: 13px; color: #78716c; line-height: 1.6; margin-bottom: 24px;">
+            We received an automated request to reset the password for your Acharya Kannada Vedike account associated with <strong>{to_email}</strong>. Click the official reset button below to set a new password.
+        </p>
+        
+        <!-- Action Button -->
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="{reset_link}" style="background: linear-gradient(135deg, #b91c1c 0%, #dc2626 60%, #ea580c 100%); color: #ffffff; text-decoration: none; padding: 15px 36px; border-radius: 10px; font-weight: 800; font-size: 15px; display: inline-block; box-shadow: 0 4px 14px rgba(185, 28, 28, 0.35); letter-spacing: 0.2px;">
+                ಪಾಸ್‌ವರ್ಡ್ ಮರುಹೊಂದಿಸಿ / Reset Password &rarr;
+            </a>
+        </div>
+
+        <!-- Fallback Link Box -->
+        <div style="background-color: #f5f5f4; border: 1px solid #e7e5e4; border-radius: 8px; padding: 12px 14px; margin: 20px 0; font-size: 12px; color: #57534e;">
+            <p style="margin: 0 0 4px 0; font-weight: 700; color: #292524;">
+                ಇಮೇಲ್ ಬಟನ್ ಕಾರ್ಯನಿರ್ವಹಿಸದಿದ್ದರೆ, ಈ ಕೆಳಗಿನ ಲಿಂಕ್ ಅನ್ನು ನಿಮ್ಮ ಬ್ರೌಸರ್‌ನಲ್ಲಿ ತೆರೆಯಿರಿ:
+            </p>
+            <p style="margin: 0 0 6px 0; color: #78716c; font-size: 11px;">
+                If the button doesn't work, copy and paste this link directly into your browser:
+            </p>
+            <div style="word-break: break-all; background-color: #ffffff; padding: 8px 10px; border-radius: 6px; border: 1px dashed #d6d3d1; font-family: monospace; font-size: 11px; color: #b91c1c;">
+                <a href="{reset_link}" style="color: #b91c1c; text-decoration: underline;">{reset_link}</a>
+            </div>
+        </div>
+
+        <!-- Security Warning Box -->
+        <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; border-radius: 0 8px 8px 0; padding: 14px 16px; margin: 24px 0; font-size: 12px; color: #92400e; line-height: 1.6;">
+            <p style="margin: 0 0 8px 0; font-weight: 800; color: #78350f; font-size: 13px;">
+                ⚠️ ಭದ್ರತಾ ಮಾಹಿತಿ • Security Notice:
+            </p>
             <ul style="margin: 0; padding-left: 18px;">
-                <li>This link will expire in <strong>{expires_minutes} minutes</strong>.</li>
-                <li>This link is single-use and will become invalid once used.</li>
-                <li>Sent officially from <strong>{settings.EMAIL_FROM}</strong> for your account security.</li>
-                <li>If you did not request this password reset, please ignore this email or notify the AKV team immediately.</li>
+                <li style="margin-bottom: 4px;"><strong>ಕಾಲಮಿತಿ / Expiry:</strong> ಈ ಲಿಂಕ್ ಕೇವಲ <strong>{expires_minutes} ನಿಮಿಷಗಳ ಕಾಲ</strong> ಮಾತ್ರ ಮಾನ್ಯವಾಗಿರುತ್ತದೆ (Valid for {expires_minutes} minutes only).</li>
+                <li style="margin-bottom: 4px;"><strong>ಏಕ-ಬಳಕೆಯ ಟೋಕನ್ / Single-Use:</strong> ಒಮ್ಮೆ ಪಾಸ್‌ವರ್ಡ್ ಮರುಹೊಂದಿಸಿದ ನಂತರ ಈ ಲಿಂಕ್ ಸ್ವಯಂಚಾಲಿತವಾಗಿ ರದ್ದಾಗುತ್ತದೆ.</li>
+                <li style="margin-bottom: 4px;"><strong>ಅಧಿಕೃತ ಕಳುಹಿಸುವವರು / Official Sender:</strong> ಈ ಸ್ವಯಂಚಾಲಿತ ಸಂದೇಶವನ್ನು ಅಧಿಕೃತವಾಗಿ <strong>{settings.EMAIL_FROM}</strong> ನಿಂದ ಕಳುಹಿಸಲಾಗಿದೆ.</li>
+                <li><strong>ಸೂಚನೆ / Caution:</strong> ನೀವು ಈ ಪಾಸ್‌ವರ್ಡ್ ಮರುಹೊಂದಿಕೆಯನ್ನು ಕೋರದಿದ್ದರೆ, ಈ ಇಮೇಲ್ ಅನ್ನು ನಿರ್ಲಕ್ಷಿಸಿ. ನಿಮ್ಮ ಖಾತೆಯು ಸುರಕ್ಷಿತವಾಗಿರುತ್ತದೆ.</li>
             </ul>
         </div>
-
-        <p style="font-size: 12px; color: #78716c; word-break: break-all;">
-            If the button doesn't work, copy and paste this link into your browser:<br>
-            <a href="{reset_link}" style="color: #b91c1c;">{reset_link}</a>
-        </p>
     """
-    text = f"Hello {student_name}, reset your AKV account password using this link (expires in {expires_minutes} mins): {reset_link}. Sent officially from {settings.EMAIL_FROM}."
+    text = (
+        f"AKV Nuditaranga 2026 - Password Reset Request\n\n"
+        f"Hello {student_name},\n\n"
+        f"We received a request to reset the password for your Acharya Kannada Vedike account ({to_email}).\n\n"
+        f"Reset Link (Valid for {expires_minutes} minutes):\n{reset_link}\n\n"
+        f"This single-use link will expire in {expires_minutes} minutes.\n"
+        f"Sent officially from {settings.EMAIL_FROM}.\n"
+        f"If you did not request this reset, please ignore this email."
+    )
     html = wrap_email_html(subject, content)
-    return send_email(to_email, subject, html, text)
+    return send_email(to_email, subject, html, text, reply_to=settings.EMAIL_FROM)
 
 def send_admin_registration_email(to_email: str, admin_name: str, username: str):
     subject = "AKV Nuditaranga 2026 – Admin Registration Submitted"

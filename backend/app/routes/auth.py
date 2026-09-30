@@ -384,10 +384,11 @@ def forgot_password(
     # Generic security message to prevent account enumeration
     success_msg = f"If an account exists with this identifier, a 10-minute password reset link will be emailed from {settings.EMAIL_FROM} to your registered college email."
 
-    user = db.query(User).filter(
+    user = db.query(User).outerjoin(Admin).filter(
         or_(
             func.lower(User.email) == clean_id,
-            func.lower(User.auid) == clean_id
+            func.lower(User.auid) == clean_id,
+            func.lower(Admin.username) == clean_id
         )
     ).first()
 
@@ -423,19 +424,29 @@ def forgot_password(
         reset_link=reset_link,
         expires_minutes=10
     )
-    if not delivery_ok:
-        print(f"[PASSWORD RESET EMAIL ERROR] Delivery failed for user {user.id}.", flush=True)
-        db.delete(reset_record)
-        db.commit()
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="The password reset email could not be sent. Please try again shortly or contact the administrator."
-        )
+    if delivery_ok:
+        print(f"[PASSWORD RESET EMAIL] Automated reset email successfully dispatched to {user.email} from {settings.EMAIL_FROM}.", flush=True)
+    else:
+        print(f"[PASSWORD RESET EMAIL NOTICE] Live SMTP dispatch could not be completed for {user.email}. Preserving 10-minute token in database.", flush=True)
+        print("=" * 70, flush=True)
+        print(f"[AUTOMATED MAIL - PASSWORD RESET LINK GENERATED]", flush=True)
+        print(f"From:    {settings.EMAIL_FROM_NAME} <{settings.EMAIL_FROM}>", flush=True)
+        print(f"To:      {user.name} <{user.email}>", flush=True)
+        print(f"Subject: AKV Nuditaranga 2026 – Password Reset Link (Valid for 10 Minutes)", flush=True)
+        print(f"Link:    {reset_link}", flush=True)
+        print(f"Expires: 10 minutes", flush=True)
+        print("=" * 70, flush=True)
 
-    return {
+    resp_payload = {
         "success": True,
-        "message": success_msg
+        "message": success_msg,
+        "email_delivered": delivery_ok
     }
+    if settings.ENVIRONMENT == "development":
+        resp_payload["dev_reset_token"] = raw_token
+        resp_payload["dev_reset_link"] = reset_link
+
+    return resp_payload
 
 # ==========================================
 # 4. RESET PASSWORD
