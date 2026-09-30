@@ -1,5 +1,5 @@
 import React from "react";
-import { CalendarDays, Clock3, UserRound } from "lucide-react";
+import { CalendarDays, Clock3, UserRound, RefreshCw } from "lucide-react";
 
 const Field = ({ label, value }) => (
   <div className="rounded-xl border border-stone-100 bg-stone-50 p-3">
@@ -8,7 +8,7 @@ const Field = ({ label, value }) => (
   </div>
 );
 
-export const MyProfileAttendance = ({ profile, attendanceData, loading, error }) => {
+export const MyProfileAttendance = ({ profile, attendanceData, loading, error, onRefresh }) => {
   const rows = [
     ...(attendanceData?.registered_events || []).map((record) => ({
       date: record.event_date || record.registered_at,
@@ -56,12 +56,25 @@ export const MyProfileAttendance = ({ profile, attendanceData, loading, error })
       </section>
 
       <section className="rounded-3xl border border-stone-200 bg-white p-5 shadow-xs sm:p-7">
-        <div className="mb-4 flex items-center gap-2 border-b border-stone-100 pb-3">
-          <CalendarDays className="h-5 w-5 text-kar-red" />
-          <div>
-            <h2 className="font-extrabold text-stone-900">My Attendance</h2>
-            <p className="text-xs text-stone-500">Your attendance history, including check-in and check-out times.</p>
+        <div className="mb-4 flex items-center justify-between border-b border-stone-100 pb-3">
+          <div className="flex items-center gap-2">
+            <CalendarDays className="h-5 w-5 text-kar-red" />
+            <div>
+              <h2 className="font-extrabold text-stone-900">My Attendance</h2>
+              <p className="text-xs text-stone-500">Your attendance history, including check-in and check-out times.</p>
+            </div>
           </div>
+          {onRefresh && (
+            <button
+              type="button"
+              onClick={onRefresh}
+              disabled={loading}
+              className="p-2 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 cursor-pointer disabled:opacity-50 transition-colors"
+              title="Refresh My Attendance & Profile"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-kar-red" : ""}`} />
+            </button>
+          )}
         </div>
         {error ? (
           <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-800">{error}</p>

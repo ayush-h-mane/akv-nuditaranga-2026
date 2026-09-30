@@ -38,15 +38,17 @@ export const ForgotPasswordModal = ({ isOpen, onClose, onOpenResetView }) => {
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-[backdropFade_0.2s_ease-out_forwards] transition-opacity"
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/70 backdrop-blur-sm animate-[backdropFade_0.2s_ease-out_forwards] transition-opacity overflow-y-auto"
       onClick={onClose}
     >
       <div 
-        className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full border border-amber-200 overflow-hidden transform-gpu will-change-transform animate-[modalEnter_0.28s_cubic-bezier(0.16,1,0.3,1)_forwards]"
+        className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full border border-amber-200 overflow-hidden transform-gpu will-change-transform animate-[modalEnter_0.28s_cubic-bezier(0.16,1,0.3,1)_forwards] my-auto max-h-[92vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-kar-red to-red-600 px-6 py-4 text-white flex items-center justify-between">
+        <div className="bg-gradient-to-r from-kar-red to-red-600 px-6 py-4 text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
             <KeyRound className="w-5 h-5 text-amber-300" />
             <h3 className="font-extrabold text-base tracking-tight">Forgot Password / ಪಾಸ್‌ವರ್ಡ್ ಮರೆತಿದ್ದೀರಾ?</h3>
@@ -61,7 +63,7 @@ export const ForgotPasswordModal = ({ isOpen, onClose, onOpenResetView }) => {
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto flex-1">
           {message ? (
             <div className="space-y-4">
               <div className="flex items-start gap-3 p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-sm">

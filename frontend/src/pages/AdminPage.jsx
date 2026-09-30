@@ -35,6 +35,7 @@ import {
 import { CameraQRScanner } from "../components/CameraQRScanner";
 import { EventImageUpload } from "../components/EventImageUpload";
 import { MyProfileAttendance } from "../components/MyProfileAttendance";
+import { AKV_DOMAINS } from "../config/institutesData";
 
 export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
   const { user, role, logout } = useAuth();
@@ -53,10 +54,21 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
   const [deptFilter, setDeptFilter] = useState("all");
   const [akvDeptFilter, setAkvDeptFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [coordinatorRefreshing, setCoordinatorRefreshing] = useState(false);
 
   // Official Attendance State (v2.1.2)
-  const [attendanceDates, setAttendanceDates] = useState([]);
-  const [selectedDate, setSelectedDate] = useState("");
+  const [attendanceDates, setAttendanceDates] = useState(() => {
+    const cached = api.getCachedAttendanceConfigDates();
+    return cached?.dates || [];
+  });
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const cached = api.getCachedAttendanceConfigDates();
+    if (cached?.dates && cached.dates.length > 0) {
+      const todayItem = cached.dates.find(d => d.is_today);
+      return todayItem ? todayItem.date : (cached.current_date || cached.dates[0]?.date || "");
+    }
+    return "";
+  });
   const [attendanceRoster, setAttendanceRoster] = useState([]);
   const [attendanceSession, setAttendanceSession] = useState({
     is_submitted: false,
@@ -87,7 +99,7 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
   const selectedDateIsFuture = Boolean(selectedDate && selectedDate > new Date().toISOString().slice(0, 10));
 
   // Cultural Gallery State
-  const [galleryItems, setGalleryItems] = useState([]);
+  const [galleryItems, setGalleryItems] = useState(() => api.getCachedGallery());
   const [galleryLoading, setGalleryLoading] = useState(false);
   const [galleryForm, setGalleryForm] = useState({
     title: "",
@@ -109,9 +121,9 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
     }
   };
 
-  const loadAttendanceDates = async () => {
+  const loadAttendanceDates = async (forceFresh = false) => {
     try {
-      const res = await api.getAttendanceConfigDates();
+      const res = await api.getAttendanceConfigDates(forceFresh);
       if (res && res.dates) {
         setAttendanceDates(res.dates);
         // Default to today if found, else first date
@@ -128,28 +140,30 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
     return selectedDate;
   };
 
-  const loadAttendanceRoster = async (dateOverride = null) => {
+  const loadAttendanceRoster = async (dateOverride = null, forceFresh = false) => {
     const targetDate = dateOverride || selectedDate;
     if (!targetDate) return;
     try {
       setLoading(true);
+      const adminDomain = role !== "SUPERADMIN" ? (user?.volunteer_domain || user?.akv_dept) : null;
+      const effectiveAkvDept = adminDomain ? adminDomain : (akvDeptFilter !== "all" ? akvDeptFilter : "");
+
       const res = await api.getAttendance({
         date: targetDate,
         search: searchQuery,
         department: deptFilter !== "all" ? deptFilter : "",
-        akv_dept: akvDeptFilter !== "all" ? akvDeptFilter : "",
+        akv_dept: effectiveAkvDept,
         status_filter: statusFilter !== "all" ? statusFilter : ""
-      });
+      }, forceFresh);
 
       if (res && res.success) {
         let participants = res.participants || [];
-        const adminDomain = user?.volunteer_domain || user?.akv_dept;
-        if (role !== "SUPERADMIN" && adminDomain) {
-          participants = participants.filter(p => 
-            p.type !== "VOLUNTEER" || 
-            p.akv_department === adminDomain || 
-            p.volunteer_domain === adminDomain
-          );
+        if (adminDomain) {
+          const domNorm = adminDomain.toLowerCase().replace(/s$/, "").trim();
+          participants = participants.filter(p => {
+            const pDom = (p.akv_dept || p.volunteer_domain || "").toLowerCase().trim();
+            return pDom.includes(domNorm) || domNorm.includes(pDom.replace(/s$/, ""));
+          });
         }
         setAttendanceRoster(participants);
         setAttendanceSession(res.session || {
@@ -175,12 +189,12 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
     }
   };
 
-  const loadAdminData = async () => {
+  const loadAdminData = async (forceFresh = false) => {
     try {
-      const activeDate = await loadAttendanceDates();
+      const activeDate = await loadAttendanceDates(forceFresh);
       const [overviewData] = await Promise.all([
-        api.getAdminOverview().catch(() => null),
-        loadAttendanceRoster(activeDate)
+        api.getAdminOverview(forceFresh).catch(() => null),
+        loadAttendanceRoster(activeDate, forceFresh)
       ]);
       if (overviewData) setOverview(overviewData);
     } catch (err) {
@@ -192,14 +206,21 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
     loadAdminData();
   }, [deptFilter, akvDeptFilter, statusFilter, selectedDate]);
 
-  useEffect(() => {
-    let mounted = true;
+  const loadMyAccount = async (forceFresh = false) => {
     setMyAccountLoading(true);
-    api.getStudentDashboard()
-      .then((data) => { if (mounted) setMyAccountData(data); })
-      .catch((err) => { if (mounted) setMyAccountError(err.message || "Could not load your profile and attendance."); })
-      .finally(() => { if (mounted) setMyAccountLoading(false); });
-    return () => { mounted = false; };
+    setMyAccountError("");
+    try {
+      const data = await api.getStudentDashboard(forceFresh);
+      setMyAccountData(data);
+    } catch (err) {
+      setMyAccountError(err.message || "Could not load your profile and attendance.");
+    } finally {
+      setMyAccountLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadMyAccount();
   }, []);
 
   // Check-In Handler
@@ -313,15 +334,32 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
   };
 
   // Cultural Gallery Handlers
-  const loadGallery = async () => {
+  const loadGallery = async (forceFresh = false) => {
     try {
       setGalleryLoading(true);
-      const data = await api.getGallery();
+      const data = await api.getGallery("all", forceFresh);
       setGalleryItems(data || []);
     } catch (err) {
       console.error("Failed to load gallery:", err);
     } finally {
       setGalleryLoading(false);
+    }
+  };
+
+  const handleCoordinatorRefresh = async () => {
+    try {
+      setCoordinatorRefreshing(true);
+      if (activeTab === "my-account") {
+        await loadMyAccount(true);
+      } else if (activeTab === "gallery") {
+        await loadGallery(true);
+      } else {
+        await loadAdminData(true);
+      }
+    } catch (err) {
+      console.warn("Coordinator refresh note:", err);
+    } finally {
+      setCoordinatorRefreshing(false);
     }
   };
 
@@ -402,6 +440,12 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase">
                   Approved Admin
                 </span>
+                {(user?.volunteer_domain || user?.akv_dept) && (
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-red-100 text-kar-red border border-red-200 uppercase flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-kar-red" />
+                    <span>{user?.volunteer_domain || user?.akv_dept} Lead</span>
+                  </span>
+                )}
               </div>
               <p className="text-xs text-stone-500">
                 Acharya Kannada Vedike • {user?.name || "Admin Coordinator"}
@@ -419,6 +463,17 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
                 <span>Super Admin Portal</span>
               </button>
             )}
+
+            <button
+              type="button"
+              onClick={handleCoordinatorRefresh}
+              disabled={coordinatorRefreshing || loading || myAccountLoading || galleryLoading}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-stone-700 bg-white border border-stone-200 rounded-xl hover:bg-stone-50 transition-colors shadow-xs cursor-pointer disabled:opacity-50"
+              title="Refresh Coordinator Data"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-kar-red ${coordinatorRefreshing ? "animate-spin" : ""}`} />
+              <span className="hidden sm:inline">Refresh</span>
+            </button>
 
             <button
               onClick={onNavigateHome}
@@ -543,6 +598,7 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
             attendanceData={myAccountData}
             loading={myAccountLoading}
             error={myAccountError}
+            onRefresh={() => loadMyAccount(true)}
           />
         )}
 
@@ -572,12 +628,24 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
                   )}
                 </div>
                 <p className="text-xs text-stone-500 mt-0.5">
-                  Official server-timestamped Check-In and Check-Out. Two markings per participant per day.
+                  {(user?.volunteer_domain || user?.akv_dept)
+                    ? `Marking attendance for ${user.volunteer_domain || user.akv_dept} Domain Volunteers. Two markings per volunteer per day.`
+                    : "Official server-timestamped Check-In and Check-Out. Two markings per participant per day."}
                 </p>
               </div>
 
               {/* Action Buttons */}
               <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => loadAdminData(true)}
+                  disabled={loading}
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold text-stone-700 bg-stone-100 hover:bg-stone-200 border border-stone-200 flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer shadow-2xs"
+                  title="Refresh Attendance Roster and Counts"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-kar-red" : ""}`} />
+                  <span>Refresh Roster</span>
+                </button>
 
                 {attendanceSession.is_submitted ? (
                   <div className="px-3.5 py-2 rounded-xl text-xs font-bold text-stone-500 bg-stone-100 border border-stone-200 flex items-center gap-1.5 cursor-not-allowed">
@@ -736,19 +804,23 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
                   ))}
                 </select>
 
-                <select
-                  value={akvDeptFilter}
-                  onChange={(e) => setAkvDeptFilter(e.target.value)}
-                  className="py-1.5 px-2.5 rounded-xl border border-stone-300 text-xs bg-white font-bold text-stone-700"
-                >
-                  <option value="all">All AKV Teams</option>
-                  <option value="Promotion">Promotion</option>
-                  <option value="Stage">Stage</option>
-                  <option value="Hospitality">Hospitality</option>
-                  <option value="Discipline">Discipline</option>
-                  <option value="Cultural">Cultural</option>
-                  <option value="Technical">Technical</option>
-                </select>
+                {role !== "SUPERADMIN" && (user?.volunteer_domain || user?.akv_dept) ? (
+                  <div className="py-1.5 px-3 rounded-xl border border-kar-red/30 bg-red-50 text-xs font-bold text-kar-red flex items-center gap-1.5 shadow-2xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-kar-red animate-pulse" />
+                    <span>Domain: {user?.volunteer_domain || user?.akv_dept}</span>
+                  </div>
+                ) : (
+                  <select
+                    value={akvDeptFilter}
+                    onChange={(e) => setAkvDeptFilter(e.target.value)}
+                    className="py-1.5 px-2.5 rounded-xl border border-stone-300 text-xs bg-white font-bold text-stone-700"
+                  >
+                    <option value="all">All AKV Domains</option>
+                    {AKV_DOMAINS.map((dom) => (
+                      <option key={dom} value={dom}>{dom}</option>
+                    ))}
+                  </select>
+                )}
 
                 <select
                   value={statusFilter}
@@ -763,16 +835,17 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
 
                 <button
                   type="button"
-                  onClick={() => loadAttendanceRoster()}
-                  className="p-1.5 rounded-xl border border-stone-300 text-stone-600 hover:bg-stone-50 cursor-pointer"
-                  title="Refresh Roster"
+                  onClick={() => loadAdminData(true)}
+                  disabled={loading}
+                  className="p-1.5 rounded-xl border border-stone-300 text-stone-600 hover:bg-stone-50 cursor-pointer disabled:opacity-50"
+                  title="Refresh Roster and Statistics"
                 >
-                  <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+                  <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-kar-red" : ""}`} />
                 </button>
               </div>
 
               <div className="text-xs text-stone-500 font-medium whitespace-nowrap">
-                Showing <strong>{attendanceRoster.length}</strong> participants
+                Showing <strong>{attendanceRoster.length}</strong> {role !== "SUPERADMIN" && (user?.volunteer_domain || user?.akv_dept) ? "domain volunteers" : "participants"}
               </div>
             </div>
 
@@ -780,7 +853,11 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
             {attendanceRoster.length === 0 ? (
               <div className="text-center py-12 space-y-2 bg-stone-50/50 rounded-2xl border border-stone-100 max-w-4xl xl:max-w-5xl">
                 <Users className="w-9 h-9 text-stone-300 mx-auto" />
-                <p className="text-sm font-bold text-stone-700">No participants found</p>
+                <p className="text-sm font-bold text-stone-700">
+                  {role !== "SUPERADMIN" && (user?.volunteer_domain || user?.akv_dept)
+                    ? `No volunteers found in ${user.volunteer_domain || user.akv_dept} domain`
+                    : "No participants found"}
+                </p>
                 <p className="text-xs text-stone-500">
                   Try adjusting your search criteria or select a different department.
                 </p>
@@ -796,7 +873,9 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
                   </colgroup>
                   <thead className="bg-stone-50 text-stone-600 uppercase tracking-wider font-extrabold border-b border-stone-200">
                     <tr>
-                      <th className="py-2.5 px-3.5">Participant Name</th>
+                      <th className="py-2.5 px-3.5">
+                        {role !== "SUPERADMIN" && (user?.volunteer_domain || user?.akv_dept) ? "Volunteer Name" : "Participant Name"}
+                      </th>
                       <th className="py-2.5 px-3.5">AUID</th>
                       <th className="py-2.5 px-3.5">Status</th>
                       <th className="py-2.5 px-3.5 text-right">Attendance Action</th>
@@ -811,6 +890,11 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
                         <tr key={p.user_id} className="hover:bg-stone-50/80 transition-colors">
                           <td className="py-2.5 px-3.5 font-bold text-stone-900 truncate" title={p.name}>
                             <span className="font-bold text-stone-900 block truncate text-sm">{p.name}</span>
+                            {p.akv_dept && p.akv_dept !== "--" && (
+                              <span className="text-[10px] text-kar-red font-semibold block truncate">
+                                {p.akv_dept}
+                              </span>
+                            )}
                           </td>
                           <td className="py-2.5 px-3.5 font-mono text-stone-800 font-bold text-sm truncate" title={p.auid}>
                             {p.auid}
@@ -1108,10 +1192,12 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
                 </div>
                 <button
                   type="button"
-                  onClick={loadGallery}
-                  className="px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-xs font-bold text-stone-700 flex items-center gap-1.5 cursor-pointer"
+                  onClick={() => loadGallery(true)}
+                  disabled={galleryLoading}
+                  className="px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-xs font-bold text-stone-700 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  title="Refresh Cultural Gallery"
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 ${galleryLoading ? "animate-spin" : ""}`} />
+                  <RefreshCw className={`w-3.5 h-3.5 ${galleryLoading ? "animate-spin text-kar-red" : ""}`} />
                   <span>Refresh</span>
                 </button>
               </div>
@@ -1174,8 +1260,16 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
 
         {/* Submit Attendance Confirmation Modal */}
         {showSubmitModal && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full border border-stone-200 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200 relative">
+          <div 
+            role="dialog"
+            aria-modal="true"
+            className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
+            onClick={() => setShowSubmitModal(false)}
+          >
+            <div 
+              className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full border border-stone-200 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200 relative my-auto max-h-[92vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
               <button
                 type="button"
                 onClick={() => setShowSubmitModal(false)}

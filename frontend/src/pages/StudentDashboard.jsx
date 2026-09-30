@@ -23,7 +23,8 @@ import {
   ChevronRight,
   QrCode,
   X,
-  Plus
+  Plus,
+  RefreshCw
 } from "lucide-react";
 
 export const StudentDashboard = ({ onNavigateHome }) => {
@@ -33,6 +34,7 @@ export const StudentDashboard = ({ onNavigateHome }) => {
   const [dashboardData, setDashboardData] = useState(() => api.getCachedStudentDashboard(user?.auid));
   const [eventsList, setEventsList] = useState(() => api.getCachedEvents("all", true));
   const [loading, setLoading] = useState(() => !api.hasCachedStudentDashboard(user?.auid));
+  const [refreshing, setRefreshing] = useState(false);
   const [registeringEventId, setRegisteringEventId] = useState(null);
   const [actionMessage, setActionMessage] = useState({ type: "", text: "" });
   
@@ -57,14 +59,14 @@ export const StudentDashboard = ({ onNavigateHome }) => {
   const [pwLoading, setPwLoading] = useState(false);
   const [pwMessage, setPwMessage] = useState({ type: "", text: "" });
 
-  const loadData = async () => {
+  const loadData = async (forceFresh = false) => {
     if (!dashboardData && !api.hasCachedStudentDashboard(user?.auid)) {
       setLoading(true);
     }
     try {
       const [dash, events] = await Promise.all([
-        api.getStudentDashboard(),
-        api.getEvents("all", true)
+        api.getStudentDashboard(forceFresh),
+        api.getEvents("all", true, forceFresh)
       ]);
       if (dash) setDashboardData(dash);
       if (events) setEventsList(events);
@@ -76,6 +78,20 @@ export const StudentDashboard = ({ onNavigateHome }) => {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    try {
+      setRefreshing(true);
+      await loadData(true);
+      setActionMessage({ type: "success", text: "Dashboard data refreshed successfully." });
+      setTimeout(() => setActionMessage({ type: "", text: "" }), 3000);
+    } catch (err) {
+      setActionMessage({ type: "error", text: "Failed to refresh dashboard data." });
+      setTimeout(() => setActionMessage({ type: "", text: "" }), 3000);
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -230,6 +246,17 @@ export const StudentDashboard = ({ onNavigateHome }) => {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={refreshing || loading}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-stone-700 bg-white border border-stone-200 rounded-xl hover:bg-stone-50 transition-colors shadow-xs cursor-pointer disabled:opacity-50"
+              title="Refresh Dashboard Data"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-kar-red ${refreshing || loading ? "animate-spin" : ""}`} />
+              <span className="hidden sm:inline">Refresh</span>
+            </button>
+
             <button
               onClick={onNavigateHome}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-stone-700 bg-white border border-stone-200 rounded-xl hover:bg-stone-50 transition-colors shadow-xs"
@@ -784,7 +811,12 @@ export const StudentDashboard = ({ onNavigateHome }) => {
         )}
 
         {activeTab === "my-profile" && (
-          <MyProfileAttendance profile={profile} attendanceData={dashboardData} loading={loading} />
+          <MyProfileAttendance
+            profile={profile}
+            attendanceData={dashboardData}
+            loading={refreshing || loading}
+            onRefresh={handleRefresh}
+          />
         )}
 
         {/* ==================================================== */}
@@ -873,9 +905,17 @@ export const StudentDashboard = ({ onNavigateHome }) => {
 
       {/* Team Registration Modal */}
       {teamModalEvent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 border border-stone-200 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-stone-100 pb-3 mb-4">
+        <div 
+          role="dialog" 
+          aria-modal="true" 
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/70 backdrop-blur-sm animate-fade-in overflow-y-auto"
+          onClick={() => setTeamModalEvent(null)}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-lg w-full p-6 border border-stone-200 shadow-2xl my-auto max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-stone-100 pb-3 mb-4 shrink-0">
               <div>
                 <h3 className="font-extrabold text-base text-stone-900">
                   Team Registration: {teamModalEvent.title_en}
@@ -890,7 +930,7 @@ export const StudentDashboard = ({ onNavigateHome }) => {
               </button>
             </div>
 
-            <form onSubmit={handleTeamRegisterSubmit} className="space-y-4">
+            <form onSubmit={handleTeamRegisterSubmit} className="space-y-4 overflow-y-auto flex-1 pr-1">
               <div>
                 <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
                   Team Name *
@@ -981,8 +1021,16 @@ export const StudentDashboard = ({ onNavigateHome }) => {
 
       {/* Digital Pass Viewer Modal */}
       {viewingPassReg && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-fade-in overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-4 sm:p-6 border border-stone-200 shadow-2xl relative my-auto">
+        <div 
+          role="dialog" 
+          aria-modal="true" 
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/75 backdrop-blur-sm animate-fade-in overflow-y-auto"
+          onClick={() => setViewingPassReg(null)}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-xl w-full p-4 sm:p-6 border border-stone-200 shadow-2xl relative my-auto max-h-[92vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
               onClick={() => setViewingPassReg(null)}
               className="absolute top-4 right-4 p-2 rounded-full bg-stone-100 text-stone-600 hover:bg-stone-200 z-10"

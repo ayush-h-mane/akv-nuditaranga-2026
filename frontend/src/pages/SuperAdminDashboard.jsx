@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useModalAlert } from "../context/ModalAlertContext";
 import { api } from "../services/api";
+import { siteConfig } from "../config/siteConfig";
 import {
   ShieldAlert,
   Users,
@@ -64,13 +65,20 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
   const [studentsData, setStudentsData] = useState({ total: 0, students: [] });
   const [volunteersList, setVolunteersList] = useState([]);
   const [attendanceData, setAttendanceData] = useState({ records: [], available_dates: [] });
-  const [eventsList, setEventsList] = useState([]);
-  const [festivalSchedule, setFestivalSchedule] = useState([]);
+  const [eventsList, setEventsList] = useState(() => api.getCachedEvents("all", false));
+  const [festivalSchedule, setFestivalSchedule] = useState(() => api.getCachedFestivalSchedule()?.schedule || siteConfig.festival?.schedule || []);
   const [scheduleSaving, setScheduleSaving] = useState(false);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
   const [auditLogs, setAuditLogs] = useState([]);
+  const [auditLogsLoading, setAuditLogsLoading] = useState(false);
+  const [adminsLoading, setAdminsLoading] = useState(false);
+  const [studentsLoading, setStudentsLoading] = useState(false);
+  const [volunteersLoading, setVolunteersLoading] = useState(false);
+  const [eventsLoading, setEventsLoading] = useState(false);
+  const [isMasterRefreshing, setIsMasterRefreshing] = useState(false);
 
   // Major Activities State (v2.1.0)
-  const [activitiesList, setActivitiesList] = useState([]);
+  const [activitiesList, setActivitiesList] = useState(() => api.getCachedActivities("all", false));
   const [activitiesLoading, setActivitiesLoading] = useState(false);
   const [activityModal, setActivityModal] = useState(null); // null, "new", "edit"
   const [currentActivity, setCurrentActivity] = useState({
@@ -83,7 +91,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
   });
 
   // Reels & Social Posts State (v2.1.0)
-  const [reelsList, setReelsList] = useState([]);
+  const [reelsList, setReelsList] = useState(() => api.getCachedReels("all"));
   const [reelsLoading, setReelsLoading] = useState(false);
   const [reelModal, setReelModal] = useState(null); // null, "new", "edit"
   const [currentReel, setCurrentReel] = useState({
@@ -119,8 +127,18 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
   const [eventRegFilter, setEventRegFilter] = useState("all");
 
   // Official Multi-Day Attendance State (v2.1.2)
-  const [attendanceConfigDates, setAttendanceConfigDates] = useState([]);
-  const [selectedOfficialDate, setSelectedOfficialDate] = useState("");
+  const [attendanceConfigDates, setAttendanceConfigDates] = useState(() => {
+    const cached = api.getCachedAttendanceConfigDates();
+    return cached?.dates || [];
+  });
+  const [selectedOfficialDate, setSelectedOfficialDate] = useState(() => {
+    const cached = api.getCachedAttendanceConfigDates();
+    if (cached?.dates && cached.dates.length > 0) {
+      const todayItem = cached.dates.find(d => d.is_today);
+      return todayItem ? todayItem.date : (cached.current_date || cached.dates[0]?.date || "");
+    }
+    return "";
+  });
   const [officialAttendanceRoster, setOfficialAttendanceRoster] = useState([]);
   const [officialAttendanceSession, setOfficialAttendanceSession] = useState({
     is_submitted: false,
@@ -148,12 +166,15 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
   const [officialExportLoading, setOfficialExportLoading] = useState(false);
   const [csvExportLoading, setCsvExportLoading] = useState(false);
 
-  const loadFestivalSchedule = async () => {
+  const loadFestivalSchedule = async (forceFresh = false) => {
     try {
-      const data = await api.getFestivalSchedule();
+      setScheduleLoading(true);
+      const data = await api.getFestivalSchedule(forceFresh);
       setFestivalSchedule(data.schedule || []);
     } catch (err) {
       notify("error", err.message || "Unable to load Karunada Vaibhava schedule.");
+    } finally {
+      setScheduleLoading(false);
     }
   };
 
@@ -252,49 +273,58 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
   };
 
   // Load section-specific data
-  const loadStats = async () => {
+  const loadStats = async (forceFresh = false) => {
     try {
-      const res = await api.getSuperAdminStats();
+      const res = await api.getSuperAdminStats(forceFresh);
       if (res.success) setMetrics(res.metrics);
     } catch (e) {
       console.error(e);
     }
   };
 
-  const loadAdmins = async () => {
+  const loadAdmins = async (forceFresh = false) => {
     try {
-      const data = await api.listAdmins();
+      setAdminsLoading(true);
+      const data = await api.listAdmins(forceFresh);
       setAdminsList(data);
     } catch (e) {
       console.error(e);
+    } finally {
+      setAdminsLoading(false);
     }
   };
 
-  const loadStudents = async () => {
+  const loadStudents = async (forceFresh = false) => {
     try {
+      setStudentsLoading(true);
       const data = await api.listStudents({
         search: studentSearch,
         role: studentRoleFilter
-      });
+      }, forceFresh);
       setStudentsData(data);
     } catch (e) {
       console.error(e);
+    } finally {
+      setStudentsLoading(false);
     }
   };
 
-  const loadVolunteers = async () => {
+  const loadVolunteers = async (forceFresh = false) => {
     try {
-      const data = await api.listAllVolunteers();
+      setVolunteersLoading(true);
+      const data = await api.listAllVolunteers(forceFresh);
       setVolunteersList(data);
     } catch (e) {
       console.error(e);
+    } finally {
+      setVolunteersLoading(false);
     }
   };
 
-  const loadIdCards = async (search = idCardSearch) => {
+  const loadIdCards = async (search = idCardSearch, forceFresh = false) => {
     try {
       setIdCardsLoading(true);
-      const data = await api.getSuperAdminIdCards(search);
+      const data = await api.getSuperAdminIdCards(search, forceFresh);
       setIdCardRecords(data.cards || []);
     } catch (err) {
       notify("error", err.message || "Failed to load ID cards.");
@@ -303,12 +333,12 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
     }
   };
 
-  const loadOfficialAttendance = async (dateOverride = null) => {
+  const loadOfficialAttendance = async (dateOverride = null, forceFresh = false) => {
     try {
       setAttendanceActionLoading(true);
       let activeDate = dateOverride || selectedOfficialDate;
       if (!activeDate) {
-        const datesRes = await api.getAttendanceConfigDates();
+        const datesRes = await api.getAttendanceConfigDates(forceFresh);
         if (datesRes && datesRes.dates) {
           setAttendanceConfigDates(datesRes.dates);
           const todayItem = datesRes.dates.find(d => d.is_today);
@@ -324,7 +354,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
         department: attendanceDeptFilter !== "all" ? attendanceDeptFilter : "",
         akv_dept: attendanceAkvDeptFilter !== "all" ? attendanceAkvDeptFilter : "",
         status_filter: attendanceStatusFilter !== "all" ? attendanceStatusFilter : ""
-      });
+      }, forceFresh);
 
       if (res && res.success) {
         setOfficialAttendanceRoster(res.participants || []);
@@ -349,25 +379,25 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
     }
   };
 
-  const loadAttendance = async (dateOverride = null) => {
-    loadOfficialAttendance(dateOverride);
+  const loadAttendance = async (dateOverride = null, forceFresh = false) => {
+    loadOfficialAttendance(dateOverride, forceFresh);
     try {
       const data = await api.getSuperAdminAttendance({
         date: attendanceDateFilter || "all",
         department: attendanceDeptFilter !== "all" ? attendanceDeptFilter : ""
-      });
+      }, forceFresh);
       setAttendanceData(data);
     } catch (e) {
       console.error(e);
     }
   };
 
-  const loadWcAttendance = async (dateOverride = null) => {
+  const loadWcAttendance = async (dateOverride = null, forceFresh = false) => {
     try {
       setWcActionLoading(true);
       let activeDate = dateOverride || selectedOfficialDate;
       if (!activeDate) {
-        const datesRes = await api.getAttendanceConfigDates().catch(() => null);
+        const datesRes = await api.getAttendanceConfigDates(forceFresh).catch(() => null);
         if (datesRes && datesRes.dates) {
           setAttendanceConfigDates(datesRes.dates);
           const todayItem = datesRes.dates.find(d => d.is_today);
@@ -383,11 +413,11 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
           search: wcSearchQuery,
           role_filter: wcRoleFilter !== "all" ? wcRoleFilter : "",
           status_filter: wcStatusFilter !== "all" ? wcStatusFilter : ""
-        }).catch(err => {
+        }, forceFresh).catch(err => {
           console.error("WC attendance fetch error:", err);
           return null;
         }),
-        api.getWorkingCommitteeStats(activeDate).catch(() => null)
+        api.getWorkingCommitteeStats(activeDate, forceFresh).catch(() => null)
       ]);
 
       if (wcRes && wcRes.success) {
@@ -416,21 +446,25 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
     }
   };
 
-  const loadEvents = async () => {
+  const loadEvents = async (forceFresh = false) => {
     try {
-      const data = await api.getEvents("all", false);
+      setEventsLoading(true);
+      const data = await api.getEvents("all", false, forceFresh);
       setEventsList(data);
     } catch (e) {
       console.error(e);
+    } finally {
+      setEventsLoading(false);
     }
   };
 
-  const loadAuditLogs = async () => {
+  const loadAuditLogs = async (forceFresh = false) => {
     try {
+      setAuditLogsLoading(true);
       const [generalLogs, attendanceAuditRes, wcAuditRes] = await Promise.all([
-        api.getAuditLogs({ action: auditActionFilter !== "all" ? auditActionFilter : "" }).catch(() => []),
-        api.getAttendanceAudit().catch(() => ({ audit_logs: [] })),
-        api.getWorkingCommitteeAudit().catch(() => ({ audit_logs: [] }))
+        api.getAuditLogs({ action: auditActionFilter !== "all" ? auditActionFilter : "" }, forceFresh).catch(() => []),
+        api.getAttendanceAudit({}, forceFresh).catch(() => ({ audit_logs: [] })),
+        api.getWorkingCommitteeAudit({}, forceFresh).catch(() => ({ audit_logs: [] }))
       ]);
       setAuditLogs(generalLogs || []);
       setAttendanceAuditLogs([
@@ -439,13 +473,15 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
       ].sort((a, b) => String(b.modified_at_ist || "").localeCompare(String(a.modified_at_ist || ""))));
     } catch (e) {
       console.error(e);
+    } finally {
+      setAuditLogsLoading(false);
     }
   };
 
-  const loadActivities = async () => {
+  const loadActivities = async (forceFresh = false) => {
     try {
       setActivitiesLoading(true);
-      const data = await api.getActivities("all", false);
+      const data = await api.getActivities("all", false, forceFresh);
       setActivitiesList(data || []);
     } catch (e) {
       console.error("Error loading activities:", e);
@@ -454,10 +490,10 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
     }
   };
 
-  const loadReels = async () => {
+  const loadReels = async (forceFresh = false) => {
     try {
       setReelsLoading(true);
-      const data = await api.getReels("all");
+      const data = await api.getReels("all", forceFresh);
       setReelsList(data || []);
     } catch (e) {
       console.error("Error loading reels:", e);
@@ -466,13 +502,13 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
     }
   };
 
-  const loadEventRegistrations = async () => {
+  const loadEventRegistrations = async (forceFresh = false) => {
     try {
       setEventRegLoading(true);
       const params = {};
       if (eventRegFilter && eventRegFilter !== "all") params.event_id = eventRegFilter;
       if (eventRegSearch) params.search = eventRegSearch;
-      const data = await api.listRegistrations(params);
+      const data = await api.listRegistrations(params, forceFresh);
       setEventRegistrations(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error("Error loading event registrations:", e);
@@ -481,21 +517,42 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
     }
   };
 
+  const loadMyAccount = async (forceFresh = false) => {
+    setMyAccountLoading(true);
+    setMyAccountError("");
+    try {
+      const data = await api.getStudentDashboard(forceFresh);
+      setMyAccountData(data);
+    } catch (err) {
+      setMyAccountError(err.message || "Could not load your profile and attendance.");
+    } finally {
+      setMyAccountLoading(false);
+    }
+  };
+
   // Master refresh depending on active section
-  const refreshCurrentSection = () => {
-    if (activeSection === "overview") loadStats();
-    else if (activeSection === "admins") { loadStats(); loadAdmins(); }
-    else if (activeSection === "activities") loadActivities();
-    else if (activeSection === "reels") loadReels();
-    else if (activeSection === "students") loadStudents();
-    else if (activeSection === "event-registrations") { loadEvents(); loadEventRegistrations(); }
-    else if (activeSection === "volunteers") loadVolunteers();
-    else if (activeSection === "attendance") loadAttendance();
-    else if (activeSection === "working-committee") loadWcAttendance();
-    else if (activeSection === "events" || activeSection === "exports") loadEvents();
-    else if (activeSection === "id-cards") loadIdCards();
-    else if (activeSection === "festival-schedule") loadFestivalSchedule();
-    else if (activeSection === "audit-logs") loadAuditLogs();
+  const refreshCurrentSection = async (forceFresh = false) => {
+    if (forceFresh) setIsMasterRefreshing(true);
+    try {
+      if (activeSection === "overview") await loadStats(forceFresh);
+      else if (activeSection === "my-account") await loadMyAccount(forceFresh);
+      else if (activeSection === "admins") { await Promise.all([loadStats(forceFresh), loadAdmins(forceFresh)]); }
+      else if (activeSection === "activities") await loadActivities(forceFresh);
+      else if (activeSection === "reels") await loadReels(forceFresh);
+      else if (activeSection === "students") await loadStudents(forceFresh);
+      else if (activeSection === "event-registrations") { await Promise.all([loadEvents(forceFresh), loadEventRegistrations(forceFresh)]); }
+      else if (activeSection === "volunteers") await loadVolunteers(forceFresh);
+      else if (activeSection === "attendance") await loadAttendance(null, forceFresh);
+      else if (activeSection === "working-committee") await loadWcAttendance(null, forceFresh);
+      else if (activeSection === "events" || activeSection === "exports") await loadEvents(forceFresh);
+      else if (activeSection === "id-cards") await loadIdCards(idCardSearch, forceFresh);
+      else if (activeSection === "festival-schedule") await loadFestivalSchedule(forceFresh);
+      else if (activeSection === "audit-logs") await loadAuditLogs(forceFresh);
+    } catch (err) {
+      console.warn("Master refresh error:", err);
+    } finally {
+      if (forceFresh) setIsMasterRefreshing(false);
+    }
   };
 
   useEffect(() => {
@@ -503,13 +560,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
   }, [activeSection, studentRoleFilter, attendanceDateFilter, attendanceDeptFilter, auditActionFilter, wcRoleFilter, wcStatusFilter, eventRegFilter]);
 
   useEffect(() => {
-    let mounted = true;
-    setMyAccountLoading(true);
-    api.getStudentDashboard()
-      .then((data) => { if (mounted) setMyAccountData(data); })
-      .catch((err) => { if (mounted) setMyAccountError(err.message || "Could not load your profile and attendance."); })
-      .finally(() => { if (mounted) setMyAccountLoading(false); });
-    return () => { mounted = false; };
+    loadMyAccount();
   }, []);
 
   useEffect(() => {
@@ -1088,26 +1139,27 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
       {/* Super Admin Top Banner */}
       <header className="bg-stone-900 text-white border-b border-stone-800 sticky top-0 z-30 shadow-md">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-kar-red to-red-700 flex items-center justify-center text-white shadow-md">
-              <ShieldAlert className="w-6 h-6 text-amber-300" />
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-kar-red to-red-700 flex items-center justify-center text-white shadow-xs">
+              <ShieldAlert className="w-5 h-5 text-amber-300" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-extrabold text-sm sm:text-base tracking-tight">
-                  SUPER ADMIN PORTAL
-                </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-red-950 text-amber-300 border border-red-800 uppercase">
-                  Highest Authority
-                </span>
-              </div>
-              <p className="text-[11px] text-stone-400">
-                Acharya Kannada Vedike • Nuditaranga 2026 Core Control Center
-              </p>
-            </div>
+            <span className="font-extrabold text-base tracking-tight text-white">
+              Superadmin Portal
+            </span>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={() => refreshCurrentSection(true)}
+              disabled={isMasterRefreshing}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-stone-200 bg-stone-800 hover:bg-stone-700 rounded-xl transition-colors cursor-pointer disabled:opacity-50"
+              title="Refresh Current Section"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-amber-400 ${isMasterRefreshing ? "animate-spin" : ""}`} />
+              <span className="hidden sm:inline">Refresh</span>
+            </button>
+
             <button
               onClick={onNavigateHome}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-stone-300 bg-stone-800 hover:bg-stone-700 rounded-xl transition-colors"
@@ -1497,11 +1549,13 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                     </div>
 
                     <button
-                      onClick={loadAdmins}
-                      className="p-2 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 cursor-pointer"
+                      type="button"
+                      onClick={() => loadAdmins(true)}
+                      disabled={adminsLoading}
+                      className="p-2 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 cursor-pointer disabled:opacity-50"
                       title="Refresh List"
                     >
-                      <RefreshCw className="w-4 h-4" />
+                      <RefreshCw className={`w-4 h-4 ${adminsLoading ? "animate-spin text-kar-red" : ""}`} />
                     </button>
                   </div>
                 </div>
@@ -1679,11 +1733,13 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={loadActivities}
-                    className="p-2 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 cursor-pointer"
+                    type="button"
+                    onClick={() => loadActivities(true)}
+                    disabled={activitiesLoading}
+                    className="p-2 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 cursor-pointer disabled:opacity-50"
                     title="Refresh List"
                   >
-                    <RefreshCw className={`w-4 h-4 ${activitiesLoading ? "animate-spin" : ""}`} />
+                    <RefreshCw className={`w-4 h-4 ${activitiesLoading ? "animate-spin text-kar-red" : ""}`} />
                   </button>
                   <button
                     onClick={() => {
@@ -1799,11 +1855,13 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={loadReels}
-                    className="p-2 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 cursor-pointer"
+                    type="button"
+                    onClick={() => loadReels(true)}
+                    disabled={reelsLoading}
+                    className="p-2 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 cursor-pointer disabled:opacity-50"
                     title="Refresh List"
                   >
-                    <RefreshCw className={`w-4 h-4 ${reelsLoading ? "animate-spin" : ""}`} />
+                    <RefreshCw className={`w-4 h-4 ${reelsLoading ? "animate-spin text-kar-red" : ""}`} />
                   </button>
                   <button
                     onClick={() => {
@@ -1965,10 +2023,13 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                   </select>
 
                   <button
-                    onClick={loadStudents}
-                    className="p-1.5 rounded-xl border border-stone-300 text-stone-600 hover:bg-stone-50"
+                    type="button"
+                    onClick={() => loadStudents(true)}
+                    disabled={studentsLoading}
+                    className="p-1.5 rounded-xl border border-stone-300 text-stone-600 hover:bg-stone-50 cursor-pointer disabled:opacity-50"
+                    title="Refresh Student Directory"
                   >
-                    <RefreshCw className="w-4 h-4" />
+                    <RefreshCw className={`w-4 h-4 ${studentsLoading ? "animate-spin text-kar-red" : ""}`} />
                   </button>
                 </div>
               </div>
@@ -2102,12 +2163,13 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                   </select>
 
                   <button
-                    onClick={loadEventRegistrations}
+                    type="button"
+                    onClick={() => loadEventRegistrations(true)}
                     disabled={eventRegLoading}
-                    className="p-1.5 rounded-xl border border-stone-300 text-stone-600 hover:bg-stone-50 cursor-pointer"
+                    className="p-1.5 rounded-xl border border-stone-300 text-stone-600 hover:bg-stone-50 cursor-pointer disabled:opacity-50"
                     title="Refresh Registrations"
                   >
-                    <RefreshCw className={`w-4 h-4 ${eventRegLoading ? "animate-spin" : ""}`} />
+                    <RefreshCw className={`w-4 h-4 ${eventRegLoading ? "animate-spin text-kar-red" : ""}`} />
                   </button>
                 </div>
               </div>
@@ -2219,10 +2281,13 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                   </p>
                 </div>
                 <button
-                  onClick={loadVolunteers}
-                  className="p-2 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 self-start"
+                  type="button"
+                  onClick={() => loadVolunteers(true)}
+                  disabled={volunteersLoading}
+                  className="p-2 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 cursor-pointer disabled:opacity-50 self-start"
+                  title="Refresh Volunteer Directory"
                 >
-                  <RefreshCw className="w-4 h-4" />
+                  <RefreshCw className={`w-4 h-4 ${volunteersLoading ? "animate-spin text-kar-red" : ""}`} />
                 </button>
               </div>
 
@@ -2503,11 +2568,12 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
                   <button
                     type="button"
-                    onClick={() => loadOfficialAttendance()}
-                    className="p-1.5 rounded-xl border border-stone-300 text-stone-600 hover:bg-stone-50 cursor-pointer"
-                    title="Refresh Roster"
+                    onClick={() => loadAttendance(null, true)}
+                    disabled={attendanceActionLoading}
+                    className="p-1.5 rounded-xl border border-stone-300 text-stone-600 hover:bg-stone-50 cursor-pointer disabled:opacity-50"
+                    title="Refresh Attendance Roster & Statistics"
                   >
-                    <RefreshCw className={`w-4 h-4 ${attendanceActionLoading ? "animate-spin" : ""}`} />
+                    <RefreshCw className={`w-4 h-4 ${attendanceActionLoading ? "animate-spin text-kar-red" : ""}`} />
                   </button>
                 </div>
 
@@ -2684,11 +2750,13 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                   </button>
 
                   <button
-                    onClick={() => loadWcAttendance()}
-                    className="p-2 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 cursor-pointer"
-                    title="Refresh List"
+                    type="button"
+                    onClick={() => loadWcAttendance(null, true)}
+                    disabled={wcActionLoading}
+                    className="p-2 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 cursor-pointer disabled:opacity-50"
+                    title="Refresh Working Committee Roster & Stats"
                   >
-                    <RefreshCw className="w-4 h-4" />
+                    <RefreshCw className={`w-4 h-4 ${wcActionLoading ? "animate-spin text-purple-600" : ""}`} />
                   </button>
                 </div>
               </div>
@@ -3025,8 +3093,15 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
               <div className="flex items-center justify-between text-xs text-stone-500">
                 <span>{idCardsLoading ? "Loading ID cards…" : `${idCardRecords.length} ID card records`}</span>
-                <button type="button" onClick={() => loadIdCards()} disabled={idCardsLoading} className="inline-flex items-center gap-1.5 rounded-lg border border-stone-300 px-3 py-1.5 font-bold hover:bg-stone-50 disabled:opacity-50">
-                  <RefreshCw className={`h-3.5 w-3.5 ${idCardsLoading ? "animate-spin" : ""}`} />Refresh
+                <button
+                  type="button"
+                  onClick={() => loadIdCards(idCardSearch, true)}
+                  disabled={idCardsLoading}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-stone-300 px-3 py-1.5 font-bold hover:bg-stone-50 disabled:opacity-50 cursor-pointer"
+                  title="Refresh ID Cards"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${idCardsLoading ? "animate-spin text-kar-red" : ""}`} />
+                  <span>Refresh</span>
                 </button>
               </div>
 
@@ -3078,6 +3153,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
               attendanceData={myAccountData}
               loading={myAccountLoading}
               error={myAccountError}
+              onRefresh={() => loadMyAccount(true)}
             />
           )}
 
@@ -3201,13 +3277,25 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                   <p className="text-xs text-stone-500">Enable/disable events, adjust slots, venues, and timings</p>
                 </div>
 
-                <button
-                  onClick={() => setEventModal("new")}
-                  className="px-3.5 py-2 rounded-xl bg-kar-red text-white text-xs font-bold shadow-xs flex items-center gap-1.5 self-start"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Create New Event</span>
-                </button>
+                <div className="flex items-center gap-2 self-start">
+                  <button
+                    type="button"
+                    onClick={() => loadEvents(true)}
+                    disabled={eventsLoading}
+                    className="p-2 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 cursor-pointer disabled:opacity-50"
+                    title="Refresh Events"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${eventsLoading ? "animate-spin text-kar-red" : ""}`} />
+                  </button>
+
+                  <button
+                    onClick={() => setEventModal("new")}
+                    className="px-3.5 py-2 rounded-xl bg-kar-red text-white text-xs font-bold shadow-xs flex items-center gap-1.5"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Create New Event</span>
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -3281,7 +3369,16 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                   <h3 className="font-extrabold text-base text-stone-900">Karunada Vaibhava Schedule</h3>
                   <p className="text-xs text-stone-500">Change each public programme’s date, time, title and location.</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => loadFestivalSchedule(true)}
+                    disabled={scheduleLoading}
+                    className="p-2.5 rounded-xl border border-stone-300 text-stone-700 hover:bg-stone-50 cursor-pointer disabled:opacity-50"
+                    title="Refresh Schedule"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${scheduleLoading ? "animate-spin text-kar-red" : ""}`} />
+                  </button>
                   <button onClick={() => setFestivalSchedule((items) => [...items, { day: `DAY ${String(items.length + 1).padStart(2, "0")}`, dayKn: `ದಿನ ${String(items.length + 1).padStart(2, "0")}`, date: "", dateKn: "", title: "New programme", titleKn: "ಹೊಸ ಕಾರ್ಯಕ್ರಮ", tag: "", tagKn: "", descEn: "", descKn: "", venue: "", venueEn: "", venueKn: "", timeEn: "", timeKn: "" }])} className="px-4 py-2.5 rounded-xl border border-stone-300 text-stone-700 text-xs font-bold">Add Event</button>
                   <button onClick={saveFestivalSchedule} disabled={scheduleSaving || !festivalSchedule.length} className="px-4 py-2.5 rounded-xl bg-kar-red text-white text-xs font-bold disabled:opacity-50">
                     {scheduleSaving ? "Saving…" : "Save Schedule"}
@@ -3342,10 +3439,13 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                     </button>
                   </div>
                   <button
-                    onClick={loadAuditLogs}
-                    className="p-2 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 self-start cursor-pointer"
+                    type="button"
+                    onClick={() => loadAuditLogs(true)}
+                    disabled={auditLogsLoading}
+                    className="p-2 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 self-start cursor-pointer disabled:opacity-50"
+                    title="Refresh Audit Logs"
                   >
-                    <RefreshCw className="w-4 h-4" />
+                    <RefreshCw className={`w-4 h-4 ${auditLogsLoading ? "animate-spin text-kar-red" : ""}`} />
                   </button>
                 </div>
               </div>
@@ -3463,8 +3563,16 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
       {/* Edit Student Modal */}
       {editStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 border border-stone-200 shadow-2xl relative animate-fade-in">
+        <div 
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-xs overflow-y-auto"
+          onClick={() => setEditStudent(null)}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-md w-full p-6 border border-stone-200 shadow-2xl relative animate-fade-in my-auto max-h-[92vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between border-b border-stone-200 pb-3 mb-4">
               <h3 className="font-extrabold text-base text-stone-900">Edit Student Information</h3>
               <button
@@ -3556,8 +3664,16 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
       {/* Edit Attendance Record Modal */}
       {editAttendance && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 border border-stone-200 shadow-2xl relative animate-fade-in">
+        <div 
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-xs overflow-y-auto"
+          onClick={() => setEditAttendance(null)}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-sm w-full p-6 border border-stone-200 shadow-2xl relative animate-fade-in my-auto max-h-[92vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between border-b border-stone-200 pb-3 mb-4">
               <div>
                 <h3 className="font-extrabold text-base text-stone-900">Modify Attendance</h3>
@@ -3621,8 +3737,16 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
       {/* Log Attendance for Date Modal */}
       {markAttendanceModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 border border-stone-200 shadow-2xl relative animate-fade-in">
+        <div 
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-xs overflow-y-auto"
+          onClick={() => setMarkAttendanceModal(false)}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-sm w-full p-6 border border-stone-200 shadow-2xl relative animate-fade-in my-auto max-h-[92vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between border-b border-stone-200 pb-3 mb-4">
               <h3 className="font-extrabold text-base text-stone-900">Log Volunteer Attendance</h3>
               <button
@@ -4508,8 +4632,16 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
       {/* MODAL: UNLOCK ATTENDANCE SESSION                     */}
       {/* ==================================================== */}
       {unlockModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in relative">
+        <div 
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
+          onClick={() => setUnlockModal(null)}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in relative my-auto max-h-[92vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
               type="button"
               onClick={() => setUnlockModal(null)}
@@ -4572,8 +4704,16 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
       {/* MODAL: RESET ATTENDANCE RECORD                       */}
       {/* ==================================================== */}
       {resetModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in relative">
+        <div 
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
+          onClick={() => setResetModal(null)}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in relative my-auto max-h-[92vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
               type="button"
               onClick={() => setResetModal(null)}
@@ -4742,8 +4882,16 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
       {/* MODAL: UNLOCK WORKING COMMITTEE SESSION              */}
       {/* ==================================================== */}
       {wcUnlockModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in relative">
+        <div 
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
+          onClick={() => setWcUnlockModal(null)}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in relative my-auto max-h-[92vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
               type="button"
               onClick={() => setWcUnlockModal(null)}
@@ -4806,8 +4954,16 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
       {/* MODAL: RESET WORKING COMMITTEE ATTENDANCE RECORD     */}
       {/* ==================================================== */}
       {wcResetModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in relative">
+        <div 
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
+          onClick={() => setWcResetModal(null)}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in relative my-auto max-h-[92vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
               type="button"
               onClick={() => setWcResetModal(null)}
@@ -4870,8 +5026,16 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
       {/* MODAL: ADD / ASSIGN WORKING COMMITTEE MEMBER         */}
       {/* ==================================================== */}
       {wcAddMemberModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in">
+        <div 
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
+          onClick={() => setWcAddMemberModal(false)}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in my-auto max-h-[92vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-start justify-between border-b border-stone-100 pb-3">
               <div>
                 <h4 className="font-extrabold text-base text-stone-900">

@@ -11,32 +11,40 @@ export const EventsPage = ({ setCurrentView, setSelectedEventId }) => {
   const { lang, t } = useLanguage();
   const { user } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [events, setEvents] = useState(() => api.getCachedEvents("all"));
-  const [loading, setLoading] = useState(() => !api.hasCachedEvents("all"));
+  const [events, setEvents] = useState(() => api.getCachedEvents("all", true));
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [modalEvent, setModalEvent] = useState(null);
 
   useHistoryModal(Boolean(modalEvent), () => setModalEvent(null));
 
+  // Silent background revalidation: updates cards in-place without flashing spinners
   useEffect(() => {
-    fetchEvents(selectedCategory);
-  }, [selectedCategory]);
+    let isMounted = true;
+    api.getEvents("all", true)
+      .then((data) => {
+        if (isMounted && Array.isArray(data) && data.length > 0) {
+          setEvents(data);
+        }
+      })
+      .catch((err) => {
+        console.warn("Silent events refresh note:", err);
+      });
+    return () => { isMounted = false; };
+  }, []);
 
-  const fetchEvents = async (cat = selectedCategory) => {
-    const cached = api.getCachedEvents(cat);
-    if (cached && cached.length > 0) {
-      setEvents(cached);
-      setLoading(false);
-    } else {
-      setLoading(true);
-    }
+  const handleRefreshEvents = async () => {
     try {
-      const data = await api.getEvents(cat);
-      setEvents(data);
+      setRefreshing(true);
+      const data = await api.getEvents("all", true, true);
+      if (Array.isArray(data) && data.length > 0) {
+        setEvents(data);
+      }
     } catch (err) {
-      console.error("Failed to load events:", err);
+      console.warn("Manual events refresh note:", err);
     } finally {
-      setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -51,13 +59,20 @@ export const EventsPage = ({ setCurrentView, setSelectedEventId }) => {
   };
 
   const filteredEvents = events.filter((ev) => {
+    if (selectedCategory !== "all") {
+      const evCat = (ev.category || "").toLowerCase();
+      const selCat = selectedCategory.toLowerCase();
+      if (evCat !== selCat && !evCat.includes(selCat)) {
+        return false;
+      }
+    }
     const titleMatch = (lang === "kn" ? ev.title_kn : ev.title_en)
-      .toLowerCase()
+      ?.toLowerCase()
       .includes(searchQuery.toLowerCase());
     const descMatch = (lang === "kn" ? ev.description_kn : ev.description_en)
-      .toLowerCase()
+      ?.toLowerCase()
       .includes(searchQuery.toLowerCase());
-    return titleMatch || descMatch;
+    return Boolean(titleMatch || descMatch);
   });
 
   const categoryTabs = [
@@ -104,21 +119,33 @@ export const EventsPage = ({ setCurrentView, setSelectedEventId }) => {
             ))}
           </div>
 
-          {/* Search Input */}
-          <div className="relative w-full md:w-72">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t("events.searchPlaceholder")}
-              className="w-full pl-10 pr-4 py-2 rounded-xl border border-stone-300 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-kar-red/20 focus:border-kar-red"
-            />
+          {/* Search Input & Refresh Button */}
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <div className="relative w-full md:w-72">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={t("events.searchPlaceholder")}
+                className="w-full pl-10 pr-4 py-2 rounded-xl border border-stone-300 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-kar-red/20 focus:border-kar-red"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handleRefreshEvents}
+              disabled={refreshing}
+              className="p-2 rounded-xl border border-stone-300 text-stone-600 hover:bg-stone-50 cursor-pointer disabled:opacity-50 transition-colors shrink-0 shadow-2xs"
+              title={lang === "kn" ? "ಸ್ಪರ್ಧೆಗಳ ಪಟ್ಟಿಯನ್ನು ರಿಫ್ರೆಶ್ ಮಾಡಿ" : "Refresh competition list"}
+              aria-label={lang === "kn" ? "ಸ್ಪರ್ಧೆಗಳ ಪಟ್ಟಿಯನ್ನು ರಿಫ್ರೆಶ್ ಮಾಡಿ" : "Refresh competition list"}
+            >
+              <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin text-kar-red" : ""}`} />
+            </button>
           </div>
         </div>
 
         {/* Events Grid */}
-        {loading ? (
+        {loading && events.length === 0 ? (
           <div className="py-20 text-center">
             <RefreshCw className="w-8 h-8 text-kar-red animate-spin mx-auto mb-3" />
             <p className="text-sm font-bold text-stone-600">

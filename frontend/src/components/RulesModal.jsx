@@ -13,18 +13,20 @@ export const RulesModal = ({ event, isOpen, onClose, onRegister }) => {
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-[backdropFade_0.2s_ease-out_forwards] transition-opacity"
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/70 backdrop-blur-sm animate-[backdropFade_0.2s_ease-out_forwards] transition-opacity overflow-y-auto"
       onClick={onClose}
     >
       <div 
-        className="relative w-full max-w-xl bg-white rounded-3xl shadow-2xl border border-amber-200 overflow-hidden transform-gpu will-change-transform animate-[modalEnter_0.28s_cubic-bezier(0.16,1,0.3,1)_forwards]"
+        className="relative w-full max-w-xl bg-white rounded-3xl shadow-2xl border border-amber-200 overflow-hidden transform-gpu will-change-transform animate-[modalEnter_0.28s_cubic-bezier(0.16,1,0.3,1)_forwards] my-auto max-h-[92vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header Ribbon */}
-        <div className="h-2 karnataka-ribbon w-full" />
+        <div className="h-2 karnataka-ribbon w-full shrink-0" />
 
         {/* Modal Header */}
-        <div className="p-6 border-b border-stone-100 flex items-start justify-between">
+        <div className="p-6 border-b border-stone-100 flex items-start justify-between shrink-0">
           <div>
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 mb-1.5">
               {lang === "kn" ? event.category_kn : event.category.toUpperCase()}
@@ -51,7 +53,7 @@ export const RulesModal = ({ event, isOpen, onClose, onRegister }) => {
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 max-h-[60vh] overflow-y-auto overscroll-contain space-y-4 text-sm text-stone-700 font-kannada scroll-smooth">
+        <div className="p-6 overflow-y-auto overscroll-contain space-y-4 text-sm text-stone-700 font-kannada scroll-smooth flex-1">
           {/* Timing & Venue */}
           <div className="grid grid-cols-2 gap-3 p-3.5 rounded-2xl bg-amber-50/60 border border-amber-200/50 text-xs">
             <div className="flex items-center gap-2">
@@ -97,7 +99,7 @@ export const RulesModal = ({ event, isOpen, onClose, onRegister }) => {
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 bg-stone-50 border-t border-stone-100 flex items-center justify-end gap-3">
+        <div className="p-4 bg-stone-50 border-t border-stone-100 flex items-center justify-end gap-3 shrink-0">
           <button
             onClick={onClose}
             className="px-4 py-2 rounded-xl text-xs font-bold text-stone-600 hover:bg-stone-200 transition-all duration-150 active:scale-95"

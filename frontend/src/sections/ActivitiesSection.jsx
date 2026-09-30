@@ -166,14 +166,16 @@ export const ActivitiesSection = () => {
       {/* Activity Details Dialogue Box Modal */}
       {selectedActivity && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-md animate-fade-in overflow-y-auto"
           onClick={() => setSelectedActivity(null)}
         >
           <div
-            className="relative max-w-lg w-full bg-white rounded-3xl overflow-hidden shadow-2xl border border-stone-200 flex flex-col max-h-[90vh] animate-scale-up"
+            className="relative max-w-lg w-full bg-white rounded-3xl overflow-hidden shadow-2xl border border-stone-200 flex flex-col my-auto max-h-[90vh] animate-scale-up"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="relative h-48 sm:h-60 w-full overflow-hidden bg-stone-950">
+            <div className="relative h-48 sm:h-60 w-full overflow-hidden bg-stone-950 shrink-0">
               <img
                 src={selectedActivity.image || selectedActivity.image_url || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80"}
                 alt={lang === "kn" ? (selectedActivity.title_kn || selectedActivity.titleKn) : (selectedActivity.title_en || selectedActivity.titleEn)}
