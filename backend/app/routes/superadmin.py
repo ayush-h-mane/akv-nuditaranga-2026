@@ -284,6 +284,7 @@ def list_admins(
             "id": a.id,
             "user_id": a.user_id,
             "username": a.username,
+            "auid": u.auid if u else "N/A",
             "full_name": u.name if u else "N/A",
             "email": u.email if u else "N/A",
             "phone": u.phone if u else "N/A",
@@ -411,7 +412,7 @@ def delete_admin(
     user = admin.user
 
     # Requirement 9: Block deleting SuperAdmin account
-    if (user and user.role == "SUPERADMIN") or username in ["superadmin", "akv-nt-2026"]:
+    if (user and user.role == "SUPERADMIN") or (settings.SUPERADMIN_USERNAME and username.lower() == settings.SUPERADMIN_USERNAME.strip().lower()):
         raise HTTPException(status_code=403, detail="SuperAdmin profile cannot be deleted.")
 
     log = AuditLog(

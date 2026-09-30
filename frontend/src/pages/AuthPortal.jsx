@@ -88,7 +88,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
 
   // Superadmin Form State
   const [superadminForm, setSuperadminForm] = useState({
-    username: "akv-nt-2026",
+    username: "",
     password: ""
   });
 
@@ -116,6 +116,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
     adminType: "WORKING_COMMITTEE", // "FACULTY_COORDINATOR" or "WORKING_COMMITTEE"
     fullName: "",
     username: "",
+    auid: "",
     facultyId: "",
     email: "",
     phone: "",
@@ -262,6 +263,14 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
       handleShowError("Faculty ID is required for Faculty Coordinators.");
       return;
     }
+    if (!isFaculty && !adminForm.auid?.trim()) {
+      handleShowError("AUID is required for Working Committee members.");
+      return;
+    }
+    if (!isFaculty && !/^[A-Za-z0-9]{3,30}$/.test(adminForm.auid.trim())) {
+      handleShowError("AUID must contain 3-30 letters and numbers only (e.g. AIT23BEAI129).");
+      return;
+    }
     if (!adminForm.photo_url) {
       handleShowError("Profile photo is mandatory. Please upload your photo before continuing.");
       return;
@@ -276,12 +285,13 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
     try {
       const cleanUsername = isFaculty
         ? `fac_${adminForm.facultyId.trim().toLowerCase()}`
-        : (adminForm.username?.trim().toLowerCase() || adminForm.email.split('@')[0].trim().toLowerCase());
+        : (adminForm.username?.trim().toLowerCase() || adminForm.auid.trim().toLowerCase());
 
       const payload = {
         full_name: adminForm.fullName.trim(),
         username: cleanUsername,
         faculty_id: isFaculty ? adminForm.facultyId.trim().toUpperCase() : null,
+        auid: isFaculty ? null : adminForm.auid.trim().toUpperCase(),
         admin_type: adminForm.adminType,
         email: adminForm.email.trim().toLowerCase(),
         phone: adminForm.phone.trim(),
@@ -955,7 +965,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                   <form onSubmit={handleAdminLogin} className="space-y-4">
                     <div>
                       <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">
-                        Username or College Email
+                        AUID, Admin Username, or College Email
                       </label>
                       <div className="relative">
                         <User className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
@@ -963,8 +973,8 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                           type="text"
                           required
                           value={adminForm.username}
-                          onChange={(e) => setAdminForm({ ...adminForm, username: e.target.value.toLowerCase() })}
-                          placeholder="Enter admin username or college email"
+                          onChange={(e) => setAdminForm({ ...adminForm, username: e.target.value })}
+                          placeholder="Enter AUID, admin username, or college email"
                           className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm ${credentialError ? "border-red-500 bg-red-50" : "border-stone-300"}`}
                         />
                       </div>
@@ -1121,18 +1131,38 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                     ) : (
                       /* Working Committee Member */
                       <>
-                        <div>
-                          <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                            Full Name *
-                          </label>
-                          <input
-                            type="text"
-                            required
-                            value={adminForm.fullName}
-                            onChange={(e) => setAdminForm({ ...adminForm, fullName: e.target.value })}
-                            placeholder="Lead / Coordinator Name"
-                            className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden"
-                          />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                              Full Name *
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              value={adminForm.fullName}
+                              onChange={(e) => setAdminForm({ ...adminForm, fullName: e.target.value })}
+                              placeholder="Lead / Coordinator Name"
+                              className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                              AUID (College ID) *
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              minLength={3}
+                              maxLength={30}
+                              pattern="[A-Za-z0-9]{3,30}"
+                              title="Use 3–30 letters and numbers only, for example AIT23BEAI129."
+                              value={adminForm.auid}
+                              onChange={(e) => setAdminForm({ ...adminForm, auid: e.target.value.toUpperCase() })}
+                              placeholder="e.g. AIT23BEAI129"
+                              className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm font-mono uppercase focus:ring-2 focus:ring-kar-red focus:outline-hidden"
+                            />
+                          </div>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

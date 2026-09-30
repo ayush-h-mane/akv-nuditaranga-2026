@@ -1,4 +1,5 @@
 import re
+import json
 import hashlib
 import secrets
 import datetime
@@ -27,33 +28,6 @@ from ..config import settings
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-SUPERADMIN_ACCOUNTS = {
-    "akvntkvsa1": {
-        "password": "akvntkvsa@1",
-        "name": "AKV Super Administrator 1",
-        "email": "sa1.akv@acharya.ac.in",
-    },
-    "akvntkvsa2": {
-        "password": "akvntkvsa@2",
-        "name": "AKV Super Administrator 2",
-        "email": "sa2.akv@acharya.ac.in",
-    },
-    "akvntkvsa3": {
-        "password": "akvntkvsa@3",
-        "name": "AKV Super Administrator 3",
-        "email": "sa3.akv@acharya.ac.in",
-    },
-    "akv-nt-2026": {
-        "password": "akv.nt@2026",
-        "name": "AKV Super Administrator",
-        "email": "akv@acharya.ac.in",
-    },
-    "superadmin": {
-        "password": "superadmin",
-        "name": "AKV Super Administrator",
-        "email": "superadmin@acharya.ac.in",
-    }
-}
 
 # Schemas
 class StudentRegisterRequest(BaseModel):
@@ -67,7 +41,7 @@ class StudentRegisterRequest(BaseModel):
     section: Optional[str] = Field("A", min_length=1, max_length=10)
     gender: str = Field("Male")
     role: str = Field("PARTICIPANT")  # VOLUNTEER, PARTICIPANT
-    photo_url: str = Field(..., min_length=20)
+    photo_url: Optional[str] = None
     volunteer_domain: Optional[str] = None
     password: str = Field(..., min_length=6)
     confirm_password: str = Field(..., min_length=6)
@@ -81,8 +55,8 @@ class StudentRegisterRequest(BaseModel):
     @classmethod
     def clean_auid(cls, v: str) -> str:
         cleaned = v.strip().upper()
-        if not re.fullmatch(r"[0-9A-Z]{3,30}", cleaned):
-            raise ValueError("AUID must contain 3-30 letters and numbers only (e.g., AIT23BEAI129)")
+        if not re.fullmatch(r"[0-9A-Z]{11,30}", cleaned):
+            raise ValueError("AUID must contain 11-30 letters and numbers only (e.g., AIT23BEAI129)")
         return cleaned
 
     @field_validator("phone")
@@ -110,12 +84,13 @@ class AdminRegisterRequest(BaseModel):
     full_name: str = Field(..., min_length=2, max_length=100)
     username: Optional[str] = None
     faculty_id: Optional[str] = None
+    auid: Optional[str] = None
     admin_type: str = Field("WORKING_COMMITTEE")  # FACULTY_COORDINATOR, WORKING_COMMITTEE
     email: EmailStr
     phone: str = Field(..., min_length=10, max_length=15)
     institute: str = Field("Acharya Institute of Technology", min_length=2, max_length=150)
     department: str = Field(..., min_length=2, max_length=100)
-    photo_url: str = Field(..., min_length=20)
+    photo_url: Optional[str] = None
     volunteer_domain: Optional[str] = None
     password: str = Field(..., min_length=6)
     confirm_password: str = Field(..., min_length=6)
@@ -124,6 +99,18 @@ class AdminRegisterRequest(BaseModel):
     @classmethod
     def validate_email_domain(cls, v: EmailStr) -> str:
         return validate_acharya_email(str(v))
+
+    @field_validator("auid")
+    @classmethod
+    def clean_auid(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        cleaned = v.strip().upper()
+        if not cleaned:
+            return None
+        if not re.fullmatch(r"[0-9A-Z]{3,30}", cleaned):
+            raise ValueError("AUID must contain 3-30 letters and numbers only (e.g., AIT23BEAI129)")
+        return cleaned
 
     @field_validator("phone")
     @classmethod
@@ -166,7 +153,15 @@ def generate_student_reg_id(db: Session) -> str:
 def hash_reset_token(raw_token: str) -> str:
     return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
 
+ONE_TIME_EDIT_DEADLINE_UTC = datetime.datetime(2026, 10, 5, 18, 29, 59)
+ONE_TIME_EDIT_DEADLINE_IST_STR = "October 5, 2026, 11:59 PM IST (05/10/2026 23:59)"
+
+def is_profile_edit_window_open() -> bool:
+    return datetime.datetime.utcnow() <= ONE_TIME_EDIT_DEADLINE_UTC
+
 def user_to_dict(user: User, admin_profile: Optional[Admin] = None) -> dict:
+    has_edited = bool(getattr(user, "profile_edited_once", False))
+    window_open = is_profile_edit_window_open()
     return {
         "id": user.id,
         "name": user.name,
@@ -188,6 +183,12 @@ def user_to_dict(user: User, admin_profile: Optional[Admin] = None) -> dict:
         "admin_status": admin_profile.approval_status if admin_profile else None,
         "admin_username": admin_profile.username if admin_profile else None,
         "username": admin_profile.username if admin_profile else user.auid,
+        "profile_edited_once": has_edited,
+        "profile_edited_at": user.profile_edited_at.isoformat() if getattr(user, "profile_edited_at", None) else None,
+        "one_time_edit_deadline": "2026-10-05T23:59:59+05:30",
+        "one_time_edit_deadline_str": ONE_TIME_EDIT_DEADLINE_IST_STR,
+        "can_edit_profile": (not has_edited) and window_open,
+        "first_time_setup_required": bool(getattr(user, "first_time_setup_required", False)) if getattr(admin_profile, "username", "").lower() != "akvsaculturals" else False,
         "created_at": user.created_at.isoformat() if user.created_at else None
     }
 
@@ -515,14 +516,21 @@ def register_admin(
     if payload.password != payload.confirm_password:
         raise HTTPException(status_code=400, detail="Passwords do not match.")
 
-    # Resolve username and faculty ID based on admin_type
+    # Resolve username, faculty ID, and AUID based on admin_type
     admin_type = payload.admin_type or "WORKING_COMMITTEE"
-    if admin_type == "WORKING_COMMITTEE" and not payload.volunteer_domain:
-        raise HTTPException(status_code=400, detail="AKV domain is required for Working Committee admins.")
     clean_fac_id = payload.faculty_id.strip().upper() if payload.faculty_id else None
-    
+    clean_auid = payload.auid.strip().upper() if payload.auid else None
+
+    if admin_type == "WORKING_COMMITTEE":
+        if not payload.volunteer_domain:
+            raise HTTPException(status_code=400, detail="AKV domain is required for Working Committee admins.")
+        if not clean_auid:
+            raise HTTPException(status_code=400, detail="AUID is required for Working Committee registration.")
+
     if payload.username and payload.username.strip():
         clean_uname = payload.username.strip().lower()
+    elif clean_auid:
+        clean_uname = clean_auid.lower()
     elif clean_fac_id:
         clean_uname = f"fac_{clean_fac_id.lower()}"
     else:
@@ -530,49 +538,97 @@ def register_admin(
 
     clean_email = payload.email.strip().lower()
 
+    if clean_auid:
+        auid_val = clean_auid
+    elif clean_fac_id:
+        auid_val = f"FAC-{clean_fac_id}"
+    else:
+        auid_val = f"ADM-{clean_uname.upper()}"
+
     # Check username in admins
-    if db.query(Admin).filter(func.lower(Admin.username) == clean_uname).first():
-        raise HTTPException(status_code=409, detail="This admin username or faculty ID is already taken.")
+    existing_admin_by_uname = db.query(Admin).filter(func.lower(Admin.username) == clean_uname).first()
 
-    # Check email in users
-    if db.query(User).filter(func.lower(User.email) == clean_email).first():
-        raise HTTPException(status_code=409, detail="This college email is already registered.")
+    # Check if a user with this AUID or email already exists in users
+    existing_user_by_auid = db.query(User).filter(func.upper(User.auid) == auid_val.upper()).first()
+    existing_user_by_email = db.query(User).filter(func.lower(User.email) == clean_email).first()
 
+    if existing_user_by_auid and existing_user_by_email and existing_user_by_auid.id != existing_user_by_email.id:
+        raise HTTPException(status_code=409, detail="The provided AUID and email belong to different registered accounts.")
+
+    matched_user = existing_user_by_auid or existing_user_by_email
     pw_hash = get_password_hash(payload.password)
-    reg_id = generate_student_reg_id(db)
 
-    auid_base = f"FAC-{clean_fac_id}" if clean_fac_id else f"ADM-{clean_uname.upper()}"
-    auid_val = auid_base
-    if db.query(User).filter(func.upper(User.auid) == auid_val.upper()).first():
-        auid_val = f"{auid_base}-{secrets.randbelow(9999):04d}"
+    if matched_user:
+        # Check if already registered as an admin
+        existing_admin = db.query(Admin).filter(Admin.user_id == matched_user.id).first()
+        if existing_admin:
+            if existing_admin.approval_status == "PENDING_APPROVAL":
+                raise HTTPException(status_code=409, detail="Your admin registration is already submitted and awaiting Super Admin approval.")
+            elif existing_admin.approval_status == "APPROVED":
+                raise HTTPException(status_code=409, detail="This account is already registered and approved as an admin. Please log in directly.")
+            else:
+                raise HTTPException(status_code=409, detail="An administrator account with this AUID or email is already registered.")
 
-    # Create user with role ADMIN
-    new_user = User(
-        name=payload.full_name.strip(),
-        auid=auid_val,
-        email=clean_email,
-        phone=payload.phone.strip(),
-        institute=payload.institute.strip(),
-        department=payload.department.strip(),
-        semester=8,
-        section="A",
-        gender="Other",
-        role="ADMIN",
-        photo_url=payload.photo_url,
-        volunteer_domain=payload.volunteer_domain.strip() if payload.volunteer_domain else None,
-        admin_type=admin_type,
-        faculty_id=clean_fac_id,
-        registration_id=reg_id,
-        password_hash=pw_hash,
-        account_status="ACTIVE"
-    )
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
+        # Check if username is taken by another admin
+        if existing_admin_by_uname and existing_admin_by_uname.user_id != matched_user.id:
+            raise HTTPException(status_code=409, detail="This admin username or AUID is already taken by another administrator.")
+
+        # Upgrade existing student/volunteer to Admin role with working committee details
+        matched_user.name = payload.full_name.strip()
+        matched_user.phone = payload.phone.strip()
+        matched_user.institute = payload.institute.strip()
+        matched_user.department = payload.department.strip()
+        matched_user.admin_type = admin_type
+        matched_user.is_working_committee = (admin_type == "WORKING_COMMITTEE")
+        if admin_type == "WORKING_COMMITTEE":
+            matched_user.working_committee_role = "Coordinator"
+        if clean_fac_id:
+            matched_user.faculty_id = clean_fac_id
+        if payload.volunteer_domain:
+            matched_user.volunteer_domain = payload.volunteer_domain.strip()
+        if payload.photo_url:
+            matched_user.photo_url = payload.photo_url
+        matched_user.role = "ADMIN"
+        matched_user.password_hash = pw_hash
+        db.commit()
+        db.refresh(matched_user)
+        target_user = matched_user
+    else:
+        if existing_admin_by_uname:
+            raise HTTPException(status_code=409, detail="This admin username or AUID is already taken.")
+
+        reg_id = generate_student_reg_id(db)
+
+        # Create user with role ADMIN
+        new_user = User(
+            name=payload.full_name.strip(),
+            auid=auid_val,
+            email=clean_email,
+            phone=payload.phone.strip(),
+            institute=payload.institute.strip(),
+            department=payload.department.strip(),
+            semester=8,
+            section="A",
+            gender="Other",
+            role="ADMIN",
+            photo_url=payload.photo_url or "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80",
+            volunteer_domain=payload.volunteer_domain.strip() if payload.volunteer_domain else None,
+            admin_type=admin_type,
+            faculty_id=clean_fac_id,
+            is_working_committee=(admin_type == "WORKING_COMMITTEE"),
+            working_committee_role="Coordinator" if admin_type == "WORKING_COMMITTEE" else None,
+            registration_id=reg_id,
+            password_hash=pw_hash,
+            account_status="ACTIVE"
+        )
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        target_user = new_user
 
     # Create Admin profile with status PENDING_APPROVAL
     admin_entry = Admin(
-        user_id=new_user.id,
+        user_id=target_user.id,
         username=clean_uname,
         admin_type=admin_type,
         faculty_id=clean_fac_id,
@@ -583,13 +639,13 @@ def register_admin(
 
     # Audit log
     log = AuditLog(
-        user_id=new_user.id,
-        actor_name=new_user.name,
+        user_id=target_user.id,
+        actor_name=target_user.name,
         action="ADMIN_REGISTERED",
         target_type="ADMIN",
-        target_id=str(new_user.id),
+        target_id=str(target_user.id),
         previous_value=None,
-        new_value=f"Status: PENDING_APPROVAL, Type: {admin_type}, Username: {clean_uname}"
+        new_value=f"Status: PENDING_APPROVAL, Type: {admin_type}, Username: {clean_uname}, AUID: {target_user.auid}"
     )
     db.add(log)
     db.commit()
@@ -598,29 +654,27 @@ def register_admin(
     sa_emails = set()
     if settings.SUPERADMIN_EMAIL and settings.SUPERADMIN_EMAIL.strip():
         sa_emails.add(settings.SUPERADMIN_EMAIL.strip().lower())
-    for sa_data in SUPERADMIN_ACCOUNTS.values():
-        if sa_data.get("email"):
-            sa_emails.add(sa_data["email"].strip().lower())
     for sa_user in db.query(User).filter(User.role == "SUPERADMIN").all():
         if sa_user.email:
             sa_emails.add(sa_user.email.strip().lower())
 
     # Email notifications dispatched asynchronously via BackgroundTasks
-    background_tasks.add_task(send_admin_registration_email, clean_email, new_user.name, clean_uname)
+    background_tasks.add_task(send_admin_registration_email, clean_email, target_user.name, clean_uname)
     background_tasks.add_task(
         send_superadmin_new_admin_alert,
         superadmin_email=list(sa_emails),
-        admin_name=new_user.name,
+        admin_name=target_user.name,
         username=clean_uname,
         admin_email=clean_email,
-        department=new_user.department
+        department=target_user.department
     )
 
     return {
         "success": True,
         "message": "Your admin account is awaiting Super Admin approval.",
         "status": "PENDING_APPROVAL",
-        "username": clean_uname
+        "username": clean_uname,
+        "auid": target_user.auid
     }
 
 # ==========================================
@@ -631,118 +685,25 @@ def login_admin(payload: AdminLoginRequest, db: Session = Depends(get_db)):
     clean_uname = payload.username.strip().lower()
     clean_pw = payload.password.strip()
 
-    # 1. Super Admin login (akvntkvsa1, akvntkvsa2, akvntkvsa3, akv-nt-2026, or superadmin)
-    is_sa_account = clean_uname in SUPERADMIN_ACCOUNTS or clean_uname in [
-        settings.SUPERADMIN_USERNAME.lower(),
-        "superadmin",
-        "akv-superadmin",
-        settings.SUPERADMIN_EMAIL.lower()
-    ]
-    if is_sa_account:
-        sa_info = SUPERADMIN_ACCOUNTS.get(clean_uname)
-        if not sa_info:
-            sa_info = {
-                "password": settings.SUPERADMIN_PASSWORD,
-                "name": settings.SUPERADMIN_NAME,
-                "email": settings.SUPERADMIN_EMAIL,
-            }
-        
-        sa_passwords = [sa_info["password"], settings.SUPERADMIN_PASSWORD, "akv.nt@2026", "AkvSuperAdmin@2026!", "superadmin"]
-
-        admin_entry = db.query(Admin).filter(
-            or_(
-                func.lower(Admin.username) == clean_uname,
-                func.lower(Admin.username) == settings.SUPERADMIN_USERNAME.lower()
-            )
-        ).first()
-
-        is_pw_valid = False
-        if admin_entry and admin_entry.user:
-            if (verify_password(payload.password, admin_entry.user.password_hash) or
-                verify_password(clean_pw, admin_entry.user.password_hash) or
-                payload.password in sa_passwords or clean_pw in sa_passwords or
-                payload.password == sa_info["password"] or clean_pw == sa_info["password"]):
-                is_pw_valid = True
-        elif (payload.password in sa_passwords or clean_pw in sa_passwords or
-              payload.password == sa_info["password"] or clean_pw == sa_info["password"]):
-            is_pw_valid = True
-
-        if is_pw_valid:
-            if not admin_entry or not admin_entry.user:
-                sa_user = db.query(User).filter(
-                    or_(
-                        func.lower(User.email) == sa_info["email"].lower(),
-                        func.lower(User.auid) == f"SA-{clean_uname.upper()}".lower()
-                    )
-                ).first()
-                if not sa_user:
-                    sa_user = User(
-                        name=sa_info["name"],
-                        auid=f"SA-{clean_uname.upper()}",
-                        email=sa_info["email"],
-                        phone="9876543210",
-                        institute="Acharya Institute of Technology",
-                        department="Kannada Vedike",
-                        semester=8,
-                        section="A",
-                        gender="Other",
-                        role="SUPERADMIN",
-                        registration_id=f"AKV-SA-{clean_uname.upper()}",
-                        password_hash=get_password_hash(sa_info["password"]),
-                        account_status="ACTIVE"
-                    )
-                    db.add(sa_user)
-                    db.commit()
-                    db.refresh(sa_user)
-                else:
-                    sa_user.role = "SUPERADMIN"
-                    sa_user.account_status = "ACTIVE"
-                    db.commit()
-                    db.refresh(sa_user)
-
-                admin_entry = Admin(
-                    user_id=sa_user.id,
-                    username=clean_uname,
-                    admin_type="SUPERADMIN",
-                    approval_status="APPROVED",
-                    approved_by="MASTER_SUPERADMIN",
-                    approved_at=datetime.datetime.utcnow()
-                )
-                db.add(admin_entry)
-                db.commit()
-                db.refresh(admin_entry)
-
-            token = create_access_token({"sub": str(admin_entry.user.id), "role": "SUPERADMIN"})
-            return {
-                "success": True,
-                "message": f"Super Admin ({clean_uname}) login successful",
-                "token": token,
-                "user": user_to_dict(admin_entry.user, admin_entry)
-            }
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid Super Admin credentials."
-            )
-
-    # 2. Fast indexed lookup by username, email, or AUID
+    # Fast indexed lookup by username, email, or AUID
     admin_entry = db.query(Admin).options(joinedload(Admin.user)).join(User, Admin.user_id == User.id).filter(
         or_(
-            Admin.username == clean_uname,
-            User.email == clean_uname,
-            User.auid == clean_uname.upper(),
-            User.auid == clean_uname
+            func.lower(Admin.username) == clean_uname,
+            func.lower(User.email) == clean_uname,
+            func.upper(User.auid) == clean_uname.upper(),
+            func.lower(User.auid) == clean_uname
         )
     ).first()
 
     if not admin_entry:
-        admin_entry = db.query(Admin).options(joinedload(Admin.user)).filter(Admin.username == clean_uname).first()
+        admin_entry = db.query(Admin).options(joinedload(Admin.user)).filter(func.lower(Admin.username) == clean_uname).first()
 
     if not admin_entry:
         admin_entry = db.query(Admin).options(joinedload(Admin.user)).join(User, Admin.user_id == User.id).filter(
             or_(
                 func.lower(Admin.username) == clean_uname,
-                func.lower(User.email) == clean_uname
+                func.lower(User.email) == clean_uname,
+                func.upper(User.auid) == clean_uname.upper()
             )
         ).first()
 
@@ -750,14 +711,18 @@ def login_admin(payload: AdminLoginRequest, db: Session = Depends(get_db)):
     if not admin_entry:
         student_match = db.query(User).filter(
             or_(
-                User.auid == clean_uname.upper(),
-                User.email == clean_uname,
-                User.registration_id == clean_uname.upper(),
                 func.upper(User.auid) == clean_uname.upper(),
-                func.lower(User.email) == clean_uname
+                func.lower(User.email) == clean_uname,
+                func.upper(User.registration_id) == clean_uname.upper(),
             )
         ).first()
         if student_match:
+            pending_adm = db.query(Admin).filter(Admin.user_id == student_match.id).first()
+            if pending_adm and pending_adm.approval_status == "PENDING_APPROVAL":
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Your admin account is awaiting Super Admin approval."
+                )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied: Student credentials cannot be used to log in to the Admin Portal. Please use the Student Login."
@@ -820,62 +785,50 @@ def login_admin(payload: AdminLoginRequest, db: Session = Depends(get_db)):
 
 # ==========================================
 # 6B. SUPERADMIN DEDICATED LOGIN
+# Strictly restricted to ONLY the 6 authorized credentials:
+# 1. akvsadayt (Ayush H Mane)
+# 2. akvsapriya (Priyanka S Reddy)
+# 3. akvsaarjun (Arjun V)
+# 4. akvsaculturals (Culturals)
+# 5. akvsatejas (Mr. Tejas K)
+# 6. akvsarakshi (Mrs. Rakshitha B. T)
 # ==========================================
+AUTHORIZED_SUPERADMIN_USERNAMES = {
+    "akvsadayt",
+    "akvsapriya",
+    "akvsaarjun",
+    "akvsaculturals",
+    "akvsatejas",
+    "akvsarakshi"
+}
+
 @router.post("/login/superadmin")
 def login_superadmin(payload: AdminLoginRequest, db: Session = Depends(get_db)):
     clean_uname = payload.username.strip().lower()
     clean_pw = payload.password.strip()
 
-    is_sa_account = clean_uname in SUPERADMIN_ACCOUNTS or clean_uname in [
-        settings.SUPERADMIN_USERNAME.lower(),
-        "superadmin",
-        "akv-superadmin",
-        settings.SUPERADMIN_EMAIL.lower()
-    ]
-
-    # Verify if user has an active superadmin role
-    db_sa = db.query(User).filter(
-        or_(
-            func.lower(User.email) == clean_uname,
-            func.lower(User.auid) == clean_uname,
-            func.lower(User.auid) == f"sa-{clean_uname}".lower()
-        ),
-        User.role == "SUPERADMIN"
-    ).first()
-
-    if not is_sa_account and not db_sa:
+    # Strictly verify that username is in the 6 authorized credentials
+    if clean_uname not in AUTHORIZED_SUPERADMIN_USERNAMES:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access restricted: This portal is strictly for Super Administrators. Normal administrators and students cannot log in here."
+            detail="Access restricted: This portal is strictly for authorized AKV Super Administrators only. Provided username is not an authorized Super Administrator."
         )
 
-    sa_info = SUPERADMIN_ACCOUNTS.get(clean_uname)
-    if not sa_info:
-        sa_info = {
-            "password": settings.SUPERADMIN_PASSWORD,
-            "name": settings.SUPERADMIN_NAME,
-            "email": settings.SUPERADMIN_EMAIL,
-        }
-
-    sa_passwords = [sa_info["password"], settings.SUPERADMIN_PASSWORD, "akv.nt@2026", "AkvSuperAdmin@2026!", "superadmin"]
-
-    admin_entry = db.query(Admin).filter(
-        or_(
-            func.lower(Admin.username) == clean_uname,
-            func.lower(Admin.username) == settings.SUPERADMIN_USERNAME.lower()
-        )
+    # Fast lookup of authorized SuperAdmin account
+    admin_entry = db.query(Admin).options(joinedload(Admin.user)).filter(
+        func.lower(Admin.username) == clean_uname
     ).first()
 
+    if not admin_entry or not admin_entry.user or admin_entry.user.role != "SUPERADMIN":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access restricted: This portal is strictly for Super Administrators."
+        )
+
+    db_sa = admin_entry.user
+
     is_pw_valid = False
-    if db_sa and (verify_password(payload.password, db_sa.password_hash) or verify_password(clean_pw, db_sa.password_hash)):
-        is_pw_valid = True
-    elif admin_entry and admin_entry.user and (
-        verify_password(payload.password, admin_entry.user.password_hash) or
-        verify_password(clean_pw, admin_entry.user.password_hash) or
-        payload.password in sa_passwords or clean_pw in sa_passwords
-    ):
-        is_pw_valid = True
-    elif payload.password in sa_passwords or clean_pw in sa_passwords:
+    if verify_password(payload.password, db_sa.password_hash) or verify_password(clean_pw, db_sa.password_hash):
         is_pw_valid = True
 
     if not is_pw_valid:
@@ -884,58 +837,121 @@ def login_superadmin(payload: AdminLoginRequest, db: Session = Depends(get_db)):
             detail="Invalid Super Admin credentials."
         )
 
-    # Ensure Superadmin user record exists
-    if not admin_entry or not admin_entry.user:
-        sa_user = db_sa or db.query(User).filter(
-            or_(
-                func.lower(User.email) == sa_info["email"].lower(),
-                func.lower(User.auid) == f"SA-{clean_uname.upper()}".lower()
-            )
-        ).first()
-
-        if not sa_user:
-            sa_user = User(
-                name=sa_info["name"],
-                auid=f"SA-{clean_uname.upper()}",
-                email=sa_info["email"],
-                phone="9876543210",
-                institute="Acharya Institute of Technology",
-                department="Kannada Vedike",
-                semester=8,
-                section="A",
-                gender="Other",
-                role="SUPERADMIN",
-                registration_id=f"AKV-SA-{clean_uname.upper()}",
-                password_hash=get_password_hash(sa_info["password"]),
-                account_status="ACTIVE"
-            )
-            db.add(sa_user)
-            db.commit()
-            db.refresh(sa_user)
-        else:
-            sa_user.role = "SUPERADMIN"
-            sa_user.account_status = "ACTIVE"
-            db.commit()
-            db.refresh(sa_user)
-
-        admin_entry = Admin(
-            user_id=sa_user.id,
-            username=clean_uname,
-            admin_type="SUPERADMIN",
-            approval_status="APPROVED",
-            approved_by="MASTER_SUPERADMIN",
-            approved_at=datetime.datetime.utcnow()
+    if db_sa.account_status != "ACTIVE":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your Super Admin account has been deactivated."
         )
-        db.add(admin_entry)
-        db.commit()
-        db.refresh(admin_entry)
 
-    token = create_access_token({"sub": str(admin_entry.user.id), "role": "SUPERADMIN"})
+    token = create_access_token({"sub": str(db_sa.id), "role": "SUPERADMIN"})
     return {
         "success": True,
         "message": f"Super Admin ({clean_uname}) login authorized",
         "token": token,
-        "user": user_to_dict(admin_entry.user, admin_entry)
+        "user": user_to_dict(db_sa, admin_entry)
+    }
+
+# ==========================================
+# 6C. SUPERADMIN FIRST-TIME ONBOARDING (Credentials 5 & 6)
+# ==========================================
+class SuperAdminFirstTimeSetupRequest(BaseModel):
+    email: EmailStr
+    faculty_id: Optional[str] = None
+    auid: Optional[str] = None
+    phone: Optional[str] = None
+    department: Optional[str] = None
+
+    @field_validator("email")
+    @classmethod
+    def validate_email_domain(cls, v: EmailStr) -> str:
+        return validate_acharya_email(str(v))
+
+    @field_validator("auid")
+    @classmethod
+    def clean_auid(cls, v: Optional[str]) -> Optional[str]:
+        if not v:
+            return None
+        cleaned = v.strip().upper()
+        if not re.fullmatch(r"[0-9A-Z/\-_]{2,35}", cleaned):
+            raise ValueError("AUID/Faculty ID must contain 2-35 characters (letters, numbers, hyphens, slashes).")
+        return cleaned
+
+    @field_validator("phone")
+    @classmethod
+    def clean_phone(cls, v: Optional[str]) -> Optional[str]:
+        if not v:
+            return None
+        digits = re.sub(r"\D", "", v)
+        if len(digits) < 10 or len(digits) > 12:
+            raise ValueError("Contact number must be a valid 10-digit number")
+        return digits[-10:]
+
+@router.post("/superadmin/first-time-setup")
+def superadmin_first_time_setup(
+    payload: SuperAdminFirstTimeSetupRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user.role != "SUPERADMIN":
+        raise HTTPException(status_code=403, detail="Only Superadmin accounts can access this onboarding.")
+
+    admin_entry = db.query(Admin).filter(Admin.user_id == current_user.id).first()
+    # 4th credential check: never prompt or feed details other than username & password
+    if admin_entry and admin_entry.username.lower() == "akvsaculturals":
+        raise HTTPException(status_code=400, detail="Culturals account does not require additional details.")
+
+    clean_email = str(payload.email).strip().lower()
+    clean_auid = (payload.auid or payload.faculty_id or "").strip().upper()
+    if not clean_auid:
+        clean_auid = f"SA-{admin_entry.username.upper()}" if admin_entry else f"SA-{current_user.id}"
+
+    # Check email uniqueness against other users
+    existing_email = db.query(User).filter(func.lower(User.email) == clean_email, User.id != current_user.id).first()
+    if existing_email:
+        raise HTTPException(status_code=409, detail=f"Email '{clean_email}' is already in use by another account.")
+
+    # Check AUID uniqueness against other users
+    existing_auid = db.query(User).filter(func.upper(User.auid) == clean_auid, User.id != current_user.id).first()
+    if existing_auid:
+        raise HTTPException(status_code=409, detail=f"AUID / Faculty ID '{clean_auid}' is already registered to another account.")
+
+    # Update records
+    current_user.email = clean_email
+    current_user.auid = clean_auid
+    if payload.faculty_id:
+        current_user.faculty_id = payload.faculty_id.strip()
+    if payload.phone:
+        current_user.phone = payload.phone.strip()
+    if payload.department:
+        current_user.department = payload.department.strip()
+
+    current_user.first_time_setup_required = False
+    current_user.updated_at = datetime.datetime.utcnow()
+
+    if admin_entry:
+        if payload.faculty_id:
+            admin_entry.faculty_id = payload.faculty_id.strip()
+
+    # Audit log
+    log = AuditLog(
+        user_id=current_user.id,
+        actor_name=current_user.name,
+        action="SUPERADMIN_FIRST_TIME_SETUP",
+        target_type="SUPERADMIN",
+        target_id=str(current_user.id),
+        previous_value="first_time_setup_required=True",
+        new_value=f"email={clean_email}, auid={clean_auid}, faculty_id={payload.faculty_id}"
+    )
+    db.add(log)
+    db.commit()
+    db.refresh(current_user)
+    if admin_entry:
+        db.refresh(admin_entry)
+
+    return {
+        "success": True,
+        "message": f"Welcome {current_user.name}! Your official Superadmin details have been successfully configured.",
+        "user": user_to_dict(current_user, admin_entry)
     }
 
 # ==========================================
@@ -951,3 +967,189 @@ def get_authenticated_profile(
         "success": True,
         "user": user_to_dict(current_user, admin_profile)
     }
+
+# ==========================================
+# 8. ONE-TIME PROFILE EDIT (DEADLINE: 05/10/2026 11:59PM)
+# ==========================================
+class OneTimeProfileEditRequest(BaseModel):
+    name: Optional[str] = Field(None, min_length=2, max_length=100)
+    auid: Optional[str] = Field(None, min_length=3, max_length=30)
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = Field(None, min_length=10, max_length=15)
+    institute: Optional[str] = Field(None, min_length=2, max_length=150)
+    department: Optional[str] = Field(None, min_length=2, max_length=100)
+    semester: Optional[int] = Field(None, ge=1, le=8)
+    section: Optional[str] = Field(None, min_length=1, max_length=10)
+    gender: Optional[str] = None
+    role: Optional[str] = None  # VOLUNTEER, PARTICIPANT
+    volunteer_domain: Optional[str] = None
+    photo_url: Optional[str] = None
+    admin_type: Optional[str] = None  # FACULTY_COORDINATOR, WORKING_COMMITTEE
+    faculty_id: Optional[str] = None
+    username: Optional[str] = None
+
+    @field_validator("email")
+    @classmethod
+    def validate_email_domain(cls, v: Optional[EmailStr]) -> Optional[str]:
+        if v is None:
+            return None
+        return validate_acharya_email(str(v))
+
+    @field_validator("auid")
+    @classmethod
+    def clean_auid(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        cleaned = v.strip().upper()
+        if not re.fullmatch(r"[0-9A-Z]{3,30}", cleaned):
+            raise ValueError("AUID must contain 3-30 letters and numbers only (e.g., AIT23BEAI129)")
+        return cleaned
+
+    @field_validator("phone")
+    @classmethod
+    def clean_phone(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        digits = re.sub(r"\D", "", v)
+        if len(digits) < 10 or len(digits) > 12:
+            raise ValueError("Contact number must be a valid 10-digit number")
+        return digits[-10:]
+
+@router.put("/profile/one-time-edit")
+@router.post("/profile/one-time-edit")
+def update_profile_one_time(
+    payload: OneTimeProfileEditRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # 1. Enforce time limit (5/10/2026 11:59PM IST)
+    if not is_profile_edit_window_open():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"The one-time profile edit window closed on {ONE_TIME_EDIT_DEADLINE_IST_STR}."
+        )
+
+    # 2. Enforce one-time limit
+    if getattr(current_user, "profile_edited_once", False):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You have already utilized your one-time profile details update opportunity."
+        )
+
+    # 3. Check uniqueness if auid changed
+    if payload.auid:
+        clean_auid = payload.auid.strip().upper()
+        if clean_auid != current_user.auid:
+            existing = db.query(User).filter(func.upper(User.auid) == clean_auid, User.id != current_user.id).first()
+            if existing:
+                raise HTTPException(status_code=409, detail=f"AUID {clean_auid} is already registered to another account.")
+            current_user.auid = clean_auid
+
+    # 4. Check uniqueness if email changed
+    if payload.email:
+        clean_email = payload.email.strip().lower()
+        if clean_email != current_user.email:
+            existing = db.query(User).filter(func.lower(User.email) == clean_email, User.id != current_user.id).first()
+            if existing:
+                raise HTTPException(status_code=409, detail=f"Email {clean_email} is already registered to another account.")
+            current_user.email = clean_email
+
+    # 5. Capture previous values for audit trail
+    old_details = {
+        "name": current_user.name,
+        "auid": current_user.auid,
+        "email": current_user.email,
+        "phone": current_user.phone,
+        "institute": current_user.institute,
+        "department": current_user.department,
+        "semester": current_user.semester,
+        "section": current_user.section,
+        "gender": current_user.gender,
+        "role": current_user.role,
+        "volunteer_domain": current_user.volunteer_domain
+    }
+
+    # 6. Apply updates
+    if payload.name:
+        current_user.name = payload.name.strip()
+    if payload.phone:
+        current_user.phone = payload.phone.strip()
+    if payload.institute:
+        current_user.institute = payload.institute.strip()
+    if payload.department:
+        current_user.department = payload.department.strip()
+    if payload.semester is not None:
+        current_user.semester = payload.semester
+    if payload.section:
+        current_user.section = payload.section.strip()
+    if payload.gender:
+        current_user.gender = payload.gender.strip()
+    if payload.photo_url is not None:
+        current_user.photo_url = payload.photo_url
+    if payload.volunteer_domain is not None:
+        current_user.volunteer_domain = payload.volunteer_domain.strip() if payload.volunteer_domain else None
+
+    # Role changes: allowed between VOLUNTEER, PARTICIPANT, SPECTATOR
+    if payload.role:
+        new_role = payload.role.strip().upper()
+        if new_role in ["VOLUNTEER", "PARTICIPANT", "SPECTATOR"]:
+            if current_user.role not in ["ADMIN", "SUPERADMIN"]:
+                current_user.role = new_role
+
+    # Admin profile updates if applicable
+    admin_profile = db.query(Admin).filter(Admin.user_id == current_user.id).first()
+    if admin_profile:
+        if payload.username:
+            clean_u = payload.username.strip().lower()
+            if clean_u != admin_profile.username:
+                existing_adm = db.query(Admin).filter(Admin.username == clean_u, Admin.id != admin_profile.id).first()
+                if existing_adm:
+                    raise HTTPException(status_code=409, detail=f"Admin username '{clean_u}' is already taken.")
+                admin_profile.username = clean_u
+        if payload.admin_type in ["FACULTY_COORDINATOR", "WORKING_COMMITTEE"]:
+            admin_profile.admin_type = payload.admin_type
+            current_user.admin_type = payload.admin_type
+            current_user.is_working_committee = (payload.admin_type == "WORKING_COMMITTEE")
+        if payload.faculty_id is not None:
+            admin_profile.faculty_id = payload.faculty_id.strip() if payload.faculty_id else None
+            current_user.faculty_id = admin_profile.faculty_id
+
+    # 7. Lock one-time edit permanently
+    current_user.profile_edited_once = True
+    current_user.profile_edited_at = datetime.datetime.utcnow()
+    current_user.updated_at = datetime.datetime.utcnow()
+
+    # 8. Record in audit logs
+    log = AuditLog(
+        user_id=current_user.id,
+        actor_name=current_user.name,
+        action="ONE_TIME_PROFILE_EDIT",
+        target_type="USER_PROFILE",
+        target_id=str(current_user.id),
+        previous_value=json.dumps(old_details),
+        new_value=json.dumps({
+            "name": current_user.name,
+            "auid": current_user.auid,
+            "email": current_user.email,
+            "phone": current_user.phone,
+            "institute": current_user.institute,
+            "department": current_user.department,
+            "semester": current_user.semester,
+            "section": current_user.section,
+            "role": current_user.role,
+            "volunteer_domain": current_user.volunteer_domain,
+            "edited_at": current_user.profile_edited_at.isoformat()
+        })
+    )
+    db.add(log)
+    db.commit()
+    db.refresh(current_user)
+    if admin_profile:
+        db.refresh(admin_profile)
+
+    return {
+        "success": True,
+        "message": "Your profile details have been successfully updated. Your one-time update opportunity is now complete and locked.",
+        "user": user_to_dict(current_user, admin_profile)
+    }
+

@@ -286,14 +286,7 @@ export const api = {
         const lowerId = cleanId.toLowerCase();
 
         // 1. Strictly isolate: Do NOT authenticate Admin or Superadmin credentials in Student tab
-        if (
-          lowerId === "akvntkvsa1" ||
-          lowerId === "akvntkvsa2" ||
-          lowerId === "akvntkvsa3" ||
-          lowerId === "akv-nt-2026" ||
-          lowerId === "superadmin" ||
-          lowerId === "akv@acharya.ac.in"
-        ) {
+        if (lowerId === "superadmin" || lowerId === "akv@acharya.ac.in") {
           throw new Error("Access denied: Administrator accounts cannot log in through Student Login. Please use the Admin Portal.");
         }
 
@@ -382,11 +375,13 @@ export const api = {
       if (typeof window !== "undefined" && !window.navigator.onLine) {
         console.warn("[AKV Offline Fallback] Using local storage for admin registration:", err.message);
         const admins = getLocalAdmins();
-        const cleanUname = (payload.username || "").trim().toLowerCase();
+        const cleanAuid = payload.auid ? payload.auid.trim().toUpperCase() : null;
+        const cleanUname = (payload.username || cleanAuid || "").trim().toLowerCase();
         const newAdmin = {
           id: Date.now(),
           user_id: Date.now(),
           username: cleanUname,
+          auid: cleanAuid,
           full_name: payload.full_name,
           email: payload.email,
           phone: payload.phone,
@@ -405,7 +400,8 @@ export const api = {
           success: true,
           message: "Offline Mode: Your admin account is saved locally and will await Super Admin approval.",
           status: "PENDING_APPROVAL",
-          username: cleanUname
+          username: cleanUname,
+          auid: cleanAuid
         };
       }
       throw err;
@@ -429,61 +425,22 @@ export const api = {
         console.warn("[AKV Offline Fallback] Using local storage for admin login:", err.message);
         const u = (username || "").trim().toLowerCase();
         
-        // Super Admin credentials (akvntkvsa1, akvntkvsa2, akvntkvsa3, akv-nt-2026, or superadmin)
         const cleanPw = (password || "").trim();
-        const saMap = {
-          "akvntkvsa1": { name: "Super Administrator 1", pass: "akvntkvsa@1" },
-          "akvntkvsa2": { name: "Super Administrator 2", pass: "akvntkvsa@2" },
-          "akvntkvsa3": { name: "Super Administrator 3", pass: "akvntkvsa@3" },
-          "akv-nt-2026": { name: "Super Administrator", pass: "akv.nt@2026" },
-          "superadmin": { name: "Super Administrator", pass: "superadmin" }
-        };
 
-        if (saMap[u] && (cleanPw === saMap[u].pass || password === saMap[u].pass || cleanPw === "akv.nt@2026")) {
-          return {
-            success: true,
-            token: `sa-offline-token-${Date.now()}`,
-            user: {
-              id: 1,
-              name: saMap[u].name,
-              username: u,
-              admin_username: u,
-              email: `${u}@acharya.ac.in`,
-              role: "SUPERADMIN",
-              account_status: "ACTIVE"
-            }
-          };
-        }
-
-        const saPasswords = ["akv.nt@2026", "AkvSuperAdmin@2026!", "superadmin"];
-        if (
-          (u === "akv-nt-2026" || u === "superadmin" || u === "akv-superadmin" || u === "akv@acharya.ac.in") &&
-          (saPasswords.includes(password) || saPasswords.includes(cleanPw))
-        ) {
-          return {
-            success: true,
-            token: `sa-offline-token-${Date.now()}`,
-            user: {
-              id: 1,
-              name: "Super Administrator",
-              username: "akv-nt-2026",
-              admin_username: "akv-nt-2026",
-              email: "akv@acharya.ac.in",
-              role: "SUPERADMIN",
-              account_status: "ACTIVE"
-            }
-          };
-        }
-
-        // Check registered admins by username OR email
+        // Check registered admins by username, email, or AUID
         const admins = getLocalAdmins();
-        const found = admins.find(a => a.username?.toLowerCase() === u || a.email?.toLowerCase() === u);
+        const found = admins.find(a => 
+          a.username?.toLowerCase() === u || 
+          a.email?.toLowerCase() === u ||
+          a.auid?.toLowerCase() === u ||
+          a.auid?.toUpperCase() === u.toUpperCase()
+        );
         if (found) {
           if (found.approval_status !== "APPROVED") {
             throw new Error("Your admin account is awaiting Super Admin approval.");
           }
           if (found.password && found.password !== password) {
-            throw new Error("Invalid username or password.");
+            throw new Error("Invalid username, AUID, or password.");
           }
           return {
             success: true,
@@ -492,6 +449,7 @@ export const api = {
               id: found.id,
               name: found.full_name,
               username: found.username,
+              auid: found.auid,
               email: found.email,
               role: "ADMIN",
               admin_status: "APPROVED",
@@ -503,11 +461,11 @@ export const api = {
         // Reject student credentials in admin login
         const users = getLocalUsers();
         const studentFound = users.find(s => s.auid?.toUpperCase() === u.toUpperCase() || s.email?.toLowerCase() === u);
-        if (studentFound) {
+        if (studentFound && studentFound.role !== "ADMIN" && studentFound.role !== "SUPERADMIN") {
           throw new Error("Access denied: Student credentials cannot be used in Admin Login. Please use the Student Portal.");
         }
 
-        throw new Error("Invalid username or password.");
+        throw new Error("Invalid username, AUID, or password.");
       }
       throw err;
     }
@@ -527,35 +485,39 @@ export const api = {
       return data;
     } catch (err) {
       if (isNetworkError(err)) {
-        const u = (username || "").trim().toLowerCase();
-        const cleanPw = (password || "").trim();
-        const saMap = {
-          "akvntkvsa1": { name: "Super Administrator 1", pass: "akvntkvsa@1" },
-          "akvntkvsa2": { name: "Super Administrator 2", pass: "akvntkvsa@2" },
-          "akvntkvsa3": { name: "Super Administrator 3", pass: "akvntkvsa@3" },
-          "akv-nt-2026": { name: "Super Administrator", pass: "akv.nt@2026" },
-          "superadmin": { name: "Super Administrator", pass: "superadmin" }
-        };
-
-        if (saMap[u] && (cleanPw === saMap[u].pass || password === saMap[u].pass || cleanPw === "akv.nt@2026")) {
+        const cachedUser = this.getCachedUser();
+        if (cachedUser && cachedUser.role === "SUPERADMIN" && (cachedUser.username?.toLowerCase() === (username || "").trim().toLowerCase())) {
           return {
             success: true,
             token: `sa-offline-token-${Date.now()}`,
-            user: {
-              id: 1,
-              name: saMap[u].name,
-              username: u,
-              admin_username: u,
-              email: `${u}@acharya.ac.in`,
-              role: "SUPERADMIN",
-              account_status: "ACTIVE"
-            }
+            user: cachedUser
           };
         }
-        throw new Error("Invalid Super Administrator credentials.");
+        throw new Error("Invalid Super Administrator credentials or backend server unavailable.");
       }
       throw err;
     }
+  },
+
+  async superadminFirstTimeSetup(payload) {
+    const res = await fetch(`${API_BASE_URL}/auth/superadmin/first-time-setup`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify(payload)
+    });
+    const data = await readApiResponse(res);
+    if (!res.ok) {
+      throw new Error(data.detail || `First-time onboarding failed (${res.status}).`);
+    }
+    if (data.user) {
+      try {
+        localStorage.setItem("akv_user", JSON.stringify(data.user));
+      } catch (e) {}
+    }
+    return data;
   },
 
   async getCurrentUser() {
@@ -574,6 +536,30 @@ export const api = {
       }
       throw new Error("Session expired or invalid");
     }
+  },
+
+  async updateProfileOneTime(payload) {
+    const res = await fetch(`${API_BASE_URL}/auth/profile/one-time-edit`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify(payload)
+    });
+    const data = await readApiResponse(res);
+    if (!res.ok) {
+      throw new Error(data.detail || `Profile update failed (${res.status}).`);
+    }
+    if (data.user) {
+      try {
+        localStorage.setItem("akv_user", JSON.stringify(data.user));
+        if (data.user.auid) {
+          memCache.delete("dash_" + data.user.auid.toUpperCase());
+        }
+      } catch (e) {}
+    }
+    return data;
   },
 
   // ==========================================
@@ -683,7 +669,8 @@ export const api = {
 
         if (isNetworkError(err)) {
           const rawUser = localStorage.getItem("akv_user");
-          const currentUser = rawUser ? JSON.parse(rawUser) : defaultDemoUsers[0];
+          if (!rawUser) throw err;
+          const currentUser = JSON.parse(rawUser);
           const allRegs = getLocalRegistrations();
           const userRegs = allRegs.filter(r => r.auid?.toUpperCase() === currentUser.auid?.toUpperCase());
 
@@ -2309,34 +2296,103 @@ export const api = {
   },
 
   async createActivity(activityData) {
-    const res = await fetch(`${API_BASE_URL}/activities`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(activityData)
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Failed to create activity");
-    return data;
+    try {
+      const res = await fetch(`${API_BASE_URL}/activities`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(activityData)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Failed to create activity");
+      let list = this.getCachedActivities("all", false);
+      list = [...list, data];
+      memCache.set("activities", list);
+      writeLocalJson(STORAGE_ACTIVITIES_KEY, list);
+      return data;
+    } catch (err) {
+      if (!err.message?.includes("Failed to fetch") && !err.message?.includes("NetworkError") && err.message !== "Failed to create activity") {
+        throw err;
+      }
+      let list = this.getCachedActivities("all", false);
+      const newAct = {
+        id: Date.now(),
+        title_en: activityData.title_en || activityData.title || "Major Activity",
+        title_kn: activityData.title_kn || "",
+        desc_en: activityData.desc_en || activityData.description || "",
+        desc_kn: activityData.desc_kn || "",
+        title: activityData.title_en || activityData.title || "Major Activity",
+        description: activityData.desc_en || activityData.description || "",
+        activity_date: activityData.activity_date || "",
+        image: activityData.image || activityData.image_url || "",
+        image_url: activityData.image || activityData.image_url || "",
+        category: activityData.category || "Major Activity",
+        is_active: activityData.is_active !== undefined ? activityData.is_active : true
+      };
+      list = [...list, newAct];
+      memCache.set("activities", list);
+      writeLocalJson(STORAGE_ACTIVITIES_KEY, list);
+      return newAct;
+    }
   },
 
   async updateActivity(id, activityData) {
-    const res = await fetch(`${API_BASE_URL}/activities/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(activityData)
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Failed to update activity");
-    return data;
+    try {
+      const res = await fetch(`${API_BASE_URL}/activities/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(activityData)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Failed to update activity");
+      let list = this.getCachedActivities("all", false);
+      list = list.map(a => a.id === id ? { ...a, ...data } : a);
+      memCache.set("activities", list);
+      writeLocalJson(STORAGE_ACTIVITIES_KEY, list);
+      return data;
+    } catch (err) {
+      if (!err.message?.includes("Failed to fetch") && !err.message?.includes("NetworkError") && err.message !== "Failed to update activity") {
+        throw err;
+      }
+      let list = this.getCachedActivities("all", false);
+      list = list.map(a => a.id === id ? {
+        ...a,
+        ...activityData,
+        title_en: activityData.title_en || activityData.title || a.title_en || a.title,
+        title_kn: activityData.title_kn !== undefined ? activityData.title_kn : a.title_kn,
+        desc_en: activityData.desc_en || activityData.description || a.desc_en || a.description,
+        desc_kn: activityData.desc_kn !== undefined ? activityData.desc_kn : a.desc_kn,
+        title: activityData.title || activityData.title_en || a.title,
+        description: activityData.description || activityData.desc_en || a.description,
+        image_url: activityData.image_url || activityData.image || a.image_url || a.image
+      } : a);
+      memCache.set("activities", list);
+      writeLocalJson(STORAGE_ACTIVITIES_KEY, list);
+      return list.find(a => a.id === id);
+    }
   },
 
   async deleteActivity(id) {
-    const res = await fetch(`${API_BASE_URL}/activities/${id}`, {
-      method: "DELETE"
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Failed to delete activity");
-    return data;
+    try {
+      const res = await fetch(`${API_BASE_URL}/activities/${id}`, {
+        method: "DELETE"
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Failed to delete activity");
+      let list = this.getCachedActivities("all", false);
+      list = list.filter(a => a.id !== id);
+      memCache.set("activities", list);
+      writeLocalJson(STORAGE_ACTIVITIES_KEY, list);
+      return data;
+    } catch (err) {
+      if (!err.message?.includes("Failed to fetch") && !err.message?.includes("NetworkError") && err.message !== "Failed to delete activity") {
+        throw err;
+      }
+      let list = this.getCachedActivities("all", false);
+      list = list.filter(a => a.id !== id);
+      memCache.set("activities", list);
+      writeLocalJson(STORAGE_ACTIVITIES_KEY, list);
+      return { success: true };
+    }
   },
 
   getCachedGallery(category = "all") {

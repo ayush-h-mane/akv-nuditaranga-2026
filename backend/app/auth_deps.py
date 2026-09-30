@@ -75,46 +75,11 @@ def get_current_user(
     except (ValueError, TypeError):
         if str(user_id).lower() == "superadmin" or payload.get("role") == "SUPERADMIN":
             user = db.query(User).filter(User.role == "SUPERADMIN").first()
-            if not user:
-                user = User(
-                    id=1,
-                    name=settings.SUPERADMIN_NAME,
-                    auid="AKV-SUPERADMIN",
-                    email=settings.SUPERADMIN_EMAIL,
-                    phone="9876543210",
-                    institute="Acharya Institute of Technology",
-                    department="Kannada Vedike",
-                    semester=7,
-                    section="A",
-                    gender="Male",
-                    role="SUPERADMIN",
-                    registration_id="AKV-SA-0001",
-                    account_status="ACTIVE"
-                )
         else:
             raise credentials_exception
 
     if not user and payload.get("role") == "SUPERADMIN":
         user = db.query(User).filter(User.role == "SUPERADMIN").first()
-        if not user:
-            user = User(
-                name=settings.SUPERADMIN_NAME,
-                auid="AKV-SUPERADMIN",
-                email=settings.SUPERADMIN_EMAIL,
-                phone="9876543210",
-                institute="Acharya Institute of Technology",
-                department="Kannada Vedike",
-                semester=8,
-                section="A",
-                gender="Other",
-                role="SUPERADMIN",
-                registration_id="AKV-SA-0001",
-                password_hash=get_password_hash(settings.SUPERADMIN_PASSWORD),
-                account_status="ACTIVE"
-            )
-            db.add(user)
-            db.commit()
-            db.refresh(user)
 
     if not user:
         raise credentials_exception
@@ -171,11 +136,26 @@ def require_admin(
 
     return current_user
 
+AUTHORIZED_SUPERADMIN_USERNAMES = {
+    "akvsadayt",
+    "akvsapriya",
+    "akvsaarjun",
+    "akvsaculturals",
+    "akvsatejas",
+    "akvsarakshi"
+}
+
 def require_superadmin(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role != "SUPERADMIN":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Super Admin privileges required"
+        )
+    admin_entry = current_user.admin_profile
+    if not admin_entry or (admin_entry.username and admin_entry.username.lower() not in AUTHORIZED_SUPERADMIN_USERNAMES):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access restricted: This portal is strictly for authorized AKV Super Administrators only."
         )
     return current_user
 
