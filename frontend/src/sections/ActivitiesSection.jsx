@@ -28,6 +28,22 @@ export const ActivitiesSection = () => {
     }
   };
 
+  const getActivityTitle = (act) => {
+    if (!act) return "";
+    if (lang === "kn") {
+      return act.title_kn || act.titleKn || act.title_en || act.titleEn || act.title || "";
+    }
+    return act.title_en || act.titleEn || act.title || act.title_kn || act.titleKn || "";
+  };
+
+  const getActivityDesc = (act) => {
+    if (!act) return "";
+    if (lang === "kn") {
+      return act.desc_kn || act.descKn || act.desc_en || act.descEn || act.description || "";
+    }
+    return act.desc_en || act.descEn || act.description || act.desc_kn || act.descKn || "";
+  };
+
   return (
     <section id="activities" className="py-20 bg-stone-50 relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -50,8 +66,8 @@ export const ActivitiesSection = () => {
           <>
             <div className="flex sm:hidden flex-col gap-3">
               {activities.map((act) => {
-                const title = lang === "kn" ? (act.title_kn || act.titleKn) : (act.title_en || act.titleEn);
-                const desc = lang === "kn" ? (act.desc_kn || act.descKn) : (act.desc_en || act.descEn);
+                const title = getActivityTitle(act);
+                const desc = getActivityDesc(act);
 
                 return (
                   <div
@@ -98,8 +114,8 @@ export const ActivitiesSection = () => {
             {/* Laptop/Desktop View: Unchanged standard 3-column grid */}
             <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
               {activities.map((act) => {
-                const title = lang === "kn" ? (act.title_kn || act.titleKn) : (act.title_en || act.titleEn);
-                const desc = lang === "kn" ? (act.desc_kn || act.descKn) : (act.desc_en || act.descEn);
+                const title = getActivityTitle(act);
+                const desc = getActivityDesc(act);
 
                 return (
                   <div
@@ -183,7 +199,7 @@ export const ActivitiesSection = () => {
             <div className="relative h-36 sm:h-52 w-full overflow-hidden bg-stone-950 shrink-0">
               <img
                 src={selectedActivity.image || selectedActivity.image_url || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80"}
-                alt={lang === "kn" ? (selectedActivity.title_kn || selectedActivity.titleKn) : (selectedActivity.title_en || selectedActivity.titleEn)}
+                alt={getActivityTitle(selectedActivity)}
                 className="w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30" />
@@ -210,11 +226,27 @@ export const ActivitiesSection = () => {
               </div>
 
               <h3 className="text-base sm:text-2xl font-black text-stone-900 font-display leading-snug">
-                {lang === "kn" ? (selectedActivity.title_kn || selectedActivity.titleKn) : (selectedActivity.title_en || selectedActivity.titleEn)}
+                {getActivityTitle(selectedActivity)}
               </h3>
 
-              <p className="text-xs sm:text-sm text-stone-700 font-kannada leading-relaxed whitespace-pre-line">
-                {lang === "kn" ? (selectedActivity.desc_kn || selectedActivity.descKn) : (selectedActivity.desc_en || selectedActivity.descEn)}
+              {/* Subtitle in the other language if available */}
+              {(() => {
+                const altTitle = lang === "kn"
+                  ? (selectedActivity.title_en || selectedActivity.titleEn || selectedActivity.title)
+                  : (selectedActivity.title_kn || selectedActivity.titleKn);
+                const currentTitle = getActivityTitle(selectedActivity);
+                if (altTitle && altTitle !== currentTitle) {
+                  return (
+                    <p className="text-xs sm:text-sm font-semibold text-amber-800 font-kannada">
+                      {altTitle}
+                    </p>
+                  );
+                }
+                return null;
+              })()}
+
+              <p className="text-xs sm:text-sm text-stone-700 font-kannada leading-relaxed whitespace-pre-line pt-1">
+                {getActivityDesc(selectedActivity)}
               </p>
             </div>
 

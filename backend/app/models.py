@@ -38,6 +38,13 @@ class User(Base):
     working_committee_role = Column(String, default="Coordinator", nullable=True)
     managed_by = Column(String, nullable=True)
     
+    # One-time details edit window (valid until 2026-10-05 23:59:59 IST)
+    profile_edited_once = Column(Boolean, default=False, nullable=False)
+    profile_edited_at = Column(DateTime, nullable=True)
+
+    # First-time login onboarding (for superadmins to set real email and faculty ID/AUID on first login)
+    first_time_setup_required = Column(Boolean, default=False, nullable=False)
+
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 

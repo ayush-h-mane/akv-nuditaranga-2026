@@ -65,17 +65,18 @@ def test_full_pipeline():
         assert ci_res["status"] == "Checked In"
         print(f"[PASS] 5. Check-In Attendance Verified: ID={ci_res['registration_id']} Status={ci_res['status']}")
 
-    # 6. Admin Login & Stats
-    adm_payload = json.dumps({"username": "akvadmin", "password": "AcharyaAKV2026!"}).encode("utf-8")
-    req_adm = urllib.request.Request(
-        "http://localhost:8000/api/admin/login",
-        data=adm_payload,
-        headers={"Content-Type": "application/json"}
-    )
-    with urllib.request.urlopen(req_adm) as resp:
-        adm_res = json.loads(resp.read().decode())
-        assert adm_res["success"] is True
-        print(f"[PASS] 6. Admin Authentication: Login token issued")
+    # 6. Admin / SuperAdmin Authentication check
+    if settings.SUPERADMIN_USERNAME and settings.SUPERADMIN_PASSWORD:
+        adm_payload = json.dumps({"username": settings.SUPERADMIN_USERNAME, "password": settings.SUPERADMIN_PASSWORD}).encode("utf-8")
+        req_adm = urllib.request.Request(
+            "http://localhost:8000/api/auth/login/superadmin",
+            data=adm_payload,
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req_adm) as resp:
+            adm_res = json.loads(resp.read().decode())
+            assert adm_res["success"] is True
+            print(f"[PASS] 6. Admin Authentication: Login token issued")
 
     with urllib.request.urlopen("http://localhost:8000/api/admin/stats") as resp:
         stats = json.loads(resp.read().decode())

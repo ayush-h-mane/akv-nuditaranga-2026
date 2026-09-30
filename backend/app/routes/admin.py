@@ -9,7 +9,7 @@ from sqlalchemy import func, or_, and_
 
 from ..database import get_db
 from ..models import User, Admin, Registration, Event, VolunteerAttendance, AttendanceRecord, AuditLog, CheckInLog
-from ..schemas import AdminLogin, StatsOut
+from ..schemas import StatsOut
 from ..config import settings
 from ..auth_deps import require_admin, create_access_token
 
@@ -18,19 +18,6 @@ router = APIRouter(prefix="/admin", tags=["Admin"])
 class MarkAttendancePayload(BaseModel):
     volunteer_user_id: int
     status: str = Field(..., description="PRESENT or ABSENT")
-
-# Legacy login fallback maintained for backward compatibility
-@router.post("/login")
-def admin_login(payload: AdminLogin):
-    if payload.username == settings.ADMIN_USERNAME and payload.password == settings.ADMIN_PASSWORD:
-        token = create_access_token({"sub": "admin", "role": "ADMIN"})
-        return {
-            "success": True,
-            "message": "Login successful",
-            "token": token,
-            "admin": {"username": payload.username, "role": "Fest Coordinator"}
-        }
-    raise HTTPException(status_code=401, detail="Invalid admin username or password")
 
 # ==========================================
 # 1. OVERVIEW FOR APPROVED ADMINS

@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     APP_NAME: str = "Acharya Kannada Vedike (AKV) API"
-    APP_VERSION: str = "2.2.49"
+    APP_VERSION: str = "2.2.50"
     API_PREFIX: str = "/api"
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "production" if os.environ.get("VERCEL") else "development")
     DATABASE_URL: str = os.getenv("DATABASE_URL", "" if os.environ.get("VERCEL") else "sqlite:///./akv_fest.db")
@@ -14,15 +14,11 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 1440))
     ALLOWED_ORIGINS: str = os.getenv("ALLOWED_ORIGINS", "")
     
-    # Super Admin credentials
-    SUPERADMIN_USERNAME: str = os.getenv("SUPERADMIN_USERNAME", "akv-nt-2026")
-    SUPERADMIN_PASSWORD: str = os.getenv("SUPERADMIN_PASSWORD", "akv.nt@2026")
-    SUPERADMIN_EMAIL: str = os.getenv("SUPERADMIN_EMAIL", "akv@acharya.ac.in")
+    # Super Admin credentials (configured securely via environment variables / .env)
+    SUPERADMIN_USERNAME: str = os.getenv("SUPERADMIN_USERNAME", "")
+    SUPERADMIN_PASSWORD: str = os.getenv("SUPERADMIN_PASSWORD", "")
+    SUPERADMIN_EMAIL: str = os.getenv("SUPERADMIN_EMAIL", "")
     SUPERADMIN_NAME: str = os.getenv("SUPERADMIN_NAME", "AKV Super Administrator")
-
-    # Legacy admin credentials
-    ADMIN_USERNAME: str = os.getenv("ADMIN_USERNAME", "akvadmin")
-    ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "AcharyaAKV2026")
 
     # Resend API (Recommended - Instant HTTPS email dispatch, no 2FA/App Password required)
     RESEND_API_KEY: str = os.getenv("RESEND_API_KEY", "")
