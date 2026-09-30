@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useLanguage } from "../context/LanguageContext";
 import { siteConfig } from "../config/siteConfig";
 import { formatKannadaDate, formatKannadaTime, formatKannadaVenue } from "../utils/kannadaUtils";
@@ -315,22 +316,22 @@ export const KarunadaVaibhavaSchedule = ({ onRegisterClick }) => {
       </div>
 
       {/* Centered Dialogue Box Modal for Schedule Day Details */}
-      {activeDialogDay && (
+      {activeDialogDay && typeof document !== "undefined" && createPortal(
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-md animate-fade-in overflow-y-auto"
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-fade-in overflow-y-auto"
           onClick={() => setActiveDialogDay(null)}
         >
           <div
-            className="relative w-full max-w-lg bg-stone-950 rounded-3xl overflow-hidden border-2 border-amber-400/50 shadow-2xl my-auto max-h-[90vh] flex flex-col animate-scale-up text-left"
+            className="relative w-[92%] sm:w-full max-w-lg bg-stone-950 rounded-3xl overflow-hidden border-2 border-amber-400/50 shadow-2xl my-auto max-h-[84dvh] sm:max-h-[88vh] flex flex-col animate-scale-up text-left"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Top Karnataka Ribbon */}
             <div className="h-1.5 w-full karnataka-ribbon shrink-0" />
 
             {/* Header */}
-            <div className="p-5 sm:p-6 bg-stone-900/90 border-b border-stone-800 flex items-center justify-between gap-3 shrink-0">
+            <div className="p-4 sm:p-6 bg-stone-900/90 border-b border-stone-800 flex items-center justify-between gap-3 shrink-0">
               <div className="flex items-center gap-2.5">
                 <span className="px-3 py-1 rounded-xl text-xs font-black bg-kar-red text-white uppercase tracking-wider">
                   {lang === "kn" ? activeDialogDay.dayKn : activeDialogDay.day}
@@ -351,9 +352,9 @@ export const KarunadaVaibhavaSchedule = ({ onRegisterClick }) => {
             </div>
 
             {/* Body */}
-            <div className="p-5 sm:p-6 overflow-y-auto space-y-4 flex-1">
+            <div className="p-4 sm:p-6 overflow-y-auto overscroll-contain space-y-4 flex-1">
               <div>
-                <h3 className="text-xl sm:text-2xl font-black text-white font-display">
+                <h3 className="text-lg sm:text-2xl font-black text-white font-display">
                   {lang === "kn" ? activeDialogDay.titleKn : activeDialogDay.title}
                 </h3>
                 {localizedTagline(activeDialogDay) && (
@@ -367,7 +368,7 @@ export const KarunadaVaibhavaSchedule = ({ onRegisterClick }) => {
                 {lang === "kn" ? activeDialogDay.descKn : activeDialogDay.descEn}
               </p>
 
-              <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-2 text-xs text-stone-300">
+              <div className="p-3 sm:p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-2 text-xs text-stone-300">
                 <div className="flex items-center gap-2">
                   <MapPin className="w-4 h-4 text-kar-red shrink-0" />
                   <span>{lang === "kn" ? (activeDialogDay.venueKn || formatKannadaVenue(activeDialogDay.venue)) : (activeDialogDay.venueEn || activeDialogDay.venue)}</span>
@@ -380,7 +381,7 @@ export const KarunadaVaibhavaSchedule = ({ onRegisterClick }) => {
             </div>
 
             {/* Footer */}
-            <div className="p-4 sm:p-5 bg-stone-900/90 border-t border-stone-800 flex items-center justify-between gap-3 shrink-0">
+            <div className="p-3.5 sm:p-5 bg-stone-900/90 border-t border-stone-800 flex items-center justify-between gap-3 shrink-0">
               {onRegisterClick ? (
                 <button
                   type="button"
@@ -404,23 +405,24 @@ export const KarunadaVaibhavaSchedule = ({ onRegisterClick }) => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Modal for Full-Size Poster Inspection */}
-      {posterModalOpen && (
+      {posterModalOpen && typeof document !== "undefined" && createPortal(
         <div 
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-md animate-fade-in overflow-y-auto"
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-fade-in overflow-y-auto"
           onClick={() => setPosterModalOpen(false)}
         >
           {/* Mobile version: Coming soon... with close option */}
           <div 
-            className="block sm:hidden relative max-w-sm w-full bg-stone-950 rounded-3xl overflow-hidden border border-amber-400/40 shadow-2xl p-6 text-center my-auto"
+            className="block sm:hidden relative max-w-sm w-[92%] bg-stone-950 rounded-3xl overflow-hidden border border-amber-400/40 shadow-2xl p-6 text-center my-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <button
               onClick={() => setPosterModalOpen(false)}
-              className="absolute top-4 right-4 p-1.5 rounded-xl hover:bg-stone-800 text-stone-400 hover:text-white transition-colors"
+              className="absolute top-4 right-4 p-1.5 rounded-xl hover:bg-stone-800 text-stone-400 hover:text-white transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -440,7 +442,7 @@ export const KarunadaVaibhavaSchedule = ({ onRegisterClick }) => {
             </p>
             <button
               onClick={() => setPosterModalOpen(false)}
-              className="w-full py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-white text-xs font-bold transition-colors"
+              className="w-full py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-white text-xs font-bold transition-colors cursor-pointer"
             >
               {lang === "kn" ? "ಮುಚ್ಚಿ" : "Close"}
             </button>
@@ -460,7 +462,7 @@ export const KarunadaVaibhavaSchedule = ({ onRegisterClick }) => {
               </div>
               <button
                 onClick={() => setPosterModalOpen(false)}
-                className="p-1.5 rounded-xl hover:bg-stone-800 text-stone-400 hover:text-white transition-colors"
+                className="p-1.5 rounded-xl hover:bg-stone-800 text-stone-400 hover:text-white transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -480,7 +482,8 @@ export const KarunadaVaibhavaSchedule = ({ onRegisterClick }) => {
                 : "Acharya Institutes • Acharya Kannada Vedike • 30/10/2026 to 04/11/2026"}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </section>
   );

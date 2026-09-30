@@ -166,7 +166,7 @@ export const ModalAlertProvider = ({ children }) => {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-6 overflow-y-auto"
         >
           {/* Backdrop that disables background interactions completely */}
           <div
@@ -177,7 +177,7 @@ export const ModalAlertProvider = ({ children }) => {
           {/* Modal Container Card */}
           <div
             onClick={(e) => e.stopPropagation()}
-            className={`relative w-full max-w-md bg-white rounded-3xl shadow-2xl border ${currentConfig.accentBorder} overflow-hidden transform transition-all animate-scale-up z-10 my-auto max-h-[92vh] flex flex-col`}
+            className={`relative w-[92%] sm:w-full max-w-md bg-white rounded-3xl shadow-2xl border ${currentConfig.accentBorder} overflow-hidden transform transition-all animate-scale-up z-10 my-auto max-h-[85dvh] sm:max-h-[92vh] flex flex-col`}
           >
             {/* Top Karnataka Decorative Ribbon */}
             <div className="h-1.5 w-full karnataka-ribbon shrink-0" />

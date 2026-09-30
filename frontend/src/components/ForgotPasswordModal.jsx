@@ -44,7 +44,7 @@ export const ForgotPasswordModal = ({ isOpen, onClose, onOpenResetView }) => {
       onClick={onClose}
     >
       <div 
-        className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full border border-amber-200 overflow-hidden transform-gpu will-change-transform animate-[modalEnter_0.28s_cubic-bezier(0.16,1,0.3,1)_forwards] my-auto max-h-[92vh] flex flex-col"
+        className="relative bg-white rounded-2xl shadow-2xl max-w-md w-[92%] sm:w-full border border-amber-200 overflow-hidden transform-gpu will-change-transform animate-[modalEnter_0.28s_cubic-bezier(0.16,1,0.3,1)_forwards] my-auto max-h-[85dvh] sm:max-h-[92vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

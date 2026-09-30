@@ -908,11 +908,11 @@ export const StudentDashboard = ({ onNavigateHome }) => {
         <div 
           role="dialog" 
           aria-modal="true" 
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/70 backdrop-blur-sm animate-fade-in overflow-y-auto"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-sm animate-fade-in overflow-y-auto"
           onClick={() => setTeamModalEvent(null)}
         >
           <div 
-            className="bg-white rounded-3xl max-w-lg w-full p-6 border border-stone-200 shadow-2xl my-auto max-h-[90vh] flex flex-col"
+            className="bg-white rounded-3xl max-w-lg w-[92%] sm:w-full p-4 sm:p-6 border border-stone-200 shadow-2xl my-auto max-h-[85dvh] sm:max-h-[90vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-stone-100 pb-3 mb-4 shrink-0">
@@ -1024,11 +1024,11 @@ export const StudentDashboard = ({ onNavigateHome }) => {
         <div 
           role="dialog" 
           aria-modal="true" 
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/75 backdrop-blur-sm animate-fade-in overflow-y-auto"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-sm animate-fade-in overflow-y-auto"
           onClick={() => setViewingPassReg(null)}
         >
           <div 
-            className="bg-white rounded-3xl max-w-xl w-full p-4 sm:p-6 border border-stone-200 shadow-2xl relative my-auto max-h-[92vh] flex flex-col"
+            className="bg-white rounded-3xl max-w-xl w-[92%] sm:w-full p-4 sm:p-6 border border-stone-200 shadow-2xl relative my-auto max-h-[86dvh] sm:max-h-[92vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             <button

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useLanguage } from "../context/LanguageContext";
 import { api } from "../services/api";
 import { useHistoryModal } from "../utils/useHistoryModal";
@@ -163,65 +164,76 @@ export const ActivitiesSection = () => {
 
       </div>
 
-      {/* Activity Details Dialogue Box Modal */}
-      {selectedActivity && (
+      {/* Activity Details Dialogue Box Modal (Portaled to document.body for flawless mobile ratio & z-index) */}
+      {selectedActivity && typeof document !== "undefined" && createPortal(
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-md animate-fade-in overflow-y-auto"
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-[backdropFade_0.2s_ease-out_forwards] overflow-y-auto min-h-[100dvh]"
           onClick={() => setSelectedActivity(null)}
         >
           <div
-            className="relative max-w-lg w-full bg-white rounded-3xl overflow-hidden shadow-2xl border border-stone-200 flex flex-col my-auto max-h-[90vh] animate-scale-up"
+            className="relative w-[92%] sm:w-full max-w-lg bg-white rounded-3xl overflow-hidden shadow-2xl border border-stone-200 flex flex-col my-auto max-h-[85dvh] sm:max-h-[88vh] animate-scale-up text-left"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="relative h-48 sm:h-60 w-full overflow-hidden bg-stone-950 shrink-0">
+            {/* Top Karnataka Ribbon */}
+            <div className="h-1.5 w-full karnataka-ribbon shrink-0" />
+
+            {/* Header Image with balanced mobile ratio */}
+            <div className="relative h-36 sm:h-52 w-full overflow-hidden bg-stone-950 shrink-0">
               <img
                 src={selectedActivity.image || selectedActivity.image_url || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80"}
                 alt={lang === "kn" ? (selectedActivity.title_kn || selectedActivity.titleKn) : (selectedActivity.title_en || selectedActivity.titleEn)}
                 className="w-full h-full object-cover"
               />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30" />
               <button
+                type="button"
                 onClick={() => setSelectedActivity(null)}
-                className="absolute top-3 right-3 p-2 rounded-full bg-black/60 hover:bg-black/80 text-white transition-colors cursor-pointer"
-                title={lang === "kn" ? "ಮುಚ್ಚಿ" : "Close"}
+                className="absolute top-2.5 right-2.5 z-20 p-2 rounded-full bg-black/60 hover:bg-black/85 text-white transition-colors cursor-pointer shadow-md"
+                aria-label={lang === "kn" ? "ಮುಚ್ಚಿ" : "Close"}
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
               {selectedActivity.activity_date && (
-                <span className="absolute bottom-3 left-3 px-3 py-1 rounded-xl text-xs font-bold bg-black/75 text-white backdrop-blur-xs flex items-center gap-1.5 shadow-md font-mono">
+                <span className="absolute bottom-2.5 left-2.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-black/75 text-white backdrop-blur-xs flex items-center gap-1.5 shadow-md font-mono">
                   <Calendar className="w-3.5 h-3.5 text-kar-yellow" />
                   <span>{selectedActivity.activity_date}</span>
                 </span>
               )}
             </div>
 
-            <div className="p-5 sm:p-6 overflow-y-auto space-y-3">
-              <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 uppercase">
+            {/* Body */}
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-2.5 flex-1 overscroll-contain">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 uppercase">
                 <span>{selectedActivity.category || "Acharya Kannada Vedike"}</span>
               </div>
 
-              <h3 className="text-lg sm:text-2xl font-black text-stone-900 font-display">
+              <h3 className="text-base sm:text-2xl font-black text-stone-900 font-display leading-snug">
                 {lang === "kn" ? (selectedActivity.title_kn || selectedActivity.titleKn) : (selectedActivity.title_en || selectedActivity.titleEn)}
               </h3>
 
               <p className="text-xs sm:text-sm text-stone-700 font-kannada leading-relaxed whitespace-pre-line">
                 {lang === "kn" ? (selectedActivity.desc_kn || selectedActivity.descKn) : (selectedActivity.desc_en || selectedActivity.descEn)}
               </p>
+            </div>
 
-              <div className="pt-3 border-t border-stone-100 flex items-center justify-between text-xs text-stone-500">
-                <span className="font-semibold">{lang === "kn" ? "ಆಚಾರ್ಯ ವಿದ್ಯಾಸಂಸ್ಥೆಗಳು" : "Acharya Institutions"}</span>
-                <button
-                  type="button"
-                  onClick={() => setSelectedActivity(null)}
-                  className="px-4 py-2 rounded-xl bg-stone-900 text-white font-bold hover:bg-stone-800 text-xs"
-                >
-                  {lang === "kn" ? "ಮುಚ್ಚಿ" : "Close"}
-                </button>
-              </div>
+            {/* Sticky Action Footer */}
+            <div className="p-3 sm:p-4 bg-stone-50 border-t border-stone-100 flex items-center justify-between text-xs text-stone-500 shrink-0">
+              <span className="font-semibold text-[11px] sm:text-xs text-stone-600 truncate mr-2">
+                {lang === "kn" ? "ಆಚಾರ್ಯ ವಿದ್ಯಾಸಂಸ್ಥೆಗಳು" : "Acharya Institutions"}
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedActivity(null)}
+                className="px-5 py-2 rounded-xl bg-stone-900 text-white font-bold hover:bg-stone-800 text-xs transition-transform active:scale-95 shadow-sm cursor-pointer shrink-0"
+              >
+                {lang === "kn" ? "ಮುಚ್ಚಿ" : "Close"}
+              </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </section>
   );

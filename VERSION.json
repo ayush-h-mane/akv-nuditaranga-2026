@@ -4,7 +4,9 @@
   "status": "STAGED_DEVELOPMENT",
   "active_branch": "develop",
   "production_branch": "main",
-  "pending_changes": [],
+  "pending_changes": [
+    "Mobile Modal Visibility & Screen-to-Box Proportion Fix: Resolved modal popup boxes (Activities 'View Details', Festival Schedule 'View Details', Official Draft Poster, Rules modal, Gallery lightbox, and confirmation dialogs) being clipped or invisible on mobile screens. Teleported dialogs directly to document.body via React createPortal to escape parent container clipping and relative/overflow-hidden stacking contexts; engineered unified mobile-to-box proportions (w-[92%] sm:w-full, max-h-[84-85dvh], balanced image ratios, z-20 floating close buttons, sticky footer close controls, and overscroll-contain) so dialog headers, Kannada/English details, and close actions remain completely visible, centered, and fully interactive across all mobile viewports."
+  ],
   "history": [
     {
       "version": "2.2.47",
