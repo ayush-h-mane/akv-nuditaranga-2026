@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.48",
-  "staged_version": "2.2.49",
+  "production_version": "2.2.49",
+  "staged_version": "2.2.50",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.49",
+      "released_at": "2026-09-30T16:14:10+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.49: Automated Password Reset Email from akv@acharya.ac.in: Engineered automated password reset email system dispatched officially from akv@acharya.ac.in with a responsive, bilingual (Kannada & English) festival-branded HTML template, high-contrast action CTA button, direct fallback link box, and 10-minute single-use security token.; Brevo Multi-Relay & Resend API Integration: Configured Brevo SMTP relay (smtp-relay.brevo.com:587) with validated account credentials and verified live automated delivery from akv@acharya.ac.in.; Multi-Identifier Password Reset Lookup: Expanded forgot-password endpoint to look up accounts by registered college email, student AUID, or admin username seamlessly.; Resilient Reset Lifecycle: Retained 10-minute token validity in database and provided development testing fallback so development and offline testing are never blocked by network latency."
+    },
     {
       "version": "2.2.48",
       "released_at": "2026-09-30T10:28:01+0530",

@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     APP_NAME: str = "Acharya Kannada Vedike (AKV) API"
-    APP_VERSION: str = "2.2.48"
+    APP_VERSION: str = "2.2.49"
     API_PREFIX: str = "/api"
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "production" if os.environ.get("VERCEL") else "development")
     DATABASE_URL: str = os.getenv("DATABASE_URL", "" if os.environ.get("VERCEL") else "sqlite:///./akv_fest.db")
@@ -24,13 +24,17 @@ class Settings(BaseSettings):
     ADMIN_USERNAME: str = os.getenv("ADMIN_USERNAME", "akvadmin")
     ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "AcharyaAKV2026")
 
-    # SMTP Mail (Primary Relay)
-    SMTP_HOST: str = os.getenv("SMTP_HOST", "")
+    # Resend API (Recommended - Instant HTTPS email dispatch, no 2FA/App Password required)
+    RESEND_API_KEY: str = os.getenv("RESEND_API_KEY", "")
+    RESEND_FROM: str = os.getenv("RESEND_FROM", "")
+
+    # SMTP Mail (Primary Relay - Google Workspace / Official akv@acharya.ac.in)
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
     SMTP_PORT: int = int(os.getenv("SMTP_PORT", 587))
-    SMTP_USERNAME: str = os.getenv("SMTP_USERNAME", "")
+    SMTP_USERNAME: str = os.getenv("SMTP_USERNAME", "akv@acharya.ac.in")
     SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
 
-    # Multi-Relay Pool (Relay 2 & 3 for combined 600+ to 900+ free emails/day)
+    # Multi-Relay Pool (Optional Relays 2 & 3 for failover)
     SMTP_HOST_2: str = os.getenv("SMTP_HOST_2", "")
     SMTP_PORT_2: int = int(os.getenv("SMTP_PORT_2", 587))
     SMTP_USERNAME_2: str = os.getenv("SMTP_USERNAME_2", "")
