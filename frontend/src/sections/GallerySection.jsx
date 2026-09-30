@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useLanguage } from "../context/LanguageContext";
 import { api } from "../services/api";
 import { useHistoryModal } from "../utils/useHistoryModal";
@@ -155,39 +156,39 @@ export const GallerySection = () => {
       </div>
 
       {/* Lightbox Modal */}
-      {selectedImage && (
+      {selectedImage && typeof document !== "undefined" && createPortal(
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-md animate-fade-in overflow-y-auto"
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-fade-in overflow-y-auto"
           onClick={() => setSelectedImage(null)}
         >
           <div
-            className="relative max-w-3xl w-full bg-stone-950 rounded-3xl overflow-hidden border border-stone-800 shadow-2xl my-auto max-h-[92vh] flex flex-col animate-scale-up"
+            className="relative w-[92%] sm:w-full max-w-3xl bg-stone-950 rounded-3xl overflow-hidden border border-stone-800 shadow-2xl my-auto max-h-[86dvh] sm:max-h-[92vh] flex flex-col animate-scale-up"
             onClick={(e) => e.stopPropagation()}
           >
             <button
               onClick={() => setSelectedImage(null)}
-              className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/60 hover:bg-black/90 text-white transition-colors cursor-pointer"
+              className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 p-2 rounded-full bg-black/60 hover:bg-black/90 text-white transition-colors cursor-pointer shadow-md"
               title={lang === "kn" ? "ಮುಚ್ಚಿ" : "Close"}
             >
               <X className="w-5 h-5" />
             </button>
 
-            <div className="bg-black flex items-center justify-center shrink-0 max-h-[60vh] overflow-hidden">
+            <div className="bg-black flex items-center justify-center shrink-0 max-h-[38dvh] sm:max-h-[60vh] overflow-hidden">
               <img
                 src={selectedImage.image}
                 alt={lang === "kn" ? (selectedImage.title_kn || selectedImage.titleKn) : (selectedImage.title_en || selectedImage.titleEn)}
-                className="w-full max-h-[60vh] object-contain"
+                className="w-full max-h-[38dvh] sm:max-h-[60vh] object-contain"
               />
             </div>
 
-            <div className="p-5 sm:p-6 bg-stone-900 text-white overflow-y-auto flex-1">
-              <h3 className="text-lg sm:text-xl font-bold font-display mb-2">
+            <div className="p-4 sm:p-6 bg-stone-900 text-white overflow-y-auto overscroll-contain flex-1">
+              <h3 className="text-base sm:text-xl font-bold font-display mb-1.5 sm:mb-2">
                 {lang === "kn" ? (selectedImage.title_kn || selectedImage.titleKn || selectedImage.title_en) : (selectedImage.title_en || selectedImage.titleEn)}
               </h3>
               {(selectedImage.desc_en || selectedImage.desc_kn || selectedImage.descEn || selectedImage.descKn) && (
-                <p className="text-xs sm:text-sm text-stone-300 font-kannada leading-relaxed mb-4">
+                <p className="text-xs sm:text-sm text-stone-300 font-kannada leading-relaxed mb-3 sm:mb-4">
                   {lang === "kn" ? (selectedImage.desc_kn || selectedImage.descKn || selectedImage.desc_en) : (selectedImage.desc_en || selectedImage.descEn)}
                 </p>
               )}
@@ -202,7 +203,8 @@ export const GallerySection = () => {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </section>
   );

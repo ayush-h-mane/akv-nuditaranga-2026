@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.47",
-  "staged_version": "2.2.48",
+  "production_version": "2.2.48",
+  "staged_version": "2.2.49",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.48",
+      "released_at": "2026-09-30T10:28:01+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.48: Mobile Modal Visibility & Screen-to-Box Proportion Fix: Resolved modal popup boxes (Activities 'View Details', Festival Schedule 'View Details', Official Draft Poster, Rules modal, Gallery lightbox, and confirmation dialogs) being clipped or invisible on mobile screens. Teleported dialogs directly to document.body via React createPortal to escape parent container clipping and relative/overflow-hidden stacking contexts; engineered unified mobile-to-box proportions (w-[92%] sm:w-full, max-h-[84-85dvh], balanced image ratios, z-20 floating close buttons, sticky footer close controls, and overscroll-contain) so dialog headers, Kannada/English details, and close actions remain completely visible, centered, and fully interactive across all mobile viewports."
+    },
     {
       "version": "2.2.47",
       "released_at": "2026-09-30T09:48:47+0530",

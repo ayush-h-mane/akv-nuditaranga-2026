@@ -1,4 +1,5 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import { useLanguage } from "../context/LanguageContext";
 import { X, CheckCircle2, AlertCircle, Clock, MapPin } from "lucide-react";
 import { formatKannadaTime, formatKannadaVenue, toKannadaDigits } from "../utils/kannadaUtils";
@@ -11,22 +12,22 @@ export const RulesModal = ({ event, isOpen, onClose, onRegister }) => {
   const rulesText = lang === "kn" ? (event.rules_kn || event.rules_en) : event.rules_en;
   const rulesList = rulesText.split("\n").filter(r => r.trim().length > 0);
 
-  return (
+  const modalContent = (
     <div 
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/70 backdrop-blur-sm animate-[backdropFade_0.2s_ease-out_forwards] transition-opacity overflow-y-auto"
+      className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-sm animate-[backdropFade_0.2s_ease-out_forwards] transition-opacity overflow-y-auto"
       onClick={onClose}
     >
       <div 
-        className="relative w-full max-w-xl bg-white rounded-3xl shadow-2xl border border-amber-200 overflow-hidden transform-gpu will-change-transform animate-[modalEnter_0.28s_cubic-bezier(0.16,1,0.3,1)_forwards] my-auto max-h-[92vh] flex flex-col"
+        className="relative w-[92%] sm:w-full max-w-xl bg-white rounded-3xl shadow-2xl border border-amber-200 overflow-hidden transform-gpu will-change-transform animate-[modalEnter_0.28s_cubic-bezier(0.16,1,0.3,1)_forwards] my-auto max-h-[85dvh] sm:max-h-[90vh] flex flex-col text-left"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header Ribbon */}
         <div className="h-2 karnataka-ribbon w-full shrink-0" />
 
         {/* Modal Header */}
-        <div className="p-6 border-b border-stone-100 flex items-start justify-between shrink-0">
+        <div className="p-4 sm:p-6 border-b border-stone-100 flex items-start justify-between shrink-0">
           <div>
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 mb-1.5">
               {lang === "kn" ? event.category_kn : event.category.toUpperCase()}
@@ -53,9 +54,9 @@ export const RulesModal = ({ event, isOpen, onClose, onRegister }) => {
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 overflow-y-auto overscroll-contain space-y-4 text-sm text-stone-700 font-kannada scroll-smooth flex-1">
+        <div className="p-4 sm:p-6 overflow-y-auto overscroll-contain space-y-4 text-xs sm:text-sm text-stone-700 font-kannada scroll-smooth flex-1">
           {/* Timing & Venue */}
-          <div className="grid grid-cols-2 gap-3 p-3.5 rounded-2xl bg-amber-50/60 border border-amber-200/50 text-xs">
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3 p-3 sm:p-3.5 rounded-2xl bg-amber-50/60 border border-amber-200/50 text-xs">
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-kar-red flex-shrink-0" />
               <div>
@@ -77,7 +78,7 @@ export const RulesModal = ({ event, isOpen, onClose, onRegister }) => {
           </div>
 
           <div>
-            <h4 className="font-bold text-stone-900 mb-2 flex items-center gap-1.5">
+            <h4 className="font-bold text-stone-900 mb-2 flex items-center gap-1.5 text-xs sm:text-sm">
               <AlertCircle className="w-4 h-4 text-kar-red" />
               <span>{t("rulesModal.title")}</span>
             </h4>
@@ -91,7 +92,7 @@ export const RulesModal = ({ event, isOpen, onClose, onRegister }) => {
             </div>
           </div>
 
-          <p className="text-xs text-stone-500 italic pt-2">
+          <p className="text-[11px] sm:text-xs text-stone-500 italic pt-2">
             {lang === "kn" 
               ? "* ತೀರ್ಪುಗಾರರ ತೀರ್ಮಾನವೇ ಅಂತಿಮವಾಗಿರುತ್ತದೆ. ಯಾವುದೇ ವಿವಾದಕ್ಕೆ ಅವಕಾಶವಿಲ್ಲ." 
               : "* The decision of the judging panel is final and binding for all participants."}
@@ -99,10 +100,10 @@ export const RulesModal = ({ event, isOpen, onClose, onRegister }) => {
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 bg-stone-50 border-t border-stone-100 flex items-center justify-end gap-3 shrink-0">
+        <div className="p-3.5 sm:p-4 bg-stone-50 border-t border-stone-100 flex items-center justify-end gap-3 shrink-0">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-xl text-xs font-bold text-stone-600 hover:bg-stone-200 transition-all duration-150 active:scale-95"
+            className="px-4 py-2 rounded-xl text-xs font-bold text-stone-600 hover:bg-stone-200 transition-all duration-150 active:scale-95 cursor-pointer"
           >
             {t("rulesModal.close")}
           </button>
@@ -111,7 +112,7 @@ export const RulesModal = ({ event, isOpen, onClose, onRegister }) => {
               onClose();
               if (onRegister) onRegister(event.id);
             }}
-            className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-kar-red to-kar-yellow shadow-md hover:shadow-lg hover:brightness-105 transition-all duration-150 active:scale-95"
+            className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-kar-red to-kar-yellow shadow-md hover:shadow-lg hover:brightness-105 transition-all duration-150 active:scale-95 cursor-pointer"
           >
             {t("rulesModal.understood")}
           </button>
@@ -119,4 +120,6 @@ export const RulesModal = ({ event, isOpen, onClose, onRegister }) => {
       </div>
     </div>
   );
+
+  return typeof document !== "undefined" ? createPortal(modalContent, document.body) : null;
 };

@@ -1267,7 +1267,7 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
             onClick={() => setShowSubmitModal(false)}
           >
             <div 
-              className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full border border-stone-200 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200 relative my-auto max-h-[92vh] overflow-y-auto"
+              className="bg-white rounded-3xl p-5 sm:p-7 max-w-md w-[92%] sm:w-full border border-stone-200 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200 relative my-auto max-h-[85dvh] sm:max-h-[92vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               <button
