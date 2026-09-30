@@ -157,35 +157,49 @@ export const GallerySection = () => {
       {/* Lightbox Modal */}
       {selectedImage && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in"
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-md animate-fade-in overflow-y-auto"
           onClick={() => setSelectedImage(null)}
         >
           <div
-            className="relative max-w-3xl w-full bg-stone-950 rounded-3xl overflow-hidden border border-stone-800 shadow-2xl"
+            className="relative max-w-3xl w-full bg-stone-950 rounded-3xl overflow-hidden border border-stone-800 shadow-2xl my-auto max-h-[92vh] flex flex-col animate-scale-up"
             onClick={(e) => e.stopPropagation()}
           >
             <button
               onClick={() => setSelectedImage(null)}
               className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/60 hover:bg-black/90 text-white transition-colors cursor-pointer"
+              title={lang === "kn" ? "ಮುಚ್ಚಿ" : "Close"}
             >
               <X className="w-5 h-5" />
             </button>
 
-            <img
-              src={selectedImage.image}
-              alt={lang === "kn" ? (selectedImage.title_kn || selectedImage.titleKn) : (selectedImage.title_en || selectedImage.titleEn)}
-              className="w-full max-h-[65vh] object-cover"
-            />
+            <div className="bg-black flex items-center justify-center shrink-0 max-h-[60vh] overflow-hidden">
+              <img
+                src={selectedImage.image}
+                alt={lang === "kn" ? (selectedImage.title_kn || selectedImage.titleKn) : (selectedImage.title_en || selectedImage.titleEn)}
+                className="w-full max-h-[60vh] object-contain"
+              />
+            </div>
 
-            <div className="p-6 bg-stone-900 text-white">
-              <h3 className="text-xl font-bold font-display mb-2">
+            <div className="p-5 sm:p-6 bg-stone-900 text-white overflow-y-auto flex-1">
+              <h3 className="text-lg sm:text-xl font-bold font-display mb-2">
                 {lang === "kn" ? (selectedImage.title_kn || selectedImage.titleKn || selectedImage.title_en) : (selectedImage.title_en || selectedImage.titleEn)}
               </h3>
               {(selectedImage.desc_en || selectedImage.desc_kn || selectedImage.descEn || selectedImage.descKn) && (
-                <p className="text-sm text-stone-300 font-kannada">
+                <p className="text-xs sm:text-sm text-stone-300 font-kannada leading-relaxed mb-4">
                   {lang === "kn" ? (selectedImage.desc_kn || selectedImage.descKn || selectedImage.desc_en) : (selectedImage.desc_en || selectedImage.descEn)}
                 </p>
               )}
+              <div className="flex justify-end pt-2 border-t border-stone-800">
+                <button
+                  type="button"
+                  onClick={() => setSelectedImage(null)}
+                  className="px-4 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs font-bold transition-colors cursor-pointer"
+                >
+                  {lang === "kn" ? "ಮುಚ್ಚಿ" : "Close"}
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -873,9 +873,17 @@ export const StudentDashboard = ({ onNavigateHome }) => {
 
       {/* Team Registration Modal */}
       {teamModalEvent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 border border-stone-200 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-stone-100 pb-3 mb-4">
+        <div 
+          role="dialog" 
+          aria-modal="true" 
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/70 backdrop-blur-sm animate-fade-in overflow-y-auto"
+          onClick={() => setTeamModalEvent(null)}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-lg w-full p-6 border border-stone-200 shadow-2xl my-auto max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-stone-100 pb-3 mb-4 shrink-0">
               <div>
                 <h3 className="font-extrabold text-base text-stone-900">
                   Team Registration: {teamModalEvent.title_en}
@@ -890,7 +898,7 @@ export const StudentDashboard = ({ onNavigateHome }) => {
               </button>
             </div>
 
-            <form onSubmit={handleTeamRegisterSubmit} className="space-y-4">
+            <form onSubmit={handleTeamRegisterSubmit} className="space-y-4 overflow-y-auto flex-1 pr-1">
               <div>
                 <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
                   Team Name *
@@ -981,8 +989,16 @@ export const StudentDashboard = ({ onNavigateHome }) => {
 
       {/* Digital Pass Viewer Modal */}
       {viewingPassReg && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-fade-in overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-4 sm:p-6 border border-stone-200 shadow-2xl relative my-auto">
+        <div 
+          role="dialog" 
+          aria-modal="true" 
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/75 backdrop-blur-sm animate-fade-in overflow-y-auto"
+          onClick={() => setViewingPassReg(null)}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-xl w-full p-4 sm:p-6 border border-stone-200 shadow-2xl relative my-auto max-h-[92vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
               onClick={() => setViewingPassReg(null)}
               className="absolute top-4 right-4 p-2 rounded-full bg-stone-100 text-stone-600 hover:bg-stone-200 z-10"

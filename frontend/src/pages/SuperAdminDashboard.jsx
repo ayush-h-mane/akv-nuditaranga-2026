@@ -3463,8 +3463,16 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
       {/* Edit Student Modal */}
       {editStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 border border-stone-200 shadow-2xl relative animate-fade-in">
+        <div 
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-xs overflow-y-auto"
+          onClick={() => setEditStudent(null)}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-md w-full p-6 border border-stone-200 shadow-2xl relative animate-fade-in my-auto max-h-[92vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between border-b border-stone-200 pb-3 mb-4">
               <h3 className="font-extrabold text-base text-stone-900">Edit Student Information</h3>
               <button
@@ -3556,8 +3564,16 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
       {/* Edit Attendance Record Modal */}
       {editAttendance && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 border border-stone-200 shadow-2xl relative animate-fade-in">
+        <div 
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-xs overflow-y-auto"
+          onClick={() => setEditAttendance(null)}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-sm w-full p-6 border border-stone-200 shadow-2xl relative animate-fade-in my-auto max-h-[92vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between border-b border-stone-200 pb-3 mb-4">
               <div>
                 <h3 className="font-extrabold text-base text-stone-900">Modify Attendance</h3>
@@ -3621,8 +3637,16 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
       {/* Log Attendance for Date Modal */}
       {markAttendanceModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 border border-stone-200 shadow-2xl relative animate-fade-in">
+        <div 
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-xs overflow-y-auto"
+          onClick={() => setMarkAttendanceModal(false)}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-sm w-full p-6 border border-stone-200 shadow-2xl relative animate-fade-in my-auto max-h-[92vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between border-b border-stone-200 pb-3 mb-4">
               <h3 className="font-extrabold text-base text-stone-900">Log Volunteer Attendance</h3>
               <button
@@ -4508,8 +4532,16 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
       {/* MODAL: UNLOCK ATTENDANCE SESSION                     */}
       {/* ==================================================== */}
       {unlockModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in relative">
+        <div 
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
+          onClick={() => setUnlockModal(null)}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in relative my-auto max-h-[92vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
               type="button"
               onClick={() => setUnlockModal(null)}
@@ -4572,8 +4604,16 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
       {/* MODAL: RESET ATTENDANCE RECORD                       */}
       {/* ==================================================== */}
       {resetModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in relative">
+        <div 
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
+          onClick={() => setResetModal(null)}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in relative my-auto max-h-[92vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
               type="button"
               onClick={() => setResetModal(null)}
@@ -4742,8 +4782,16 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
       {/* MODAL: UNLOCK WORKING COMMITTEE SESSION              */}
       {/* ==================================================== */}
       {wcUnlockModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in relative">
+        <div 
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
+          onClick={() => setWcUnlockModal(null)}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in relative my-auto max-h-[92vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
               type="button"
               onClick={() => setWcUnlockModal(null)}
@@ -4806,8 +4854,16 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
       {/* MODAL: RESET WORKING COMMITTEE ATTENDANCE RECORD     */}
       {/* ==================================================== */}
       {wcResetModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in relative">
+        <div 
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
+          onClick={() => setWcResetModal(null)}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in relative my-auto max-h-[92vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
               type="button"
               onClick={() => setWcResetModal(null)}
@@ -4870,8 +4926,16 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
       {/* MODAL: ADD / ASSIGN WORKING COMMITTEE MEMBER         */}
       {/* ==================================================== */}
       {wcAddMemberModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in">
+        <div 
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
+          onClick={() => setWcAddMemberModal(false)}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in my-auto max-h-[92vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-start justify-between border-b border-stone-100 pb-3">
               <div>
                 <h4 className="font-extrabold text-base text-stone-900">

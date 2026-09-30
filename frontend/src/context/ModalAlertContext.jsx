@@ -177,12 +177,12 @@ export const ModalAlertProvider = ({ children }) => {
           {/* Modal Container Card */}
           <div
             onClick={(e) => e.stopPropagation()}
-            className={`relative w-full max-w-md bg-white rounded-3xl shadow-2xl border ${currentConfig.accentBorder} overflow-hidden transform transition-all animate-scale-up z-10`}
+            className={`relative w-full max-w-md bg-white rounded-3xl shadow-2xl border ${currentConfig.accentBorder} overflow-hidden transform transition-all animate-scale-up z-10 my-auto max-h-[92vh] flex flex-col`}
           >
             {/* Top Karnataka Decorative Ribbon */}
-            <div className="h-1.5 w-full karnataka-ribbon" />
+            <div className="h-1.5 w-full karnataka-ribbon shrink-0" />
 
-            <div className="p-5 sm:p-6">
+            <div className="p-5 sm:p-6 overflow-y-auto flex flex-col flex-1">
               {/* Header with Type Icon, Title & Close 'X' */}
               <div className="flex items-start justify-between gap-3 mb-4">
                 <div className="flex items-center gap-3">

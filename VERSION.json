@@ -5,7 +5,8 @@
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [
-    "Hero Celebration Banner: Updated celebratory festival title from '10th Year’s Grand Celebration' to 'The Decadal Festival' in English, maintaining 'ದಶಕೋತ್ಸವ' in Kannada."
+    "Hero Celebration Banner: Updated celebratory festival title from '10th Year’s Grand Celebration' to 'The Decadal Festival' in English, maintaining 'ದಶಕೋತ್ಸವ' in Kannada.",
+    "Universal Dialogue Box & Modal Viewport Centering & Visibility: Guaranteed all dialogue boxes (Festival Schedule Day details, Official Draft Poster, Activities details, Cultural Gallery lightbox, Rules modal, Forgot Password, Alert modal, and Admin/SuperAdmin modals) are immediately and completely visible centered in the user's viewport on screen (z-[9999], my-auto, max-h-[90-92vh] flex flex-col, overflow-y-auto backdrop and body) without getting cut off at the top or bottom of the screen; replaced mobile schedule inline accordion with centered dialog box triggered on tapping any schedule card across mobile and desktop."
   ],
   "history": [
     {
