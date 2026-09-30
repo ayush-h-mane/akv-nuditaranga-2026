@@ -949,7 +949,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                       Awaiting Super Admin Approval
                     </h3>
                     <p className="text-xs text-stone-600 leading-relaxed max-w-md mx-auto">
-                      Your administrator request for username <strong>{adminNotice.username}</strong> has been registered.
+                      Your administrator request for ID <strong>{adminNotice.auid || adminNotice.username}</strong> has been registered.
                       Per security policy, an approval alert has been transmitted to the Super Administrator.
                       You will be notified by email once approved.
                     </p>
@@ -965,7 +965,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                   <form onSubmit={handleAdminLogin} className="space-y-4">
                     <div>
                       <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">
-                        AUID, Admin Username, or College Email
+                        AUID or College Email
                       </label>
                       <div className="relative">
                         <User className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
@@ -974,7 +974,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                           required
                           value={adminForm.username}
                           onChange={(e) => setAdminForm({ ...adminForm, username: e.target.value })}
-                          placeholder="Enter AUID, admin username, or college email"
+                          placeholder="Enter registered AUID or college email"
                           className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm ${credentialError ? "border-red-500 bg-red-50" : "border-stone-300"}`}
                         />
                       </div>
@@ -1325,7 +1325,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                 <form onSubmit={handleSuperadminLogin} className="space-y-4">
                   <div>
                     <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">
-                      Superadmin Username
+                      Superadmin Access ID
                     </label>
                     <div className="relative">
                       <User className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
@@ -1334,7 +1334,7 @@ export const AuthPortal = ({ onExplorePublic, onAuthSuccess, onOpenResetView, in
                         required
                         value={superadminForm.username}
                         onChange={(e) => setSuperadminForm({ ...superadminForm, username: e.target.value.toLowerCase() })}
-                        placeholder="Enter superadmin username"
+                        placeholder="Enter superadmin access ID (e.g. akvsadayt)"
                         className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-amber-500 text-sm font-mono font-bold text-stone-900 bg-stone-50"
                       />
                     </div>

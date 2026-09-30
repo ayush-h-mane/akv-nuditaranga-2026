@@ -1598,9 +1598,10 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
           {/* SECTION 2: ADMIN APPROVALS & ROSTER                 */}
           {/* ==================================================== */}
           {activeSection === "admins" && (() => {
-            const pendingAdminsCount = adminsList.filter((a) => a.approval_status === "PENDING_APPROVAL").length;
-            const approvedAdminsCount = adminsList.filter((a) => a.approval_status === "APPROVED").length;
-            const filteredAdminsList = adminsList.filter((adm) => {
+            const validAdmins = adminsList.filter((a) => a.role !== "SUPERADMIN" && a.admin_type !== "SUPERADMIN");
+            const pendingAdminsCount = validAdmins.filter((a) => a.approval_status === "PENDING_APPROVAL").length;
+            const approvedAdminsCount = validAdmins.filter((a) => a.approval_status === "APPROVED").length;
+            const filteredAdminsList = validAdmins.filter((adm) => {
               if (adminApprovalFilter === "pending") return adm.approval_status === "PENDING_APPROVAL";
               if (adminApprovalFilter === "approved") return adm.approval_status === "APPROVED";
               return true;
@@ -1630,7 +1631,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                           : "text-stone-600 hover:text-stone-900"
                           }`}
                       >
-                        All ({adminsList.length})
+                        All ({validAdmins.length})
                       </button>
                       <button
                         onClick={() => setAdminApprovalFilter("pending")}
@@ -1691,7 +1692,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                   </div>
                 )}
 
-                {adminsList.length === 0 ? (
+                {validAdmins.length === 0 ? (
                   <p className="text-xs text-stone-400 py-6 text-center italic">No registered administrators found.</p>
                 ) : filteredAdminsList.length === 0 ? (
                   <p className="text-xs text-stone-400 py-6 text-center italic">No administrators match the selected filter ({adminApprovalFilter}).</p>
@@ -1701,7 +1702,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                       <thead>
                         <tr className="border-b border-stone-200 text-stone-400 uppercase tracking-wider font-extrabold">
                           <th className="py-3 px-3">Admin</th>
-                          <th className="py-3 px-3">Username</th>
+                          <th className="py-3 px-3">College AUID / Faculty ID</th>
                           <th className="py-3 px-3">Department</th>
                           <th className="py-3 px-3">Contact</th>
                           <th className="py-3 px-3">Approval Status</th>
@@ -1748,10 +1749,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                                 </div>
                               </td>
                               <td className="py-3 px-3 font-mono font-bold text-stone-800">
-                                <div>{adm.username}</div>
-                                {adm.auid && adm.auid !== "N/A" && adm.auid.toLowerCase() !== adm.username.toLowerCase() && (
-                                  <div className="text-[10px] text-stone-400 font-normal">AUID: {adm.auid}</div>
-                                )}
+                                <div>{adm.admin_type === "FACULTY_COORDINATOR" ? (adm.faculty_id || adm.auid || "N/A") : (adm.auid || "N/A")}</div>
                               </td>
                               <td className="py-3 px-3 text-stone-600 font-medium">
                                 <div>{adm.institute || "Acharya"}</div>
@@ -1775,7 +1773,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                                   {adm.approval_status === "PENDING_APPROVAL" && (
                                     <>
                                       <button
-                                        onClick={() => handleApproveAdmin(adm.id, adm.username)}
+                                        onClick={() => handleApproveAdmin(adm.id, adm.full_name || adm.auid)}
                                         className="p-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-bold flex items-center gap-1 shadow-xs cursor-pointer"
                                         title="Approve Admin"
                                       >
@@ -1783,7 +1781,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                                         <span>Approve</span>
                                       </button>
                                       <button
-                                        onClick={() => handleRejectAdmin(adm.id, adm.username)}
+                                        onClick={() => handleRejectAdmin(adm.id, adm.full_name || adm.auid)}
                                         className="p-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-kar-red text-[11px] font-bold flex items-center gap-1 cursor-pointer"
                                         title="Reject Admin"
                                       >
@@ -1807,7 +1805,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
                                   {!isSuperAdmin ? (
                                     <button
-                                      onClick={() => handleDeleteAdmin(adm.id, adm.username, adm.role)}
+                                      onClick={() => handleDeleteAdmin(adm.id, adm.full_name || adm.auid, adm.role)}
                                       className="p-1.5 text-stone-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
                                       title="Delete Admin"
                                     >
@@ -5370,7 +5368,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
               </p>
               <div className="mt-3 p-3 bg-stone-50 border border-stone-200 rounded-xl text-left text-xs text-stone-600 leading-relaxed">
                 <p className="font-semibold text-stone-800">
-                  Welcome, <span className="text-red-700">{user?.name || user?.username}</span>!
+                  Welcome, <span className="text-red-700">{user?.name || user?.email || "Super Administrator"}</span>!
                 </p>
                 <p className="mt-1">
                   To complete your Super Administrator activation, please enter your official Acharya College Email ID (<span className="font-mono text-stone-800">@acharya.ac.in</span>) and Faculty ID / AUID.

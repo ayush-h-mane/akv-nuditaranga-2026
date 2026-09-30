@@ -1,7 +1,9 @@
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from .config import settings
 from .database import engine, Base, ensure_schema_migrations
 from .seed import seed_database
@@ -28,6 +30,22 @@ app = FastAPI(
     version=settings.APP_VERSION,
     description="Backend API for Acharya Kannada Vedike (AKV) and Nuditaranga 2026 Cultural Festival"
 )
+
+# Global JSON Exception Handlers: Guarantee API always responds in valid JSON format
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail if isinstance(exc.detail, str) else str(exc.detail)}
+    )
+
+@app.exception_handler(Exception)
+async def global_unhandled_exception_handler(request: Request, exc: Exception):
+    print(f"[UNHANDLED EXCEPTION] {request.method} {request.url.path}: {exc!r}", flush=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Internal server error: {str(exc)}"}
+    )
 
 # GZip compression middleware for fast response delivery
 app.add_middleware(GZipMiddleware, minimum_size=1000)
