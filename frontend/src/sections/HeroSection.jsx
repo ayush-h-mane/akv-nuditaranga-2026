@@ -107,12 +107,12 @@ export const HeroSection = ({ onExploreNuditaranga, onKnowAbout, onOpenAuthTab, 
           {!user && (
             <>
               <button
-                onClick={() => { onOpenAuthTab?.("student-login"); setCurrentView?.("auth"); }}
-                className="w-full sm:w-auto px-7 py-3.5 rounded-2xl text-sm sm:text-base font-extrabold text-white shadow-lg bg-stone-900 hover:bg-stone-800 transition-all flex items-center justify-center"
+                onClick={() => setCurrentView?.("/student")}
+                className="w-full sm:w-auto px-7 py-3.5 rounded-2xl text-sm sm:text-base font-extrabold text-white shadow-lg bg-stone-900 hover:bg-stone-800 transition-all flex items-center justify-center cursor-pointer"
               >{lang === "kn" ? "ಲಾಗಿನ್" : "Login"}</button>
               <button
-                onClick={() => { onOpenAuthTab?.("student-register"); setCurrentView?.("auth"); }}
-                className="w-full sm:w-auto px-7 py-3.5 rounded-2xl text-sm sm:text-base font-extrabold text-kar-red bg-white border-2 border-kar-red/30 hover:border-kar-red transition-all flex items-center justify-center"
+                onClick={() => setCurrentView?.("/student", { subMode: "register" })}
+                className="w-full sm:w-auto px-7 py-3.5 rounded-2xl text-sm sm:text-base font-extrabold text-kar-red bg-white border-2 border-kar-red/30 hover:border-kar-red transition-all flex items-center justify-center cursor-pointer"
               >{lang === "kn" ? "ನೋಂದಣಿ" : "Register"}</button>
             </>
           )}
