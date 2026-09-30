@@ -145,6 +145,8 @@ AUTHORIZED_SUPERADMIN_USERNAMES = {
     "akvsarakshi"
 }
 
+from sqlalchemy.orm import Session, object_session
+
 def require_superadmin(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role != "SUPERADMIN":
         raise HTTPException(
@@ -152,6 +154,11 @@ def require_superadmin(current_user: User = Depends(get_current_user)) -> User:
             detail="Super Admin privileges required"
         )
     admin_entry = current_user.admin_profile
+    if not admin_entry:
+        sess = object_session(current_user)
+        if sess:
+            admin_entry = sess.query(Admin).filter(Admin.user_id == current_user.id).first()
+
     if not admin_entry or (admin_entry.username and admin_entry.username.lower() not in AUTHORIZED_SUPERADMIN_USERNAMES):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -238,52 +245,111 @@ SUPERADMIN_DEFINITIONS = [
 def ensure_authorized_superadmins(db: Session):
     for sa in SUPERADMIN_DEFINITIONS:
         uname = sa['username']
-        adm = db.query(Admin).filter(func.lower(Admin.username) == uname.lower()).first()
-        usr = adm.user if adm else None
+        try:
+            usr = None
 
-        if not usr:
-            usr = db.query(User).filter(func.lower(User.email) == sa['email'].lower()).first()
+            # 1. Check if Admin with this exact username already exists and has a user
+            adm_by_uname = db.query(Admin).filter(func.lower(Admin.username) == uname.lower()).first()
+            if adm_by_uname and adm_by_uname.user:
+                usr = adm_by_uname.user
 
-        if not usr:
-            usr = User(
-                name=sa['name'],
-                auid=sa['auid'],
-                email=sa['email'],
-                phone=sa['phone'],
-                institute='Acharya Institute of Technology',
-                department=sa['dept'],
-                semester=8,
-                section='A',
-                gender='Other',
-                role='SUPERADMIN',
-                registration_id=f"AKV-SA-{uname.upper()}",
-                password_hash=get_password_hash(sa['password']),
-                account_status='ACTIVE',
-                first_time_setup_required=sa['setup_required']
-            )
-            db.add(usr)
-            db.commit()
-            db.refresh(usr)
-        else:
+            # 2. Match by official email
+            if not usr and sa.get('email'):
+                usr = db.query(User).filter(func.lower(User.email) == sa['email'].lower()).first()
+
+            # 3. Match by official AUID
+            if not usr and sa.get('auid'):
+                usr = db.query(User).filter(func.upper(User.auid) == sa['auid'].upper()).first()
+
+            # 4. Special aliases for Ayush H Mane (akvsadayt)
+            if not usr and uname.lower() == 'akvsadayt':
+                usr = db.query(User).filter(
+                    func.lower(User.email).in_(['ayushhmane@gmail.com', 'ayushhmane05@gmail.com'])
+                ).first()
+                if not usr:
+                    usr = db.query(User).filter(
+                        func.upper(User.auid).in_(['ADM-MANE', 'ADM-AYUSH', 'AIT22BEIS020', '1AY22IS020'])
+                    ).first()
+
+            # 5. If user still not found, create new User safely avoiding any duplicate constraints
+            if not usr:
+                target_email = sa['email']
+                existing_email_user = db.query(User).filter(func.lower(User.email) == target_email.lower()).first()
+                if existing_email_user:
+                    usr = existing_email_user
+                else:
+                    target_auid = sa['auid']
+                    existing_auid_user = db.query(User).filter(func.upper(User.auid) == target_auid.upper()).first()
+                    if existing_auid_user:
+                        usr = existing_auid_user
+                    else:
+                        reg_id = f"AKV-SA-{uname.upper()}"
+                        existing_reg = db.query(User).filter(User.registration_id == reg_id).first()
+                        if existing_reg:
+                            reg_id = f"AKV-SA-{uname.upper()}-{int(datetime.datetime.utcnow().timestamp())}"
+
+                        usr = User(
+                            name=sa['name'],
+                            auid=target_auid,
+                            email=target_email,
+                            phone=sa['phone'] or '9999999999',
+                            institute='Acharya Institute of Technology',
+                            department=sa['dept'],
+                            semester=8,
+                            section='A',
+                            gender='Other',
+                            role='SUPERADMIN',
+                            registration_id=reg_id,
+                            password_hash=get_password_hash(sa['password']),
+                            account_status='ACTIVE',
+                            first_time_setup_required=sa['setup_required']
+                        )
+                        db.add(usr)
+                        db.flush()
+
+            # Always sync and verify user fields
             usr.name = sa['name']
             usr.role = 'SUPERADMIN'
             usr.account_status = 'ACTIVE'
             usr.password_hash = get_password_hash(sa['password'])
             if getattr(usr, "first_time_setup_required", None) is None:
                 usr.first_time_setup_required = sa['setup_required']
-            db.commit()
-            db.refresh(usr)
+            db.flush()
 
-        if not adm:
-            adm = Admin(
-                user_id=usr.id,
-                username=uname,
-                admin_type='SUPERADMIN',
-                approval_status='APPROVED',
-                approved_by='SYSTEM_INIT'
-            )
-            db.add(adm)
+            # Reconcile Admin record
+            # A. Delete any conflicting admin record holding this username for another user
+            conflict_adm = db.query(Admin).filter(
+                func.lower(Admin.username) == uname.lower(),
+                Admin.user_id != usr.id
+            ).first()
+            if conflict_adm:
+                db.delete(conflict_adm)
+                db.flush()
+
+            # B. Ensure this user has an Admin record with username = uname
+            adm_for_user = db.query(Admin).filter(Admin.user_id == usr.id).first()
+            if adm_for_user:
+                adm_for_user.username = uname
+                adm_for_user.admin_type = 'SUPERADMIN'
+                adm_for_user.approval_status = 'APPROVED'
+                adm_for_user.approved_by = 'SYSTEM_INIT'
+                adm_for_user.approved_at = datetime.datetime.utcnow()
+            else:
+                new_adm = Admin(
+                    user_id=usr.id,
+                    username=uname,
+                    admin_type='SUPERADMIN',
+                    approval_status='APPROVED',
+                    approved_by='SYSTEM_INIT',
+                    approved_at=datetime.datetime.utcnow()
+                )
+                db.add(new_adm)
+            db.flush()
+
             db.commit()
+        except Exception as sa_err:
+            db.rollback()
+            print(f"[SUPERADMIN SEED NOTICE] Error syncing {uname}: {sa_err}")
 
 def init_superadmin():
     db = SessionLocal()

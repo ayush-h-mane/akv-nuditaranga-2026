@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.51",
-  "staged_version": "2.2.52",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.2.52",
+  "staged_version": "2.2.53",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.52",
+      "released_at": "2026-09-30T23:13:19+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.52: Superadmin Authentication Resilience & Constraint Fix: Resolved unique key violations and constraint conflicts when reconciling the 6 authorized Superadmin accounts with existing user/admin database records.; Self-Healing Superadmin Authentication: Added dynamic reconciliation on login that resolves existing account conflicts, reassigns usernames safely without collision, and auto-syncs canonical master password hashes.; Session Error Isolation & Route Aliases: Added db.rollback() error guards to prevent transaction abortion in PostgreSQL; exposed both /api/auth/login/superadmin and /api/auth/superadmin/login routes seamlessly."
+    },
     {
       "version": "2.2.51",
       "released_at": "2026-09-30T22:57:23+0530",
