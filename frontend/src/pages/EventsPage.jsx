@@ -13,6 +13,7 @@ export const EventsPage = ({ setCurrentView, setSelectedEventId }) => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [events, setEvents] = useState(() => api.getCachedEvents("all", true));
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [modalEvent, setModalEvent] = useState(null);
 
@@ -32,6 +33,20 @@ export const EventsPage = ({ setCurrentView, setSelectedEventId }) => {
       });
     return () => { isMounted = false; };
   }, []);
+
+  const handleRefreshEvents = async () => {
+    try {
+      setRefreshing(true);
+      const data = await api.getEvents("all", true, true);
+      if (Array.isArray(data) && data.length > 0) {
+        setEvents(data);
+      }
+    } catch (err) {
+      console.warn("Manual events refresh note:", err);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const handleRegisterEvent = (eventId) => {
     setSelectedEventId(eventId);
@@ -104,16 +119,28 @@ export const EventsPage = ({ setCurrentView, setSelectedEventId }) => {
             ))}
           </div>
 
-          {/* Search Input */}
-          <div className="relative w-full md:w-72">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t("events.searchPlaceholder")}
-              className="w-full pl-10 pr-4 py-2 rounded-xl border border-stone-300 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-kar-red/20 focus:border-kar-red"
-            />
+          {/* Search Input & Refresh Button */}
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <div className="relative w-full md:w-72">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={t("events.searchPlaceholder")}
+                className="w-full pl-10 pr-4 py-2 rounded-xl border border-stone-300 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-kar-red/20 focus:border-kar-red"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handleRefreshEvents}
+              disabled={refreshing}
+              className="p-2 rounded-xl border border-stone-300 text-stone-600 hover:bg-stone-50 cursor-pointer disabled:opacity-50 transition-colors shrink-0 shadow-2xs"
+              title={lang === "kn" ? "ಸ್ಪರ್ಧೆಗಳ ಪಟ್ಟಿಯನ್ನು ರಿಫ್ರೆಶ್ ಮಾಡಿ" : "Refresh competition list"}
+              aria-label={lang === "kn" ? "ಸ್ಪರ್ಧೆಗಳ ಪಟ್ಟಿಯನ್ನು ರಿಫ್ರೆಶ್ ಮಾಡಿ" : "Refresh competition list"}
+            >
+              <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin text-kar-red" : ""}`} />
+            </button>
           </div>
         </div>
 

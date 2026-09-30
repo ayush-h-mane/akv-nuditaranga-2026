@@ -23,7 +23,8 @@ import {
   ChevronRight,
   QrCode,
   X,
-  Plus
+  Plus,
+  RefreshCw
 } from "lucide-react";
 
 export const StudentDashboard = ({ onNavigateHome }) => {
@@ -33,6 +34,7 @@ export const StudentDashboard = ({ onNavigateHome }) => {
   const [dashboardData, setDashboardData] = useState(() => api.getCachedStudentDashboard(user?.auid));
   const [eventsList, setEventsList] = useState(() => api.getCachedEvents("all", true));
   const [loading, setLoading] = useState(() => !api.hasCachedStudentDashboard(user?.auid));
+  const [refreshing, setRefreshing] = useState(false);
   const [registeringEventId, setRegisteringEventId] = useState(null);
   const [actionMessage, setActionMessage] = useState({ type: "", text: "" });
   
@@ -57,14 +59,14 @@ export const StudentDashboard = ({ onNavigateHome }) => {
   const [pwLoading, setPwLoading] = useState(false);
   const [pwMessage, setPwMessage] = useState({ type: "", text: "" });
 
-  const loadData = async () => {
+  const loadData = async (forceFresh = false) => {
     if (!dashboardData && !api.hasCachedStudentDashboard(user?.auid)) {
       setLoading(true);
     }
     try {
       const [dash, events] = await Promise.all([
-        api.getStudentDashboard(),
-        api.getEvents("all", true)
+        api.getStudentDashboard(forceFresh),
+        api.getEvents("all", true, forceFresh)
       ]);
       if (dash) setDashboardData(dash);
       if (events) setEventsList(events);
@@ -76,6 +78,20 @@ export const StudentDashboard = ({ onNavigateHome }) => {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    try {
+      setRefreshing(true);
+      await loadData(true);
+      setActionMessage({ type: "success", text: "Dashboard data refreshed successfully." });
+      setTimeout(() => setActionMessage({ type: "", text: "" }), 3000);
+    } catch (err) {
+      setActionMessage({ type: "error", text: "Failed to refresh dashboard data." });
+      setTimeout(() => setActionMessage({ type: "", text: "" }), 3000);
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -230,6 +246,17 @@ export const StudentDashboard = ({ onNavigateHome }) => {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={refreshing || loading}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-stone-700 bg-white border border-stone-200 rounded-xl hover:bg-stone-50 transition-colors shadow-xs cursor-pointer disabled:opacity-50"
+              title="Refresh Dashboard Data"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-kar-red ${refreshing || loading ? "animate-spin" : ""}`} />
+              <span className="hidden sm:inline">Refresh</span>
+            </button>
+
             <button
               onClick={onNavigateHome}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-stone-700 bg-white border border-stone-200 rounded-xl hover:bg-stone-50 transition-colors shadow-xs"
@@ -784,7 +811,12 @@ export const StudentDashboard = ({ onNavigateHome }) => {
         )}
 
         {activeTab === "my-profile" && (
-          <MyProfileAttendance profile={profile} attendanceData={dashboardData} loading={loading} />
+          <MyProfileAttendance
+            profile={profile}
+            attendanceData={dashboardData}
+            loading={refreshing || loading}
+            onRefresh={handleRefresh}
+          />
         )}
 
         {/* ==================================================== */}

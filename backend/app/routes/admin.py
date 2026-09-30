@@ -5,10 +5,10 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, and_
 
 from ..database import get_db
-from ..models import User, Admin, Registration, Event, VolunteerAttendance, AuditLog, CheckInLog
+from ..models import User, Admin, Registration, Event, VolunteerAttendance, AttendanceRecord, AuditLog, CheckInLog
 from ..schemas import AdminLogin, StatsOut
 from ..config import settings
 from ..auth_deps import require_admin, create_access_token
@@ -40,26 +40,41 @@ def get_admin_overview(
     current_user: User = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
-    total_students = db.query(func.count(User.id)).filter(
-        User.role.in_(["STUDENT", "VOLUNTEER", "PARTICIPANT", "SPECTATOR"])
-    ).scalar() or 0
+    from .attendance import get_domain_aliases
+    today_str = datetime.date.today().strftime("%Y-%m-%d")
 
-    total_volunteers = db.query(func.count(User.id)).filter(User.role == "VOLUNTEER").scalar() or 0
+    is_domain_admin = bool(current_user.role == "ADMIN" and current_user.volunteer_domain)
+    if is_domain_admin:
+        admin_aliases = get_domain_aliases(current_user.volunteer_domain)
+        domain_filters = [func.lower(User.volunteer_domain).like(f"%{a}%") for a in admin_aliases]
+        domain_match = and_(User.volunteer_domain.isnot(None), or_(*domain_filters))
+
+        total_volunteers = db.query(func.count(User.id)).filter(domain_match).scalar() or 0
+        total_students = total_volunteers
+
+        # Count checked-in / completed attendance for today from AttendanceRecord
+        today_present = db.query(func.count(AttendanceRecord.id)).join(User, AttendanceRecord.user_id == User.id).filter(
+            AttendanceRecord.attendance_date == today_str,
+            AttendanceRecord.status.in_(["CHECKED_IN", "COMPLETED"]),
+            domain_match
+        ).scalar() or 0
+        today_absent = max(0, total_volunteers - today_present)
+    else:
+        total_students = db.query(func.count(User.id)).filter(
+            User.role.in_(["STUDENT", "VOLUNTEER", "PARTICIPANT", "SPECTATOR"])
+        ).scalar() or 0
+        total_volunteers = db.query(func.count(User.id)).filter(User.role == "VOLUNTEER").scalar() or 0
+
+        today_present = db.query(func.count(AttendanceRecord.id)).filter(
+            AttendanceRecord.attendance_date == today_str,
+            AttendanceRecord.status.in_(["CHECKED_IN", "COMPLETED"])
+        ).scalar() or 0
+        today_absent = max(0, total_volunteers - today_present)
+
     total_participants = db.query(func.count(User.id)).filter(User.role == "PARTICIPANT").scalar() or 0
     total_spectators = db.query(func.count(User.id)).filter(User.role == "SPECTATOR").scalar() or 0
     total_events = db.query(func.count(Event.id)).scalar() or 0
     total_registrations = db.query(func.count(Registration.id)).scalar() or 0
-
-    today_str = datetime.date.today().strftime("%Y-%m-%d")
-    today_present = db.query(func.count(VolunteerAttendance.id)).filter(
-        VolunteerAttendance.date == today_str,
-        VolunteerAttendance.status == "PRESENT"
-    ).scalar() or 0
-
-    today_absent = db.query(func.count(VolunteerAttendance.id)).filter(
-        VolunteerAttendance.date == today_str,
-        VolunteerAttendance.status == "ABSENT"
-    ).scalar() or 0
 
     return {
         "success": True,
@@ -96,7 +111,10 @@ def get_today_volunteers(
 
     # In admin portal while marking attendance of the volunteer, Display only the admin's AKV_DOMAIN's volunteers, dont display all.
     if current_user.role == "ADMIN" and current_user.volunteer_domain:
-        query = query.filter(User.volunteer_domain == current_user.volunteer_domain)
+        from .attendance import get_domain_aliases
+        admin_aliases = get_domain_aliases(current_user.volunteer_domain)
+        domain_filters = [func.lower(User.volunteer_domain).like(f"%{a}%") for a in admin_aliases]
+        query = query.filter(User.volunteer_domain.isnot(None), or_(*domain_filters))
     elif department and department != "all":
         query = query.filter(User.department == department)
     if search:

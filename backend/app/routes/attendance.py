@@ -4,7 +4,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session, defer
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, and_
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
@@ -33,6 +33,32 @@ from ..utils.timezone import (
 )
 
 router = APIRouter(prefix="/attendance", tags=["Attendance"])
+
+DEPARTMENT_GROUPS = [
+    ("PROMOTIONS", ["promotions", "promotion"]),
+    ("DECORATIONS", ["decorations", "decoration"]),
+    ("SOCIAL MEDIA", ["social media", "socialmedia", "social_media"]),
+    ("LOGISTICS", ["logistics", "logistic"]),
+    ("CULTURALS", ["culturals", "cultural"]),
+    ("CONTENT", ["content"]),
+    ("DEFENCE", ["defence", "defense"]),
+    ("EMCEE", ["emcee", "anchor"]),
+    ("MARKETING", ["marketing"]),
+    ("TECHNICAL", ["technical", "tech"]),
+    ("PHOTOGRAPHY", ["photography", "photo"]),
+    ("VIDEOGRAPHY", ["videography", "video"]),
+    ("HOSPITALITY", ["hospitality"])
+]
+
+def get_domain_aliases(domain_name: Optional[str]) -> List[str]:
+    """Returns aliases for a given volunteer or coordinator domain name."""
+    if not domain_name:
+        return []
+    dom = domain_name.strip().lower()
+    for group_name, aliases in DEPARTMENT_GROUPS:
+        if any(a == dom or a in dom or dom in a for a in aliases):
+            return aliases
+    return [dom, dom.rstrip('s')]
 
 def attendance_units(check_in_at, check_out_at) -> float:
     """Convert completed attendance duration into full-day units."""
@@ -212,15 +238,20 @@ def get_attendance_roster(
     )
 
     if current_user.role == "ADMIN" and current_user.volunteer_domain:
-        # Strictly display only the admin's AKV_DOMAIN volunteers
+        # Strictly display ONLY the admin's assigned AKV domain volunteers/students
+        admin_aliases = get_domain_aliases(current_user.volunteer_domain)
+        domain_filters = [func.lower(User.volunteer_domain).like(f"%{a}%") for a in admin_aliases]
         user_query = user_query.filter(
-            or_(
-                User.role != "VOLUNTEER",
-                User.volunteer_domain == current_user.volunteer_domain
-            )
+            User.volunteer_domain.isnot(None),
+            or_(*domain_filters)
         )
     elif akv_dept and akv_dept != "all":
-        user_query = user_query.filter(User.volunteer_domain == akv_dept)
+        domain_aliases = get_domain_aliases(akv_dept)
+        domain_filters = [func.lower(User.volunteer_domain).like(f"%{a}%") for a in domain_aliases]
+        user_query = user_query.filter(
+            User.volunteer_domain.isnot(None),
+            or_(*domain_filters)
+        )
 
     if department and department != "all":
         user_query = user_query.filter(User.department == department)
@@ -251,14 +282,38 @@ def get_attendance_roster(
     ).all()
     records_by_uid = {r.user_id: r for r in records}
 
-    # 4. Global statistics for this date (across all participants, regardless of filters)
-    eligible_roles = ["PARTICIPANT", "VOLUNTEER", "STUDENT", "SPECTATOR"]
-    total_eligible = db.query(func.count(User.id)).filter(User.role.in_(eligible_roles)).scalar() or 0
+    # 4. Statistics for this date (scoped to admin's domain if domain admin, otherwise all eligible participants)
+    if current_user.role == "ADMIN" and current_user.volunteer_domain:
+        admin_aliases = get_domain_aliases(current_user.volunteer_domain)
+        domain_filters = [func.lower(User.volunteer_domain).like(f"%{a}%") for a in admin_aliases]
+        domain_match = and_(User.volunteer_domain.isnot(None), or_(*domain_filters))
 
-    status_counts = dict(db.query(AttendanceRecord.status, func.count(AttendanceRecord.id))
-        .join(User, AttendanceRecord.user_id == User.id)
-        .filter(AttendanceRecord.attendance_date == target_date, User.role.in_(eligible_roles))
-        .group_by(AttendanceRecord.status).all())
+        total_eligible = db.query(func.count(User.id)).filter(domain_match).scalar() or 0
+
+        status_counts = dict(db.query(AttendanceRecord.status, func.count(AttendanceRecord.id))
+            .join(User, AttendanceRecord.user_id == User.id)
+            .filter(AttendanceRecord.attendance_date == target_date, domain_match)
+            .group_by(AttendanceRecord.status).all())
+    elif akv_dept and akv_dept != "all":
+        domain_aliases = get_domain_aliases(akv_dept)
+        domain_filters = [func.lower(User.volunteer_domain).like(f"%{a}%") for a in domain_aliases]
+        domain_match = and_(User.volunteer_domain.isnot(None), or_(*domain_filters))
+
+        total_eligible = db.query(func.count(User.id)).filter(domain_match).scalar() or 0
+
+        status_counts = dict(db.query(AttendanceRecord.status, func.count(AttendanceRecord.id))
+            .join(User, AttendanceRecord.user_id == User.id)
+            .filter(AttendanceRecord.attendance_date == target_date, domain_match)
+            .group_by(AttendanceRecord.status).all())
+    else:
+        eligible_roles = ["PARTICIPANT", "VOLUNTEER", "STUDENT", "SPECTATOR"]
+        total_eligible = db.query(func.count(User.id)).filter(User.role.in_(eligible_roles)).scalar() or 0
+
+        status_counts = dict(db.query(AttendanceRecord.status, func.count(AttendanceRecord.id))
+            .join(User, AttendanceRecord.user_id == User.id)
+            .filter(AttendanceRecord.attendance_date == target_date, User.role.in_(eligible_roles))
+            .group_by(AttendanceRecord.status).all())
+
     count_checked_in = status_counts.get("CHECKED_IN", 0)
     count_completed = status_counts.get("COMPLETED", 0)
     count_not_marked = total_eligible - (count_checked_in + count_completed)
@@ -354,11 +409,14 @@ def mark_check_in(
     user = db.query(User).options(defer(User.photo_url), defer(User.password_hash)).filter(User.id == payload.user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Participant not found")
-    if current_user.role == "ADMIN" and current_user.volunteer_domain != user.volunteer_domain:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can mark attendance only for volunteers in your AKV domain."
-        )
+    if current_user.role == "ADMIN" and current_user.volunteer_domain:
+        admin_aliases = get_domain_aliases(current_user.volunteer_domain)
+        user_dom = (user.volunteer_domain or "").lower()
+        if not (user.volunteer_domain and any(a in user_dom for a in admin_aliases)):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"You can mark attendance only for volunteers in your AKV domain ({current_user.volunteer_domain})."
+            )
 
     now_utc = get_current_utc_datetime()
 
@@ -445,11 +503,14 @@ def mark_check_out(
     user = db.query(User).options(defer(User.photo_url), defer(User.password_hash)).filter(User.id == payload.user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Participant not found")
-    if current_user.role == "ADMIN" and current_user.volunteer_domain != user.volunteer_domain:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can mark attendance only for volunteers in your AKV domain."
-        )
+    if current_user.role == "ADMIN" and current_user.volunteer_domain:
+        admin_aliases = get_domain_aliases(current_user.volunteer_domain)
+        user_dom = (user.volunteer_domain or "").lower()
+        if not (user.volunteer_domain and any(a in user_dom for a in admin_aliases)):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"You can mark attendance only for volunteers in your AKV domain ({current_user.volunteer_domain})."
+            )
 
     now_utc = get_current_utc_datetime()
 
@@ -838,22 +899,6 @@ def get_attendance_audit_logs(
 
 
 # ==============================================================================
-DEPARTMENT_GROUPS = [
-    ("PROMOTIONS", ["promotions", "promotion"]),
-    ("DECORATIONS", ["decorations", "decoration"]),
-    ("SOCIAL MEDIA", ["social media", "socialmedia", "social_media"]),
-    ("LOGISTICS", ["logistics", "logistic"]),
-    ("CULTURALS", ["culturals", "cultural"]),
-    ("CONTENT", ["content"]),
-    ("DEFENCE", ["defence", "defense"]),
-    ("EMCEE", ["emcee", "anchor"]),
-    ("MARKETING", ["marketing"]),
-    ("TECHNICAL", ["technical", "tech"]),
-    ("PHOTOGRAPHY", ["photography", "photo"]),
-    ("VIDEOGRAPHY", ["videography", "video"]),
-    ("HOSPITALITY", ["hospitality"])
-]
-
 def populate_attendance_worksheet(
     ws,
     sheet_title: str,
@@ -1016,8 +1061,14 @@ def export_attendance_excel(
         user_query = user_query.filter(User.department == department)
     if institute and institute != "all":
         user_query = user_query.filter(User.institute == institute)
-    if akv_dept and akv_dept != "all":
-        user_query = user_query.filter(User.volunteer_domain == akv_dept)
+    if current_user.role == "ADMIN" and current_user.volunteer_domain:
+        admin_aliases = get_domain_aliases(current_user.volunteer_domain)
+        domain_filters = [func.lower(User.volunteer_domain).like(f"%{a}%") for a in admin_aliases]
+        user_query = user_query.filter(User.volunteer_domain.isnot(None), or_(*domain_filters))
+    elif akv_dept and akv_dept != "all":
+        domain_aliases = get_domain_aliases(akv_dept)
+        domain_filters = [func.lower(User.volunteer_domain).like(f"%{a}%") for a in domain_aliases]
+        user_query = user_query.filter(User.volunteer_domain.isnot(None), or_(*domain_filters))
 
     all_participants = user_query.order_by(User.name.asc()).all()
     dept_user_ids = [p.id for p in all_participants]
@@ -1144,7 +1195,14 @@ def export_attendance_excel(
     dept_headers.extend(date_cols)
     dept_headers.extend(["Total Days Present", "Contact No.", "Managed By"])
 
-    for idx, (group_sheet_name, aliases) in enumerate(DEPARTMENT_GROUPS):
+    target_groups = DEPARTMENT_GROUPS
+    if current_user.role == "ADMIN" and current_user.volunteer_domain:
+        admin_aliases = get_domain_aliases(current_user.volunteer_domain)
+        target_groups = [(g, a) for g, a in DEPARTMENT_GROUPS if any(x in admin_aliases for x in a)]
+        if not target_groups:
+            target_groups = [(current_user.volunteer_domain.upper(), admin_aliases)]
+
+    for idx, (group_sheet_name, aliases) in enumerate(target_groups):
         if idx == 0:
             ws = wb.active
             ws.title = group_sheet_name
