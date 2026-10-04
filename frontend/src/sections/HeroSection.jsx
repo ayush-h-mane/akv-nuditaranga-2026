@@ -69,7 +69,7 @@ export const HeroSection = ({ onExploreNuditaranga, onKnowAbout, onOpenAuthTab, 
           <span className="absolute inset-0 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-transparent via-white/10 to-transparent pointer-events-none" />
           <Sparkles className="relative z-30 hidden w-4 h-4 shrink-0 sm:block sm:w-8 sm:h-8 text-amber-300 motion-safe:animate-pulse" aria-hidden="true" />
           <p className={`relative z-30 text-center font-black font-kannada-serif tracking-wide leading-tight text-amber-200 drop-shadow-[0_2px_8px_rgba(255,215,0,0.5)] ${lang === "kn" ? "max-w-[80%] text-[clamp(1.8rem,8.5vw,3rem)] sm:text-5xl lg:text-6xl" : "max-w-[74%] text-2xl sm:text-5xl lg:text-6xl"}`}>
-            {lang === "kn" ? "ದಶಕೋತ್ಸವ" : "The Decadal Festival"}
+            {lang === "kn" ? "ದಶಕೋತ್ಸವ" : "Decennial celebration"}
           </p>
           <Sparkles className="relative z-30 hidden w-4 h-4 shrink-0 sm:block sm:w-8 sm:h-8 text-amber-300 motion-safe:animate-pulse" aria-hidden="true" />
           <button

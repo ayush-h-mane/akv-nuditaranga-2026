@@ -93,6 +93,7 @@ class AdminRegisterRequest(BaseModel):
     phone: str = Field(..., min_length=10, max_length=15)
     institute: str = Field("Acharya Institute of Technology", min_length=2, max_length=150)
     department: str = Field(..., min_length=2, max_length=100)
+    semester: Optional[int] = Field(None, ge=1, le=6)
     photo_url: Optional[str] = None
     volunteer_domain: Optional[str] = None
     password: str = Field(..., min_length=6)
@@ -592,6 +593,8 @@ def register_admin(
         matched_user.is_working_committee = (admin_type == "WORKING_COMMITTEE")
         if admin_type == "WORKING_COMMITTEE":
             matched_user.working_committee_role = "Coordinator"
+            if payload.semester:
+                matched_user.semester = payload.semester
         if clean_fac_id:
             matched_user.faculty_id = clean_fac_id
         if payload.volunteer_domain:
@@ -609,6 +612,16 @@ def register_admin(
 
         reg_id = generate_student_reg_id(db)
 
+        # Determine semester for Working Committee vs Faculty Coordinator
+        admin_sem = payload.semester if (payload.semester and 1 <= payload.semester <= 6) else 1
+        if admin_type == "FACULTY_COORDINATOR":
+            admin_sem = 1
+        elif not payload.semester and auid_val:
+            m = re.search(r"^[A-Za-z]+(\d{2})", auid_val)
+            if m:
+                join_yr = 2000 + int(m.group(1))
+                admin_sem = max(1, min(6, 2026 - join_yr))
+
         # Create user with role ADMIN
         new_user = User(
             name=payload.full_name.strip(),
@@ -617,7 +630,7 @@ def register_admin(
             phone=payload.phone.strip(),
             institute=payload.institute.strip(),
             department=payload.department.strip(),
-            semester=8,
+            semester=admin_sem,
             section="A",
             gender="Other",
             role="ADMIN",

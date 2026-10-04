@@ -122,8 +122,8 @@ export const AuthPortal = ({
     semester: "",
     section: "A",
     gender: "Male",
-    role: "PARTICIPANT", // VOLUNTEER, PARTICIPANT
-    volunteer_domain: "Promotions",
+    role: "", // VOLUNTEER, PARTICIPANT
+    volunteer_domain: "",
     custom_domain: "",
     photo_url: "",
     password: "",
@@ -141,7 +141,8 @@ export const AuthPortal = ({
     phone: "",
     institute: "",
     department: "",
-    volunteer_domain: "Promotions",
+    semester: "",
+    volunteer_domain: "",
     photo_url: "",
     password: "",
     confirmPassword: ""
@@ -177,6 +178,16 @@ export const AuthPortal = ({
 
     if (!isAcharyaEmail(studentRegisterForm.email)) {
       handleShowError(ACHARYA_EMAIL_ERROR);
+      return;
+    }
+
+    if (!studentRegisterForm.role) {
+      handleShowError("Please choose whether you are registering as a Volunteer or Participant / ಭಾಗವಹಿಸುವಿಕೆ ವಿಧಾನವನ್ನು ಆಯ್ಕೆಮಾಡಿ.");
+      return;
+    }
+
+    if (studentRegisterForm.role === "VOLUNTEER" && !studentRegisterForm.volunteer_domain) {
+      handleShowError("Please select your Working Domain / ಕಾರ್ಯಕ್ಷೇತ್ರವನ್ನು ಆಯ್ಕೆಮಾಡಿ.");
       return;
     }
 
@@ -294,6 +305,10 @@ export const AuthPortal = ({
       handleShowError("Profile photo is mandatory. Please upload your photo before continuing.");
       return;
     }
+    if (!isFaculty && !adminForm.semester) {
+      handleShowError("Please select your Year of Study / ವರ್ಷವನ್ನು ಆಯ್ಕೆಮಾಡಿ.");
+      return;
+    }
     if (!isFaculty && !adminForm.volunteer_domain?.trim()) {
       handleShowError("A Working Committee domain is required.");
       return;
@@ -316,6 +331,7 @@ export const AuthPortal = ({
         phone: adminForm.phone.trim(),
         institute: adminForm.institute.trim(),
         department: adminForm.department.trim(),
+        semester: isFaculty ? null : (Number(adminForm.semester) || 1),
         volunteer_domain: isFaculty ? null : adminForm.volunteer_domain.trim(),
         photo_url: adminForm.photo_url || null,
         password: adminForm.password,
@@ -798,13 +814,15 @@ export const AuthPortal = ({
                         {studentRegisterForm.role === "VOLUNTEER" && (
                           <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200 space-y-2.5 animate-fade-in">
                             <label className="block text-xs font-bold text-amber-950 uppercase tracking-wider">
-                              Choose Working Committee Domain / ಕಾರ್ಯಕ್ಷೇತ್ರ *
+                              Choose Working Domain / ಕಾರ್ಯಕ್ಷೇತ್ರ *
                             </label>
                             <select
+                              required
                               value={studentRegisterForm.volunteer_domain}
                               onChange={(e) => setStudentRegisterForm({ ...studentRegisterForm, volunteer_domain: e.target.value })}
                               className="w-full px-3.5 py-2.5 rounded-xl border border-amber-300 bg-white text-stone-900 text-xs sm:text-sm font-semibold shadow-xs"
                             >
+                              <option value="" disabled>SELECT DOMAIN</option>
                               {AKV_DOMAINS.map((dom) => (
                                 <option key={dom} value={dom}>{dom}</option>
                               ))}
@@ -1207,18 +1225,48 @@ export const AuthPortal = ({
                     />
 
                     {adminForm.adminType === "WORKING_COMMITTEE" && (
-                      <div>
-                        <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                          Working Committee Domain *
-                        </label>
-                        <select
-                          required
-                          value={adminForm.volunteer_domain}
-                          onChange={(e) => setAdminForm({ ...adminForm, volunteer_domain: e.target.value })}
-                          className="w-full px-3 py-2 rounded-xl border border-stone-300 bg-white text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden"
-                        >
-                          {AKV_DOMAINS.map((domain) => <option key={domain} value={domain}>{domain}</option>)}
-                        </select>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                            Year of Study / ವರ್ಷ *
+                          </label>
+                          <select
+                            required
+                            value={adminForm.semester}
+                            onChange={(e) => setAdminForm({ ...adminForm, semester: e.target.value ? Number(e.target.value) : "" })}
+                            className="w-full px-3 py-2 rounded-xl border border-stone-300 bg-white text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden font-medium notranslate"
+                            translate="no"
+                          >
+                            <option value="" disabled>Select Year of Study</option>
+                            {[
+                              { val: 1, label: "1st Year (1ನೇ ವರ್ಷ)" },
+                              { val: 2, label: "2nd Year (2ನೇ ವರ್ಷ)" },
+                              { val: 3, label: "3rd Year (3ನೇ ವರ್ಷ)" },
+                              { val: 4, label: "4th Year (4ನೇ ವರ್ಷ)" },
+                              { val: 5, label: "5th Year (5ನೇ ವರ್ಷ)" },
+                              { val: 6, label: "6th Year (6ನೇ ವರ್ಷ)" }
+                            ].map((yr) => (
+                              <option key={yr.val} value={yr.val}>
+                                {yr.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                            Working Committee Domain *
+                          </label>
+                          <select
+                            required
+                            value={adminForm.volunteer_domain}
+                            onChange={(e) => setAdminForm({ ...adminForm, volunteer_domain: e.target.value })}
+                            className="w-full px-3 py-2 rounded-xl border border-stone-300 bg-white text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden"
+                          >
+                            <option value="" disabled>SELECT DOMAIN</option>
+                            {AKV_DOMAINS.map((domain) => <option key={domain} value={domain}>{domain}</option>)}
+                          </select>
+                        </div>
                       </div>
                     )}
 

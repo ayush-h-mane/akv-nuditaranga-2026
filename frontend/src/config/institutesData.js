@@ -42,5 +42,6 @@ export const AKV_DOMAINS = [
   "Photography",
   "Videography",
   "Logistics",
-  "Hospitality"
+  "Hospitality",
+  "Developer"
 ];
