@@ -149,16 +149,6 @@ export const siteConfig = {
   coordinators: {
     faculty: [
       {
-        nameEn: "Mrs. Rakshitha BT",
-        nameKn: "ಶ್ರೀಮತಿ ರಕ್ಷಿತಾ ಬಿ. ಟಿ.",
-        roleEn: "Faculty Advisor, Acharya Kannada Vedike",
-        roleKn: "ಆಚಾರ್ಯ ಕನ್ನಡ ವೇದಿಕೆಯ ಅಧ್ಯಾಪಕ ಸಂಚಾಲಕರು",
-        dept: "Department of Computer Science & Engineering",
-        deptEn: "Department of Computer Science & Engineering",
-        deptKn: "ಕಂಪ್ಯೂಟರ್ ಸೈನ್ಸ್ & ಎಂಜಿನಿಯರಿಂಗ್ ವಿಭಾಗ",
-        contact: "+91 99456 71394"
-      },
-      {
         nameEn: "Mr. Tejas K",
         nameKn: "ಶ್ರೀ ತೇಜಸ್ ಕೆ.",
         roleEn: "Cultural Officer",
@@ -167,6 +157,16 @@ export const siteConfig = {
         deptEn: "Department of Student Activities",
         deptKn: "ವಿದ್ಯಾರ್ಥಿ ಚಟುವಟಿಕೆಗಳ ಇಲಾಖೆ",
         contact: "+91 94498 90035"
+      },
+      {
+        nameEn: "Mrs. Rakshitha BT",
+        nameKn: "ಶ್ರೀಮತಿ ರಕ್ಷಿತಾ ಬಿ. ಟಿ.",
+        roleEn: "Faculty Advisor, Acharya Kannada Vedike",
+        roleKn: "ಆಚಾರ್ಯ ಕನ್ನಡ ವೇದಿಕೆಯ ಅಧ್ಯಾಪಕ ಸಂಚಾಲಕರು",
+        dept: "Department of Computer Science & Engineering",
+        deptEn: "Department of Computer Science & Engineering",
+        deptKn: "ಕಂಪ್ಯೂಟರ್ ಸೈನ್ಸ್ & ಎಂಜಿನಿಯರಿಂಗ್ ವಿಭಾಗ",
+        contact: "+91 99456 71394"
       }
     ],
     students: [

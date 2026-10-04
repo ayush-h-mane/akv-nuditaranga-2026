@@ -2,7 +2,7 @@ import json
 import random
 from typing import List, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, defer
 from sqlalchemy import func
 from ..database import get_db
 from ..models import Registration, Event
@@ -188,7 +188,7 @@ def list_registrations(
     offset: int = 0,
     db: Session = Depends(get_db)
 ):
-    query = db.query(Registration)
+    query = db.query(Registration).options(defer(Registration.photo_url))
     if event_id and event_id != "all":
         query = query.filter(Registration.event_id == event_id)
     if department and department != "all":

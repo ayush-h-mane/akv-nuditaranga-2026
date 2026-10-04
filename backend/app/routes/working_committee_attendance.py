@@ -909,7 +909,7 @@ def get_combined_attendance_stats(
 
     # 2. Normal Department Members stats (excluding users who are Working Committee to prevent double counting)
     dept_users = db.query(User).filter(
-        User.role.in_(["PARTICIPANT", "VOLUNTEER", "STUDENT", "SPECTATOR"]),
+        User.role.in_(["PARTICIPANT", "VOLUNTEER", "STUDENT"]),
         User.id.notin_(wc_user_ids) if wc_user_ids else True
     ).all()
     dept_total = len(dept_users)

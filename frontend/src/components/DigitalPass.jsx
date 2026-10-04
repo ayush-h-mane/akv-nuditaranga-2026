@@ -183,7 +183,7 @@ export const DigitalPass = ({ registration, onBack }) => {
                       {registration.institute || (lang === "kn" ? "ಆಚಾರ್ಯ ಇನ್‌ಸ್ಟಿಟ್ಯೂಟ್ ಆಫ್ ಟೆಕ್ನಾಲಜಿ" : "Acharya Institute of Technology")}
                     </p>
                     <p className="text-xs text-stone-600 font-semibold">
-                      {registration.department} • {lang === "kn" ? `${toKannadaDigits(registration.semester)}ನೇ ಸೆಮಿಸ್ಟರ್ (ವಿಭಾಗ ${registration.section})` : `Sem ${registration.semester} (Sec ${registration.section})`}
+                      {registration.department} • {lang === "kn" ? `${toKannadaDigits(registration.semester)}ನೇ ವರ್ಷ` : `${registration.semester}th Year`}
                     </p>
                   </div>
                 </div>

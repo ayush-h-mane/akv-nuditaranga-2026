@@ -48,7 +48,7 @@ def get_admin_overview(
         today_absent = max(0, total_volunteers - today_present)
     else:
         total_students = db.query(func.count(User.id)).filter(
-            User.role.in_(["STUDENT", "VOLUNTEER", "PARTICIPANT", "SPECTATOR"])
+            User.role.in_(["STUDENT", "VOLUNTEER", "PARTICIPANT"])
         ).scalar() or 0
         total_volunteers = db.query(func.count(User.id)).filter(User.role == "VOLUNTEER").scalar() or 0
 
@@ -59,7 +59,6 @@ def get_admin_overview(
         today_absent = max(0, total_volunteers - today_present)
 
     total_participants = db.query(func.count(User.id)).filter(User.role == "PARTICIPANT").scalar() or 0
-    total_spectators = db.query(func.count(User.id)).filter(User.role == "SPECTATOR").scalar() or 0
     total_events = db.query(func.count(Event.id)).scalar() or 0
     total_registrations = db.query(func.count(Registration.id)).scalar() or 0
 
@@ -68,7 +67,6 @@ def get_admin_overview(
         "total_students": total_students,
         "total_volunteers": total_volunteers,
         "total_participants": total_participants,
-        "total_spectators": total_spectators,
         "total_events": total_events,
         "total_registrations": total_registrations,
         "today_attendance": {

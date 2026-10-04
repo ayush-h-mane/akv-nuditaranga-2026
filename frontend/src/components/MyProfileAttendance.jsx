@@ -48,7 +48,7 @@ export const MyProfileAttendance = ({ profile, attendanceData, loading, error, o
     phone: activeProfile?.phone || "",
     institute: activeProfile?.institute || "Acharya Institute of Technology",
     department: activeProfile?.department || "",
-    semester: activeProfile?.semester || 6,
+    semester: activeProfile?.semester || 1,
     section: activeProfile?.section || "A",
     gender: activeProfile?.gender || "Male",
     role: activeProfile?.role || "PARTICIPANT",
@@ -66,7 +66,7 @@ export const MyProfileAttendance = ({ profile, attendanceData, loading, error, o
       phone: activeProfile?.phone || "",
       institute: activeProfile?.institute || "Acharya Institute of Technology",
       department: activeProfile?.department || "",
-      semester: activeProfile?.semester || 6,
+      semester: activeProfile?.semester || 1,
       section: activeProfile?.section || "A",
       gender: activeProfile?.gender || "Male",
       role: activeProfile?.role || "PARTICIPANT",
@@ -97,8 +97,8 @@ export const MyProfileAttendance = ({ profile, attendanceData, loading, error, o
         phone: form.phone.trim(),
         institute: form.institute.trim(),
         department: form.department.trim(),
-        semester: Number(form.semester) || 6,
-        section: form.section.trim() || "A",
+        semester: Number(form.semester) || 1,
+        section: form.section?.trim() || "A",
         gender: form.gender,
         role: form.role,
         volunteer_domain: form.volunteer_domain ? form.volunteer_domain.trim() : null,
@@ -233,7 +233,7 @@ export const MyProfileAttendance = ({ profile, attendanceData, loading, error, o
           <Field label="AKV_DOMAIN" value={domainLabel} />
           <Field label="Institute" value={activeProfile?.institute} />
           <Field label="Department" value={activeProfile?.department} />
-          <Field label="Semester" value={activeProfile?.semester ? `Sem ${activeProfile.semester}` : "—"} />
+          <Field label="Year" value={activeProfile?.semester ? `${activeProfile.semester}${activeProfile.semester === 1 ? 'st' : activeProfile.semester === 2 ? 'nd' : activeProfile.semester === 3 ? 'rd' : 'th'} Year` : "—"} />
           {(activeProfile?.admin_type || activeProfile?.faculty_id) && (
             <Field label="Assignment / ID" value={[activeProfile?.admin_type, activeProfile?.faculty_id].filter(Boolean).join(" • ")} />
           )}
@@ -431,35 +431,29 @@ export const MyProfileAttendance = ({ profile, attendanceData, loading, error, o
                 onDepartmentChange={(dept) => setForm({ ...form, department: dept })}
               />
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 mb-1">
-                    Semester
+                    Year of Study
                   </label>
                   <select
                     value={form.semester}
                     onChange={(e) => setForm({ ...form, semester: Number(e.target.value) })}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden bg-white"
                   >
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
-                      <option key={sem} value={sem}>
-                        Semester {sem}
+                    {[
+                      { val: 1, label: "1st Year (1ನೇ ವರ್ಷ)" },
+                      { val: 2, label: "2nd Year (2ನೇ ವರ್ಷ)" },
+                      { val: 3, label: "3rd Year (3ನೇ ವರ್ಷ)" },
+                      { val: 4, label: "4th Year (4ನೇ ವರ್ಷ)" },
+                      { val: 5, label: "5th Year (5ನೇ ವರ್ಷ)" },
+                      { val: 6, label: "6th Year (6ನೇ ವರ್ಷ)" }
+                    ].map((yr) => (
+                      <option key={yr.val} value={yr.val}>
+                        {yr.label}
                       </option>
                     ))}
                   </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 mb-1">
-                    Section
-                  </label>
-                  <input
-                    type="text"
-                    maxLength={10}
-                    value={form.section}
-                    onChange={(e) => setForm({ ...form, section: e.target.value.toUpperCase() })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-sm uppercase focus:ring-2 focus:ring-kar-red focus:outline-hidden"
-                  />
                 </div>
 
                 <div>
@@ -492,7 +486,6 @@ export const MyProfileAttendance = ({ profile, attendanceData, loading, error, o
                     >
                       <option value="PARTICIPANT">Participant (General Fest Competitor)</option>
                       <option value="VOLUNTEER">Volunteer (AKV Event Support)</option>
-                      <option value="SPECTATOR">Spectator (Audience Member)</option>
                     </select>
                   </div>
 

@@ -50,7 +50,7 @@ export const RegisterPage = ({
     usn: user?.auid || "",
     institute: user?.institute || "Acharya Institute of Technology",
     department: user?.department || "",
-    semester: user?.semester || 6,
+    semester: user?.semester || 1,
     section: user?.section || "A",
     email: user?.email || "",
     phone: user?.phone || "",
@@ -70,7 +70,7 @@ export const RegisterPage = ({
         phone: prev.phone || user.phone || "",
         institute: prev.institute || user.institute || "Acharya Institute of Technology",
         department: prev.department || user.department || "",
-        semester: user.semester || prev.semester || 6,
+        semester: user.semester || prev.semester || 1,
         section: user.section || prev.section || "A"
       }));
     }
@@ -601,10 +601,10 @@ export const RegisterPage = ({
                   </div>
                   <div className="p-3 rounded-xl bg-white border border-stone-200">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-0.5">
-                      Department & Semester
+                      {lang === "kn" ? "ವಿಭಾಗ & ವರ್ಷ" : "Department & Year"}
                     </span>
                     <span className="font-bold text-stone-900">
-                      {formData.department || user?.department || "General"} {formData.semester ? `(Sem ${formData.semester})` : ""}
+                      {formData.department || user?.department || "General"} {formData.semester ? `(${lang === "kn" ? `${toKannadaDigits(formData.semester)}ನೇ ವರ್ಷ` : `${formData.semester}th Year`})` : ""}
                     </span>
                   </div>
                   <div className="p-3 rounded-xl bg-white border border-stone-200">
@@ -835,7 +835,7 @@ export const RegisterPage = ({
                   <div>
                     <span className="text-stone-400 block text-xs">{t("registration.department")}:</span>
                     <span className="font-semibold text-stone-800">
-                      {formData.department || "General"} {formData.semester ? `(${lang === "kn" ? `${toKannadaDigits(formData.semester)}ನೇ ಸೆಮ್` : `Sem ${formData.semester}`})` : ""}
+                      {formData.department || "General"} {formData.semester ? `(${lang === "kn" ? `${toKannadaDigits(formData.semester)}ನೇ ವರ್ಷ` : `${formData.semester}th Year`})` : ""}
                     </span>
                   </div>
                   <div>

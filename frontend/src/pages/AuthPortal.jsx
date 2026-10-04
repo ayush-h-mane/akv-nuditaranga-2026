@@ -208,8 +208,8 @@ export const AuthPortal = ({
         phone: studentRegisterForm.phone.trim(),
         institute: studentRegisterForm.institute.trim(),
         department: studentRegisterForm.department.trim(),
-        semester: Number(studentRegisterForm.semester) || 6,
-        section: studentRegisterForm.section.trim().toUpperCase() || "A",
+        semester: Number(studentRegisterForm.semester) || 1,
+        section: studentRegisterForm.section?.trim().toUpperCase() || "A",
         gender: studentRegisterForm.gender,
         role: studentRegisterForm.role,
         photo_url: studentRegisterForm.photo_url || null,
@@ -720,11 +720,10 @@ export const AuthPortal = ({
                           />
                         </div>
 
-                        {/* Semester Selection & Section */}
-                        {/* Semester Selection */}
+                        {/* Year of Study Selection */}
                         <div className="w-full">
                           <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                            Semester *
+                            Year of Study / ವರ್ಷ *
                           </label>
                           <select
                             required
@@ -733,10 +732,17 @@ export const AuthPortal = ({
                             className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm bg-white font-medium notranslate"
                             translate="no"
                           >
-                            <option value="" disabled>Select Semester</option>
-                            {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
-                              <option key={sem} value={sem}>
-                                {sem}th Semester (Sem {sem})
+                            <option value="" disabled>Select Year of Study</option>
+                            {[
+                              { val: 1, label: "1st Year (1ನೇ ವರ್ಷ)" },
+                              { val: 2, label: "2nd Year (2ನೇ ವರ್ಷ)" },
+                              { val: 3, label: "3rd Year (3ನೇ ವರ್ಷ)" },
+                              { val: 4, label: "4th Year (4ನೇ ವರ್ಷ)" },
+                              { val: 5, label: "5th Year (5ನೇ ವರ್ಷ)" },
+                              { val: 6, label: "6th Year (6ನೇ ವರ್ಷ)" }
+                            ].map((yr) => (
+                              <option key={yr.val} value={yr.val}>
+                                {yr.label}
                               </option>
                             ))}
                           </select>

@@ -375,7 +375,7 @@ def send_student_welcome_email(
         })
 
     domain_html = f'<p style="margin: 0 0 8px 0;"><strong>Volunteer Domain:</strong> <span style="font-weight: bold; color: #b45309;">{volunteer_domain}</span></p>' if (role == "VOLUNTEER" and volunteer_domain) else ""
-    academic_html = f'<p style="margin: 0 0 8px 0;"><strong>Institute & Dept:</strong> {institute} • {department} {f"(Sem {semester} - {section})" if semester else ""}</p>' if department else ""
+    academic_html = f'<p style="margin: 0 0 8px 0;"><strong>Institute & Dept:</strong> {institute} • {department} {f"(Year {semester})" if semester else ""}</p>' if department else ""
 
     content = f"""
         <h2 style="color: #b91c1c; margin-top: 0;">ನಮಸ್ಕಾರ {student_name}, Registration Confirmed!</h2>

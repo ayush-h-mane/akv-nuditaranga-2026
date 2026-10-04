@@ -13,11 +13,11 @@ class User(Base):
     phone = Column(String, nullable=False)
     institute = Column(String, default="Acharya Institute of Technology", nullable=False)
     department = Column(String, nullable=False)
-    semester = Column(Integer, default=6, nullable=False)
+    semester = Column(Integer, default=1, nullable=False)
     section = Column(String, default="A", nullable=False)
     gender = Column(String, default="Male", nullable=False)
     
-    # Roles: VOLUNTEER, PARTICIPANT, SPECTATOR, ADMIN, SUPERADMIN
+    # Roles: VOLUNTEER, PARTICIPANT, ADMIN, SUPERADMIN
     role = Column(String, default="PARTICIPANT", index=True, nullable=False)
     registration_id = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)

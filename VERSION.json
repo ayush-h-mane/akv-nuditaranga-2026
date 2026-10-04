@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.54",
-  "staged_version": "2.2.55",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.2.55",
+  "staged_version": "2.2.56",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.55",
+      "released_at": "2026-10-04T19:20:55+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.55: Reverted footer to the classic original unified design across desktop and mobile, restoring original branding, quick links, festival portals, campus contact, and developer attribution.; Superadmin Portal & Data Loading Acceleration: Optimized database query architecture with composite & foreign key indexes on registrations(user_id, event_id), users(role, account_status), and volunteer_attendance(date, user_id).; Eliminated Superadmin N+1 Query Bottlenecks: Consolidated 8 separate queries into 2 batched group_by aggregations in get_superadmin_stats; replaced 1-query-per-student loop in list_students with a single batch group_by aggregation; added joinedload on admin user relations.; Base64 Image Payload Reduction: Deferred heavy photo_url and password_hash columns across volunteer listings, student listings, registration queries, and ID card rosters, reducing API response payload size by >95% and eliminating server/network bottlenecks.; Client SWR (Stale-While-Revalidate) In-Memory Caching & Deduplication: Implemented memory caching and inflight request deduplication in api.js across superadmin stats, students, admins, volunteers, ID cards, official attendance, working committee attendance, and event registrations.; Instant 0ms Superadmin Tab Switching & Eager Prefetching: Initialized Superadmin Dashboard state from client cache and eliminated full-screen spinner flashes on tab navigation; enabled eager background prefetching of all superadmin resources on login.; Complete Removal of Spectators Role: Removed Spectator role option, counters, and filters across student registration (AuthPortal), self-service profile edit (MyProfileAttendance), Superadmin & Coordinator overview metrics, attendance queries, ID card generator, and backend route dependencies.; Elimination of Section Across Entire Platform: Removed Section/Division input fields, displays, and table headers from all UI views (student registration, profile edit modal, student dashboard, check-in verification desk, digital event passes, candidate ID cards, email confirmations, and Superadmin Excel exports); preserved database column default ('A') for schema safety.; Replaced Semester with Year of Study (Options up to 6th Year): Updated all Semester fields, dropdowns, and displays across the website to Year of Study ('\u0cb5\u0cb0\u0ccd\u0cb7 (Year)') with options from 1st Year to 6th Year (1st, 2nd, 3rd, 4th, 5th, 6th Year / 1\u0ca8\u0cc7 \u0cb5\u0cb0\u0ccd\u0cb7 to 6\u0ca8\u0cc7 \u0cb5\u0cb0\u0ccd\u0cb7) to support 6-year courses like PharmD; updated backend Pydantic validations (ge=1, le=6) and database defaults.; Updated Faculty Coordinators Contact Cards Order: Positioned Mr. Tejas K (Cultural Officer, Department of Student Activities) in the first box followed by Mrs. Rakshitha BT (Faculty Advisor, Department of Computer Science & Engineering) in the second box, each with their respective designations, departments, and phone numbers."
+    },
     {
       "version": "2.2.54",
       "released_at": "2026-10-01T02:31:23+0530",

@@ -133,19 +133,19 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
   };
 
   const [loading, setLoading] = useState(false);
-  const [metrics, setMetrics] = useState(null);
+  const [metrics, setMetrics] = useState(() => api.getCachedSuperAdminStats()?.metrics || null);
   const [myAccountData, setMyAccountData] = useState(null);
   const [myAccountLoading, setMyAccountLoading] = useState(false);
   const [myAccountError, setMyAccountError] = useState("");
-  const [adminsList, setAdminsList] = useState([]);
-  const [studentsData, setStudentsData] = useState({ total: 0, students: [] });
-  const [volunteersList, setVolunteersList] = useState([]);
-  const [attendanceData, setAttendanceData] = useState({ records: [], available_dates: [] });
+  const [adminsList, setAdminsList] = useState(() => api.getCachedAdmins() || []);
+  const [studentsData, setStudentsData] = useState(() => api.getCachedStudents() || { total: 0, students: [] });
+  const [volunteersList, setVolunteersList] = useState(() => api.getCachedVolunteers() || []);
+  const [attendanceData, setAttendanceData] = useState(() => api.getCachedSuperAdminAttendance() || { records: [], available_dates: [] });
   const [eventsList, setEventsList] = useState(() => api.getCachedEvents("all", false));
   const [festivalSchedule, setFestivalSchedule] = useState(() => api.getCachedFestivalSchedule()?.schedule || siteConfig.festival?.schedule || []);
   const [scheduleSaving, setScheduleSaving] = useState(false);
   const [scheduleLoading, setScheduleLoading] = useState(false);
-  const [auditLogs, setAuditLogs] = useState([]);
+  const [auditLogs, setAuditLogs] = useState(() => api.getCachedAuditLogs() || []);
   const [auditLogsLoading, setAuditLogsLoading] = useState(false);
   const [adminsLoading, setAdminsLoading] = useState(false);
   const [studentsLoading, setStudentsLoading] = useState(false);
@@ -191,7 +191,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
   const [attendanceDeptFilter, setAttendanceDeptFilter] = useState("all");
   const [auditActionFilter, setAuditActionFilter] = useState("all");
   const [adminApprovalFilter, setAdminApprovalFilter] = useState("all"); // "all", "pending", "approved"
-  const [idCardRecords, setIdCardRecords] = useState([]);
+  const [idCardRecords, setIdCardRecords] = useState(() => api.getCachedSuperAdminIdCards()?.cards || []);
   const [idCardSearch, setIdCardSearch] = useState("");
   const [idCardsLoading, setIdCardsLoading] = useState(false);
   const [idCardDownloading, setIdCardDownloading] = useState("");
@@ -199,7 +199,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
   const [registrationExportLoading, setRegistrationExportLoading] = useState(false);
 
   // Cultural Event Registrations State
-  const [eventRegistrations, setEventRegistrations] = useState([]);
+  const [eventRegistrations, setEventRegistrations] = useState(() => api.getCachedRegistrations() || []);
   const [eventRegLoading, setEventRegLoading] = useState(false);
   const [eventRegSearch, setEventRegSearch] = useState("");
   const [eventRegFilter, setEventRegFilter] = useState("all");
@@ -217,7 +217,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
     }
     return "";
   });
-  const [officialAttendanceRoster, setOfficialAttendanceRoster] = useState([]);
+  const [officialAttendanceRoster, setOfficialAttendanceRoster] = useState(() => api.getCachedAttendance()?.participants || []);
   const [officialAttendanceSession, setOfficialAttendanceSession] = useState({
     is_submitted: false,
     submitted_at: null,
@@ -362,7 +362,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
   const loadAdmins = async (forceFresh = false) => {
     try {
-      setAdminsLoading(true);
+      if (!adminsList.length || forceFresh) setAdminsLoading(true);
       const data = await api.listAdmins(forceFresh);
       setAdminsList(data);
     } catch (e) {
@@ -374,7 +374,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
   const loadStudents = async (forceFresh = false) => {
     try {
-      setStudentsLoading(true);
+      if (!studentsData.students?.length || forceFresh) setStudentsLoading(true);
       const data = await api.listStudents({
         search: studentSearch,
         role: studentRoleFilter
@@ -389,7 +389,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
   const loadVolunteers = async (forceFresh = false) => {
     try {
-      setVolunteersLoading(true);
+      if (!volunteersList.length || forceFresh) setVolunteersLoading(true);
       const data = await api.listAllVolunteers(forceFresh);
       setVolunteersList(data);
     } catch (e) {
@@ -401,7 +401,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
   const loadIdCards = async (search = idCardSearch, forceFresh = false) => {
     try {
-      setIdCardsLoading(true);
+      if (!idCardRecords.length || forceFresh) setIdCardsLoading(true);
       const data = await api.getSuperAdminIdCards(search, forceFresh);
       setIdCardRecords(data.cards || []);
     } catch (err) {
@@ -413,7 +413,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
   const loadOfficialAttendance = async (dateOverride = null, forceFresh = false) => {
     try {
-      setAttendanceActionLoading(true);
+      if (!officialAttendanceRoster.length || forceFresh) setAttendanceActionLoading(true);
       let activeDate = dateOverride || selectedOfficialDate;
       if (!activeDate) {
         const datesRes = await api.getAttendanceConfigDates(forceFresh);
@@ -526,7 +526,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
   const loadEvents = async (forceFresh = false) => {
     try {
-      setEventsLoading(true);
+      if (!eventsList.length || forceFresh) setEventsLoading(true);
       const data = await api.getEvents("all", false, forceFresh);
       setEventsList(data);
     } catch (e) {
@@ -538,7 +538,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
   const loadAuditLogs = async (forceFresh = false) => {
     try {
-      setAuditLogsLoading(true);
+      if (!auditLogs.length || forceFresh) setAuditLogsLoading(true);
       const [generalLogs, attendanceAuditRes, wcAuditRes] = await Promise.all([
         api.getAuditLogs({ action: auditActionFilter !== "all" ? auditActionFilter : "" }, forceFresh).catch(() => []),
         api.getAttendanceAudit({}, forceFresh).catch(() => ({ audit_logs: [] })),
@@ -558,7 +558,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
   const loadActivities = async (forceFresh = false) => {
     try {
-      setActivitiesLoading(true);
+      if (!activitiesList.length || forceFresh) setActivitiesLoading(true);
       const data = await api.getActivities("all", false, forceFresh);
       setActivitiesList(data || []);
     } catch (e) {
@@ -570,7 +570,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
   const loadReels = async (forceFresh = false) => {
     try {
-      setReelsLoading(true);
+      if (!reelsList.length || forceFresh) setReelsLoading(true);
       const data = await api.getReels("all", forceFresh);
       setReelsList(data || []);
     } catch (e) {
@@ -582,7 +582,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
   const loadEventRegistrations = async (forceFresh = false) => {
     try {
-      setEventRegLoading(true);
+      if (!eventRegistrations.length || forceFresh) setEventRegLoading(true);
       const params = {};
       if (eventRegFilter && eventRegFilter !== "all") params.event_id = eventRegFilter;
       if (eventRegSearch) params.search = eventRegSearch;

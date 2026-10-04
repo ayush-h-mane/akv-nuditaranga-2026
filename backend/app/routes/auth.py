@@ -40,8 +40,8 @@ class StudentRegisterRequest(BaseModel):
     phone: str = Field(..., min_length=10, max_length=15)
     institute: str = Field("Acharya Institute of Technology", min_length=2, max_length=150)
     department: str = Field(..., min_length=2, max_length=100)
-    semester: int = Field(6, ge=1, le=8)
-    section: Optional[str] = Field("A", min_length=1, max_length=10)
+    semester: int = Field(1, ge=1, le=6)
+    section: Optional[str] = Field("A")
     gender: str = Field("Male")
     role: str = Field("PARTICIPANT")  # VOLUNTEER, PARTICIPANT
     photo_url: Optional[str] = None
@@ -243,7 +243,7 @@ def register_student(
         institute=payload.institute.strip(),
         department=payload.department.strip(),
         semester=payload.semester,
-        section=payload.section.strip().upper(),
+        section=(payload.section or "A").strip().upper(),
         gender=payload.gender,
         role=payload.role,
         photo_url=payload.photo_url,
@@ -1115,8 +1115,8 @@ class OneTimeProfileEditRequest(BaseModel):
     phone: Optional[str] = Field(None, min_length=10, max_length=15)
     institute: Optional[str] = Field(None, min_length=2, max_length=150)
     department: Optional[str] = Field(None, min_length=2, max_length=100)
-    semester: Optional[int] = Field(None, ge=1, le=8)
-    section: Optional[str] = Field(None, min_length=1, max_length=10)
+    semester: Optional[int] = Field(None, ge=1, le=6)
+    section: Optional[str] = Field(None)
     gender: Optional[str] = None
     role: Optional[str] = None  # VOLUNTEER, PARTICIPANT
     volunteer_domain: Optional[str] = None
@@ -1226,10 +1226,10 @@ def update_profile_one_time(
     if payload.volunteer_domain is not None:
         current_user.volunteer_domain = payload.volunteer_domain.strip() if payload.volunteer_domain else None
 
-    # Role changes: allowed between VOLUNTEER, PARTICIPANT, SPECTATOR
+    # Role changes: allowed between VOLUNTEER, PARTICIPANT
     if payload.role:
         new_role = payload.role.strip().upper()
-        if new_role in ["VOLUNTEER", "PARTICIPANT", "SPECTATOR"]:
+        if new_role in ["VOLUNTEER", "PARTICIPANT"]:
             if current_user.role not in ["ADMIN", "SUPERADMIN"]:
                 current_user.role = new_role
 

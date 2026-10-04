@@ -239,8 +239,6 @@ def generate_candidate_id_card_pdf(data: Dict[str, Any]) -> bytes:
         role_color = colors.HexColor("#DC2626")
     elif role == "PARTICIPANT":
         role_color = colors.HexColor("#059669")
-    elif role == "SPECTATOR":
-        role_color = colors.HexColor("#D97706")
 
     c.setFillColor(role_color)
     c.roundRect(details_x, details_top_y - 16, 104, 18, 5, fill=1, stroke=0)
@@ -268,8 +266,9 @@ def generate_candidate_id_card_pdf(data: Dict[str, Any]) -> bytes:
     c.setFillColor(colors.HexColor(CARD_MUTED))
     detail_y = _draw_wrapped(c, f"Institute: {institute}", content_left, detail_y, content_right - content_left, ENGLISH_BOLD_FONT, 8.5, 11, colors.HexColor(CARD_MUTED))
     detail_y = _draw_wrapped(c, f"Department: {department}", content_left, detail_y - 2, content_right - content_left, ENGLISH_BOLD_FONT, 8.5, 11, colors.HexColor(CARD_MUTED))
-    sem_sec = " • ".join(value for value in (f"Semester {semester}" if semester else "", f"Section {section}" if section else "") if value)
-    _draw_wrapped(c, sem_sec, content_left, detail_y - 2, content_right - content_left, ENGLISH_FONT, 8, 10, colors.HexColor(CARD_MUTED))
+    year_text = f"Year {semester}" if semester else ""
+    if year_text:
+        _draw_wrapped(c, year_text, content_left, detail_y - 2, content_right - content_left, ENGLISH_FONT, 8, 10, colors.HexColor(CARD_MUTED))
 
     c.setStrokeColor(colors.HexColor("#E7E5E4"))
     c.setLineWidth(1)

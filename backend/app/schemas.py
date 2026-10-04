@@ -85,8 +85,8 @@ class RegistrationCreate(BaseModel):
     usn: Optional[str] = None
     institute: str = Field("Acharya Institute of Technology", min_length=2, max_length=150)
     department: str = Field(..., min_length=2, max_length=100)
-    semester: Optional[int] = Field(6, ge=1, le=8)
-    section: Optional[str] = Field("A", min_length=1, max_length=10)
+    semester: Optional[int] = Field(1, ge=1, le=6)
+    section: Optional[str] = Field("A")
     email: EmailStr
     phone: str = Field(..., min_length=10, max_length=15)
     gender: str = Field("Other")

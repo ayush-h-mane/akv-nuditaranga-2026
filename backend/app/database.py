@@ -114,14 +114,18 @@ def ensure_schema_migrations(target_engine=None):
                         conn.exec_driver_sql("ALTER TABLE activities ADD COLUMN tag_kn VARCHAR DEFAULT ''")
 
                 # Fast indexes
-                try:
-                    conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_attendance_date_user ON attendance_records(attendance_date, user_id)")
-                except Exception:
-                    pass
-                try:
-                    conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_wc_attendance_date_user ON working_committee_attendance(attendance_date, working_committee_member_id)")
-                except Exception:
-                    pass
+                for idx_sql in [
+                    "CREATE INDEX IF NOT EXISTS ix_attendance_date_user ON attendance_records(attendance_date, user_id)",
+                    "CREATE INDEX IF NOT EXISTS ix_wc_attendance_date_user ON working_committee_attendance(attendance_date, working_committee_member_id)",
+                    "CREATE INDEX IF NOT EXISTS ix_registrations_user_id ON registrations(user_id)",
+                    "CREATE INDEX IF NOT EXISTS ix_registrations_event_id ON registrations(event_id)",
+                    "CREATE INDEX IF NOT EXISTS ix_users_role_status ON users(role, account_status)",
+                    "CREATE INDEX IF NOT EXISTS ix_vol_att_date_user ON volunteer_attendance(date, user_id)"
+                ]:
+                    try:
+                        conn.exec_driver_sql(idx_sql)
+                    except Exception:
+                        pass
 
         elif eng.dialect.name == "postgresql":
             with eng.connect() as conn:
@@ -164,16 +168,19 @@ def ensure_schema_migrations(target_engine=None):
                 add_pg_col("activities", "tag_kn", "VARCHAR DEFAULT ''")
 
                 # High performance composite indexes
-                try:
-                    conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_attendance_date_user ON attendance_records(attendance_date, user_id)")
-                    conn.commit()
-                except Exception:
-                    pass
-                try:
-                    conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_wc_attendance_date_user ON working_committee_attendance(attendance_date, working_committee_member_id)")
-                    conn.commit()
-                except Exception:
-                    pass
+                for pg_idx_sql in [
+                    "CREATE INDEX IF NOT EXISTS ix_attendance_date_user ON attendance_records(attendance_date, user_id)",
+                    "CREATE INDEX IF NOT EXISTS ix_wc_attendance_date_user ON working_committee_attendance(attendance_date, working_committee_member_id)",
+                    "CREATE INDEX IF NOT EXISTS ix_registrations_user_id ON registrations(user_id)",
+                    "CREATE INDEX IF NOT EXISTS ix_registrations_event_id ON registrations(event_id)",
+                    "CREATE INDEX IF NOT EXISTS ix_users_role_status ON users(role, account_status)",
+                    "CREATE INDEX IF NOT EXISTS ix_vol_att_date_user ON volunteer_attendance(date, user_id)"
+                ]:
+                    try:
+                        conn.exec_driver_sql(pg_idx_sql)
+                        conn.commit()
+                    except Exception:
+                        pass
 
         # Purge legacy preloaded dummy accounts (akv-nt-2026, AKV-SUPERADMIN, akv@acharya.ac.in)
         try:
