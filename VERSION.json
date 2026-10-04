@@ -1,11 +1,21 @@
 {
-  "production_version": "2.2.56",
-  "staged_version": "2.2.57",
+  "production_version": "2.2.58",
+  "staged_version": "2.2.59",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.58",
+      "released_at": "2026-10-05T00:47:43+0530",
+      "description": "Production release version 2.2.58"
+    },
+    {
+      "version": "2.2.57",
+      "released_at": "2026-10-05T00:47:11+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.57: Student Registration Default Selection Removed: Cleared default role selection for 'How are you registering? / \u0cad\u0cbe\u0c97\u0cb5\u0cb9\u0cbf\u0cb8\u0cc1\u0cb5\u0cbf\u0c95\u0cc6 \u0cb5\u0cbf\u0ca7\u0cbe\u0ca8 *' so students explicitly choose between Volunteer and Participant.; Student Registration Role Validation: Added validation alerting students to choose whether they are registering as a Volunteer or Participant if not selected.; Renamed Volunteer Domain Label: Changed 'Choose Working Committee Domain / \u0c95\u0cbe\u0cb0\u0ccd\u0caf\u0c95\u0ccd\u0cb7\u0cc7\u0ca4\u0ccd\u0cb0 *' to 'Choose Working Domain / \u0c95\u0cbe\u0cb0\u0ccd\u0caf\u0c95\u0ccd\u0cb7\u0cc7\u0ca4\u0ccd\u0cb0 *' when registering as a Volunteer in student registration.; Unset Promotions Default Domain: Set domain dropdown placeholder to 'SELECT DOMAIN' instead of defaulting to Promotions, with mandatory selection validation for volunteers.; Superadmin Admin Approvals Domain Display: Fixed Working Committee badge below member name in Superadmin Administrator Approval Workflow to display 'Committee Member (akv_domain)' instead of redundantly repeating the AUID.; My Profile AKV DOMAIN & Role Display: Replaced 'Assignment / ID: WORKING_COMMITTEE' with 'AKV DOMAIN: <domain>' for committee members and volunteers, and properly displayed 'Role' (Working Committee, Volunteer, Participant, Faculty Coordinator).; Registration & Profile Year of Study Fix: Added Year of Study selection for Working Committee registration, eliminated legacy backend hardcoded semester=8, and corrected '8th Year' display in My Profile to display the real year of study.; Added Developer Option to AKV Domains: Added 'Developer' as the final option in AKV_DOMAINS across student volunteer registration, working committee registration, profile edit dialogs, admin domain filters, and superadmin attendance roster views and export groupings.; Event Capacity Controls: Allow event capacity values from 0 to 10,000 in the SuperAdmin create and edit forms, and validate the same range in the backend.; Hero Heading Wording: Changed the English hero heading from \u201cThe Decadal Festival\u201d to \u201cDecennial celebration\u201d."
+    },
     {
       "version": "2.2.56",
       "released_at": "2026-10-04T19:27:16+0530",

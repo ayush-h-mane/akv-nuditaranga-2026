@@ -41,6 +41,19 @@ export const MyProfileAttendance = ({ profile, attendanceData, loading, error, o
   const [editError, setEditError] = useState("");
   const [editSuccess, setEditSuccess] = useState("");
 
+  const getInitialSemester = (p) => {
+    let s = p?.semester;
+    if (!s || s > 6) {
+      const m = (p?.auid || "").match(/^[A-Za-z]+(\d{2})/);
+      if (m) {
+        const joinYear = 2000 + parseInt(m[1], 10);
+        return Math.max(1, Math.min(6, 2026 - joinYear));
+      }
+      return 1;
+    }
+    return s;
+  };
+
   const [form, setForm] = useState({
     name: activeProfile?.name || "",
     auid: activeProfile?.auid || "",
@@ -48,7 +61,7 @@ export const MyProfileAttendance = ({ profile, attendanceData, loading, error, o
     phone: activeProfile?.phone || "",
     institute: activeProfile?.institute || "Acharya Institute of Technology",
     department: activeProfile?.department || "",
-    semester: activeProfile?.semester || 1,
+    semester: getInitialSemester(activeProfile),
     section: activeProfile?.section || "A",
     gender: activeProfile?.gender || "Male",
     role: activeProfile?.role || "PARTICIPANT",
@@ -66,7 +79,7 @@ export const MyProfileAttendance = ({ profile, attendanceData, loading, error, o
       phone: activeProfile?.phone || "",
       institute: activeProfile?.institute || "Acharya Institute of Technology",
       department: activeProfile?.department || "",
-      semester: activeProfile?.semester || 1,
+      semester: getInitialSemester(activeProfile),
       section: activeProfile?.section || "A",
       gender: activeProfile?.gender || "Male",
       role: activeProfile?.role || "PARTICIPANT",
@@ -146,9 +159,33 @@ export const MyProfileAttendance = ({ profile, attendanceData, loading, error, o
     })),
   ].sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
 
-  const domainLabel = activeProfile?.is_working_committee
-    ? (activeProfile?.volunteer_domain || activeProfile?.akv_dept || activeProfile?.working_committee_role || "General")
-    : (activeProfile?.volunteer_domain || activeProfile?.role);
+  const roleLabel = (() => {
+    if (activeProfile?.admin_type === "FACULTY_COORDINATOR") return "Faculty Coordinator";
+    if (activeProfile?.is_working_committee || activeProfile?.admin_type === "WORKING_COMMITTEE") return "Working Committee";
+    if (activeProfile?.role === "SUPERADMIN") return "Super Admin";
+    if (activeProfile?.role === "VOLUNTEER") return "Volunteer";
+    if (activeProfile?.role === "PARTICIPANT") return "Participant";
+    return activeProfile?.role || "Student";
+  })();
+
+  const yearDisplay = (() => {
+    if (activeProfile?.admin_type === "FACULTY_COORDINATOR") return "—";
+    let sem = activeProfile?.semester;
+    if (sem > 6) {
+      const m = (activeProfile?.auid || "").match(/^[A-Za-z]+(\d{2})/);
+      if (m) {
+        const joinYear = 2000 + parseInt(m[1], 10);
+        sem = Math.max(1, Math.min(6, 2026 - joinYear));
+      } else {
+        sem = 3;
+      }
+    }
+    if (!sem) return "—";
+    const suffix = sem === 1 ? 'st' : sem === 2 ? 'nd' : sem === 3 ? 'rd' : 'th';
+    return `${sem}${suffix} Year`;
+  })();
+
+  const domainValue = activeProfile?.volunteer_domain || activeProfile?.akv_dept || (activeProfile?.is_working_committee ? activeProfile?.working_committee_role : null);
 
   return (
     <div className="space-y-6">
@@ -230,13 +267,15 @@ export const MyProfileAttendance = ({ profile, attendanceData, loading, error, o
           <Field label="Registration ID" value={activeProfile?.registration_id} />
           <Field label="Email" value={activeProfile?.email} />
           <Field label="Phone" value={activeProfile?.phone} />
-          <Field label="AKV_DOMAIN" value={domainLabel} />
+          <Field label="Role" value={roleLabel} />
           <Field label="Institute" value={activeProfile?.institute} />
           <Field label="Department" value={activeProfile?.department} />
-          <Field label="Year" value={activeProfile?.semester ? `${activeProfile.semester}${activeProfile.semester === 1 ? 'st' : activeProfile.semester === 2 ? 'nd' : activeProfile.semester === 3 ? 'rd' : 'th'} Year` : "—"} />
-          {(activeProfile?.admin_type || activeProfile?.faculty_id) && (
-            <Field label="Assignment / ID" value={[activeProfile?.admin_type, activeProfile?.faculty_id].filter(Boolean).join(" • ")} />
-          )}
+          <Field label="Year" value={yearDisplay} />
+          {activeProfile?.admin_type === "FACULTY_COORDINATOR" ? (
+            <Field label="Faculty ID" value={activeProfile?.faculty_id || "N/A"} />
+          ) : (activeProfile?.is_working_committee || activeProfile?.admin_type === "WORKING_COMMITTEE" || activeProfile?.volunteer_domain) ? (
+            <Field label="AKV DOMAIN" value={domainValue || "General"} />
+          ) : null}
         </div>
       </section>
 

@@ -49,6 +49,7 @@ import {
 } from "lucide-react";
 import { EventImageUpload } from "../components/EventImageUpload";
 import { MyProfileAttendance } from "../components/MyProfileAttendance";
+import { AKV_DOMAINS } from "../config/institutesData";
 
 export const SuperAdminDashboard = ({ onNavigateHome }) => {
   const { user, logout, refreshUser } = useAuth();
@@ -1184,7 +1185,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
         event_date: editEvent.event_date,
         event_time: editEvent.event_time,
         reporting_time: editEvent.reporting_time,
-        max_slots: parseInt(editEvent.max_slots) || 50,
+        max_slots: Number(editEvent.max_slots),
         format: editEvent.format,
         is_team: isTeam,
         min_team_size: editEvent.format === "solo" ? 1 : (editEvent.format === "duet" ? 2 : (parseInt(editEvent.min_team_size) || (editEvent.format === "both" ? 1 : 2))),
@@ -1741,7 +1742,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                                         </span>
                                       ) : (
                                         <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-stone-100 text-stone-700 border border-stone-200">
-                                          Committee Member{adm.auid && adm.auid !== "N/A" ? ` (${adm.auid})` : ""}
+                                          Committee Member{(adm.akv_domain || adm.volunteer_domain || adm.akv_dept) ? ` (${adm.akv_domain || adm.volunteer_domain || adm.akv_dept})` : ""}
                                         </span>
                                       )}
                                     </div>
@@ -2678,15 +2679,12 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                     value={attendanceAkvDeptFilter}
                     onChange={(e) => setAttendanceAkvDeptFilter(e.target.value)}
                     className="py-1.5 px-2.5 rounded-xl border border-stone-300 text-xs bg-white font-bold text-stone-700"
-                    title="AKV Committee Team"
+                    title="AKV Domain"
                   >
-                    <option value="all">All AKV Teams</option>
-                    <option value="Promotion">Promotion</option>
-                    <option value="Stage">Stage</option>
-                    <option value="Hospitality">Hospitality</option>
-                    <option value="Discipline">Discipline</option>
-                    <option value="Cultural">Cultural</option>
-                    <option value="Technical">Technical</option>
+                    <option value="all">All AKV Domains</option>
+                    {AKV_DOMAINS.map((dom) => (
+                      <option key={dom} value={dom}>{dom}</option>
+                    ))}
                   </select>
 
                   <select
@@ -4110,11 +4108,12 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                   <label className="font-bold text-stone-700 uppercase">Max Slots</label>
                   <input
                     type="number"
-                    min="1"
-                    max="1000"
+                    min="0"
+                    max="10000"
+                    step="1"
                     required
                     value={newEvent.max_slots}
-                    onChange={(e) => setNewEvent({ ...newEvent, max_slots: parseInt(e.target.value) || 50 })}
+                    onChange={(e) => setNewEvent({ ...newEvent, max_slots: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1"
                   />
                 </div>
@@ -4332,11 +4331,12 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                   <label className="font-bold text-stone-700 uppercase">Max Slots Capacity</label>
                   <input
                     type="number"
-                    min="1"
-                    max="1000"
+                    min="0"
+                    max="10000"
+                    step="1"
                     required
-                    value={editEvent.max_slots || 50}
-                    onChange={(e) => setEditEvent({ ...editEvent, max_slots: parseInt(e.target.value) || 50 })}
+                    value={editEvent.max_slots ?? 50}
+                    onChange={(e) => setEditEvent({ ...editEvent, max_slots: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1"
                   />
                 </div>

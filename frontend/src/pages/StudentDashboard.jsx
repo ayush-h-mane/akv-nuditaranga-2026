@@ -479,7 +479,16 @@ export const StudentDashboard = ({ onNavigateHome }) => {
                   <div>
                     <span className="text-stone-400 font-bold block text-[11px] uppercase">Year of Study</span>
                     <span className="font-semibold text-stone-800">
-                      {profile?.semester ? `${profile.semester}${profile.semester === 1 ? 'st' : profile.semester === 2 ? 'nd' : profile.semester === 3 ? 'rd' : 'th'} Year` : "—"}
+                      {(() => {
+                        let sem = profile?.semester;
+                        if (sem > 6) {
+                          const m = (profile?.auid || "").match(/^[A-Za-z]+(\d{2})/);
+                          sem = m ? Math.max(1, Math.min(6, 2026 - (2000 + parseInt(m[1], 10)))) : 1;
+                        }
+                        if (!sem) return "—";
+                        const suffix = sem === 1 ? 'st' : sem === 2 ? 'nd' : sem === 3 ? 'rd' : 'th';
+                        return `${sem}${suffix} Year`;
+                      })()}
                     </span>
                   </div>
 

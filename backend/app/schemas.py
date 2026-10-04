@@ -33,7 +33,7 @@ class EventBase(BaseModel):
     format: Optional[str] = "solo"  # solo, team, both
     min_team_size: int = 1
     max_team_size: int = 1
-    max_slots: int = 50
+    max_slots: int = Field(default=50, ge=0, le=10000)
     registered_count: int = 0
     venue: str
     venue_kn: str
@@ -58,7 +58,7 @@ class EventUpdate(BaseModel):
     format: Optional[str] = None
     min_team_size: Optional[int] = None
     max_team_size: Optional[int] = None
-    max_slots: Optional[int] = None
+    max_slots: Optional[int] = Field(default=None, ge=0, le=10000)
     venue: Optional[str] = None
     venue_kn: Optional[str] = None
     event_date: Optional[str] = None

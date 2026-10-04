@@ -47,7 +47,8 @@ DEPARTMENT_GROUPS = [
     ("TECHNICAL", ["technical", "tech"]),
     ("PHOTOGRAPHY", ["photography", "photo"]),
     ("VIDEOGRAPHY", ["videography", "video"]),
-    ("HOSPITALITY", ["hospitality"])
+    ("HOSPITALITY", ["hospitality"]),
+    ("DEVELOPER", ["developer", "dev"])
 ]
 
 def get_domain_aliases(domain_name: Optional[str]) -> List[str]:
@@ -1023,7 +1024,7 @@ def export_attendance_excel(
 ):
     """
     Generates and downloads the official Attendance Excel workbook.
-    When exported by SUPERADMIN, contains exactly 15 sheets:
+    When exported by SUPERADMIN, contains exactly 16 sheets:
       - Sheet 1: PROMOTIONS
       - Sheet 2: DECORATIONS
       - Sheet 3: SOCIAL MEDIA
@@ -1037,8 +1038,9 @@ def export_attendance_excel(
       - Sheet 11: PHOTOGRAPHY
       - Sheet 12: VIDEOGRAPHY
       - Sheet 13: HOSPITALITY
-      - Sheet 14: WORKING COMMITTEE (strictly Working Committee members only)
-      - Sheet 15: ALL (consolidated combination of Sheets 1–13 + Sheet 14)
+      - Sheet 14: DEVELOPER
+      - Sheet 15: WORKING COMMITTEE (strictly Working Committee members only)
+      - Sheet 16: ALL (consolidated combination of Sheets 1–14 + Sheet 15)
     
     Timestamps in Indian Standard Time (Asia/Kolkata).
     Chronological event date columns across all sheets.
