@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.58",
-  "staged_version": "2.2.59",
+  "production_version": "2.2.59",
+  "staged_version": "2.2.60",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.59",
+      "released_at": "2026-10-05T00:59:10+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.59: SuperAdmin Cultural Event Registrations: Added authorized create, edit, and delete controls with participant details, team data, status management, capacity counts, duplicate checks, and audit logging."
+    },
     {
       "version": "2.2.58",
       "released_at": "2026-10-05T00:47:43+0530",

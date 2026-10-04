@@ -180,6 +180,23 @@ class RegistrationOut(BaseModel):
     class Config:
         from_attributes = True
 
+class SuperAdminRegistrationUpdate(BaseModel):
+    event_id: Optional[str] = Field(None, min_length=1)
+    full_name: Optional[str] = Field(None, min_length=2, max_length=100)
+    auid: Optional[str] = Field(None, min_length=3, max_length=30)
+    usn: Optional[str] = Field(None, min_length=3, max_length=30)
+    institute: Optional[str] = Field(None, min_length=2, max_length=150)
+    department: Optional[str] = Field(None, min_length=2, max_length=100)
+    semester: Optional[int] = Field(None, ge=1, le=6)
+    section: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = Field(None, min_length=10, max_length=15)
+    gender: Optional[str] = None
+    is_team: Optional[bool] = None
+    team_name: Optional[str] = None
+    team_members: Optional[List[TeamMemberSchema]] = None
+    status: Optional[str] = None
+
 class CheckInRequest(BaseModel):
     registration_id: str
     agent: Optional[str] = "Organizer"

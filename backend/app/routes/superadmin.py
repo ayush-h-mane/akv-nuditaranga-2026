@@ -1,5 +1,6 @@
 import io
 import csv
+import json
 import datetime
 from typing import List, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
@@ -10,8 +11,10 @@ import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
 from ..database import get_db
-from ..models import User, Admin, Event, Registration, VolunteerAttendance, AuditLog, AttendanceRecord, WorkingCommitteeAttendance, PasswordResetToken
+from ..models import User, Admin, Event, Registration, CheckInLog, VolunteerAttendance, AuditLog, AttendanceRecord, WorkingCommitteeAttendance, PasswordResetToken
 from ..auth_deps import require_superadmin
+from ..schemas import RegistrationCreate, RegistrationOut, SuperAdminRegistrationUpdate
+from ..routes.registrations import generate_unique_reg_id
 from ..services.email_service import send_admin_approval_email
 from ..services.id_card_service import generate_candidate_id_card_pdf
 
@@ -904,6 +907,131 @@ def export_attendance_xlsx(
 # ==========================================
 # 7. AUDIT LOGS
 # ==========================================
+@router.post("/registrations", response_model=RegistrationOut)
+def create_event_registration(
+    registration_data: RegistrationCreate,
+    current_user: User = Depends(require_superadmin),
+    db: Session = Depends(get_db)
+):
+    event = db.query(Event).filter(Event.id == registration_data.event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    auid = registration_data.auid.strip().upper()
+    usn = (registration_data.usn or auid).strip().upper()
+    duplicate = db.query(Registration).filter(
+        Registration.event_id == event.id,
+        or_(func.upper(Registration.auid) == auid, func.upper(Registration.usn) == usn)
+    ).first()
+    if duplicate:
+        raise HTTPException(status_code=409, detail=f"This participant is already registered for the event ({duplicate.registration_id}).")
+
+    team_members = json.dumps([member.model_dump() for member in registration_data.team_members]) if registration_data.is_team and registration_data.team_members else None
+    registration = Registration(
+        registration_id=generate_unique_reg_id(db), event_id=event.id,
+        full_name=registration_data.full_name.strip(), auid=auid, usn=usn,
+        institute=registration_data.institute.strip(), department=registration_data.department.strip(),
+        semester=registration_data.semester or 1, section=(registration_data.section or "A").strip().upper(),
+        email=str(registration_data.email).strip().lower(), phone=registration_data.phone,
+        gender=registration_data.gender, is_team=registration_data.is_team,
+        team_name=registration_data.team_name.strip() if registration_data.team_name else None,
+        team_members=team_members, status="Registered"
+    )
+    db.add(registration)
+    event.registered_count = (event.registered_count or 0) + 1
+    db.add(AuditLog(user_id=current_user.id, actor_name=current_user.name, action="EVENT_REGISTRATION_CREATED", target_type="REGISTRATION", target_id=registration.registration_id, new_value=f"Event: {event.id}; Participant: {registration.full_name}"))
+    db.commit()
+    db.refresh(registration)
+    return registration
+
+
+@router.put("/registrations/{registration_id}", response_model=RegistrationOut)
+def update_event_registration(
+    registration_id: int,
+    changes: SuperAdminRegistrationUpdate,
+    current_user: User = Depends(require_superadmin),
+    db: Session = Depends(get_db)
+):
+    registration = db.query(Registration).filter(Registration.id == registration_id).first()
+    if not registration:
+        raise HTTPException(status_code=404, detail="Registration not found")
+
+    updates = changes.model_dump(exclude_unset=True)
+    target_event_id = updates.get("event_id", registration.event_id)
+    target_event = db.query(Event).filter(Event.id == target_event_id).first()
+    if not target_event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    next_auid = (updates.get("auid") or updates.get("usn") or registration.auid or registration.usn).strip().upper()
+    next_usn = (updates.get("usn") or updates.get("auid") or registration.usn or registration.auid).strip().upper()
+    duplicate = db.query(Registration).filter(
+        Registration.id != registration.id,
+        Registration.event_id == target_event_id,
+        or_(func.upper(Registration.auid) == next_auid, func.upper(Registration.usn) == next_usn)
+    ).first()
+    if duplicate:
+        raise HTTPException(status_code=409, detail=f"This participant is already registered for the event ({duplicate.registration_id}).")
+
+    if "status" in updates and updates["status"] not in {"Registered", "Checked In", "Cancelled"}:
+        raise HTTPException(status_code=400, detail="Status must be Registered, Checked In, or Cancelled")
+    if "phone" in updates:
+        digits = "".join(char for char in updates["phone"] if char.isdigit())
+        if len(digits) not in {10, 11, 12}:
+            raise HTTPException(status_code=422, detail="Phone number must contain 10 to 12 digits")
+        updates["phone"] = digits[-10:]
+    if "email" in updates and updates["email"]:
+        updates["email"] = updates["email"].strip().lower()
+    if "auid" in updates or "usn" in updates:
+        updates["auid"] = next_auid
+        updates["usn"] = next_usn
+    if "section" in updates and updates["section"]:
+        updates["section"] = updates["section"].strip().upper()
+    if "team_members" in updates:
+        updates["team_members"] = json.dumps([member.model_dump() for member in updates["team_members"]]) if updates["team_members"] else None
+
+    previous_event_id = registration.event_id
+    old_values = {key: getattr(registration, key) for key in updates if key not in {"team_members"}}
+    for key, value in updates.items():
+        setattr(registration, key, value)
+    if "status" in updates:
+        if updates["status"] == "Checked In" and not registration.checkin_time:
+            registration.checkin_time = datetime.datetime.utcnow()
+            registration.checked_in_by = current_user.name
+        elif updates["status"] != "Checked In":
+            registration.checkin_time = None
+            registration.checked_in_by = None
+    if previous_event_id != target_event_id:
+        previous_event = db.query(Event).filter(Event.id == previous_event_id).first()
+        if previous_event:
+            previous_event.registered_count = max(0, (previous_event.registered_count or 0) - 1)
+        target_event.registered_count = (target_event.registered_count or 0) + 1
+
+    db.add(AuditLog(user_id=current_user.id, actor_name=current_user.name, action="EVENT_REGISTRATION_UPDATED", target_type="REGISTRATION", target_id=registration.registration_id, previous_value=json.dumps(old_values, default=str), new_value=json.dumps({key: value for key, value in updates.items()}, default=str)))
+    db.commit()
+    db.refresh(registration)
+    return registration
+
+
+@router.delete("/registrations/{registration_id}")
+def delete_event_registration(
+    registration_id: int,
+    current_user: User = Depends(require_superadmin),
+    db: Session = Depends(get_db)
+):
+    registration = db.query(Registration).filter(Registration.id == registration_id).first()
+    if not registration:
+        raise HTTPException(status_code=404, detail="Registration not found")
+    event = db.query(Event).filter(Event.id == registration.event_id).first()
+    registration_code = registration.registration_id
+    db.add(AuditLog(user_id=current_user.id, actor_name=current_user.name, action="EVENT_REGISTRATION_DELETED", target_type="REGISTRATION", target_id=registration_code, previous_value=f"Event: {registration.event_id}; Participant: {registration.full_name}"))
+    db.query(CheckInLog).filter(CheckInLog.registration_id == registration_code).delete(synchronize_session=False)
+    db.delete(registration)
+    if event:
+        event.registered_count = max(0, (event.registered_count or 0) - 1)
+    db.commit()
+    return {"success": True, "registration_id": registration_code}
+
+
 @router.get("/audit-logs")
 def get_audit_logs(
     limit: int = 100,

@@ -1526,6 +1526,44 @@ export const api = {
     return true;
   },
 
+  async createSuperAdminRegistration(registrationData) {
+    const res = await fetch(`${API_BASE_URL}/superadmin/registrations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+      body: JSON.stringify(registrationData)
+    });
+    const data = await readApiResponse(res);
+    if (!res.ok) throw new Error(data.detail || "Failed to create registration.");
+    invalidateMemCache("registrations_");
+    invalidateMemCache("sa_stats");
+    return data;
+  },
+
+  async updateSuperAdminRegistration(id, registrationData) {
+    const res = await fetch(`${API_BASE_URL}/superadmin/registrations/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+      body: JSON.stringify(registrationData)
+    });
+    const data = await readApiResponse(res);
+    if (!res.ok) throw new Error(data.detail || "Failed to update registration.");
+    invalidateMemCache("registrations_");
+    invalidateMemCache("sa_stats");
+    return data;
+  },
+
+  async deleteSuperAdminRegistration(id) {
+    const res = await fetch(`${API_BASE_URL}/superadmin/registrations/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: { ...getAuthHeaders() }
+    });
+    const data = await readApiResponse(res);
+    if (!res.ok) throw new Error(data.detail || "Failed to delete registration.");
+    invalidateMemCache("registrations_");
+    invalidateMemCache("sa_stats");
+    return data;
+  },
+
   getCachedSuperAdminIdCards(search = "") {
     const cacheKey = `sa_idcards_${search.trim()}`;
     return getFromMemCache(cacheKey, 300000);
