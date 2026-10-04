@@ -22,198 +22,257 @@ export const Footer = ({ setCurrentView }) => {
       <div className="absolute top-0 left-0 right-0 h-1.5 karnataka-ribbon" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 pb-12 border-b border-stone-800">
-          
-          {/* Column 1: Organization & Identity */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
+        {/* Mobile Minimal Footer (Mobile Only) */}
+        <div className="block md:hidden text-center py-2 space-y-4">
+          {/* AKV & Acharya Logos along with Acharya Kannada Vedike */}
+          <div className="flex flex-col items-center justify-center gap-2">
+            <div className="flex items-center justify-center gap-3">
               <img
                 src="/images/acharya-logo-white.png?v=2026"
                 alt="Acharya Institutes"
-                className="h-11 w-auto object-contain drop-shadow"
+                className="h-10 w-auto object-contain drop-shadow"
               />
+              <div className="h-6 w-[1px] bg-stone-700" />
               <img
                 src="/images/akv-logo.png"
                 alt="Acharya Kannada Vedike"
-                className="h-12 w-auto object-contain drop-shadow"
+                className="h-11 w-auto object-contain drop-shadow"
               />
-              <div>
-                <h3 className="font-extrabold text-white text-base tracking-tight leading-tight">
-                  {lang === "kn" ? siteConfig.name.kn : siteConfig.name.en}
-                </h3>
-                <p className="text-xs text-amber-400 font-medium">
-                  {lang === "kn" ? "ನುಡಿತರಂಗ ೨೦೨೬ • ಕರುನಾಡ ವೈಭವ" : "Nuditaranga 2026 • Karunada Vaibhava"}
-                </p>
-              </div>
             </div>
+            <div>
+              <h3 className="font-extrabold text-white text-sm tracking-tight notranslate" translate="no">
+                {lang === "kn" ? "ಆಚಾರ್ಯ ಕನ್ನಡ ವೇದಿಕೆ" : "Acharya Kannada Vedike"}
+              </h3>
+              <p className="text-xs text-amber-400 font-mono mt-0.5">
+                <a href={`mailto:${siteConfig.social.email}`} className="hover:underline text-amber-400 notranslate" translate="no">
+                  {siteConfig.social.email}
+                </a>
+              </p>
+            </div>
+          </div>
 
-            <p className="text-sm text-stone-400 leading-relaxed font-kannada">
-              {lang === "kn"
-                ? "ಕನ್ನಡದ ಕಂಪು, ಸಂಸ್ಕೃತಿಯ ಸೊಬಗು ಹಾಗೂ ಯುವ ಪ್ರತಿಭೆಗಳ ಅನಾವರಣಕ್ಕೆ ಸಮರ್ಪಿತವಾದ ಅಧಿಕೃತ ಸಾಂಸ್ಕೃತಿಕ ವೇದಿಕೆ."
-                : "Dedicated to nurturing Kannada literature, Karnataka's heritage, and youth talent across engineering and arts."}
-            </p>
+          {/* Celebrating Kannada • Celebrating Culture • Celebrating Talent */}
+          <p className="text-xs font-semibold text-amber-200/90 font-kannada px-2 tracking-wide leading-relaxed">
+            {lang === "kn" 
+              ? "ಕನ್ನಡದ ಆಚರಣೆ • ಸಂಸ್ಕೃತಿಯ ಆಚರಣೆ • ಪ್ರತಿಭೆಯ ಆಚರಣೆ" 
+              : "Celebrating Kannada • Celebrating Culture • Celebrating Talent"}
+          </p>
 
-            <div className="pt-2">
+          {/* Developer Attribution & Copyright */}
+          <div className="space-y-1.5 pt-3 border-t border-stone-800 text-xs text-stone-400">
+            <p>
+              {lang === "kn" ? "ವಿನ್ಯಾಸ ಮತ್ತು ಅಭಿವೃದ್ಧಿ: " : "Designed & Developed by "}
               <a
-                href={siteConfig.social.instagram}
+                href="https://ayushhmane.vercel.app/"
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-pink-600 via-rose-500 to-amber-500 text-white text-xs font-bold shadow-md hover:opacity-95 transition-opacity"
+                className="text-amber-300 hover:text-white font-bold underline underline-offset-2 notranslate"
+                translate="no"
               >
-                <InstagramIcon className="w-4 h-4" />
-                <span>{t("social.followBtn")}</span>
+                Ayush H Mane
               </a>
-            </div>
-          </div>
-
-          {/* Column 2: Quick Links */}
-          <div className="space-y-3">
-            <h4 className="text-white font-bold text-sm tracking-wider uppercase border-b border-stone-800 pb-2">
-              {lang === "kn" ? "ತ್ವರಿತ ಕೊಂಡಿಗಳು" : "Quick Links"}
-            </h4>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <button
-                  onClick={() => { setCurrentView("home"); scrollToTop(); }}
-                  className="hover:text-kar-yellow transition-colors"
-                >
-                  {t("nav.home")}
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => { setCurrentView("rules"); scrollToTop(); }}
-                  className="hover:text-kar-yellow transition-colors"
-                >
-                  {lang === "kn" ? "ಸಾಮಾನ್ಯ ನಿಯಮಗಳು" : "General Rules"}
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => { setCurrentView("about"); scrollToTop(); }}
-                  className="hover:text-kar-yellow transition-colors"
-                >
-                  {t("nav.about")}
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => { setCurrentView("nuditaranga"); scrollToTop(); }}
-                  className="hover:text-kar-yellow transition-colors"
-                >
-                  {t("nav.nuditaranga")}
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => { setCurrentView("events"); scrollToTop(); }}
-                  className="hover:text-kar-yellow transition-colors"
-                >
-                  {t("nav.events")}
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => { setCurrentView("gallery"); scrollToTop(); }}
-                  className="hover:text-kar-yellow transition-colors"
-                >
-                  {t("nav.gallery")}
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => { setCurrentView("contact"); scrollToTop(); }}
-                  className="hover:text-kar-yellow transition-colors"
-                >
-                  {t("nav.contact")}
-                </button>
-              </li>
-            </ul>
-          </div>
-
-          {/* Column 3: Portals & Fest */}
-          <div className="space-y-3">
-            <h4 className="text-white font-bold text-sm tracking-wider uppercase border-b border-stone-800 pb-2">
-              {lang === "kn" ? "ನುಡಿತರಂಗ ೨೦೨೬ ಪೋರ್ಟಲ್" : "Nuditaranga Portals"}
-            </h4>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <button
-                  onClick={() => { setCurrentView("register"); scrollToTop(); }}
-                  className="text-amber-400 hover:text-amber-300 font-semibold transition-colors"
-                >
-                  → {t("nav.registerNow")}
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => { setCurrentView("admin"); scrollToTop(); }}
-                  className="hover:text-kar-yellow transition-colors"
-                >
-                  → {t("nav.admin")}
-                </button>
-              </li>
-              <li className="pt-2 text-xs text-stone-400">
-                <span className="font-semibold text-stone-300">
-                  {lang === "kn" ? "ಧೈಯವಾಕ್ಯ: " : "Theme: "}
-                </span>
-                {lang === "kn" ? siteConfig.festival.theme.kn : siteConfig.festival.theme.en}
-              </li>
-              <li className="text-xs text-stone-400">
-                <span className="font-semibold text-stone-300">
-                  {lang === "kn" ? "ದಿನಾಂಕ: " : "Dates: "}
-                </span>
-                {lang === "kn" ? siteConfig.festival.displayDate.kn : siteConfig.festival.displayDate.en}
-              </li>
-            </ul>
-          </div>
-
-          {/* Column 4: College Campus Address */}
-          <div className="space-y-3">
-            <h4 className="text-white font-bold text-sm tracking-wider uppercase border-b border-stone-800 pb-2">
-              {lang === "kn" ? "ಸ್ಥಳ & ವಿಳಾಸ" : "Campus Location"}
-            </h4>
-            <div className="space-y-2 text-xs text-stone-400 leading-relaxed">
-              <div className="flex items-start gap-2">
-                <MapPin className="w-4 h-4 text-kar-red flex-shrink-0 mt-0.5" />
-                <span>
-                  {lang === "kn" ? siteConfig.institution.address.kn : siteConfig.institution.address.en}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 pt-1">
-                <Mail className="w-4 h-4 text-amber-400 flex-shrink-0" />
-                <a href={`mailto:${siteConfig.social.email}`} className="hover:text-white transition-colors">
-                  {lang === "kn" ? "ಆಚಾರ್ಯ ಕನ್ನಡ ವೇದಿಕೆಗೆ ಇಮೇಲ್ ಮಾಡಿ" : "Email Acharya Kannada Vedike"}
-                </a>
-              </div>
-            </div>
+            </p>
+            <p className="text-[11px] text-stone-500 notranslate" translate="no">
+              © {lang === "kn" ? "೨೦೨೬" : "2026"} {lang === "kn" ? "ಆಚಾರ್ಯ ಕನ್ನಡ ವೇದಿಕೆ" : "Acharya Kannada Vedike"}. All Rights Reserved.
+            </p>
           </div>
         </div>
 
-        {/* Bottom Bar: Quote & Copyright */}
-        <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-stone-400">
-          <p className="font-kannada text-center md:text-left text-amber-200/90 font-medium">
-            {t("footer.quote")}
-          </p>
+        {/* Laptop / Desktop Full Footer (Unchanged) */}
+        <div className="hidden md:block">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 pb-12 border-b border-stone-800">
+            
+            {/* Column 1: Organization & Identity */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <img
+                  src="/images/acharya-logo-white.png?v=2026"
+                  alt="Acharya Institutes"
+                  className="h-11 w-auto object-contain drop-shadow"
+                />
+                <img
+                  src="/images/akv-logo.png"
+                  alt="Acharya Kannada Vedike"
+                  className="h-12 w-auto object-contain drop-shadow"
+                />
+                <div>
+                  <h3 className="font-extrabold text-white text-base tracking-tight leading-tight">
+                    {lang === "kn" ? siteConfig.name.kn : siteConfig.name.en}
+                  </h3>
+                  <p className="text-xs text-amber-400 font-medium">
+                    {lang === "kn" ? "ನುಡಿತರಂಗ ೨೦೨೬ • ಕರುನಾಡ ವೈಭವ" : "Nuditaranga 2026 • Karunada Vaibhava"}
+                  </p>
+                </div>
+              </div>
 
-          <p className="text-center">
-            {lang === "kn" ? "ವಿನ್ಯಾಸ ಮತ್ತು ಅಭಿವೃದ್ಧಿ: " : "Designed & Developed by "}
-            <a href={siteConfig.coordinators.students.find((person) => person.nameEn === "Ayush H Mane")?.portfolio} target="_blank" rel="noreferrer" className="text-amber-300 hover:text-white font-bold underline underline-offset-2 notranslate" translate="no">
-              Ayush H Mane
-            </a>
-          </p>
+              <p className="text-sm text-stone-400 leading-relaxed font-kannada">
+                {lang === "kn"
+                  ? "ಕನ್ನಡದ ಕಂಪು, ಸಂಸ್ಕೃತಿಯ ಸೊಬಗು ಹಾಗೂ ಯುವ ಪ್ರತಿಭೆಗಳ ಅನಾವರಣಕ್ಕೆ ಸಮರ್ಪಿತವಾದ ಅಧಿಕೃತ ಸಾಂಸ್ಕೃತಿಕ ವೇದಿಕೆ."
+                  : "Dedicated to nurturing Kannada literature, Karnataka's heritage, and youth talent across engineering and arts."}
+              </p>
 
-          <div className="flex items-center gap-4">
-            <p className="text-center">
-              © {lang === "kn" ? "೨೦೨೬" : "2026"} {lang === "kn" ? siteConfig.name.kn : siteConfig.name.en}. {t("footer.rights")}
+              <div className="pt-2">
+                <a
+                  href={siteConfig.social.instagram}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-pink-600 via-rose-500 to-amber-500 text-white text-xs font-bold shadow-md hover:opacity-95 transition-opacity"
+                >
+                  <InstagramIcon className="w-4 h-4" />
+                  <span>{t("social.followBtn")}</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Column 2: Quick Links */}
+            <div className="space-y-3">
+              <h4 className="text-white font-bold text-sm tracking-wider uppercase border-b border-stone-800 pb-2">
+                {lang === "kn" ? "ತ್ವರಿತ ಕೊಂಡಿಗಳು" : "Quick Links"}
+              </h4>
+              <ul className="space-y-2 text-sm">
+                <li>
+                  <button
+                    onClick={() => { setCurrentView("home"); scrollToTop(); }}
+                    className="hover:text-kar-yellow transition-colors"
+                  >
+                    {t("nav.home")}
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => { setCurrentView("rules"); scrollToTop(); }}
+                    className="hover:text-kar-yellow transition-colors"
+                  >
+                    {lang === "kn" ? "ಸಾಮಾನ್ಯ ನಿಯಮಗಳು" : "General Rules"}
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => { setCurrentView("about"); scrollToTop(); }}
+                    className="hover:text-kar-yellow transition-colors"
+                  >
+                    {t("nav.about")}
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => { setCurrentView("nuditaranga"); scrollToTop(); }}
+                    className="hover:text-kar-yellow transition-colors"
+                  >
+                    {t("nav.nuditaranga")}
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => { setCurrentView("events"); scrollToTop(); }}
+                    className="hover:text-kar-yellow transition-colors"
+                  >
+                    {t("nav.events")}
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => { setCurrentView("gallery"); scrollToTop(); }}
+                    className="hover:text-kar-yellow transition-colors"
+                  >
+                    {t("nav.gallery")}
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => { setCurrentView("contact"); scrollToTop(); }}
+                    className="hover:text-kar-yellow transition-colors"
+                  >
+                    {t("nav.contact")}
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            {/* Column 3: Portals & Fest */}
+            <div className="space-y-3">
+              <h4 className="text-white font-bold text-sm tracking-wider uppercase border-b border-stone-800 pb-2">
+                {lang === "kn" ? "ನುಡಿತರಂಗ ೨೦೨೬ ಪೋರ್ಟಲ್" : "Nuditaranga Portals"}
+              </h4>
+              <ul className="space-y-2 text-sm">
+                <li>
+                  <button
+                    onClick={() => { setCurrentView("register"); scrollToTop(); }}
+                    className="text-amber-400 hover:text-amber-300 font-semibold transition-colors"
+                  >
+                    → {t("nav.registerNow")}
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => { setCurrentView("admin"); scrollToTop(); }}
+                    className="hover:text-kar-yellow transition-colors"
+                  >
+                    → {t("nav.admin")}
+                  </button>
+                </li>
+                <li className="pt-2 text-xs text-stone-400">
+                  <span className="font-semibold text-stone-300">
+                    {lang === "kn" ? "ಧೈಯವಾಕ್ಯ: " : "Theme: "}
+                  </span>
+                  {lang === "kn" ? siteConfig.festival.theme.kn : siteConfig.festival.theme.en}
+                </li>
+                <li className="text-xs text-stone-400">
+                  <span className="font-semibold text-stone-300">
+                    {lang === "kn" ? "ದಿನಾಂಕ: " : "Dates: "}
+                  </span>
+                  {lang === "kn" ? siteConfig.festival.displayDate.kn : siteConfig.festival.displayDate.en}
+                </li>
+              </ul>
+            </div>
+
+            {/* Column 4: College Campus Address */}
+            <div className="space-y-3">
+              <h4 className="text-white font-bold text-sm tracking-wider uppercase border-b border-stone-800 pb-2">
+                {lang === "kn" ? "ಸ್ಥಳ & ವಿಳಾಸ" : "Campus Location"}
+              </h4>
+              <div className="space-y-2 text-xs text-stone-400 leading-relaxed">
+                <div className="flex items-start gap-2">
+                  <MapPin className="w-4 h-4 text-kar-red flex-shrink-0 mt-0.5" />
+                  <span>
+                    {lang === "kn" ? siteConfig.institution.address.kn : siteConfig.institution.address.en}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <Mail className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                  <a href={`mailto:${siteConfig.social.email}`} className="hover:text-white transition-colors">
+                    {lang === "kn" ? "ಆಚಾರ್ಯ ಕನ್ನಡ ವೇದಿಕೆಗೆ ಇಮೇಲ್ ಮಾಡಿ" : "Email Acharya Kannada Vedike"}
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom Bar: Quote & Copyright */}
+          <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-stone-400">
+            <p className="font-kannada text-center md:text-left text-amber-200/90 font-medium">
+              {t("footer.quote")}
             </p>
-            <button
-              onClick={scrollToTop}
-              className="p-2 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white transition-colors cursor-pointer"
-              title={lang === "kn" ? "ಮೇಲಕ್ಕೆ ಹೋಗಿ" : "Back to Top"}
-            >
-              <ArrowUp className="w-4 h-4" />
-            </button>
+
+            <p className="text-center">
+              {lang === "kn" ? "ವಿನ್ಯಾಸ ಮತ್ತು ಅಭಿವೃದ್ಧಿ: " : "Designed & Developed by "}
+              <a href={siteConfig.coordinators.students.find((person) => person.nameEn === "Ayush H Mane")?.portfolio} target="_blank" rel="noreferrer" className="text-amber-300 hover:text-white font-bold underline underline-offset-2 notranslate" translate="no">
+                Ayush H Mane
+              </a>
+            </p>
+
+            <div className="flex items-center gap-4">
+              <p className="text-center">
+                © {lang === "kn" ? "೨೦೨೬" : "2026"} {lang === "kn" ? siteConfig.name.kn : siteConfig.name.en}. {t("footer.rights")}
+              </p>
+              <button
+                onClick={scrollToTop}
+                className="p-2 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white transition-colors cursor-pointer"
+                title={lang === "kn" ? "ಮೇಲಕ್ಕೆ ಹೋಗಿ" : "Back to Top"}
+              >
+                <ArrowUp className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
