@@ -4,7 +4,7 @@ import datetime
 from typing import List, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session, defer
+from sqlalchemy.orm import Session, defer, joinedload
 from sqlalchemy import func, or_
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -24,7 +24,7 @@ class StudentUpdateRequest(BaseModel):
     phone: Optional[str] = None
     institute: Optional[str] = None
     department: Optional[str] = None
-    role: Optional[str] = None  # VOLUNTEER, PARTICIPANT, SPECTATOR
+    role: Optional[str] = None  # VOLUNTEER, PARTICIPANT
     account_status: Optional[str] = None  # ACTIVE, DISABLED
 
 class AttendanceUpdateRequest(BaseModel):
@@ -45,13 +45,16 @@ def get_superadmin_stats(
     current_user: User = Depends(require_superadmin),
     db: Session = Depends(get_db)
 ):
-    total_students = db.query(func.count(User.id)).filter(
-        User.role.in_(["STUDENT", "VOLUNTEER", "PARTICIPANT", "SPECTATOR"])
-    ).scalar() or 0
+    role_counts = dict(
+        db.query(User.role, func.count(User.id))
+        .filter(User.role.in_(["STUDENT", "VOLUNTEER", "PARTICIPANT"]))
+        .group_by(User.role)
+        .all()
+    )
+    total_volunteers = role_counts.get("VOLUNTEER", 0)
+    total_participants = role_counts.get("PARTICIPANT", 0)
+    total_students = total_volunteers + total_participants + role_counts.get("STUDENT", 0)
 
-    total_volunteers = db.query(func.count(User.id)).filter(User.role == "VOLUNTEER").scalar() or 0
-    total_participants = db.query(func.count(User.id)).filter(User.role == "PARTICIPANT").scalar() or 0
-    total_spectators = db.query(func.count(User.id)).filter(User.role == "SPECTATOR").scalar() or 0
     total_events = db.query(func.count(Event.id)).scalar() or 0
     total_registrations = db.query(func.count(Registration.id)).scalar() or 0
 
@@ -62,15 +65,14 @@ def get_superadmin_stats(
     ).scalar() or 0
 
     today_str = datetime.date.today().strftime("%Y-%m-%d")
-    today_present = db.query(func.count(VolunteerAttendance.id)).filter(
-        VolunteerAttendance.date == today_str,
-        VolunteerAttendance.status == "PRESENT"
-    ).scalar() or 0
-
-    today_absent = db.query(func.count(VolunteerAttendance.id)).filter(
-        VolunteerAttendance.date == today_str,
-        VolunteerAttendance.status == "ABSENT"
-    ).scalar() or 0
+    today_counts = dict(
+        db.query(VolunteerAttendance.status, func.count(VolunteerAttendance.id))
+        .filter(VolunteerAttendance.date == today_str)
+        .group_by(VolunteerAttendance.status)
+        .all()
+    )
+    today_present = today_counts.get("PRESENT", 0)
+    today_absent = today_counts.get("ABSENT", 0)
 
     return {
         "success": True,
@@ -78,7 +80,6 @@ def get_superadmin_stats(
             "total_students": total_students,
             "total_volunteers": total_volunteers,
             "total_participants": total_participants,
-            "total_spectators": total_spectators,
             "total_events": total_events,
             "total_registrations": total_registrations,
             "pending_admins": pending_admins,
@@ -130,11 +131,27 @@ def list_students(
     total_count = query.count()
     users = query.order_by(User.created_at.desc()).offset(offset).limit(limit).all()
 
+    user_ids = [u.id for u in users]
+    user_auids = [u.auid for u in users if u.auid]
+
+    reg_counts_by_uid = {}
+    reg_counts_by_auid = {}
+    if user_ids or user_auids:
+        reg_records = db.query(Registration.user_id, Registration.auid).filter(
+            or_(
+                Registration.user_id.in_(user_ids) if user_ids else False,
+                Registration.auid.in_(user_auids) if user_auids else False
+            )
+        ).all()
+        for r_uid, r_auid in reg_records:
+            if r_uid:
+                reg_counts_by_uid[r_uid] = reg_counts_by_uid.get(r_uid, 0) + 1
+            if r_auid:
+                reg_counts_by_auid[r_auid] = reg_counts_by_auid.get(r_auid, 0) + 1
+
     student_list = []
     for u in users:
-        reg_count = db.query(func.count(Registration.id)).filter(
-            or_(Registration.user_id == u.id, Registration.auid == u.auid)
-        ).scalar() or 0
+        reg_count = reg_counts_by_uid.get(u.id, 0) or (reg_counts_by_auid.get(u.auid, 0) if u.auid else 0)
 
         student_list.append({
             "id": u.id,
@@ -182,7 +199,7 @@ def update_student(
         student.institute = payload.institute.strip()
     if payload.department:
         student.department = payload.department.strip()
-    if payload.role and payload.role.upper() in ["VOLUNTEER", "PARTICIPANT", "SPECTATOR", "STUDENT"]:
+    if payload.role and payload.role.upper() in ["VOLUNTEER", "PARTICIPANT", "STUDENT"]:
         student.role = payload.role.upper()
     if payload.account_status and payload.account_status.upper() in ["ACTIVE", "DISABLED"]:
         student.account_status = payload.account_status.upper()
@@ -246,7 +263,9 @@ def list_admins(
     db: Session = Depends(get_db)
 ):
     # Retrieve all registered coordinators and faculty admins, strictly excluding SUPERADMIN accounts
-    admins = db.query(Admin).join(User, Admin.user_id == User.id).filter(
+    admins = db.query(Admin).options(
+        joinedload(Admin.user).defer(User.password_hash)
+    ).join(User, Admin.user_id == User.id).filter(
         User.role != "SUPERADMIN",
         Admin.admin_type != "SUPERADMIN",
         func.lower(User.email) != "akv@acharya.ac.in",
@@ -258,10 +277,10 @@ def list_admins(
 
     # Safety check: Detect any User marked role="ADMIN" without an Admin profile and backfill
     existing_user_ids = {a.user_id for a in admins if a.user_id}
-    orphan_admins = db.query(User).filter(
-        User.role == "ADMIN",
-        ~User.id.in_(existing_user_ids) if existing_user_ids else True
-    ).all()
+    orphan_query = db.query(User).filter(User.role == "ADMIN")
+    if existing_user_ids:
+        orphan_query = orphan_query.filter(~User.id.in_(existing_user_ids))
+    orphan_admins = orphan_query.all()
 
     for ou in orphan_admins:
         try:
@@ -484,7 +503,10 @@ def list_all_volunteers(
     Volunteers are automatically queried from student registrations where role == 'VOLUNTEER'.
     No manual list creation is allowed or needed.
     """
-    query = db.query(User).filter(User.role == "VOLUNTEER")
+    query = db.query(User).options(
+        defer(User.photo_url),
+        defer(User.password_hash)
+    ).filter(User.role == "VOLUNTEER")
 
     if department and department != "all":
         query = query.filter(User.department == department)
@@ -955,7 +977,7 @@ def export_event_registrations_xlsx(
     wb.remove(wb.active)
     headers = [
         "Event", "Event ID", "Registration ID", "Record ID", "Full Name", "AUID", "USN",
-        "Institute", "Department", "Semester", "Section", "Email", "Phone",
+        "Institute", "Department", "Year", "Email", "Phone",
         "Gender", "Team Registration", "Team Name", "Team Members (JSON)", "Photo URL",
         "Status", "Check-In Time", "Checked In By", "Account User ID", "Registered At",
     ]
@@ -984,8 +1006,7 @@ def export_event_registrations_xlsx(
                 str(registration.usn or ""),
                 registration.institute or "",
                 registration.department or "",
-                registration.semester,
-                registration.section or "",
+                f"Year {registration.semester}" if registration.semester else "",
                 registration.email or "",
                 registration.phone or "",
                 registration.gender or "",
@@ -1029,8 +1050,11 @@ def export_event_registrations_xlsx(
 
 
 def _id_card_user_query(db: Session):
-    return db.query(User).filter(or_(
-        User.role.in_(["PARTICIPANT", "STUDENT", "VOLUNTEER", "SPECTATOR"]),
+    return db.query(User).options(
+        defer(User.photo_url),
+        defer(User.password_hash)
+    ).filter(or_(
+        User.role.in_(["PARTICIPANT", "STUDENT", "VOLUNTEER"]),
         User.is_working_committee == True,
         (User.admin_type == "WORKING_COMMITTEE") & (User.role.in_(["ADMIN", "WORKING_COMMITTEE"])),
         User.role == "WORKING_COMMITTEE",
@@ -1067,7 +1091,9 @@ def list_superadmin_id_cards(
             "department": person.department, "event": "",
         })
 
-    registration_query = db.query(Registration, Event.title_en).join(Event, Registration.event_id == Event.id).filter(Registration.user_id.is_(None))
+    registration_query = db.query(Registration, Event.title_en).options(
+        defer(Registration.photo_url)
+    ).join(Event, Registration.event_id == Event.id).filter(Registration.user_id.is_(None))
     if search and search.strip():
         term = f"%{search.strip().lower()}%"
         registration_query = registration_query.filter(or_(

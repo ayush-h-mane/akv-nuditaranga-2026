@@ -231,10 +231,10 @@ def get_attendance_roster(
     # Locked for normal admin if submitted
     locked_for_current_user = bool(is_submitted and current_user.role != "SUPERADMIN")
 
-    # 2. Query participants (Students, Volunteers, Participants, Spectators)
+    # 2. Query participants (Students, Volunteers, Participants)
     # Defer heavy photo_url and password_hash to speed up query from disk & network
     user_query = db.query(User).options(defer(User.photo_url), defer(User.password_hash)).filter(
-        User.role.in_(["PARTICIPANT", "VOLUNTEER", "STUDENT", "SPECTATOR"])
+        User.role.in_(["PARTICIPANT", "VOLUNTEER", "STUDENT"])
     )
 
     if current_user.role == "ADMIN" and current_user.volunteer_domain:
@@ -306,7 +306,7 @@ def get_attendance_roster(
             .filter(AttendanceRecord.attendance_date == target_date, domain_match)
             .group_by(AttendanceRecord.status).all())
     else:
-        eligible_roles = ["PARTICIPANT", "VOLUNTEER", "STUDENT", "SPECTATOR"]
+        eligible_roles = ["PARTICIPANT", "VOLUNTEER", "STUDENT"]
         total_eligible = db.query(func.count(User.id)).filter(User.role.in_(eligible_roles)).scalar() or 0
 
         status_counts = dict(db.query(AttendanceRecord.status, func.count(AttendanceRecord.id))
@@ -1055,7 +1055,7 @@ def export_attendance_excel(
 
     # 2. Query all participants (Department Members)
     user_query = db.query(User).filter(
-        User.role.in_(["PARTICIPANT", "VOLUNTEER", "STUDENT", "SPECTATOR"])
+        User.role.in_(["PARTICIPANT", "VOLUNTEER", "STUDENT"])
     )
     if department and department != "all":
         user_query = user_query.filter(User.department == department)

@@ -477,8 +477,10 @@ export const StudentDashboard = ({ onNavigateHome }) => {
                   </div>
 
                   <div>
-                    <span className="text-stone-400 font-bold block text-[11px] uppercase">Semester</span>
-                    <span className="font-semibold text-stone-800">Sem {profile?.semester}</span>
+                    <span className="text-stone-400 font-bold block text-[11px] uppercase">Year of Study</span>
+                    <span className="font-semibold text-stone-800">
+                      {profile?.semester ? `${profile.semester}${profile.semester === 1 ? 'st' : profile.semester === 2 ? 'nd' : profile.semester === 3 ? 'rd' : 'th'} Year` : "—"}
+                    </span>
                   </div>
 
                   <div>

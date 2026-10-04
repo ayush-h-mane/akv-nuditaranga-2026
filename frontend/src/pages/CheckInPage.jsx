@@ -207,7 +207,7 @@ export const CheckInPage = () => {
                   {activeReg.full_name}
                 </h3>
                 <span className="text-xs font-mono font-bold text-kar-red">
-                  {lang === "kn" ? "USN / AUID: " : "USN: "}{activeReg.usn} • {activeReg.department} ({lang === "kn" ? `${toKannadaDigits(activeReg.semester)}ನೇ ಸೆಮ್, ವಿಭಾಗ ${activeReg.section}` : `Sem ${activeReg.semester}, Sec ${activeReg.section}`})
+                  {lang === "kn" ? "USN / AUID: " : "USN: "}{activeReg.usn} • {activeReg.department} ({lang === "kn" ? `${toKannadaDigits(activeReg.semester)}ನೇ ವರ್ಷ` : `${activeReg.semester}th Year`})
                 </span>
               </div>
 

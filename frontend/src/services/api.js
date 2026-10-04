@@ -22,6 +22,41 @@ const API_BASE_URL = (() => {
 const memCache = new Map();
 const inflightRequests = new Map();
 
+function getFromMemCache(key, maxAgeMs = 60000) {
+  if (!memCache.has(key)) return null;
+  const item = memCache.get(key);
+  if (!item || item._cachedAt === undefined) return null;
+  if (Date.now() - item._cachedAt > maxAgeMs) return null;
+  return item.data;
+}
+
+function setInMemCache(key, data) {
+  memCache.set(key, { data, _cachedAt: Date.now() });
+}
+
+function invalidateMemCache(prefix = "") {
+  if (!prefix) {
+    memCache.clear();
+    return;
+  }
+  for (const k of memCache.keys()) {
+    if (k.startsWith(prefix)) {
+      memCache.delete(k);
+    }
+  }
+}
+
+async function fetchWithDeduplication(reqKey, fetchFn) {
+  if (inflightRequests.has(reqKey)) {
+    return inflightRequests.get(reqKey);
+  }
+  const promise = fetchFn().finally(() => {
+    inflightRequests.delete(reqKey);
+  });
+  inflightRequests.set(reqKey, promise);
+  return promise;
+}
+
 // Local fallback storage keys
 const STORAGE_EVENTS_KEY = "akv_events_cache_v2";
 const STORAGE_REGS_KEY = "akv_registrations_cache_v2";
@@ -245,7 +280,7 @@ export const api = {
           phone: payload.phone.trim(),
           institute: payload.institute || "Acharya Institute of Technology",
           department: payload.department.trim(),
-          semester: Number(payload.semester) || 6,
+          semester: Number(payload.semester) || 1,
           section: payload.section?.trim().toUpperCase() || "A",
           gender: payload.gender || "Female",
           role: payload.role?.toUpperCase() || "PARTICIPANT",
@@ -965,64 +1000,92 @@ export const api = {
   // ==========================================
   // SUPER ADMIN APIs
   // ==========================================
+  getCachedSuperAdminStats() {
+    return getFromMemCache("sa_stats", 300000);
+  },
+
   async getSuperAdminStats(forceFresh = false) {
-    try {
-      const url = `${API_BASE_URL}/superadmin/stats${forceFresh ? `?_t=${Date.now()}` : ""}`;
-      const res = await fetch(url, {
-        cache: forceFresh ? "no-store" : "default",
-        headers: {
-          ...getAuthHeaders(),
-          ...(forceFresh ? { "Cache-Control": "no-cache", "Pragma": "no-cache" } : {})
-        }
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Failed to fetch Super Admin stats");
-      return data;
-    } catch (err) {
-      if (isNetworkError(err)) {
-        const users = getLocalUsers();
-        const admins = getLocalAdmins();
-        const events = getLocalEvents();
-        return {
-          success: true,
-          metrics: {
-            total_students: users.length,
-            volunteers: users.filter(u => u.role === "VOLUNTEER").length,
-            participants: users.filter(u => u.role === "PARTICIPANT").length,
-            spectators: users.filter(u => u.role === "SPECTATOR").length,
-            pending_admins: admins.filter(a => a.approval_status === "PENDING_APPROVAL").length,
-            approved_admins: admins.filter(a => a.approval_status === "APPROVED").length + 2,
-            active_events: events.filter(e => e.is_active).length,
-            total_events: events.length
-          }
-        };
-      }
-      throw err;
+    const cacheKey = "sa_stats";
+    if (!forceFresh) {
+      const cached = getFromMemCache(cacheKey, 30000);
+      if (cached) return cached;
     }
+    return fetchWithDeduplication(cacheKey, async () => {
+      try {
+        const url = `${API_BASE_URL}/superadmin/stats${forceFresh ? `?_t=${Date.now()}` : ""}`;
+        const res = await fetch(url, {
+          cache: forceFresh ? "no-store" : "default",
+          headers: {
+            ...getAuthHeaders(),
+            ...(forceFresh ? { "Cache-Control": "no-cache", "Pragma": "no-cache" } : {})
+          }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Failed to fetch Super Admin stats");
+        setInMemCache(cacheKey, data);
+        return data;
+      } catch (err) {
+        if (isNetworkError(err)) {
+          const cached = getFromMemCache(cacheKey, 600000);
+          if (cached) return cached;
+          const users = getLocalUsers();
+          const admins = getLocalAdmins();
+          const events = getLocalEvents();
+          return {
+            success: true,
+            metrics: {
+              total_students: users.length,
+              volunteers: users.filter(u => u.role === "VOLUNTEER").length,
+              participants: users.filter(u => u.role === "PARTICIPANT").length,
+              pending_admins: admins.filter(a => a.approval_status === "PENDING_APPROVAL").length,
+              approved_admins: admins.filter(a => a.approval_status === "APPROVED").length + 2,
+              active_events: events.filter(e => e.is_active).length,
+              total_events: events.length
+            }
+          };
+        }
+        throw err;
+      }
+    });
+  },
+
+  getCachedStudents(params = {}) {
+    const qKey = `sa_students_${params.search || ""}_${params.role || ""}_${params.status_filter || ""}_${params.department || ""}_${params.limit || 100}`;
+    return getFromMemCache(qKey, 300000);
   },
 
   async listStudents(params = {}, forceFresh = false) {
-    try {
-      const qParams = { ...params };
-      if (forceFresh) qParams._t = Date.now();
-      const query = new URLSearchParams(qParams).toString();
-      const res = await fetch(`${API_BASE_URL}/superadmin/students${query ? `?${query}` : ""}`, {
-        cache: forceFresh ? "no-store" : "default",
-        headers: {
-          ...getAuthHeaders(),
-          ...(forceFresh ? { "Cache-Control": "no-cache", "Pragma": "no-cache" } : {})
-        }
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Failed to list students");
-      return data;
-    } catch (err) {
-      if (isNetworkError(err)) {
-        const users = getLocalUsers();
-        return { total: users.length, students: users };
-      }
-      throw err;
+    const cacheKey = `sa_students_${params.search || ""}_${params.role || ""}_${params.status_filter || ""}_${params.department || ""}_${params.limit || 100}`;
+    if (!forceFresh) {
+      const cached = getFromMemCache(cacheKey, 30000);
+      if (cached) return cached;
     }
+    return fetchWithDeduplication(cacheKey, async () => {
+      try {
+        const qParams = { ...params };
+        if (forceFresh) qParams._t = Date.now();
+        const query = new URLSearchParams(qParams).toString();
+        const res = await fetch(`${API_BASE_URL}/superadmin/students${query ? `?${query}` : ""}`, {
+          cache: forceFresh ? "no-store" : "default",
+          headers: {
+            ...getAuthHeaders(),
+            ...(forceFresh ? { "Cache-Control": "no-cache", "Pragma": "no-cache" } : {})
+          }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Failed to list students");
+        setInMemCache(cacheKey, data);
+        return data;
+      } catch (err) {
+        if (isNetworkError(err)) {
+          const cached = getFromMemCache(cacheKey, 600000);
+          if (cached) return cached;
+          const users = getLocalUsers();
+          return { total: users.length, students: users };
+        }
+        throw err;
+      }
+    });
   },
 
   async updateStudent(userId, payload) {
@@ -1037,6 +1100,9 @@ export const api = {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Failed to update student");
+      invalidateMemCache("sa_students");
+      invalidateMemCache("sa_stats");
+      invalidateMemCache("sa_volunteers");
       return data;
     } catch (err) {
       if (isNetworkError(err)) {
@@ -1046,6 +1112,7 @@ export const api = {
           users[idx] = { ...users[idx], ...payload };
           saveLocalUsers(users);
         }
+        invalidateMemCache("sa_students");
         return { success: true, message: "Student updated" };
       }
       throw err;
@@ -1060,43 +1127,62 @@ export const api = {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Failed to delete student");
+      invalidateMemCache("sa_students");
+      invalidateMemCache("sa_stats");
+      invalidateMemCache("sa_volunteers");
       return data;
     } catch (err) {
       if (isNetworkError(err)) {
         const users = getLocalUsers().filter(u => u.id !== userId);
         saveLocalUsers(users);
+        invalidateMemCache("sa_students");
         return { success: true, message: "Student deleted" };
       }
       throw err;
     }
   },
 
+  getCachedAdmins() {
+    return getFromMemCache("sa_admins", 300000);
+  },
+
   async listAdmins(forceFresh = false) {
-    try {
-      const url = `${API_BASE_URL}/superadmin/admins${forceFresh ? `?_t=${Date.now()}` : ""}`;
-      const res = await fetch(url, {
-        cache: forceFresh ? "no-store" : "default",
-        headers: {
-          ...getAuthHeaders(),
-          ...(forceFresh ? { "Cache-Control": "no-cache", "Pragma": "no-cache" } : {})
-        }
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Failed to list admins");
-      if (Array.isArray(data)) {
-        return data.sort((a, b) => {
-          if (a.approval_status === "PENDING_APPROVAL" && b.approval_status !== "PENDING_APPROVAL") return -1;
-          if (a.approval_status !== "PENDING_APPROVAL" && b.approval_status === "PENDING_APPROVAL") return 1;
-          return 0;
-        });
-      }
-      return data;
-    } catch (err) {
-      if (isNetworkError(err)) {
-        return getLocalAdmins();
-      }
-      throw err;
+    const cacheKey = "sa_admins";
+    if (!forceFresh) {
+      const cached = getFromMemCache(cacheKey, 30000);
+      if (cached) return cached;
     }
+    return fetchWithDeduplication(cacheKey, async () => {
+      try {
+        const url = `${API_BASE_URL}/superadmin/admins${forceFresh ? `?_t=${Date.now()}` : ""}`;
+        const res = await fetch(url, {
+          cache: forceFresh ? "no-store" : "default",
+          headers: {
+            ...getAuthHeaders(),
+            ...(forceFresh ? { "Cache-Control": "no-cache", "Pragma": "no-cache" } : {})
+          }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Failed to list admins");
+        let sorted = data;
+        if (Array.isArray(data)) {
+          sorted = data.sort((a, b) => {
+            if (a.approval_status === "PENDING_APPROVAL" && b.approval_status !== "PENDING_APPROVAL") return -1;
+            if (a.approval_status !== "PENDING_APPROVAL" && b.approval_status === "PENDING_APPROVAL") return 1;
+            return 0;
+          });
+        }
+        setInMemCache(cacheKey, sorted);
+        return sorted;
+      } catch (err) {
+        if (isNetworkError(err)) {
+          const cached = getFromMemCache(cacheKey, 600000);
+          if (cached) return cached;
+          return getLocalAdmins();
+        }
+        throw err;
+      }
+    });
   },
 
   async approveAdmin(adminId) {
@@ -1107,6 +1193,8 @@ export const api = {
       });
       const data = await readApiResponse(res);
       if (!res.ok) throw new Error(data.detail || "Failed to approve admin");
+      invalidateMemCache("sa_admins");
+      invalidateMemCache("sa_stats");
       return data;
     } catch (err) {
       if (isNetworkError(err)) {
@@ -1114,6 +1202,7 @@ export const api = {
         const a = admins.find(ad => ad.id === adminId);
         if (a) a.approval_status = "APPROVED";
         saveLocalAdmins(admins);
+        invalidateMemCache("sa_admins");
         return { success: true, message: "Admin approved" };
       }
       throw err;
@@ -1128,6 +1217,8 @@ export const api = {
       });
       const data = await readApiResponse(res);
       if (!res.ok) throw new Error(data.detail || "Failed to reject admin");
+      invalidateMemCache("sa_admins");
+      invalidateMemCache("sa_stats");
       return data;
     } catch (err) {
       if (isNetworkError(err)) {
@@ -1135,6 +1226,7 @@ export const api = {
         const a = admins.find(ad => ad.id === adminId);
         if (a) a.approval_status = "REJECTED";
         saveLocalAdmins(admins);
+        invalidateMemCache("sa_admins");
         return { success: true, message: "Admin rejected" };
       }
       throw err;
@@ -1149,6 +1241,7 @@ export const api = {
       });
       const data = await readApiResponse(res);
       if (!res.ok) throw new Error(data.detail || "Failed to toggle admin status");
+      invalidateMemCache("sa_admins");
       return data;
     } catch (err) {
       if (isNetworkError(err)) {
@@ -1156,6 +1249,7 @@ export const api = {
         const a = admins.find(ad => ad.id === adminId);
         if (a) a.account_status = a.account_status === "ACTIVE" ? "DISABLED" : "ACTIVE";
         saveLocalAdmins(admins);
+        invalidateMemCache("sa_admins");
         return { success: true, status: a?.account_status };
       }
       throw err;
@@ -1170,86 +1264,119 @@ export const api = {
       });
       const data = await readApiResponse(res);
       if (!res.ok) throw new Error(data.detail || "Failed to remove admin");
+      invalidateMemCache("sa_admins");
+      invalidateMemCache("sa_stats");
       return data;
     } catch (err) {
       if (isNetworkError(err)) {
         const admins = getLocalAdmins().filter(a => a.id !== adminId);
         saveLocalAdmins(admins);
+        invalidateMemCache("sa_admins");
         return { success: true, message: "Admin deleted" };
       }
       throw err;
     }
   },
 
+  getCachedVolunteers(params = {}) {
+    const cacheKey = `sa_volunteers_${params.department || ""}_${params.search || ""}`;
+    return getFromMemCache(cacheKey, 300000);
+  },
+
   async listAllVolunteers(params = {}, forceFresh = false) {
-    try {
-      const qParams = { ...params };
-      if (forceFresh) qParams._t = Date.now();
-      const query = new URLSearchParams(qParams).toString();
-      const res = await fetch(`${API_BASE_URL}/superadmin/volunteers${query ? `?${query}` : ""}`, {
-        cache: forceFresh ? "no-store" : "default",
-        headers: {
-          ...getAuthHeaders(),
-          ...(forceFresh ? { "Cache-Control": "no-cache", "Pragma": "no-cache" } : {})
-        }
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Failed to list volunteers");
-      return data;
-    } catch (err) {
-      if (isNetworkError(err)) {
-        const users = getLocalUsers();
-        return users.filter(u => u.role === "VOLUNTEER").map(v => ({
-          user_id: v.id,
-          name: v.name,
-          auid: v.auid,
-          email: v.email,
-          phone: v.phone,
-          department: v.department,
-          registration_id: v.registration_id
-        }));
-      }
-      throw err;
+    const cacheKey = `sa_volunteers_${params.department || ""}_${params.search || ""}`;
+    if (!forceFresh) {
+      const cached = getFromMemCache(cacheKey, 30000);
+      if (cached) return cached;
     }
+    return fetchWithDeduplication(cacheKey, async () => {
+      try {
+        const qParams = { ...params };
+        if (forceFresh) qParams._t = Date.now();
+        const query = new URLSearchParams(qParams).toString();
+        const res = await fetch(`${API_BASE_URL}/superadmin/volunteers${query ? `?${query}` : ""}`, {
+          cache: forceFresh ? "no-store" : "default",
+          headers: {
+            ...getAuthHeaders(),
+            ...(forceFresh ? { "Cache-Control": "no-cache", "Pragma": "no-cache" } : {})
+          }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Failed to list volunteers");
+        setInMemCache(cacheKey, data);
+        return data;
+      } catch (err) {
+        if (isNetworkError(err)) {
+          const cached = getFromMemCache(cacheKey, 600000);
+          if (cached) return cached;
+          const users = getLocalUsers();
+          return users.filter(u => u.role === "VOLUNTEER").map(v => ({
+            user_id: v.id,
+            name: v.name,
+            auid: v.auid,
+            email: v.email,
+            phone: v.phone,
+            department: v.department,
+            registration_id: v.registration_id
+          }));
+        }
+        throw err;
+      }
+    });
+  },
+
+  getCachedSuperAdminAttendance(params = {}) {
+    const cacheKey = `sa_attendance_${params.date || "all"}_${params.department || ""}`;
+    return getFromMemCache(cacheKey, 300000);
   },
 
   async getSuperAdminAttendance(params = {}, forceFresh = false) {
-    try {
-      const qParams = { ...params };
-      if (forceFresh) qParams._t = Date.now();
-      const query = new URLSearchParams(qParams).toString();
-      const res = await fetch(`${API_BASE_URL}/superadmin/attendance${query ? `?${query}` : ""}`, {
-        cache: forceFresh ? "no-store" : "default",
-        headers: {
-          ...getAuthHeaders(),
-          ...(forceFresh ? { "Cache-Control": "no-cache", "Pragma": "no-cache" } : {})
-        }
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Failed to fetch attendance");
-      return data;
-    } catch (err) {
-      if (isNetworkError(err)) {
-        const att = getLocalAttendance();
-        const users = getLocalUsers();
-        return {
-          records: att.map(a => {
-            const u = users.find(usr => usr.id === a.volunteer_user_id) || {};
-            return {
-              id: a.id,
-              date: a.date,
-              status: a.status,
-              volunteer_name: u.name || "Volunteer",
-              auid: u.auid || "N/A",
-              department: u.department || "General",
-              marked_by: "Admin"
-            };
-          }),
-          available_dates: [new Date().toISOString().split("T")[0]]
-        };
-      }
-      throw err;
+    const cacheKey = `sa_attendance_${params.date || "all"}_${params.department || ""}`;
+    if (!forceFresh) {
+      const cached = getFromMemCache(cacheKey, 30000);
+      if (cached) return cached;
     }
+    return fetchWithDeduplication(cacheKey, async () => {
+      try {
+        const qParams = { ...params };
+        if (forceFresh) qParams._t = Date.now();
+        const query = new URLSearchParams(qParams).toString();
+        const res = await fetch(`${API_BASE_URL}/superadmin/attendance${query ? `?${query}` : ""}`, {
+          cache: forceFresh ? "no-store" : "default",
+          headers: {
+            ...getAuthHeaders(),
+            ...(forceFresh ? { "Cache-Control": "no-cache", "Pragma": "no-cache" } : {})
+          }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Failed to fetch attendance");
+        setInMemCache(cacheKey, data);
+        return data;
+      } catch (err) {
+        if (isNetworkError(err)) {
+          const cached = getFromMemCache(cacheKey, 600000);
+          if (cached) return cached;
+          const att = getLocalAttendance();
+          const users = getLocalUsers();
+          return {
+            records: att.map(a => {
+              const u = users.find(usr => usr.id === a.volunteer_user_id) || {};
+              return {
+                id: a.id,
+                date: a.date,
+                status: a.status,
+                volunteer_name: u.name || "Volunteer",
+                auid: u.auid || "N/A",
+                department: u.department || "General",
+                marked_by: "Admin"
+              };
+            }),
+            available_dates: [new Date().toISOString().split("T")[0]]
+          };
+        }
+        throw err;
+      }
+    });
   },
 
   async updateAttendanceRecord(attendanceId, status, notes = "") {
@@ -1264,6 +1391,8 @@ export const api = {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Failed to update attendance record");
+      invalidateMemCache("sa_attendance");
+      invalidateMemCache("sa_stats");
       return data;
     } catch (err) {
       if (isNetworkError(err)) {
@@ -1271,6 +1400,7 @@ export const api = {
         const rec = att.find(a => a.id === attendanceId);
         if (rec) rec.status = status;
         saveLocalAttendance(att);
+        invalidateMemCache("sa_attendance");
         return { success: true, message: "Attendance updated" };
       }
       throw err;
@@ -1294,6 +1424,8 @@ export const api = {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Failed to mark attendance");
+      invalidateMemCache("sa_attendance");
+      invalidateMemCache("sa_stats");
       return data;
     } catch (err) {
       if (isNetworkError(err)) {
@@ -1306,6 +1438,7 @@ export const api = {
           notes
         });
         saveLocalAttendance(att);
+        invalidateMemCache("sa_attendance");
         return { success: true, message: "Attendance logged" };
       }
       throw err;
@@ -1393,20 +1526,33 @@ export const api = {
     return true;
   },
 
+  getCachedSuperAdminIdCards(search = "") {
+    const cacheKey = `sa_idcards_${search.trim()}`;
+    return getFromMemCache(cacheKey, 300000);
+  },
+
   async getSuperAdminIdCards(search = "", forceFresh = false) {
-    const query = new URLSearchParams();
-    if (search.trim()) query.set("search", search.trim());
-    if (forceFresh) query.set("_t", String(Date.now()));
-    const res = await fetch(`${API_BASE_URL}/superadmin/id-cards${query.size ? `?${query}` : ""}`, {
-      cache: forceFresh ? "no-store" : "default",
-      headers: {
-        ...getAuthHeaders(),
-        ...(forceFresh ? { "Cache-Control": "no-cache", "Pragma": "no-cache" } : {})
-      }
+    const cacheKey = `sa_idcards_${search.trim()}`;
+    if (!forceFresh) {
+      const cached = getFromMemCache(cacheKey, 30000);
+      if (cached) return cached;
+    }
+    return fetchWithDeduplication(cacheKey, async () => {
+      const query = new URLSearchParams();
+      if (search.trim()) query.set("search", search.trim());
+      if (forceFresh) query.set("_t", String(Date.now()));
+      const res = await fetch(`${API_BASE_URL}/superadmin/id-cards${query.size ? `?${query}` : ""}`, {
+        cache: forceFresh ? "no-store" : "default",
+        headers: {
+          ...getAuthHeaders(),
+          ...(forceFresh ? { "Cache-Control": "no-cache", "Pragma": "no-cache" } : {})
+        }
+      });
+      const data = await readApiResponse(res);
+      if (!res.ok) throw new Error(data.detail || "Failed to load the ID card directory.");
+      setInMemCache(cacheKey, data);
+      return data;
     });
-    const data = await readApiResponse(res);
-    if (!res.ok) throw new Error(data.detail || "Failed to load the ID card directory.");
-    return data;
   },
 
   async downloadSuperAdminIdCard(sourceType, sourceId) {
@@ -1429,36 +1575,51 @@ export const api = {
     return true;
   },
 
+  getCachedAuditLogs(params = {}) {
+    const cacheKey = `sa_audit_${params.action || ""}`;
+    return getFromMemCache(cacheKey, 300000);
+  },
+
   async getAuditLogs(params = {}, forceFresh = false) {
-    try {
-      const qParams = { ...params };
-      if (forceFresh) qParams._t = Date.now();
-      const query = new URLSearchParams(qParams).toString();
-      const res = await fetch(`${API_BASE_URL}/superadmin/audit-logs${query ? `?${query}` : ""}`, {
-        cache: forceFresh ? "no-store" : "default",
-        headers: {
-          ...getAuthHeaders(),
-          ...(forceFresh ? { "Cache-Control": "no-cache", "Pragma": "no-cache" } : {})
-        }
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Failed to fetch audit logs");
-      return data;
-    } catch (err) {
-      if (isNetworkError(err)) {
-        return [
-          {
-            id: 1,
-            timestamp: new Date().toISOString(),
-            actor_name: "Super Admin",
-            action: "SYSTEM_INITIALIZED",
-            previous_value: null,
-            new_value: "Nuditaranga 2026 Core Active"
-          }
-        ];
-      }
-      throw err;
+    const cacheKey = `sa_audit_${params.action || ""}`;
+    if (!forceFresh) {
+      const cached = getFromMemCache(cacheKey, 30000);
+      if (cached) return cached;
     }
+    return fetchWithDeduplication(cacheKey, async () => {
+      try {
+        const qParams = { ...params };
+        if (forceFresh) qParams._t = Date.now();
+        const query = new URLSearchParams(qParams).toString();
+        const res = await fetch(`${API_BASE_URL}/superadmin/audit-logs${query ? `?${query}` : ""}`, {
+          cache: forceFresh ? "no-store" : "default",
+          headers: {
+            ...getAuthHeaders(),
+            ...(forceFresh ? { "Cache-Control": "no-cache", "Pragma": "no-cache" } : {})
+          }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Failed to fetch audit logs");
+        setInMemCache(cacheKey, data);
+        return data;
+      } catch (err) {
+        if (isNetworkError(err)) {
+          const cached = getFromMemCache(cacheKey, 600000);
+          if (cached) return cached;
+          return [
+            {
+              id: 1,
+              timestamp: new Date().toISOString(),
+              actor_name: "Super Admin",
+              action: "SYSTEM_INITIALIZED",
+              previous_value: null,
+              new_value: "Nuditaranga 2026 Core Active"
+            }
+          ];
+        }
+        throw err;
+      }
+    });
   },
 
   // ==========================================
@@ -1520,47 +1681,62 @@ export const api = {
     }
   },
 
+  getCachedAttendance(params = {}) {
+    const cacheKey = `official_att_${params.date || ""}_${params.search || ""}_${params.department || ""}_${params.akv_dept || ""}_${params.status_filter || ""}`;
+    return getFromMemCache(cacheKey, 300000);
+  },
+
   async getAttendance(params = {}, forceFresh = false) {
-    try {
-      const qParams = { ...params };
-      if (forceFresh) qParams._t = Date.now();
-      const query = new URLSearchParams(qParams).toString();
-      const res = await fetch(`${API_BASE_URL}/attendance${query ? `?${query}` : ""}`, {
-        cache: forceFresh ? "no-store" : "default",
-        headers: {
-          ...getAuthHeaders(),
-          ...(forceFresh ? { "Cache-Control": "no-cache", "Pragma": "no-cache" } : {})
-        }
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Failed to fetch attendance roster");
-      return data;
-    } catch (err) {
-      if (isNetworkError(err)) {
-        const users = getLocalUsers();
-        return {
-          success: true,
-          date: params.date || new Date().toISOString().split("T")[0],
-          session: { is_submitted: false, submitted_at: null, submitted_by: null, locked_for_admin: false },
-          summary: { total_participants: users.length, checked_in: 0, completed: 0, not_marked: users.length, is_submitted: false },
-          participants: users.map(u => ({
-            id: null,
-            user_id: u.id,
-            reg_id: u.registration_id,
-            name: u.name,
-            auid: u.auid,
-            department: u.department,
-            akv_dept: u.volunteer_domain || "--",
-            contact: u.phone,
-            check_in_time: null,
-            check_out_time: null,
-            status: "NOT_MARKED",
-            can_mark: true
-          }))
-        };
-      }
-      throw err;
+    const cacheKey = `official_att_${params.date || ""}_${params.search || ""}_${params.department || ""}_${params.akv_dept || ""}_${params.status_filter || ""}`;
+    if (!forceFresh) {
+      const cached = getFromMemCache(cacheKey, 30000);
+      if (cached) return cached;
     }
+    return fetchWithDeduplication(cacheKey, async () => {
+      try {
+        const qParams = { ...params };
+        if (forceFresh) qParams._t = Date.now();
+        const query = new URLSearchParams(qParams).toString();
+        const res = await fetch(`${API_BASE_URL}/attendance${query ? `?${query}` : ""}`, {
+          cache: forceFresh ? "no-store" : "default",
+          headers: {
+            ...getAuthHeaders(),
+            ...(forceFresh ? { "Cache-Control": "no-cache", "Pragma": "no-cache" } : {})
+          }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Failed to fetch attendance roster");
+        setInMemCache(cacheKey, data);
+        return data;
+      } catch (err) {
+        if (isNetworkError(err)) {
+          const cached = getFromMemCache(cacheKey, 600000);
+          if (cached) return cached;
+          const users = getLocalUsers();
+          return {
+            success: true,
+            date: params.date || new Date().toISOString().split("T")[0],
+            session: { is_submitted: false, submitted_at: null, submitted_by: null, locked_for_admin: false },
+            summary: { total_participants: users.length, checked_in: 0, completed: 0, not_marked: users.length, is_submitted: false },
+            participants: users.map(u => ({
+              id: null,
+              user_id: u.id,
+              reg_id: u.registration_id,
+              name: u.name,
+              auid: u.auid,
+              department: u.department,
+              akv_dept: u.volunteer_domain || "--",
+              contact: u.phone,
+              check_in_time: null,
+              check_out_time: null,
+              status: "NOT_MARKED",
+              can_mark: true
+            }))
+          };
+        }
+        throw err;
+      }
+    });
   },
 
   async markAttendanceCheckIn(userId, date = null) {
@@ -1574,6 +1750,8 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Check-In failed");
+    invalidateMemCache("official_att");
+    invalidateMemCache("sa_stats");
     return data;
   },
 
@@ -1588,6 +1766,8 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Check-Out failed");
+    invalidateMemCache("official_att");
+    invalidateMemCache("sa_stats");
     return data;
   },
 
@@ -1602,6 +1782,8 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Submission failed");
+    invalidateMemCache("official_att");
+    invalidateMemCache("sa_stats");
     return data;
   },
 
@@ -1616,6 +1798,7 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Unlock session failed");
+    invalidateMemCache("official_att");
     return data;
   },
 
@@ -1630,6 +1813,8 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Failed to update record");
+    invalidateMemCache("official_att");
+    invalidateMemCache("sa_stats");
     return data;
   },
 
@@ -1644,6 +1829,8 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Failed to reset attendance");
+    invalidateMemCache("official_att");
+    invalidateMemCache("sa_stats");
     return data;
   },
 
@@ -1714,20 +1901,33 @@ export const api = {
   // ==========================================
   // WORKING COMMITTEE ATTENDANCE APIs (SUPERADMIN ONLY)
   // ==========================================
+  getCachedWorkingCommitteeAttendance(params = {}) {
+    const cacheKey = `wc_att_${params.date || ""}_${params.search || ""}_${params.role_filter || ""}_${params.status_filter || ""}`;
+    return getFromMemCache(cacheKey, 300000);
+  },
+
   async getWorkingCommitteeAttendance(params = {}, forceFresh = false) {
-    const qParams = { ...params };
-    if (forceFresh) qParams._t = Date.now();
-    const query = new URLSearchParams(qParams).toString();
-    const res = await fetch(`${API_BASE_URL}/working-committee-attendance${query ? `?${query}` : ""}`, {
-      cache: forceFresh ? "no-store" : "default",
-      headers: {
-        ...getAuthHeaders(),
-        ...(forceFresh ? { "Cache-Control": "no-cache", "Pragma": "no-cache" } : {})
-      }
+    const cacheKey = `wc_att_${params.date || ""}_${params.search || ""}_${params.role_filter || ""}_${params.status_filter || ""}`;
+    if (!forceFresh) {
+      const cached = getFromMemCache(cacheKey, 30000);
+      if (cached) return cached;
+    }
+    return fetchWithDeduplication(cacheKey, async () => {
+      const qParams = { ...params };
+      if (forceFresh) qParams._t = Date.now();
+      const query = new URLSearchParams(qParams).toString();
+      const res = await fetch(`${API_BASE_URL}/working-committee-attendance${query ? `?${query}` : ""}`, {
+        cache: forceFresh ? "no-store" : "default",
+        headers: {
+          ...getAuthHeaders(),
+          ...(forceFresh ? { "Cache-Control": "no-cache", "Pragma": "no-cache" } : {})
+        }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Failed to fetch Working Committee attendance roster");
+      setInMemCache(cacheKey, data);
+      return data;
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Failed to fetch Working Committee attendance roster");
-    return data;
   },
 
   async markWorkingCommitteeCheckIn(memberUserId, date = null) {
@@ -1741,6 +1941,7 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Working Committee Check-In failed");
+    invalidateMemCache("wc_att");
     return data;
   },
 
@@ -1755,6 +1956,7 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Working Committee Check-Out failed");
+    invalidateMemCache("wc_att");
     return data;
   },
 
@@ -1769,6 +1971,7 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Failed to submit Working Committee attendance");
+    invalidateMemCache("wc_att");
     return data;
   },
 
@@ -1783,6 +1986,7 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Unlock Working Committee session failed");
+    invalidateMemCache("wc_att");
     return data;
   },
 
@@ -1797,6 +2001,7 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Failed to update Working Committee record");
+    invalidateMemCache("wc_att");
     return data;
   },
 
@@ -1811,6 +2016,7 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Failed to reset Working Committee record");
+    invalidateMemCache("wc_att");
     return data;
   },
 
@@ -2070,6 +2276,8 @@ export const api = {
       if (res.ok) {
         const data = await res.json();
         saveLocalRegistration(data);
+        invalidateMemCache("registrations_");
+        invalidateMemCache("sa_stats");
         return data;
       }
       const errData = await res.json().catch(() => ({}));
@@ -2083,6 +2291,7 @@ export const api = {
           created_at: new Date().toISOString()
         };
         saveLocalRegistration(fallbackReg);
+        invalidateMemCache("registrations_");
         return fallbackReg;
       }
       throw new Error(errData.detail || "Registration failed");
@@ -2097,6 +2306,7 @@ export const api = {
           created_at: new Date().toISOString()
         };
         saveLocalRegistration(fallbackReg);
+        invalidateMemCache("registrations_");
         return fallbackReg;
       }
       throw err;
@@ -2107,37 +2317,53 @@ export const api = {
     return this.createRegistration(registrationData);
   },
 
+  getCachedRegistrations(params = {}) {
+    const cacheKey = `registrations_${params.event_id || "all"}_${params.search || ""}`;
+    return getFromMemCache(cacheKey, 300000);
+  },
+
   async listRegistrations(params = {}, forceFresh = false) {
-    try {
-      const qParams = { ...params };
-      if (forceFresh) qParams._t = Date.now();
-      const query = new URLSearchParams(qParams).toString();
-      const res = await fetch(`${API_BASE_URL}/registrations${query ? `?${query}` : ""}`, {
-        cache: forceFresh ? "no-store" : "default",
-        headers: {
-          ...getAuthHeaders(),
-          ...(forceFresh ? { "Cache-Control": "no-cache", "Pragma": "no-cache" } : {})
+    const cacheKey = `registrations_${params.event_id || "all"}_${params.search || ""}`;
+    if (!forceFresh) {
+      const cached = getFromMemCache(cacheKey, 30000);
+      if (cached) return cached;
+    }
+    return fetchWithDeduplication(cacheKey, async () => {
+      try {
+        const qParams = { ...params };
+        if (forceFresh) qParams._t = Date.now();
+        const query = new URLSearchParams(qParams).toString();
+        const res = await fetch(`${API_BASE_URL}/registrations${query ? `?${query}` : ""}`, {
+          cache: forceFresh ? "no-store" : "default",
+          headers: {
+            ...getAuthHeaders(),
+            ...(forceFresh ? { "Cache-Control": "no-cache", "Pragma": "no-cache" } : {})
+          }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setInMemCache(cacheKey, data);
+          return data;
         }
-      });
-      if (res.ok) return await res.json();
-    } catch (err) {
-      console.warn("Backend unavailable, fetching registrations from local storage:", err.message);
-    }
-    let list = getLocalRegistrations();
-    if (params.event_id && params.event_id !== "all") {
-      list = list.filter(r => r.event_id === params.event_id);
-    }
-    if (params.search) {
-      const s = params.search.toLowerCase();
-      list = list.filter(r => 
-        (r.registration_id && r.registration_id.toLowerCase().includes(s)) ||
-        (r.full_name && r.full_name.toLowerCase().includes(s)) ||
-        (r.name && r.name.toLowerCase().includes(s)) ||
-        (r.auid && r.auid.toLowerCase().includes(s)) ||
-        (r.team_name && r.team_name.toLowerCase().includes(s))
-      );
-    }
-    return list;
+      } catch (err) {
+        console.warn("Backend unavailable, fetching registrations from local storage:", err.message);
+      }
+      let list = getLocalRegistrations();
+      if (params.event_id && params.event_id !== "all") {
+        list = list.filter(r => r.event_id === params.event_id);
+      }
+      if (params.search) {
+        const s = params.search.toLowerCase();
+        list = list.filter(r => 
+          (r.registration_id && r.registration_id.toLowerCase().includes(s)) ||
+          (r.full_name && r.full_name.toLowerCase().includes(s)) ||
+          (r.name && r.name.toLowerCase().includes(s)) ||
+          (r.auid && r.auid.toLowerCase().includes(s)) ||
+          (r.team_name && r.team_name.toLowerCase().includes(s))
+        );
+      }
+      return list;
+    });
   },
 
   async getRegistration(registrationId) {
@@ -2623,7 +2849,16 @@ export const api = {
         this.getReels("all").catch(() => {}),
         this.getAttendanceConfigDates().catch(() => {})
       ];
-      if (user && user.role !== "SUPERADMIN" && user.role !== "ADMIN") {
+      if (user && user.role === "SUPERADMIN") {
+        tasks.push(
+          this.getSuperAdminStats().catch(() => {}),
+          this.listAdmins().catch(() => {}),
+          this.listAllVolunteers().catch(() => {}),
+          this.listStudents({ limit: 100 }).catch(() => {}),
+          this.getSuperAdminIdCards().catch(() => {}),
+          this.listRegistrations().catch(() => {})
+        );
+      } else if (user && user.role !== "ADMIN") {
         tasks.push(this.getStudentDashboard().catch(() => {}));
       }
       Promise.allSettled(tasks);
