@@ -204,6 +204,8 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
   const [eventRegLoading, setEventRegLoading] = useState(false);
   const [eventRegSearch, setEventRegSearch] = useState("");
   const [eventRegFilter, setEventRegFilter] = useState("all");
+  const [registrationEditor, setRegistrationEditor] = useState(null);
+  const [registrationSaving, setRegistrationSaving] = useState(false);
 
   // Official Multi-Day Attendance State (v2.1.2)
   const [attendanceConfigDates, setAttendanceConfigDates] = useState(() => {
@@ -593,6 +595,84 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
       console.error("Error loading event registrations:", e);
     } finally {
       setEventRegLoading(false);
+    }
+  };
+
+  const openRegistrationEditor = (registration = null) => {
+    let teamMembers = [];
+    if (registration?.team_members) {
+      try { teamMembers = typeof registration.team_members === "string" ? JSON.parse(registration.team_members) : registration.team_members; } catch { teamMembers = []; }
+    }
+    setRegistrationEditor({
+      id: registration?.id || null,
+      registration_id: registration?.registration_id || "",
+      event_id: registration?.event_id || eventsList[0]?.id || "",
+      full_name: registration?.full_name || "",
+      auid: registration?.auid || "",
+      usn: registration?.usn || "",
+      institute: registration?.institute || "Acharya Institute of Technology",
+      department: registration?.department || "",
+      semester: registration?.semester || 1,
+      section: registration?.section || "A",
+      email: registration?.email || "",
+      phone: registration?.phone || "",
+      gender: registration?.gender || "Other",
+      is_team: Boolean(registration?.is_team),
+      team_name: registration?.team_name || "",
+      team_members_json: JSON.stringify(Array.isArray(teamMembers) ? teamMembers : [], null, 2),
+      status: registration?.status || "Registered"
+    });
+  };
+
+  const handleSaveEventRegistration = async (e) => {
+    e.preventDefault();
+    if (!registrationEditor) return;
+    setRegistrationSaving(true);
+    try {
+      const teamMembers = registrationEditor.team_members_json.trim() ? JSON.parse(registrationEditor.team_members_json) : [];
+      if (!Array.isArray(teamMembers)) throw new Error("Team members must be a JSON array.");
+      const payload = {
+        event_id: registrationEditor.event_id,
+        full_name: registrationEditor.full_name.trim(),
+        auid: registrationEditor.auid.trim().toUpperCase(),
+        usn: registrationEditor.usn.trim().toUpperCase() || registrationEditor.auid.trim().toUpperCase(),
+        institute: registrationEditor.institute.trim(),
+        department: registrationEditor.department.trim(),
+        semester: Number(registrationEditor.semester),
+        section: registrationEditor.section.trim().toUpperCase() || "A",
+        email: registrationEditor.email.trim().toLowerCase(),
+        phone: registrationEditor.phone.trim(),
+        gender: registrationEditor.gender,
+        is_team: Boolean(registrationEditor.is_team),
+        team_name: registrationEditor.team_name.trim() || null,
+        team_members: registrationEditor.is_team ? teamMembers : []
+      };
+      if (registrationEditor.id) {
+        payload.status = registrationEditor.status;
+        await api.updateSuperAdminRegistration(registrationEditor.id, payload);
+      } else {
+        await api.createSuperAdminRegistration(payload);
+      }
+      notify("success", registrationEditor.id ? "Event registration updated." : "Event registration added.");
+      setRegistrationEditor(null);
+      await loadEventRegistrations(true);
+      await loadEvents(true);
+    } catch (err) {
+      notify("error", err.message || "Failed to save event registration.");
+    } finally {
+      setRegistrationSaving(false);
+    }
+  };
+
+  const handleDeleteEventRegistration = async (registration) => {
+    if (!window.confirm(`Delete registration ${registration.registration_id} for ${registration.full_name}? This cannot be undone.`)) return;
+    try {
+      await api.deleteSuperAdminRegistration(registration.id);
+      notify("success", `Registration ${registration.registration_id} deleted.`);
+      await loadEventRegistrations(true);
+      await loadEvents(true);
+    } catch (err) {
+      notify("error", err.message || "Failed to delete event registration.");
     }
   };
 
@@ -2272,6 +2352,14 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openRegistrationEditor()}
+                    disabled={!eventsList.length}
+                    className="px-3 py-2 rounded-xl bg-amber-600 text-white text-xs font-extrabold hover:bg-amber-700 disabled:opacity-50"
+                  >
+                    <Plus className="w-3.5 h-3.5 inline mr-1" />Add Registration
+                  </button>
                   <div className="relative">
                     <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
                     <input
@@ -2329,6 +2417,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                         <th className="py-3 px-3">Format & Team Members</th>
                         <th className="py-3 px-3">Department & Institute</th>
                         <th className="py-3 px-3 text-right">Status</th>
+                        <th className="py-3 px-3 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-stone-100">
@@ -2393,11 +2482,94 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                                 {reg.status || "Registered"}
                               </span>
                             </td>
+                            <td className="py-3 px-3 text-right whitespace-nowrap">
+                              <button type="button" onClick={() => openRegistrationEditor(reg)} className="p-1.5 rounded-lg text-stone-600 hover:bg-amber-100 hover:text-amber-800" title="Edit registration" aria-label={`Edit ${reg.registration_id}`}>
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button type="button" onClick={() => handleDeleteEventRegistration(reg)} className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-100" title="Delete registration" aria-label={`Delete ${reg.registration_id}`}>
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
                           </tr>
                         );
                       })}
                     </tbody>
                   </table>
+                </div>
+              )}
+
+              {registrationEditor && (
+                <div className="fixed inset-0 z-[100] bg-stone-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6" onMouseDown={(e) => e.target === e.currentTarget && setRegistrationEditor(null)}>
+                  <form onSubmit={handleSaveEventRegistration} className="bg-white w-full max-w-3xl max-h-[92vh] overflow-y-auto rounded-3xl shadow-2xl p-5 sm:p-7 space-y-4">
+                    <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+                      <div>
+                        <h3 className="text-lg font-extrabold text-stone-900">{registrationEditor.id ? "Modify Cultural Event Registration" : "Add Cultural Event Registration"}</h3>
+                        {registrationEditor.registration_id && <p className="text-xs text-stone-500 font-mono mt-1">{registrationEditor.registration_id}</p>}
+                      </div>
+                      <button type="button" onClick={() => setRegistrationEditor(null)} className="p-2 rounded-xl hover:bg-stone-100" aria-label="Close"><X className="w-5 h-5" /></button>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <label className="text-xs font-bold text-stone-700">Event
+                        <select required value={registrationEditor.event_id} onChange={(e) => setRegistrationEditor({ ...registrationEditor, event_id: e.target.value })} className="w-full mt-1 p-2.5 border border-stone-300 rounded-xl bg-white">
+                          {eventsList.map((ev) => <option key={ev.id} value={ev.id}>{ev.title_en || ev.id}</option>)}
+                        </select>
+                      </label>
+                      <label className="text-xs font-bold text-stone-700">Participant name
+                        <input required minLength="2" maxLength="100" value={registrationEditor.full_name} onChange={(e) => setRegistrationEditor({ ...registrationEditor, full_name: e.target.value })} className="w-full mt-1 p-2.5 border border-stone-300 rounded-xl" />
+                      </label>
+                      <label className="text-xs font-bold text-stone-700">AUID
+                        <input required minLength="3" value={registrationEditor.auid} onChange={(e) => setRegistrationEditor({ ...registrationEditor, auid: e.target.value })} className="w-full mt-1 p-2.5 border border-stone-300 rounded-xl" />
+                      </label>
+                      <label className="text-xs font-bold text-stone-700">USN
+                        <input value={registrationEditor.usn} onChange={(e) => setRegistrationEditor({ ...registrationEditor, usn: e.target.value })} className="w-full mt-1 p-2.5 border border-stone-300 rounded-xl" />
+                      </label>
+                      <label className="text-xs font-bold text-stone-700">Institute
+                        <input required value={registrationEditor.institute} onChange={(e) => setRegistrationEditor({ ...registrationEditor, institute: e.target.value })} className="w-full mt-1 p-2.5 border border-stone-300 rounded-xl" />
+                      </label>
+                      <label className="text-xs font-bold text-stone-700">Department
+                        <input required value={registrationEditor.department} onChange={(e) => setRegistrationEditor({ ...registrationEditor, department: e.target.value })} className="w-full mt-1 p-2.5 border border-stone-300 rounded-xl" />
+                      </label>
+                      <label className="text-xs font-bold text-stone-700">Email
+                        <input required type="email" value={registrationEditor.email} onChange={(e) => setRegistrationEditor({ ...registrationEditor, email: e.target.value })} className="w-full mt-1 p-2.5 border border-stone-300 rounded-xl" />
+                      </label>
+                      <label className="text-xs font-bold text-stone-700">Phone
+                        <input required type="tel" value={registrationEditor.phone} onChange={(e) => setRegistrationEditor({ ...registrationEditor, phone: e.target.value })} className="w-full mt-1 p-2.5 border border-stone-300 rounded-xl" />
+                      </label>
+                      <label className="text-xs font-bold text-stone-700">Year of study
+                        <select value={registrationEditor.semester} onChange={(e) => setRegistrationEditor({ ...registrationEditor, semester: e.target.value })} className="w-full mt-1 p-2.5 border border-stone-300 rounded-xl bg-white">
+                          {[1, 2, 3, 4, 5, 6].map((year) => <option key={year} value={year}>{year}</option>)}
+                        </select>
+                      </label>
+                      <label className="text-xs font-bold text-stone-700">Section
+                        <input value={registrationEditor.section} onChange={(e) => setRegistrationEditor({ ...registrationEditor, section: e.target.value })} className="w-full mt-1 p-2.5 border border-stone-300 rounded-xl" />
+                      </label>
+                      <label className="text-xs font-bold text-stone-700">Gender
+                        <select value={registrationEditor.gender} onChange={(e) => setRegistrationEditor({ ...registrationEditor, gender: e.target.value })} className="w-full mt-1 p-2.5 border border-stone-300 rounded-xl bg-white">
+                          {["Other", "Male", "Female"].map((gender) => <option key={gender}>{gender}</option>)}
+                        </select>
+                      </label>
+                      {registrationEditor.id && <label className="text-xs font-bold text-stone-700">Registration status
+                        <select value={registrationEditor.status} onChange={(e) => setRegistrationEditor({ ...registrationEditor, status: e.target.value })} className="w-full mt-1 p-2.5 border border-stone-300 rounded-xl bg-white">
+                          {["Registered", "Checked In", "Cancelled"].map((value) => <option key={value}>{value}</option>)}
+                        </select>
+                      </label>}
+                      <label className="flex items-center gap-2 text-xs font-bold text-stone-700 sm:col-span-2">
+                        <input type="checkbox" checked={registrationEditor.is_team} onChange={(e) => setRegistrationEditor({ ...registrationEditor, is_team: e.target.checked })} /> Team registration
+                      </label>
+                      {registrationEditor.is_team && <>
+                        <label className="text-xs font-bold text-stone-700">Team name
+                          <input value={registrationEditor.team_name} onChange={(e) => setRegistrationEditor({ ...registrationEditor, team_name: e.target.value })} className="w-full mt-1 p-2.5 border border-stone-300 rounded-xl" />
+                        </label>
+                        <label className="text-xs font-bold text-stone-700 sm:col-span-2">Additional team members (JSON array)
+                          <textarea rows="4" value={registrationEditor.team_members_json} onChange={(e) => setRegistrationEditor({ ...registrationEditor, team_members_json: e.target.value })} placeholder='[{"name":"Member name","auid":"AIT...","department":"CSE"}]' className="w-full mt-1 p-2.5 border border-stone-300 rounded-xl font-mono text-xs" />
+                        </label>
+                      </>}
+                    </div>
+                    <div className="flex justify-end gap-2 border-t border-stone-100 pt-4">
+                      <button type="button" onClick={() => setRegistrationEditor(null)} className="px-4 py-2.5 rounded-xl border border-stone-300 text-sm font-bold text-stone-600">Cancel</button>
+                      <button type="submit" disabled={registrationSaving} className="px-5 py-2.5 rounded-xl bg-amber-600 text-white text-sm font-extrabold hover:bg-amber-700 disabled:opacity-50">{registrationSaving ? "Saving…" : "Save Registration"}</button>
+                    </div>
+                  </form>
                 </div>
               )}
             </div>
