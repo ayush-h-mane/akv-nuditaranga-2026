@@ -132,7 +132,13 @@ def ensure_schema_migrations(target_engine=None):
                 # These logs are managed through the backend API. Enable RLS so
                 # direct PostgREST roles have no row access unless policies are
                 # added. The backend's table-owner role continues to manage them.
-                for table in ("audit_logs", "checkin_logs", "admins", "attendance_records"):
+                for table in (
+                    "audit_logs",
+                    "checkin_logs",
+                    "admins",
+                    "attendance_records",
+                    "activities",
+                ):
                     try:
                         conn.exec_driver_sql(
                             f"ALTER TABLE IF EXISTS public.{table} ENABLE ROW LEVEL SECURITY"
