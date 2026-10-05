@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.65",
-  "staged_version": "2.2.66",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.2.66",
+  "staged_version": "2.2.67",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.66",
+      "released_at": "2026-10-06T01:29:29+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.66: Added clean, accessible Portal Settings option to the student login and registration views in the top navigation bar header.; Enhanced PortalSettingsModal with bilingual language preferences (Kannada/English), festival guidelines & rules link, and official contact directory (Ayush H Mane & Priyanka S Reddy).; Strictly omitted the Superadmin login access section and button from the settings modal and student portal views to prevent exposure."
+    },
     {
       "version": "2.2.65",
       "released_at": "2026-10-05T19:26:43+0530",
