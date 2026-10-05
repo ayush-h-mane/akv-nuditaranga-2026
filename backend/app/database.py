@@ -142,6 +142,10 @@ def ensure_schema_migrations(target_engine=None):
                     "users",
                     "gallery_items",
                     "password_reset_tokens",
+                    "events",
+                    "social_posts",
+                    "registrations",
+                    "attendance_day_sessions",
                 ):
                     try:
                         conn.exec_driver_sql(
