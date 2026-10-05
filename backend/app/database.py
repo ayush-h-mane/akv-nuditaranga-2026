@@ -150,6 +150,8 @@ def ensure_schema_migrations(target_engine=None):
                     "festival_event_dates",
                     "working_committee_attendance",
                     "working_committee_day_sessions",
+                    "working_committee_audit_logs",
+                    "karunada_schedule_days",
                 ):
                     try:
                         conn.exec_driver_sql(
