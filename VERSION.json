@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.63",
-  "staged_version": "2.2.64",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.2.64",
+  "staged_version": "2.2.65",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.2.64",
+      "released_at": "2026-10-05T19:24:04+0530",
+      "description": "AKV Nuditaranga 2026 v2.2.64: Enabled PostgreSQL row-level security on public.attendance_audit_logs, public.festival_event_dates, public.working_committee_attendance, and public.working_committee_day_sessions; direct API roles remain denied unless explicitly granted by policy, while the backend table owner retains access."
+    },
     {
       "version": "2.2.63",
       "released_at": "2026-10-05T19:21:16+0530",

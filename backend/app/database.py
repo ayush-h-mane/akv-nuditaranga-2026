@@ -146,6 +146,10 @@ def ensure_schema_migrations(target_engine=None):
                     "social_posts",
                     "registrations",
                     "attendance_day_sessions",
+                    "attendance_audit_logs",
+                    "festival_event_dates",
+                    "working_committee_attendance",
+                    "working_committee_day_sessions",
                 ):
                     try:
                         conn.exec_driver_sql(
