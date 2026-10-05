@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { useModalAlert } from "../context/ModalAlertContext";
 import { api } from "../services/api";
 import { ForgotPasswordModal } from "../components/ForgotPasswordModal";
+import { PortalSettingsModal } from "../components/PortalSettingsModal";
 import { CandidatePhotoUpload } from "../components/CandidatePhotoUpload";
 import { InstituteDepartmentSelect } from "../components/InstituteDepartmentSelect";
 import { ACHARYA_INSTITUTES, STANDARD_DEPARTMENTS, AKV_DOMAINS } from "../config/institutesData";
@@ -26,7 +27,8 @@ import {
   ShieldAlert,
   KeyRound,
   GraduationCap,
-  Briefcase
+  Briefcase,
+  Settings
 } from "lucide-react";
 
 export const AuthPortal = ({ 
@@ -64,6 +66,7 @@ export const AuthPortal = ({
   const [studentMode, setStudentMode] = useState(() => getInitialStudentMode(portalType, initialTab, initialSubMode));
   const [adminMode, setAdminMode] = useState(() => getInitialAdminMode(portalType, initialSubMode));
   const [showForgotModal, setShowForgotModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showRegisterConfirmPassword, setShowRegisterConfirmPassword] = useState(false);
@@ -407,6 +410,17 @@ export const AuthPortal = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Settings option */}
+          <button
+            type="button"
+            onClick={() => setShowSettingsModal(true)}
+            className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-amber-200 bg-stone-800/90 hover:bg-stone-700 border border-amber-400/30 transition-all hover:border-amber-400 shadow-sm cursor-pointer"
+            title="Portal Settings & Directory"
+          >
+            <Settings className="w-3.5 h-3.5 text-amber-400 group-hover:rotate-90 transition-transform" />
+            <span className="hidden sm:inline">Settings</span>
+          </button>
+
           {/* Option for visitors to return to the public website */}
           <button
             onClick={onExplorePublic}
@@ -588,7 +602,7 @@ export const AuthPortal = ({
                             setStudentMode("register");
                             setErrorMessage("");
                           }}
-                          className="font-extrabold text-kar-red hover:underline ml-1"
+                          className="font-extrabold text-kar-red hover:underline ml-1 cursor-pointer"
                         >
                           New Student? Register here
                         </button>
@@ -905,7 +919,7 @@ export const AuthPortal = ({
                                 setStudentMode("login");
                                 setErrorMessage("");
                               }}
-                              className="font-extrabold text-kar-red hover:underline ml-1"
+                              className="font-extrabold text-kar-red hover:underline ml-1 cursor-pointer"
                             >
                               Sign In here
                             </button>
@@ -1428,6 +1442,13 @@ export const AuthPortal = ({
         isOpen={showForgotModal}
         onClose={() => setShowForgotModal(false)}
         onOpenResetView={onOpenResetView}
+      />
+
+      {/* Settings & Directory Modal (Superadmin login button strictly omitted for student) */}
+      <PortalSettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        showSuperAdmin={false}
       />
     </div>
   );

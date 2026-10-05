@@ -16,13 +16,19 @@ import {
   Building2,
   Sparkles,
   KeyRound,
+  Globe,
+  BookOpen,
+  Info
 } from "lucide-react";
+import { useLanguage } from "../context/LanguageContext";
 
 export const PortalSettingsModal = ({
   isOpen,
   onClose,
-  onOpenSuperAdmin
+  onOpenSuperAdmin,
+  showSuperAdmin = false
 }) => {
+  const { lang, setLang } = useLanguage();
   const [copiedKey, setCopiedKey] = useState(null);
 
   if (!isOpen) return null;
@@ -58,14 +64,16 @@ export const PortalSettingsModal = ({
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="text-base font-extrabold text-white tracking-tight">
-                    Portal Settings & Directory
+                    {lang === "kn" ? "ಪೋರ್ಟಲ್ ಸೆಟ್ಟಿಂಗ್ಸ್ & ವಿವರಣೆ" : "Portal Settings & Directory"}
                   </h3>
                   <span className="px-2 py-0.5 text-[9px] font-black uppercase rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30">
-                    ಸೆಟ್ಟಿಂಗ್ಸ್
+                    {lang === "kn" ? "ಸೆಟ್ಟಿಂಗ್ಸ್" : "SETTINGS"}
                   </span>
                 </div>
                 <p className="text-xs text-stone-300 mt-0.5">
-                  Superadmin Access & Executive Contacts
+                  {showSuperAdmin && onOpenSuperAdmin
+                    ? (lang === "kn" ? "ಮುಖ್ಯ ಆಡಳಿತ ಪ್ರವೇಶ & ಸಂಪರ್ಕಗಳು" : "Superadmin Access & Executive Contacts")
+                    : (lang === "kn" ? "ಭಾಷಾ ಆದ್ಯತೆ, ನಿಯಮಗಳು & ಸಂಪರ್ಕ ವಿವರಗಳು" : "Preferences, Guidelines & Official Contacts")}
                 </p>
               </div>
             </div>
@@ -73,7 +81,7 @@ export const PortalSettingsModal = ({
             <button
               type="button"
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-stone-300 hover:text-white flex items-center justify-center transition-colors"
+              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-stone-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
               title="Close Settings"
             >
               <X className="w-4 h-4" />
@@ -85,54 +93,133 @@ export const PortalSettingsModal = ({
         <div className="p-5 sm:p-6 overflow-y-auto space-y-5 text-stone-800">
 
           {/* ==================================================== */}
-          {/* SECTION 1: SUPERADMIN LOGIN ACCESS (Moved from tabs)  */}
+          {/* SECTION: LANGUAGE PREFERENCE (STUDENT SETTING)        */}
           {/* ==================================================== */}
-          <div className="p-4 rounded-2xl bg-gradient-to-br from-stone-900 via-neutral-900 to-stone-950 text-white border border-amber-500/30 shadow-lg relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-40 h-40 bg-amber-500/10 rounded-full blur-3xl" />
-
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <ShieldAlert className="w-4 h-4 text-amber-400" />
-                  <span className="text-[11px] font-black tracking-widest text-amber-400 uppercase">
-                    Restricted Access
-                  </span>
-                </div>
-                <span className="px-2 py-0.5 text-[9px] font-black uppercase rounded-full bg-red-600/80 text-white border border-red-500/50">
-                  SUPERADMIN ONLY
-                </span>
+          <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200/90 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Globe className="w-4 h-4 text-kar-red" />
+                <h4 className="text-xs font-black uppercase tracking-wider text-stone-800">
+                  {lang === "kn" ? "ಭಾಷಾ ಆದ್ಯತೆ" : "Language Preference"}
+                </h4>
               </div>
-
-              <h4 className="text-sm font-bold text-white mb-1">
-                Executive Superadmin Portal
-              </h4>
-              <p className="text-xs text-stone-300 leading-relaxed mb-4">
-                Highest authority gateway for festival administrators. Authorized executive accounts can approve admins, manage activities, and view master telemetry.
-              </p>
-
+              <span className="text-[11px] font-bold text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded-md">
+                {lang === "kn" ? "ಕನ್ನಡ ಸಕ್ರಿಯ" : "English Active"}
+              </span>
+            </div>
+            <p className="text-xs text-stone-500">
+              {lang === "kn" 
+                ? "ವೆಬ್‌ಸೈಟ್ ಮತ್ತು ಪೋರ್ಟಲ್ ಪ್ರದರ್ಶನ ಭಾಷೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ."
+                : "Choose your preferred display language for the website and portal."}
+            </p>
+            <div className="grid grid-cols-2 gap-2 pt-1">
               <button
                 type="button"
-                onClick={() => {
-                  onClose();
-                  onOpenSuperAdmin();
-                }}
-                className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-black text-xs shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 active:scale-98 cursor-pointer"
+                onClick={() => setLang("kn")}
+                className={`py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  lang === "kn"
+                    ? "bg-gradient-to-r from-kar-red to-red-600 text-white shadow-xs"
+                    : "bg-white border border-stone-200 text-stone-700 hover:bg-stone-100"
+                }`}
               >
-                <KeyRound className="w-3.5 h-3.5" />
-                <span>Launch Super Admin Login</span>
-                <ArrowRight className="w-3.5 h-3.5" />
+                <span>ಕನ್ನಡ (Kannada)</span>
+                {lang === "kn" && <Check className="w-3.5 h-3.5 text-amber-300" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => setLang("en")}
+                className={`py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  lang === "en"
+                    ? "bg-stone-900 text-white shadow-xs"
+                    : "bg-white border border-stone-200 text-stone-700 hover:bg-stone-100"
+                }`}
+              >
+                <span>English</span>
+                {lang === "en" && <Check className="w-3.5 h-3.5 text-amber-400" />}
               </button>
             </div>
           </div>
 
           {/* ==================================================== */}
-          {/* SECTION 2: OFFICIAL CONTACTS (DEVELOPER & SECRETARY) */}
+          {/* SECTION: FESTIVAL RULES & GUIDELINES SHORTCUT         */}
+          {/* ==================================================== */}
+          <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/80 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-900 flex items-center justify-center shrink-0">
+                <BookOpen className="w-4 h-4 text-amber-700" />
+              </div>
+              <div>
+                <h5 className="text-xs font-bold text-stone-900">
+                  {lang === "kn" ? "ಹಬ್ಬದ ನಿಯಮಗಳು & ಮಾರ್ಗಸೂಚಿಗಳು" : "Festival Rules & Code of Conduct"}
+                </h5>
+                <p className="text-[11px] text-stone-500">
+                  {lang === "kn" ? "ಭಾಗವಹಿಸುವಿಕೆ ಮತ್ತು ಸ್ಪರ್ಧೆಯ ನಿಯಮಗಳನ್ನು ಓದಿ" : "Review festival eligibility and participation rules"}
+                </p>
+              </div>
+            </div>
+            <a
+              href="/rules"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-1.5 rounded-xl bg-white hover:bg-amber-100 border border-amber-300 text-amber-950 font-bold text-xs shrink-0 flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+            >
+              <span>{lang === "kn" ? "ಓದಿ" : "View"}</span>
+              <ExternalLink className="w-3 h-3 text-amber-800" />
+            </a>
+          </div>
+
+          {/* ==================================================== */}
+          {/* SECTION: SUPERADMIN LOGIN ACCESS (STRICTLY RESTRICTED)*/}
+          {/* ONLY SHOWN IF EXPLICITLY PERMITTED VIA PROPS          */}
+          {/* ==================================================== */}
+          {showSuperAdmin && onOpenSuperAdmin && (
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-stone-900 via-neutral-900 to-stone-950 text-white border border-amber-500/30 shadow-lg relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-40 h-40 bg-amber-500/10 rounded-full blur-3xl" />
+
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <ShieldAlert className="w-4 h-4 text-amber-400" />
+                    <span className="text-[11px] font-black tracking-widest text-amber-400 uppercase">
+                      Restricted Access
+                    </span>
+                  </div>
+                  <span className="px-2 py-0.5 text-[9px] font-black uppercase rounded-full bg-red-600/80 text-white border border-red-500/50">
+                    SUPERADMIN ONLY
+                  </span>
+                </div>
+
+                <h4 className="text-sm font-bold text-white mb-1">
+                  Executive Superadmin Portal
+                </h4>
+                <p className="text-xs text-stone-300 leading-relaxed mb-4">
+                  Highest authority gateway for festival administrators. Authorized executive accounts can approve admins, manage activities, and view master telemetry.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onOpenSuperAdmin();
+                  }}
+                  className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-black text-xs shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 active:scale-98 cursor-pointer"
+                >
+                  <KeyRound className="w-3.5 h-3.5" />
+                  <span>Launch Super Admin Login</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ==================================================== */}
+          {/* SECTION: OFFICIAL CONTACTS (DEVELOPER & SECRETARY)   */}
           {/* ==================================================== */}
           <div className="space-y-3">
             <div className="flex items-center gap-2 border-b border-stone-200 pb-2">
               <Sparkles className="w-4 h-4 text-kar-red" />
               <h4 className="text-xs font-black tracking-wider uppercase text-stone-800">
-                Official Contact Directory • ಸಂಪರ್ಕ ವಿವರಗಳು
+                {lang === "kn" ? "ಅಧಿಕೃತ ಸಂಪರ್ಕ ವಿವರಗಳು" : "Official Contact Directory"} • Directory
               </h4>
             </div>
 
@@ -147,7 +234,7 @@ export const PortalSettingsModal = ({
                     <span className="text-[10px] font-black tracking-widest uppercase px-2 py-0.5 bg-amber-200/80 text-amber-900 rounded-md">
                       Lead Systems Architect & Developer
                     </span>
-                    <a href="https://ayushhmane.vercel.app/" target="_blank" rel="noopener noreferrer" className="text-sm font-extrabold text-stone-900 mt-0.5 hover:text-kar-red hover:underline underline-offset-2">
+                    <a href="https://ayushhmane.vercel.app/" target="_blank" rel="noopener noreferrer" className="text-sm font-extrabold text-stone-900 mt-0.5 hover:text-kar-red hover:underline underline-offset-2 block">
                       Ayush H Mane
                     </a>
                     <p className="text-[11px] text-stone-500 font-medium">
@@ -155,7 +242,6 @@ export const PortalSettingsModal = ({
                     </p>
                   </div>
                 </div>
-
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-xs">
@@ -313,7 +399,7 @@ export const PortalSettingsModal = ({
               {/* Secretariat Venue note */}
               <div className="flex items-center gap-2 text-[11px] text-stone-500 pt-1">
                 <Building2 className="w-3 h-3 text-stone-400 shrink-0" />
-                <span> Student Activity Office, Acharya Campus, Bengaluru - 560107</span>
+                <span>Student Activity Office, Acharya Campus, Bengaluru - 560107</span>
               </div>
             </div>
           </div>
@@ -322,13 +408,16 @@ export const PortalSettingsModal = ({
 
         {/* Modal Footer */}
         <div className="p-4 bg-stone-50 border-t border-stone-200 flex items-center justify-between text-xs text-stone-500 shrink-0">
-          <span>Acharya Kannada Vedike • Nuditaranga 2026</span>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="font-semibold text-stone-600">Nuditaranga 2026 • v2.2.66</span>
+          </div>
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-1.5 rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold transition-colors cursor-pointer"
+            className="px-4 py-1.5 rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-800 font-bold transition-colors cursor-pointer"
           >
-            Close
+            {lang === "kn" ? "ಮುಚ್ಚಿ" : "Close"}
           </button>
         </div>
       </div>
