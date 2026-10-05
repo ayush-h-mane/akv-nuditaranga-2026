@@ -129,15 +129,19 @@ def ensure_schema_migrations(target_engine=None):
 
         elif eng.dialect.name == "postgresql":
             with eng.connect() as conn:
-                # These logs are managed through the backend API. Enable RLS so
-                # direct PostgREST roles have no row access unless policies are
-                # added. The backend's table-owner role continues to manage them.
+                # These tables are managed through the backend API. Enable RLS
+                # so direct PostgREST roles have no row access unless explicit
+                # policies are added. The table-owner role retains backend access.
                 for table in (
                     "audit_logs",
                     "checkin_logs",
                     "admins",
                     "attendance_records",
                     "activities",
+                    "volunteer_attendance",
+                    "users",
+                    "gallery_items",
+                    "password_reset_tokens",
                 ):
                     try:
                         conn.exec_driver_sql(
