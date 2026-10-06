@@ -19,6 +19,10 @@ DEBUG_EMAIL_OUTBOX: List[Dict[str, Any]] = []
 # Circuit-breaker cache for failing relays: relay_key -> failure timestamp
 _FAILED_RELAYS: Dict[str, float] = {}
 _RELAY_COOLDOWN_SECONDS: float = 120.0
+_LAST_EMAIL_ERROR: str = ""
+
+def get_last_email_error() -> str:
+    return _LAST_EMAIL_ERROR
 
 def get_email_styles() -> str:
     return """
@@ -98,10 +102,16 @@ def get_smtp_relays() -> List[Dict[str, Any]]:
 
 def send_via_relay(relay: Dict[str, Any], msg: MIMEMultipart, to_email: Union[str, List[str]]) -> None:
     """Dispatches a MIME message through a designated SMTP relay server with automatic port failover."""
-    host = relay["host"]
+    global _LAST_EMAIL_ERROR
+    host = str(relay.get("host", "")).strip()
     configured_port = int(relay.get("port", 587))
-    username = relay["username"]
-    password = relay["password"]
+    username = str(relay.get("username", "")).strip()
+    password = str(relay.get("password", "")).strip().strip("\"'")
+
+    if not password:
+        err = "SMTP_PASSWORD is empty or not set in Vercel Environment Variables. Please set SMTP_PASSWORD in Vercel Project Settings > Environment Variables and redeploy."
+        _LAST_EMAIL_ERROR = err
+        raise ValueError(err)
 
     to_addrs = [to_email] if isinstance(to_email, str) else list(to_email)
 
@@ -116,11 +126,11 @@ def send_via_relay(relay: Dict[str, Any], msg: MIMEMultipart, to_email: Union[st
     for port in ports_to_try:
         accepted_by_server = False
         try:
-            # 8-second network timeout for fast responsive dispatch
+            # 5-second network timeout for fast responsive failover in serverless environments
             if port == 465:
-                server = smtplib.SMTP_SSL(host, port, timeout=8, context=ssl.create_default_context())
+                server = smtplib.SMTP_SSL(host, port, timeout=5, context=ssl.create_default_context())
             else:
-                server = smtplib.SMTP(host, port, timeout=8)
+                server = smtplib.SMTP(host, port, timeout=5)
                 server.starttls(context=ssl.create_default_context())
 
             try:
@@ -139,6 +149,7 @@ def send_via_relay(relay: Dict[str, Any], msg: MIMEMultipart, to_email: Union[st
                     server.close()
         except Exception as exc:
             last_error = exc
+            _LAST_EMAIL_ERROR = f"SMTP error on {host}:{port}: {type(exc).__name__}: {str(exc)}"
             print(f"[SMTP RELAY PORT NOTICE] {host}:{port} attempt failed: {type(exc).__name__}: {exc}")
 
     if last_error:
@@ -254,15 +265,11 @@ def send_email(
     # 2. Secondary Strategy: Multi-Relay SMTP Pool
     all_relays = get_smtp_relays()
 
-    # If no SMTP host configured, print debug summary and notice
-    if not all_relays:
-        att_str = f" [Attached: {', '.join(a['filename'] for a in record['attachments'])}]" if record["attachments"] else ""
-        print(f"\n[EMAIL DISPATCH - DEV SIMULATION (REAL SMTP/RESEND UNCONFIGURED)]{att_str}")
-        print(f"To: {to_header}")
-        print(f"From: {settings.EMAIL_FROM}")
-        print(f"Subject: {subject}")
-        print(f"Summary: {text_content[:200]}...")
-        print(f"[EMAIL WARNING] No active email provider configured. Set RESEND_API_KEY or SMTP_PASSWORD in .env.")
+    # Check if SMTP password is provided
+    if not all_relays or not any(r.get("password") for r in all_relays):
+        err = "SMTP_PASSWORD is not set in Vercel Environment Variables. Please add SMTP_PASSWORD in Vercel Settings > Environment Variables, then redeploy."
+        print(f"[EMAIL WARNING] {err}")
+        _LAST_EMAIL_ERROR = err
         return False
 
     now = time.time()
@@ -274,10 +281,10 @@ def send_email(
         if (now - fail_time) > _RELAY_COOLDOWN_SECONDS:
             active_relays.append(r)
 
-    # If all relays recently failed auth/network, avoid blocking and return gracefully
+    # If all relays recently failed auth/network, do not block the user with 120s lockout; allow attempting the configured relays
     if not active_relays:
-        print(f"[EMAIL NOTICE] All SMTP relays in pool are currently cooling down ({_RELAY_COOLDOWN_SECONDS}s). Skipping live attempt for '{subject}' to {to_header}.")
-        return False
+        print(f"[EMAIL NOTICE] All SMTP relays were in cooldown ({_RELAY_COOLDOWN_SECONDS}s). Bypassing cooldown to attempt delivery.")
+        active_relays = all_relays
 
     # Assemble MIME Message
     if attachments:
@@ -332,6 +339,7 @@ def send_email(
             if len(attempts) > 1:
                 print(f"[EMAIL FAILOVER] Attempting delivery through next relay in pool...")
 
+    _LAST_EMAIL_ERROR = f"SMTP relay connection error: {last_err}"
     print(f"[EMAIL ERROR] All {len(attempts)} SMTP relays failed to deliver email to {to_header}: {last_err}")
     return False
 

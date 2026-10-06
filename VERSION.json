@@ -4,7 +4,13 @@
   "status": "STAGED_DEVELOPMENT",
   "active_branch": "develop",
   "production_branch": "main",
-  "pending_changes": [],
+  "pending_changes": [
+    "Precise SMTP Diagnostics & Error Reporting: Enhanced email_service.py to track _LAST_EMAIL_ERROR and report actionable root cause reasons (such as missing SMTP_PASSWORD in Vercel or socket timeout) in HTTP 502 responses.",
+    "Proactive Unauthenticated Relay Guard: Pre-validated SMTP credentials before attempting network socket connection, preventing unauthenticated connection drops and immediately advising configuration in Vercel settings.",
+    "Flexible Environment Variable Resolution: Added fallback resolution in config.py for SMTP_PASSWORD, BREVO_SMTP_KEY, BREVO_KEY, and MAIL_PASSWORD with quote stripping.",
+    "Fast Serverless Port Failover & Cooldown Resilience: Tuned connection timeout to 5s per port for responsive failovers on port 587 and 465 SSL, and prevented circuit-breaker cooldown from locking out single-relay retries.",
+    "Interactive Forgot Password Modal Support: Updated ForgotPasswordModal with bilingual error messaging and direct coordinator email link (akv@acharya.ac.in) for immediate student support."
+  ],
   "history": [
     {
       "version": "2.3.2",

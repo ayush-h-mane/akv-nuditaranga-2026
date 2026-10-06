@@ -125,9 +125,20 @@ export const ForgotPasswordModal = ({ isOpen, onClose, onOpenResetView }) => {
               </p>
 
               {error && (
-                <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>{error}</span>
+                <div className="p-3.5 bg-red-50/90 border border-red-200 rounded-xl text-red-700 text-xs leading-relaxed space-y-1.5">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-kar-red" />
+                    <span className="font-medium text-red-800 break-words">{error}</span>
+                  </div>
+                  <div className="pt-2 border-t border-red-200/60 flex items-center justify-between text-[11px] text-red-700">
+                    <span>ಸಹಾಯ ಬೇಕೇ? / Need coordinator help?</span>
+                    <a
+                      href="mailto:akv@acharya.ac.in?subject=AKV%20Password%20Reset%20Assistance"
+                      className="font-bold underline text-kar-red hover:text-red-950"
+                    >
+                      akv@acharya.ac.in
+                    </a>
+                  </div>
                 </div>
               )}
 
