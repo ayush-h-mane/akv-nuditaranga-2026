@@ -56,6 +56,7 @@ allowed_origins = [
     "http://127.0.0.1:5173",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://akv.acharyahabba.com",
 ]
 if settings.FRONTEND_URL:
     clean_frontend = settings.FRONTEND_URL.rstrip("/")
@@ -71,7 +72,7 @@ if settings.ALLOWED_ORIGINS:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_origin_regex=r"^https:\/\/.*\.vercel\.app$",
+    allow_origin_regex=r"^https:\/\/(.*\.vercel\.app|(.*\.)?acharyahabba\.com)$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

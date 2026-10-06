@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     APP_NAME: str = "Acharya Kannada Vedike (AKV) API"
-    APP_VERSION: str = "2.2.66"
+    APP_VERSION: str = "2.3.1"
     API_PREFIX: str = "/api"
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "production" if os.environ.get("VERCEL") else "development")
     DATABASE_URL: str = os.getenv("DATABASE_URL", "" if os.environ.get("VERCEL") else "sqlite:///./akv_fest.db")
@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     EMAIL_FROM_NAME: str = os.getenv("EMAIL_FROM_NAME", "Acharya Kannada Vedike - Nuditaranga 2026")
     
     # Frontend URL
-    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:5173")
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "https://akv.acharyahabba.com" if os.environ.get("VERCEL") else "http://localhost:5173")
 
     FEST_NAME: str = "Nuditaranga 2026"
     FEST_DATE: str = "2026-11-01T09:00:00"
