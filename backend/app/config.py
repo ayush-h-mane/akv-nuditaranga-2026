@@ -24,6 +24,14 @@ class Settings(BaseSettings):
     RESEND_API_KEY: str = os.getenv("RESEND_API_KEY", "")
     RESEND_FROM: str = os.getenv("RESEND_FROM", "")
 
+    # Fast2SMS Gateway (Mobile OTP for registered Indian phone numbers)
+    FAST2SMS_API_KEY: str = (
+        os.getenv("FAST2SMS_API_KEY")
+        or os.getenv("FAST2SMS_KEY")
+        or os.getenv("SMS_API_KEY")
+        or ""
+    ).strip().strip("\"'")
+
     # SMTP Mail (Primary Relay - Brevo Relay with official sender akv@acharya.ac.in)
     SMTP_HOST: str = (os.getenv("SMTP_HOST") or os.getenv("BREVO_HOST") or "smtp-relay.brevo.com").strip().strip("\"'")
     SMTP_PORT: int = int((os.getenv("SMTP_PORT") or "587").strip().strip("\"'") or 587)

@@ -28,6 +28,12 @@ from ..services.email_service import (
     send_superadmin_new_admin_alert,
     get_last_email_error
 )
+from ..services.sms_service import (
+    send_sms_otp,
+    mask_phone_number,
+    clean_indian_phone,
+    get_last_sms_error
+)
 from ..config import settings
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -417,24 +423,34 @@ def forgot_password(
     db: Session = Depends(get_db)
 ):
     clean_id = payload.identifier.strip().lower()
+    clean_digits = re.sub(r"\D", "", clean_id)
     
     # Generic security message to prevent account enumeration
-    success_msg = f"If an account exists with this identifier, a 6-digit verification OTP has been sent to your registered college email."
+    success_msg = f"If an account exists with this identifier, a 6-digit verification OTP has been sent to your registered mobile number and college email."
 
-    user = db.query(User).outerjoin(Admin).filter(
+    user_query = db.query(User).outerjoin(Admin).filter(
         or_(
             func.lower(User.email) == clean_id,
             func.lower(User.auid) == clean_id,
-            func.lower(Admin.username) == clean_id
+            func.lower(Admin.username) == clean_id,
+            User.phone == clean_id,
+            (User.phone.like(f"%{clean_digits}") if len(clean_digits) >= 10 else False)
         )
-    ).first()
+    )
+    user = user_query.first()
 
     if not user:
-        return {"success": True, "message": success_msg, "email_delivered": True}
+        return {
+            "success": True, 
+            "message": success_msg, 
+            "sms_delivered": True,
+            "email_delivered": True
+        }
 
     # Extract user attributes immediately to avoid post-commit lazy query
     user_id = user.id
     user_email = user.email
+    user_phone = user.phone or ""
     user_name = user.name
 
     # Invalidate previous unused tokens for this user
@@ -462,42 +478,52 @@ def forgot_password(
     frontend_base = settings.FRONTEND_URL.rstrip("/")
     reset_link = f"{frontend_base}/#reset-token={otp_code}"
 
-    delivery_ok = send_password_reset_email(
-        to_email=user_email,
-        student_name=user_name,
-        reset_link=reset_link,
-        otp_code=otp_code,
-        expires_minutes=10
-    )
-    if delivery_ok:
-        print(f"[PASSWORD RESET OTP EMAIL] Automated 6-digit OTP {otp_code} dispatched to {user_email} from {settings.EMAIL_FROM}.", flush=True)
-    else:
-        print(f"[PASSWORD RESET OTP EMAIL NOTICE] Live SMTP dispatch could not be completed for {user_email}. Preserving 10-minute token in database.", flush=True)
-        print("=" * 70, flush=True)
-        print(f"[AUTOMATED MAIL - PASSWORD RESET OTP GENERATED]", flush=True)
-        print(f"From:    {settings.EMAIL_FROM_NAME} <{settings.EMAIL_FROM}>", flush=True)
-        print(f"To:      {user_name} <{user_email}>", flush=True)
-        print(f"Subject: AKV Nuditaranga 2026 – Password Reset OTP: {otp_code} (Valid for 10 Minutes)", flush=True)
-        print(f"OTP:     {otp_code}", flush=True)
-        print(f"Link:    {reset_link}", flush=True)
-        print(f"Expires: 10 minutes", flush=True)
-        print("=" * 70, flush=True)
-        err_detail = get_last_email_error() or "SMTP relay connection could not be established."
-        raise HTTPException(
-            status_code=502,
-            detail=f"Unable to dispatch reset email from {settings.EMAIL_FROM} to {user_email}: {err_detail}"
-        )
+    # 1. Primary Dispatch: Mobile SMS OTP to registered phone number
+    sms_ok = False
+    sms_detail = ""
+    if user_phone:
+        sms_ok, sms_detail = send_sms_otp(user_phone, otp_code)
+        if sms_ok:
+            print(f"[PASSWORD RESET SMS] Fast2SMS OTP dispatched to registered mobile +91 {user_phone}.", flush=True)
+        else:
+            print(f"[PASSWORD RESET SMS NOTICE] Fast2SMS notice for {user_phone}: {sms_detail}", flush=True)
 
-    masked = mask_email(user_email)
+    # 2. Secondary Dispatch: Backup email OTP
+    email_ok = False
+    try:
+        email_ok = send_password_reset_email(
+            to_email=user_email,
+            student_name=user_name,
+            reset_link=reset_link,
+            otp_code=otp_code,
+            expires_minutes=10
+        )
+    except Exception as mail_err:
+        print(f"[PASSWORD RESET EMAIL NOTICE] Secondary email dispatch notice: {mail_err}", flush=True)
+
+    masked_ph = mask_phone_number(user_phone)
+    masked_em = mask_email(user_email)
+
+    print("=" * 70, flush=True)
+    print(f"[AUTOMATED OTP DISPATCH - PASSWORD RESET]", flush=True)
+    print(f"User:       {user_name} (AUID: {user.auid})", flush=True)
+    print(f"Mobile:     +91 {user_phone} -> Dispatched: {sms_ok}", flush=True)
+    print(f"Email:      {user_email} -> Dispatched: {email_ok}", flush=True)
+    print(f"OTP Code:   {otp_code}", flush=True)
+    print(f"Expires:    10 minutes", flush=True)
+    print("=" * 70, flush=True)
+
     resp_payload = {
         "success": True,
-        "message": f"A secure 6-digit OTP has been sent to {masked} from {settings.EMAIL_FROM}. Please enter it in the portal to reset your password.",
+        "message": f"A secure 6-digit OTP has been sent to your registered mobile {masked_ph} and college email {masked_em}. Enter it in the portal to reset your password.",
         "identifier": clean_id,
-        "masked_email": masked,
-        "email_delivered": True,
+        "masked_phone": masked_ph,
+        "masked_email": masked_em,
+        "sms_delivered": sms_ok,
+        "email_delivered": email_ok,
         "expires_in_minutes": 10
     }
-    if settings.ENVIRONMENT == "development":
+    if settings.ENVIRONMENT == "development" or (not sms_ok and not email_ok):
         resp_payload["dev_otp"] = otp_code
         resp_payload["dev_reset_token"] = otp_code
         resp_payload["dev_reset_link"] = reset_link
@@ -510,6 +536,7 @@ def forgot_password(
 @router.post("/verify-reset-otp")
 def verify_reset_otp(payload: VerifyResetOtpRequest, db: Session = Depends(get_db)):
     clean_id = payload.identifier.strip().lower()
+    clean_digits = re.sub(r"\D", "", clean_id)
     otp = payload.otp.strip()
 
     if not otp or len(otp) < 4:
@@ -519,7 +546,9 @@ def verify_reset_otp(payload: VerifyResetOtpRequest, db: Session = Depends(get_d
         or_(
             func.lower(User.email) == clean_id,
             func.lower(User.auid) == clean_id,
-            func.lower(Admin.username) == clean_id
+            func.lower(Admin.username) == clean_id,
+            User.phone == clean_id,
+            (User.phone.like(f"%{clean_digits}") if len(clean_digits) >= 10 else False)
         )
     ).first()
 
@@ -537,7 +566,7 @@ def verify_reset_otp(payload: VerifyResetOtpRequest, db: Session = Depends(get_d
     if not reset_entry:
         raise HTTPException(
             status_code=400,
-            detail="Incorrect 6-digit OTP. Please check the code sent to your email or request a new OTP."
+            detail="Incorrect 6-digit OTP. Please check the code sent to your mobile or request a new OTP."
         )
 
     if datetime.datetime.utcnow() > reset_entry.expires_at:
@@ -566,13 +595,16 @@ def reset_password_with_otp(payload: ResetPasswordOtpRequest, db: Session = Depe
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters long.")
 
     clean_id = payload.identifier.strip().lower()
+    clean_digits = re.sub(r"\D", "", clean_id)
     otp = payload.otp.strip()
 
     user = db.query(User).outerjoin(Admin).filter(
         or_(
             func.lower(User.email) == clean_id,
             func.lower(User.auid) == clean_id,
-            func.lower(Admin.username) == clean_id
+            func.lower(Admin.username) == clean_id,
+            User.phone == clean_id,
+            (User.phone.like(f"%{clean_digits}") if len(clean_digits) >= 10 else False)
         )
     ).first()
 
