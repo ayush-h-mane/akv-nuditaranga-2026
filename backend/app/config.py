@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     APP_NAME: str = "Acharya Kannada Vedike (AKV) API"
-    APP_VERSION: str = "2.3.4"
+    APP_VERSION: str = "2.3.5"
     API_PREFIX: str = "/api"
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "production" if os.environ.get("VERCEL") else "development")
     DATABASE_URL: str = os.getenv("DATABASE_URL", "" if os.environ.get("VERCEL") else "sqlite:///./akv_fest.db")
@@ -23,6 +23,14 @@ class Settings(BaseSettings):
     # Resend API (Recommended - Instant HTTPS email dispatch, no 2FA/App Password required)
     RESEND_API_KEY: str = os.getenv("RESEND_API_KEY", "")
     RESEND_FROM: str = os.getenv("RESEND_FROM", "")
+
+    # Fast2SMS Gateway (Mobile OTP for registered Indian phone numbers)
+    FAST2SMS_API_KEY: str = (
+        os.getenv("FAST2SMS_API_KEY")
+        or os.getenv("FAST2SMS_KEY")
+        or os.getenv("SMS_API_KEY")
+        or ""
+    ).strip().strip("\"'")
 
     # SMTP Mail (Primary Relay - Brevo Relay with official sender akv@acharya.ac.in)
     SMTP_HOST: str = (os.getenv("SMTP_HOST") or os.getenv("BREVO_HOST") or "smtp-relay.brevo.com").strip().strip("\"'")

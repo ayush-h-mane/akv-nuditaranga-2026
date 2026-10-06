@@ -3,6 +3,7 @@ import { api } from "../services/api";
 import { ACHARYA_EMAIL_ERROR, isAcharyaEmail } from "../utils/emailValidation";
 import { 
   Mail, 
+  Smartphone,
   AlertCircle, 
   CheckCircle2, 
   X, 
@@ -31,6 +32,7 @@ export const ForgotPasswordModal = ({ isOpen, onClose, onOpenResetView }) => {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [maskedEmail, setMaskedEmail] = useState("");
+  const [maskedPhone, setMaskedPhone] = useState("");
   const [devOtp, setDevOtp] = useState(null);
   const [cooldown, setCooldown] = useState(0);
 
@@ -52,6 +54,8 @@ export const ForgotPasswordModal = ({ isOpen, onClose, onOpenResetView }) => {
       setOtp("");
       setNewPassword("");
       setConfirmPassword("");
+      setMaskedEmail("");
+      setMaskedPhone("");
     }
   }, [isOpen]);
 
@@ -60,11 +64,12 @@ export const ForgotPasswordModal = ({ isOpen, onClose, onOpenResetView }) => {
   // STEP 1: Request 6-digit OTP
   const handleRequestOtp = async (e) => {
     if (e) e.preventDefault();
-    if (!identifier.trim()) {
-      setError("Please enter your AUID or Registered College Email.");
+    const cleanId = identifier.trim();
+    if (!cleanId) {
+      setError("Please enter your Registered Mobile Number, AUID, or College Email.");
       return;
     }
-    if (identifier.includes("@") && !isAcharyaEmail(identifier)) {
+    if (cleanId.includes("@") && !isAcharyaEmail(cleanId)) {
       setError(ACHARYA_EMAIL_ERROR);
       return;
     }
@@ -75,9 +80,10 @@ export const ForgotPasswordModal = ({ isOpen, onClose, onOpenResetView }) => {
     setDevOtp(null);
 
     try {
-      const res = await api.forgotPassword(identifier.trim());
-      setMaskedEmail(res.masked_email || (identifier.includes("@") ? identifier : "your college email"));
-      setMessage(res.message || "A 6-digit OTP has been dispatched to your registered college email.");
+      const res = await api.forgotPassword(cleanId);
+      setMaskedEmail(res.masked_email || (cleanId.includes("@") ? cleanId : "your college email"));
+      setMaskedPhone(res.masked_phone || "");
+      setMessage(res.message || "A 6-digit OTP has been dispatched to your registered mobile number.");
       if (res.dev_otp) {
         setDevOtp(res.dev_otp);
       }
@@ -95,7 +101,7 @@ export const ForgotPasswordModal = ({ isOpen, onClose, onOpenResetView }) => {
     if (e) e.preventDefault();
     const cleanOtp = otp.trim().replace(/\D/g, "");
     if (!cleanOtp || cleanOtp.length < 6) {
-      setError("Please enter the complete 6-digit OTP sent to your email.");
+      setError("Please enter the complete 6-digit OTP sent to your registered mobile.");
       return;
     }
 
@@ -189,11 +195,11 @@ export const ForgotPasswordModal = ({ isOpen, onClose, onOpenResetView }) => {
 
         {/* Content Body */}
         <div className="p-6 overflow-y-auto flex-1">
-          {/* STEP 1: Enter AUID or College Email */}
+          {/* STEP 1: Enter Mobile, AUID, or College Email */}
           {step === 1 && (
             <form onSubmit={handleRequestOtp} className="space-y-4">
               <p className="text-sm text-stone-600 leading-relaxed">
-                Enter your <strong>AUID</strong> or <strong>registered college email</strong>. We will dispatch a secure 6-digit OTP from <strong>akv@acharya.ac.in</strong> valid for 10 minutes.
+                Enter your <strong>Registered Mobile Number</strong>, <strong>AUID</strong>, or <strong>College Email</strong>. We will dispatch a secure 6-digit OTP directly to your registered mobile phone via SMS.
               </p>
 
               {error && (
@@ -216,17 +222,17 @@ export const ForgotPasswordModal = ({ isOpen, onClose, onOpenResetView }) => {
 
               <div>
                 <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">
-                  AUID or Registered College Email
+                  Mobile Number / AUID / College Email
                 </label>
                 <div className="relative">
-                  <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                  <Smartphone className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
                   <input
                     type="text"
                     required
                     autoFocus
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
-                    placeholder="e.g. AIT23BEAI129 or student@acharya.ac.in"
+                    placeholder="e.g. 9876543210 or AIT23BEAI129"
                     className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-stone-300 bg-white text-stone-900 placeholder:text-stone-400 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm font-medium"
                     style={{ color: "#1c1917", backgroundColor: "#ffffff" }}
                   />
@@ -234,7 +240,7 @@ export const ForgotPasswordModal = ({ isOpen, onClose, onOpenResetView }) => {
               </div>
 
               <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-xl text-[11px] text-amber-900 leading-relaxed flex items-center gap-2">
-                <span>🛡️ Single-use 6-digit OTP will be dispatched officially from <strong>akv@acharya.ac.in</strong>.</span>
+                <span>📱 6-digit OTP will be dispatched directly to your registered mobile number via SMS.</span>
               </div>
 
               <div className="flex items-center gap-3 pt-2">
@@ -259,13 +265,17 @@ export const ForgotPasswordModal = ({ isOpen, onClose, onOpenResetView }) => {
           {/* STEP 2: Enter & Verify 6-digit OTP */}
           {step === 2 && (
             <form onSubmit={handleVerifyOtp} className="space-y-4">
-              <div className="p-3.5 bg-amber-50/90 border border-amber-300 rounded-xl text-amber-950 text-xs leading-relaxed">
+              <div className="p-3.5 bg-amber-50/90 border border-amber-300 rounded-xl text-amber-950 text-xs leading-relaxed space-y-1">
                 <p className="font-bold flex items-center gap-1.5 text-kar-red">
-                  <ShieldCheck className="w-4 h-4 shrink-0" />
+                  <Smartphone className="w-4 h-4 shrink-0" />
                   <span>OTP Dispatched • ಒಟಿಪಿ ಕಳುಹಿಸಲಾಗಿದೆ</span>
                 </p>
-                <p className="mt-1 text-stone-700">
-                  We have sent a 6-digit verification code to <strong>{maskedEmail}</strong>. Please enter the OTP below within 10 minutes.
+                <p className="text-stone-700">
+                  {maskedPhone ? (
+                    <>We sent a 6-digit verification code to your registered mobile <strong>{maskedPhone}</strong>{maskedEmail ? <> (and backup email <strong>{maskedEmail}</strong>)</> : null}. Please enter the OTP below within 10 minutes.</>
+                  ) : (
+                    <>We have sent a 6-digit verification code to <strong>{maskedEmail}</strong>. Please enter the OTP below within 10 minutes.</>
+                  )}
                 </p>
               </div>
 
@@ -323,7 +333,7 @@ export const ForgotPasswordModal = ({ isOpen, onClose, onOpenResetView }) => {
                   className="font-semibold text-stone-500 hover:text-stone-800 flex items-center gap-1"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>Change Email</span>
+                  <span>Change Number / Email</span>
                 </button>
 
                 <button
