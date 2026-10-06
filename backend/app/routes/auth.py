@@ -448,16 +448,20 @@ def forgot_password(
         print("=" * 70, flush=True)
         print(f"[AUTOMATED MAIL - PASSWORD RESET LINK GENERATED]", flush=True)
         print(f"From:    {settings.EMAIL_FROM_NAME} <{settings.EMAIL_FROM}>", flush=True)
-        print(f"To:      {user.name} <{user.email}>", flush=True)
+        print(f"To:      {user_name} <{user_email}>", flush=True)
         print(f"Subject: AKV Nuditaranga 2026 – Password Reset Link (Valid for 10 Minutes)", flush=True)
         print(f"Link:    {reset_link}", flush=True)
         print(f"Expires: 10 minutes", flush=True)
         print("=" * 70, flush=True)
+        raise HTTPException(
+            status_code=502,
+            detail=f"Unable to dispatch reset email from {settings.EMAIL_FROM} to {user_email}. Please contact the coordinator or try again shortly."
+        )
 
     resp_payload = {
         "success": True,
-        "message": success_msg,
-        "email_delivered": delivery_ok
+        "message": f"A secure 10-minute password reset link has been dispatched to {user_email} from {settings.EMAIL_FROM}.",
+        "email_delivered": True
     }
     if settings.ENVIRONMENT == "development":
         resp_payload["dev_reset_token"] = raw_token

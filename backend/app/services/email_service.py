@@ -97,36 +97,52 @@ def get_smtp_relays() -> List[Dict[str, Any]]:
     return relays
 
 def send_via_relay(relay: Dict[str, Any], msg: MIMEMultipart, to_email: Union[str, List[str]]) -> None:
-    """Dispatches a MIME message through a designated SMTP relay server."""
+    """Dispatches a MIME message through a designated SMTP relay server with automatic port failover."""
     host = relay["host"]
-    port = relay["port"]
+    configured_port = int(relay.get("port", 587))
     username = relay["username"]
     password = relay["password"]
 
     to_addrs = [to_email] if isinstance(to_email, str) else list(to_email)
 
-    # 8-second network timeout for fast responsive dispatch
-    if port == 465:
-        server = smtplib.SMTP_SSL(host, port, timeout=8, context=ssl.create_default_context())
-    else:
-        server = smtplib.SMTP(host, port, timeout=8)
-        server.starttls(context=ssl.create_default_context())
+    # Ports to try: attempt configured port first; if connection/timeout error, failover to 465 or 587
+    ports_to_try = [configured_port]
+    if configured_port == 587 and 465 not in ports_to_try:
+        ports_to_try.append(465)
+    elif configured_port == 465 and 587 not in ports_to_try:
+        ports_to_try.append(587)
 
-    accepted_by_server = False
-    try:
-        if username and password:
-            server.login(username, password)
-        server.sendmail(settings.EMAIL_FROM, to_addrs, msg.as_string())
-        accepted_by_server = True
-    finally:
-        if accepted_by_server:
+    last_error = None
+    for port in ports_to_try:
+        accepted_by_server = False
+        try:
+            # 8-second network timeout for fast responsive dispatch
+            if port == 465:
+                server = smtplib.SMTP_SSL(host, port, timeout=8, context=ssl.create_default_context())
+            else:
+                server = smtplib.SMTP(host, port, timeout=8)
+                server.starttls(context=ssl.create_default_context())
+
             try:
-                server.quit()
-            except Exception:
-                # SMTP has already accepted the message; don't trigger a duplicate relay retry.
-                server.close()
-        else:
-            server.close()
+                if username and password:
+                    server.login(username, password)
+                server.sendmail(settings.EMAIL_FROM, to_addrs, msg.as_string())
+                accepted_by_server = True
+                return  # Successfully sent
+            finally:
+                if accepted_by_server:
+                    try:
+                        server.quit()
+                    except Exception:
+                        server.close()
+                else:
+                    server.close()
+        except Exception as exc:
+            last_error = exc
+            print(f"[SMTP RELAY PORT NOTICE] {host}:{port} attempt failed: {type(exc).__name__}: {exc}")
+
+    if last_error:
+        raise last_error
 
 def send_via_resend(
     api_key: str,

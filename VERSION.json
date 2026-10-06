@@ -1,11 +1,16 @@
 {
-  "production_version": "2.3.1",
-  "staged_version": "2.3.2",
+  "production_version": "2.3.2",
+  "staged_version": "2.3.3",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.2",
+      "released_at": "2026-10-06T20:26:42+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.2: Brevo Multi-Port Relay (587 & 465 SSL) Configured: Set default production SMTP relay to Brevo relay with verified akv@acharya.ac.in sender and env-driven authentication.; Dual-Port SMTP Failover: Implemented automatic port 587 -> port 465 (SMTPS SSL) fallback in send_via_relay to bypass serverless port-blocking and handshake timeouts.; Password Reset Delivery Verification: Raised HTTP 502 with accurate delivery failure details when SMTP dispatch fails, preventing false 'Instructions Sent' success dialogs."
+    },
     {
       "version": "2.3.1",
       "released_at": "2026-10-06T19:29:00+0530",

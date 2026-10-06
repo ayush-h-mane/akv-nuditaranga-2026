@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     APP_NAME: str = "Acharya Kannada Vedike (AKV) API"
-    APP_VERSION: str = "2.3.1"
+    APP_VERSION: str = "2.3.2"
     API_PREFIX: str = "/api"
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "production" if os.environ.get("VERCEL") else "development")
     DATABASE_URL: str = os.getenv("DATABASE_URL", "" if os.environ.get("VERCEL") else "sqlite:///./akv_fest.db")
@@ -24,10 +24,10 @@ class Settings(BaseSettings):
     RESEND_API_KEY: str = os.getenv("RESEND_API_KEY", "")
     RESEND_FROM: str = os.getenv("RESEND_FROM", "")
 
-    # SMTP Mail (Primary Relay - Google Workspace / Official akv@acharya.ac.in)
-    SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    # SMTP Mail (Primary Relay - Brevo Relay with official sender akv@acharya.ac.in)
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp-relay.brevo.com")
     SMTP_PORT: int = int(os.getenv("SMTP_PORT", 587))
-    SMTP_USERNAME: str = os.getenv("SMTP_USERNAME", "akv@acharya.ac.in")
+    SMTP_USERNAME: str = os.getenv("SMTP_USERNAME", "bb08a0001@smtp-brevo.com")
     SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
 
     # Multi-Relay Pool (Optional Relays 2 & 3 for failover)
