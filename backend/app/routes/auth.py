@@ -140,8 +140,20 @@ class ForgotPasswordRequest(BaseModel):
             return validate_acharya_email(identifier)
         return identifier.lower()
 
+class VerifyResetOtpRequest(BaseModel):
+    identifier: str = Field(..., min_length=3)
+    otp: str = Field(..., min_length=4, max_length=10)
+
+class ResetPasswordOtpRequest(BaseModel):
+    identifier: str = Field(..., min_length=3)
+    otp: str = Field(..., min_length=4, max_length=10)
+    new_password: str = Field(..., min_length=6)
+    confirm_password: str = Field(..., min_length=6)
+
 class ResetPasswordRequest(BaseModel):
-    token: str
+    token: Optional[str] = None
+    identifier: Optional[str] = None
+    otp: Optional[str] = None
     new_password: str = Field(..., min_length=6)
     confirm_password: str = Field(..., min_length=6)
 
@@ -386,16 +398,28 @@ def login_student(payload: StudentLoginRequest, db: Session = Depends(get_db)):
 # ==========================================
 # 3. FORGOT PASSWORD
 # ==========================================
+def mask_email(email: str) -> str:
+    if not email or "@" not in email:
+        return email or ""
+    local, domain = email.split("@", 1)
+    if len(local) <= 2:
+        masked_local = local[0] + "*"
+    else:
+        masked_local = local[:2] + "*" * min(len(local) - 2, 6)
+    return f"{masked_local}@{domain}"
+
+# ==========================================
+# 3. FORGOT PASSWORD (OTP & LINK DISPATCH)
+# ==========================================
 @router.post("/forgot-password")
 def forgot_password(
     payload: ForgotPasswordRequest,
-    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
     clean_id = payload.identifier.strip().lower()
     
     # Generic security message to prevent account enumeration
-    success_msg = f"If an account exists with this identifier, a 10-minute password reset link will be emailed from {settings.EMAIL_FROM} to your registered college email."
+    success_msg = f"If an account exists with this identifier, a 6-digit verification OTP has been sent to your registered college email."
 
     user = db.query(User).outerjoin(Admin).filter(
         or_(
@@ -406,23 +430,25 @@ def forgot_password(
     ).first()
 
     if not user:
-        return {"success": True, "message": success_msg}
+        return {"success": True, "message": success_msg, "email_delivered": True}
 
     # Extract user attributes immediately to avoid post-commit lazy query
     user_id = user.id
     user_email = user.email
     user_name = user.name
 
-    # Generate single-use secure random token
-    raw_token = secrets.token_urlsafe(32)
-    token_hash = hash_reset_token(raw_token)
-    expires_at = datetime.datetime.utcnow() + datetime.timedelta(minutes=10)
-
     # Invalidate previous unused tokens for this user
     db.query(PasswordResetToken).filter(
         PasswordResetToken.user_id == user_id,
         PasswordResetToken.used_at == None
     ).delete()
+
+    # Generate 6-digit cryptographic OTP (100000 to 999999)
+    otp_code = f"{secrets.randbelow(900000) + 100000:06d}"
+
+    # Generate token hash bound to user_id to prevent any collisions
+    token_hash = hash_reset_token(f"{user_id}:{otp_code}")
+    expires_at = datetime.datetime.utcnow() + datetime.timedelta(minutes=10)
 
     reset_record = PasswordResetToken(
         user_id=user_id,
@@ -432,25 +458,27 @@ def forgot_password(
     db.add(reset_record)
     db.commit()
 
-    # Reset URL
+    # Reset URL fallback
     frontend_base = settings.FRONTEND_URL.rstrip("/")
-    reset_link = f"{frontend_base}/#reset-token={raw_token}"
+    reset_link = f"{frontend_base}/#reset-token={otp_code}"
 
     delivery_ok = send_password_reset_email(
         to_email=user_email,
         student_name=user_name,
         reset_link=reset_link,
+        otp_code=otp_code,
         expires_minutes=10
     )
     if delivery_ok:
-        print(f"[PASSWORD RESET EMAIL] Automated reset email successfully dispatched to {user_email} from {settings.EMAIL_FROM}.", flush=True)
+        print(f"[PASSWORD RESET OTP EMAIL] Automated 6-digit OTP {otp_code} dispatched to {user_email} from {settings.EMAIL_FROM}.", flush=True)
     else:
-        print(f"[PASSWORD RESET EMAIL NOTICE] Live SMTP dispatch could not be completed for {user_email}. Preserving 10-minute token in database.", flush=True)
+        print(f"[PASSWORD RESET OTP EMAIL NOTICE] Live SMTP dispatch could not be completed for {user_email}. Preserving 10-minute token in database.", flush=True)
         print("=" * 70, flush=True)
-        print(f"[AUTOMATED MAIL - PASSWORD RESET LINK GENERATED]", flush=True)
+        print(f"[AUTOMATED MAIL - PASSWORD RESET OTP GENERATED]", flush=True)
         print(f"From:    {settings.EMAIL_FROM_NAME} <{settings.EMAIL_FROM}>", flush=True)
         print(f"To:      {user_name} <{user_email}>", flush=True)
-        print(f"Subject: AKV Nuditaranga 2026 – Password Reset Link (Valid for 10 Minutes)", flush=True)
+        print(f"Subject: AKV Nuditaranga 2026 – Password Reset OTP: {otp_code} (Valid for 10 Minutes)", flush=True)
+        print(f"OTP:     {otp_code}", flush=True)
         print(f"Link:    {reset_link}", flush=True)
         print(f"Expires: 10 minutes", flush=True)
         print("=" * 70, flush=True)
@@ -460,41 +488,194 @@ def forgot_password(
             detail=f"Unable to dispatch reset email from {settings.EMAIL_FROM} to {user_email}: {err_detail}"
         )
 
+    masked = mask_email(user_email)
     resp_payload = {
         "success": True,
-        "message": f"A secure 10-minute password reset link has been dispatched to {user_email} from {settings.EMAIL_FROM}.",
-        "email_delivered": True
+        "message": f"A secure 6-digit OTP has been sent to {masked} from {settings.EMAIL_FROM}. Please enter it in the portal to reset your password.",
+        "identifier": clean_id,
+        "masked_email": masked,
+        "email_delivered": True,
+        "expires_in_minutes": 10
     }
     if settings.ENVIRONMENT == "development":
-        resp_payload["dev_reset_token"] = raw_token
+        resp_payload["dev_otp"] = otp_code
+        resp_payload["dev_reset_token"] = otp_code
         resp_payload["dev_reset_link"] = reset_link
 
     return resp_payload
 
 # ==========================================
-# 4. RESET PASSWORD
+# 4. VERIFY RESET OTP (IN-PORTAL STEP 2)
+# ==========================================
+@router.post("/verify-reset-otp")
+def verify_reset_otp(payload: VerifyResetOtpRequest, db: Session = Depends(get_db)):
+    clean_id = payload.identifier.strip().lower()
+    otp = payload.otp.strip()
+
+    if not otp or len(otp) < 4:
+        raise HTTPException(status_code=400, detail="Please enter a valid 6-digit OTP.")
+
+    user = db.query(User).outerjoin(Admin).filter(
+        or_(
+            func.lower(User.email) == clean_id,
+            func.lower(User.auid) == clean_id,
+            func.lower(Admin.username) == clean_id
+        )
+    ).first()
+
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid OTP code or user not found. Please request a new OTP.")
+
+    expected_hash = hash_reset_token(f"{user.id}:{otp}")
+
+    reset_entry = db.query(PasswordResetToken).filter(
+        PasswordResetToken.user_id == user.id,
+        PasswordResetToken.token_hash == expected_hash,
+        PasswordResetToken.used_at == None
+    ).order_by(PasswordResetToken.id.desc()).first()
+
+    if not reset_entry:
+        raise HTTPException(
+            status_code=400,
+            detail="Incorrect 6-digit OTP. Please check the code sent to your email or request a new OTP."
+        )
+
+    if datetime.datetime.utcnow() > reset_entry.expires_at:
+        raise HTTPException(
+            status_code=400,
+            detail="This OTP has expired (10-minute validity limit). Please request a new OTP."
+        )
+
+    return {
+        "success": True,
+        "message": "OTP verified successfully. You may now set your new password.",
+        "verified": True,
+        "auid": user.auid,
+        "user_name": user.name
+    }
+
+# ==========================================
+# 5. RESET PASSWORD VIA OTP (IN-PORTAL STEP 3)
+# ==========================================
+@router.post("/reset-password-otp")
+def reset_password_with_otp(payload: ResetPasswordOtpRequest, db: Session = Depends(get_db)):
+    if payload.new_password != payload.confirm_password:
+        raise HTTPException(status_code=400, detail="New password and confirmation password do not match.")
+
+    if len(payload.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters long.")
+
+    clean_id = payload.identifier.strip().lower()
+    otp = payload.otp.strip()
+
+    user = db.query(User).outerjoin(Admin).filter(
+        or_(
+            func.lower(User.email) == clean_id,
+            func.lower(User.auid) == clean_id,
+            func.lower(Admin.username) == clean_id
+        )
+    ).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User account not found.")
+
+    expected_hash = hash_reset_token(f"{user.id}:{otp}")
+
+    reset_entry = db.query(PasswordResetToken).filter(
+        PasswordResetToken.user_id == user.id,
+        PasswordResetToken.token_hash == expected_hash,
+        PasswordResetToken.used_at == None
+    ).order_by(PasswordResetToken.id.desc()).first()
+
+    if not reset_entry:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid or expired OTP. Please verify the code or request a new OTP."
+        )
+
+    if datetime.datetime.utcnow() > reset_entry.expires_at:
+        raise HTTPException(
+            status_code=400,
+            detail="This OTP has expired. Please request a new one."
+        )
+
+    # Update password
+    user.password_hash = get_password_hash(payload.new_password)
+    user.updated_at = datetime.datetime.utcnow()
+    
+    # Mark token used
+    reset_entry.used_at = datetime.datetime.utcnow()
+
+    # Audit log
+    log = AuditLog(
+        user_id=user.id,
+        actor_name=user.name,
+        action="PASSWORD_RESET_OTP",
+        target_type="STUDENT",
+        target_id=str(user.id),
+        previous_value=None,
+        new_value="Password changed via verified portal OTP"
+    )
+    db.add(log)
+    db.commit()
+
+    return {
+        "success": True,
+        "message": "Your password has been successfully reset! You can now log in with your new password.",
+        "auid": user.auid
+    }
+
+# ==========================================
+# 6. RESET PASSWORD (UNIFIED HANDLER)
 # ==========================================
 @router.post("/reset-password")
 def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db)):
     if payload.new_password != payload.confirm_password:
         raise HTTPException(status_code=400, detail="Passwords do not match.")
 
-    token_hash = hash_reset_token(payload.token.strip())
+    if len(payload.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters long.")
+
+    # 1. OTP-based payload
+    if payload.identifier and payload.otp:
+        return reset_password_with_otp(
+            ResetPasswordOtpRequest(
+                identifier=payload.identifier,
+                otp=payload.otp,
+                new_password=payload.new_password,
+                confirm_password=payload.confirm_password
+            ),
+            db=db
+        )
+
+    # 2. Token-based payload (URL Link or Token)
+    if not payload.token:
+        raise HTTPException(status_code=400, detail="Reset token or OTP is required.")
+
+    raw_token = payload.token.strip()
+    token_hash = hash_reset_token(raw_token)
     reset_entry = db.query(PasswordResetToken).filter(
         PasswordResetToken.token_hash == token_hash,
         PasswordResetToken.used_at == None
     ).first()
 
+    # Fallback: check if raw_token was a 6-digit OTP entered into token parameter
+    if not reset_entry and len(raw_token) == 6 and raw_token.isdigit():
+        for active_token in db.query(PasswordResetToken).filter(PasswordResetToken.used_at == None).all():
+            if active_token.token_hash == hash_reset_token(f"{active_token.user_id}:{raw_token}"):
+                reset_entry = active_token
+                break
+
     if not reset_entry:
         raise HTTPException(
             status_code=400,
-            detail="This password reset link is invalid or has already been used. Please request a new one."
+            detail="This password reset token or OTP is invalid or has already been used. Please request a new one."
         )
 
     if datetime.datetime.utcnow() > reset_entry.expires_at:
         raise HTTPException(
             status_code=400,
-            detail="This password reset link has expired. Please request a new one."
+            detail="This password reset request has expired. Please request a new one."
         )
 
     user = db.query(User).filter(User.id == reset_entry.user_id).first()
@@ -523,7 +704,8 @@ def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db))
 
     return {
         "success": True,
-        "message": "Password successfully reset. You can now log in with your new password."
+        "message": "Your password has been successfully reset! You can now log in.",
+        "auid": user.auid
     }
 
 # ==========================================
