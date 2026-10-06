@@ -1,16 +1,16 @@
 {
-  "production_version": "2.3.4",
-  "staged_version": "2.3.5",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.3.5",
+  "staged_version": "2.3.6",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
-  "pending_changes": [
-    "Fast2SMS Direct Mobile OTP Dispatch: Created sms_service.py integrating Fast2SMS (bulkV2 route) to send real-time 6-digit OTPs directly to registered mobile phone numbers (User.phone).",
-    "Multi-Identifier Account Lookup: Updated /api/auth/forgot-password, /verify-reset-otp, and /reset-password-otp to support 10-digit mobile phone numbers in addition to AUID and college email.",
-    "Dual-Channel Delivery & Fallback Resilience: Dispatches OTP via mobile SMS as primary channel and college email as secondary backup channel, ensuring students always receive their OTP code.",
-    "Updated In-Portal Reset Modal: Added mobile number support to step 1 input and masked phone indicator (e.g. ******3210) to step 2 verification card."
-  ],
+  "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.5",
+      "released_at": "2026-10-06T21:53:21+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.5: Fast2SMS Direct Mobile OTP Dispatch: Created sms_service.py integrating Fast2SMS (bulkV2 route) to send real-time 6-digit OTPs directly to registered mobile phone numbers (User.phone).; Multi-Identifier Account Lookup: Updated /api/auth/forgot-password, /verify-reset-otp, and /reset-password-otp to support 10-digit mobile phone numbers in addition to AUID and college email.; Dual-Channel Delivery & Fallback Resilience: Dispatches OTP via mobile SMS as primary channel and college email as secondary backup channel, ensuring students always receive their OTP code.; Updated In-Portal Reset Modal: Added mobile number support to step 1 input and masked phone indicator (e.g. ******3210) to step 2 verification card."
+    },
     {
       "version": "2.3.4",
       "released_at": "2026-10-06T21:33:57+0530",
