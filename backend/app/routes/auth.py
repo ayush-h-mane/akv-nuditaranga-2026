@@ -25,7 +25,8 @@ from ..services.email_service import (
     send_student_welcome_email,
     send_password_reset_email,
     send_admin_registration_email,
-    send_superadmin_new_admin_alert
+    send_superadmin_new_admin_alert,
+    get_last_email_error
 )
 from ..config import settings
 
@@ -453,9 +454,10 @@ def forgot_password(
         print(f"Link:    {reset_link}", flush=True)
         print(f"Expires: 10 minutes", flush=True)
         print("=" * 70, flush=True)
+        err_detail = get_last_email_error() or "SMTP relay connection could not be established."
         raise HTTPException(
             status_code=502,
-            detail=f"Unable to dispatch reset email from {settings.EMAIL_FROM} to {user_email}. Please contact the coordinator or try again shortly."
+            detail=f"Unable to dispatch reset email from {settings.EMAIL_FROM} to {user_email}: {err_detail}"
         )
 
     resp_payload = {

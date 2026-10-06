@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     APP_NAME: str = "Acharya Kannada Vedike (AKV) API"
-    APP_VERSION: str = "2.3.2"
+    APP_VERSION: str = "2.3.3"
     API_PREFIX: str = "/api"
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "production" if os.environ.get("VERCEL") else "development")
     DATABASE_URL: str = os.getenv("DATABASE_URL", "" if os.environ.get("VERCEL") else "sqlite:///./akv_fest.db")
@@ -25,24 +25,30 @@ class Settings(BaseSettings):
     RESEND_FROM: str = os.getenv("RESEND_FROM", "")
 
     # SMTP Mail (Primary Relay - Brevo Relay with official sender akv@acharya.ac.in)
-    SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp-relay.brevo.com")
-    SMTP_PORT: int = int(os.getenv("SMTP_PORT", 587))
-    SMTP_USERNAME: str = os.getenv("SMTP_USERNAME", "bb08a0001@smtp-brevo.com")
-    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
+    SMTP_HOST: str = (os.getenv("SMTP_HOST") or os.getenv("BREVO_HOST") or "smtp-relay.brevo.com").strip().strip("\"'")
+    SMTP_PORT: int = int((os.getenv("SMTP_PORT") or "587").strip().strip("\"'") or 587)
+    SMTP_USERNAME: str = (os.getenv("SMTP_USERNAME") or os.getenv("BREVO_USERNAME") or os.getenv("BREVO_USER") or "bb08a0001@smtp-brevo.com").strip().strip("\"'")
+    SMTP_PASSWORD: str = (
+        os.getenv("SMTP_PASSWORD")
+        or os.getenv("BREVO_SMTP_KEY")
+        or os.getenv("BREVO_KEY")
+        or os.getenv("MAIL_PASSWORD")
+        or ""
+    ).strip().strip("\"'")
 
     # Multi-Relay Pool (Optional Relays 2 & 3 for failover)
-    SMTP_HOST_2: str = os.getenv("SMTP_HOST_2", "")
-    SMTP_PORT_2: int = int(os.getenv("SMTP_PORT_2", 587))
-    SMTP_USERNAME_2: str = os.getenv("SMTP_USERNAME_2", "")
-    SMTP_PASSWORD_2: str = os.getenv("SMTP_PASSWORD_2", "")
+    SMTP_HOST_2: str = (os.getenv("SMTP_HOST_2") or "").strip().strip("\"'")
+    SMTP_PORT_2: int = int((os.getenv("SMTP_PORT_2") or "587").strip().strip("\"'") or 587)
+    SMTP_USERNAME_2: str = (os.getenv("SMTP_USERNAME_2") or "").strip().strip("\"'")
+    SMTP_PASSWORD_2: str = (os.getenv("SMTP_PASSWORD_2") or "").strip().strip("\"'")
 
-    SMTP_HOST_3: str = os.getenv("SMTP_HOST_3", "")
-    SMTP_PORT_3: int = int(os.getenv("SMTP_PORT_3", 587))
-    SMTP_USERNAME_3: str = os.getenv("SMTP_USERNAME_3", "")
-    SMTP_PASSWORD_3: str = os.getenv("SMTP_PASSWORD_3", "")
+    SMTP_HOST_3: str = (os.getenv("SMTP_HOST_3") or "").strip().strip("\"'")
+    SMTP_PORT_3: int = int((os.getenv("SMTP_PORT_3") or "587").strip().strip("\"'") or 587)
+    SMTP_USERNAME_3: str = (os.getenv("SMTP_USERNAME_3") or "").strip().strip("\"'")
+    SMTP_PASSWORD_3: str = (os.getenv("SMTP_PASSWORD_3") or "").strip().strip("\"'")
 
-    EMAIL_FROM: str = os.getenv("EMAIL_FROM", "akv@acharya.ac.in")
-    EMAIL_FROM_NAME: str = os.getenv("EMAIL_FROM_NAME", "Acharya Kannada Vedike - Nuditaranga 2026")
+    EMAIL_FROM: str = (os.getenv("EMAIL_FROM") or "akv@acharya.ac.in").strip().strip("\"'")
+    EMAIL_FROM_NAME: str = (os.getenv("EMAIL_FROM_NAME") or "Acharya Kannada Vedike - Nuditaranga 2026").strip().strip("\"'")
     
     # Frontend URL
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "https://akv.acharyahabba.com" if os.environ.get("VERCEL") else "http://localhost:5173")
