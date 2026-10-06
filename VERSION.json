@@ -1,11 +1,16 @@
 {
-  "production_version": "2.3.3",
-  "staged_version": "2.3.4",
+  "production_version": "2.3.4",
+  "staged_version": "2.3.5",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.4",
+      "released_at": "2026-10-06T21:33:57+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.4: In-Portal 6-Digit OTP Password Reset Wizard: Upgraded the password reset flow to a unified 3-step in-portal modal wizard (Identify -> Verify OTP -> Set New Password), eliminating dependence on external email redirection links and in-app browser routing.; Bilingual OTP Email Template with High-Visibility Code Block: Enhanced send_password_reset_email in email_service.py to prominently render the 6-digit OTP in the email subject and inside a high-contrast amber code card with 10-minute validity notice.; Dedicated OTP Verification & Reset Endpoints: Implemented POST /api/auth/verify-reset-otp and POST /api/auth/reset-password-otp in auth.py with bound user hashing to prevent collisions.; Client API Integration & Resend Cooldown: Added verifyResetOtp and resetPasswordWithOtp to frontend api.js, along with a 30-second resend countdown timer and masked email indicators."
+    },
     {
       "version": "2.3.3",
       "released_at": "2026-10-06T21:15:08+0530",

@@ -370,6 +370,37 @@ export const api = {
     return data;
   },
 
+  async verifyResetOtp(identifier, otp) {
+    const res = await fetch(`${API_BASE_URL}/auth/verify-reset-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ identifier, otp })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.detail || "Invalid or expired OTP code.");
+    }
+    return data;
+  },
+
+  async resetPasswordWithOtp(identifier, otp, newPassword, confirmPassword) {
+    const res = await fetch(`${API_BASE_URL}/auth/reset-password-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        identifier,
+        otp,
+        new_password: newPassword,
+        confirm_password: confirmPassword
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.detail || "Failed to reset password.");
+    }
+    return data;
+  },
+
   async resetPassword(token, newPassword, confirmPassword) {
     const res = await fetch(`${API_BASE_URL}/auth/reset-password`, {
       method: "POST",

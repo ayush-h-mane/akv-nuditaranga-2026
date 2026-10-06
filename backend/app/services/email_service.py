@@ -544,46 +544,57 @@ def send_event_registration_confirmation_email(
     html = wrap_email_html(subject, content)
     return send_email(to_email, subject, html, text, attachments=attachments)
 
-def send_password_reset_email(to_email: str, student_name: str, reset_link: str, expires_minutes: int = 10):
-    subject = "AKV Nuditaranga 2026 – Password Reset Link (Valid for 10 Minutes)"
+def send_password_reset_email(to_email: str, student_name: str, reset_link: str, otp_code: Optional[str] = None, expires_minutes: int = 10):
+    otp_display = (otp_code or "").strip()
+    if not otp_display and "=" in reset_link:
+        candidate_token = reset_link.split("=")[-1]
+        if len(candidate_token) == 6 and candidate_token.isdigit():
+            otp_display = candidate_token
+
+    subject = f"AKV Nuditaranga 2026 – Password Reset OTP: {otp_display}" if otp_display else "AKV Nuditaranga 2026 – Password Reset (Valid for 10 Minutes)"
+    
+    otp_card_html = f"""
+        <!-- High-Visibility 6-Digit OTP Box -->
+        <div style="text-align: center; margin: 26px 0; background: linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%); border: 2px dashed #f59e0b; border-radius: 14px; padding: 22px;">
+            <p style="margin: 0 0 6px 0; font-size: 13px; font-weight: 800; color: #92400e; text-transform: uppercase; letter-spacing: 1px;">
+                🔑 ನಿಮ್ಮ ಏಕ-ಬಳಕೆಯ ಒಟಿಪಿ • Your 6-Digit Password Reset OTP:
+            </p>
+            <div style="font-family: 'Courier New', Courier, monospace; font-size: 40px; font-weight: 900; letter-spacing: 12px; color: #b91c1c; padding: 10px 0; text-shadow: 0 1px 2px rgba(0,0,0,0.08);">
+                {otp_display}
+            </div>
+            <p style="margin: 6px 0 0 0; font-size: 13px; color: #78350f; font-weight: 600;">
+                ಈ ಕೋಡ್ ಅನ್ನು ವೆಬ್ ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ನಮೂದಿಸಿ / Enter this OTP in the portal to set your new password
+            </p>
+        </div>
+    """ if otp_display else ""
+
     content = f"""
         <div style="text-align: center; margin-bottom: 24px;">
             <span style="display: inline-block; padding: 4px 14px; background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 9999px; font-size: 12px; font-weight: 700; color: #b91c1c; text-transform: uppercase; letter-spacing: 0.5px;">
-                🔐 ಭದ್ರತಾ ಅಧಿಸೂಚನೆ • Security Notification
+                🔐 ಭದ್ರತಾ ಅಧಿಸೂಚನೆ • Security Verification
             </span>
             <h2 style="color: #991b1b; margin: 14px 0 6px 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;">
-                ಪಾಸ್‌ವರ್ಡ್ ಮರುಹೊಂದಿಸುವ ವಿನಂತಿ<br>
-                <span style="font-size: 16px; font-weight: 600; color: #78716c;">Password Reset Request</span>
+                ಪಾಸ್‌ವರ್ಡ್ ಮರುಹೊಂದಿಸುವ ಒಟಿಪಿ<br>
+                <span style="font-size: 16px; font-weight: 600; color: #78716c;">Password Reset Verification Code</span>
             </h2>
         </div>
 
         <p style="font-size: 15px; margin-bottom: 12px; color: #1c1917;">ನಮಸ್ಕಾರ / Hello <strong>{student_name}</strong>,</p>
         
         <p style="font-size: 14px; color: #44403c; line-height: 1.6; margin-bottom: 12px;">
-            ನಿಮ್ಮ <strong>ಆಚಾರ್ಯ ಕನ್ನಡ ವೇದಿಕೆ (ನುಡಿತರಂಗ ೨೦೨೬)</strong> ಖಾತೆಯ ಪಾಸ್‌ವರ್ಡ್ ಮರುಹೊಂದಿಸಲು ಸ್ವಯಂಚಾಲಿತ ವಿನಂತಿ ಬಂದಿದೆ. ಕೆಳಗಿನ ಬಟನ್ ಕ್ಲಿಕ್ ಮಾಡುವ ಮೂಲಕ ನಿಮ್ಮ ಹೊಸ ಪಾಸ್‌ವರ್ಡ್ ಅನ್ನು ತಕ್ಷಣ ಹೊಂದಿಸಿಕೊಳ್ಳಬಹುದು.
+            ನಿಮ್ಮ <strong>ಆಚಾರ್ಯ ಕನ್ನಡ ವೇದಿಕೆ (ನುಡಿತರಂಗ ೨೦೨೬)</strong> ಖಾತೆಯ ಪಾಸ್‌ವರ್ಡ್ ಮರುಹೊಂದಿಸಲು ಸ್ವಯಂಚಾಲಿತ ವಿನಂತಿ ಬಂದಿದೆ. ಕೆಳಗಿನ ೬-ಅಂಕಿಯ ಒಟಿಪಿ (OTP) ಸಂಖ್ಯೆಯನ್ನು ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ನಮೂದಿಸಿ ಹೊಸ ಪಾಸ್‌ವರ್ಡ್ ಹೊಂದಿಸಿಕೊಳ್ಳಿ.
         </p>
-        <p style="font-size: 13px; color: #78716c; line-height: 1.6; margin-bottom: 24px;">
-            We received an automated request to reset the password for your Acharya Kannada Vedike account associated with <strong>{to_email}</strong>. Click the official reset button below to set a new password.
+        <p style="font-size: 13px; color: #78716c; line-height: 1.6; margin-bottom: 20px;">
+            We received a request to reset the password for your Acharya Kannada Vedike account associated with <strong>{to_email}</strong>. Enter the 6-digit OTP code below directly in the portal window to set your new password.
         </p>
         
-        <!-- Action Button -->
-        <div style="text-align: center; margin: 30px 0;">
-            <a href="{reset_link}" style="background: linear-gradient(135deg, #b91c1c 0%, #dc2626 60%, #ea580c 100%); color: #ffffff; text-decoration: none; padding: 15px 36px; border-radius: 10px; font-weight: 800; font-size: 15px; display: inline-block; box-shadow: 0 4px 14px rgba(185, 28, 28, 0.35); letter-spacing: 0.2px;">
-                ಪಾಸ್‌ವರ್ಡ್ ಮರುಹೊಂದಿಸಿ / Reset Password &rarr;
-            </a>
-        </div>
+        {otp_card_html}
 
-        <!-- Fallback Link Box -->
-        <div style="background-color: #f5f5f4; border: 1px solid #e7e5e4; border-radius: 8px; padding: 12px 14px; margin: 20px 0; font-size: 12px; color: #57534e;">
-            <p style="margin: 0 0 4px 0; font-weight: 700; color: #292524;">
-                ಇಮೇಲ್ ಬಟನ್ ಕಾರ್ಯನಿರ್ವಹಿಸದಿದ್ದರೆ, ಈ ಕೆಳಗಿನ ಲಿಂಕ್ ಅನ್ನು ನಿಮ್ಮ ಬ್ರೌಸರ್‌ನಲ್ಲಿ ತೆರೆಯಿರಿ:
-            </p>
-            <p style="margin: 0 0 6px 0; color: #78716c; font-size: 11px;">
-                If the button doesn't work, copy and paste this link directly into your browser:
-            </p>
-            <div style="word-break: break-all; background-color: #ffffff; padding: 8px 10px; border-radius: 6px; border: 1px dashed #d6d3d1; font-family: monospace; font-size: 11px; color: #b91c1c;">
-                <a href="{reset_link}" style="color: #b91c1c; text-decoration: underline;">{reset_link}</a>
-            </div>
+        <!-- Action Button -->
+        <div style="text-align: center; margin: 26px 0;">
+            <a href="{reset_link}" style="background: linear-gradient(135deg, #b91c1c 0%, #dc2626 60%, #ea580c 100%); color: #ffffff; text-decoration: none; padding: 14px 34px; border-radius: 10px; font-weight: 800; font-size: 14px; display: inline-block; box-shadow: 0 4px 14px rgba(185, 28, 28, 0.35); letter-spacing: 0.2px;">
+                ಪಾಸ್‌ವರ್ಡ್ ಮರುಹೊಂದಿಸಿ / Reset Password Directly &rarr;
+            </a>
         </div>
 
         <!-- Security Warning Box -->
@@ -592,21 +603,22 @@ def send_password_reset_email(to_email: str, student_name: str, reset_link: str,
                 ⚠️ ಭದ್ರತಾ ಮಾಹಿತಿ • Security Notice:
             </p>
             <ul style="margin: 0; padding-left: 18px;">
-                <li style="margin-bottom: 4px;"><strong>ಕಾಲಮಿತಿ / Expiry:</strong> ಈ ಲಿಂಕ್ ಕೇವಲ <strong>{expires_minutes} ನಿಮಿಷಗಳ ಕಾಲ</strong> ಮಾತ್ರ ಮಾನ್ಯವಾಗಿರುತ್ತದೆ (Valid for {expires_minutes} minutes only).</li>
-                <li style="margin-bottom: 4px;"><strong>ಏಕ-ಬಳಕೆಯ ಟೋಕನ್ / Single-Use:</strong> ಒಮ್ಮೆ ಪಾಸ್‌ವರ್ಡ್ ಮರುಹೊಂದಿಸಿದ ನಂತರ ಈ ಲಿಂಕ್ ಸ್ವಯಂಚಾಲಿತವಾಗಿ ರದ್ದಾಗುತ್ತದೆ.</li>
+                <li style="margin-bottom: 4px;"><strong>ಕಾಲಮಿತಿ / Expiry:</strong> ಈ ಒಟಿಪಿ ಕೇವಲ <strong>{expires_minutes} ನಿಮಿಷಗಳ ಕಾಲ</strong> ಮಾತ್ರ ಮಾನ್ಯವಾಗಿರುತ್ತದೆ (Valid for {expires_minutes} minutes only).</li>
+                <li style="margin-bottom: 4px;"><strong>ಏಕ-ಬಳಕೆಯ ಕೋಡ್ / Single-Use:</strong> ಒಮ್ಮೆ ಪಾಸ್‌ವರ್ಡ್ ಮರುಹೊಂದಿಸಿದ ನಂತರ ಈ ಒಟಿಪಿ ಸ್ವಯಂಚಾಲಿತವಾಗಿ ರದ್ದಾಗುತ್ತದೆ.</li>
                 <li style="margin-bottom: 4px;"><strong>ಅಧಿಕೃತ ಕಳುಹಿಸುವವರು / Official Sender:</strong> ಈ ಸ್ವಯಂಚಾಲಿತ ಸಂದೇಶವನ್ನು ಅಧಿಕೃತವಾಗಿ <strong>{settings.EMAIL_FROM}</strong> ನಿಂದ ಕಳುಹಿಸಲಾಗಿದೆ.</li>
-                <li><strong>ಸೂಚನೆ / Caution:</strong> ನೀವು ಈ ಪಾಸ್‌ವರ್ಡ್ ಮರುಹೊಂದಿಕೆಯನ್ನು ಕೋರದಿದ್ದರೆ, ಈ ಇಮೇಲ್ ಅನ್ನು ನಿರ್ಲಕ್ಷಿಸಿ. ನಿಮ್ಮ ಖಾತೆಯು ಸುರಕ್ಷಿತವಾಗಿರುತ್ತದೆ.</li>
+                <li><strong>ಸೂಚನೆ / Caution:</strong> ನೀವು ಈ ಪಾಸ್‌ವರ್ಡ್ ಮರುಹೊಂದಿಕೆಯನ್ನು ಕೋರದಿದ್ದರೆ, ಈ ಇಮೇಲ್ ಅನ್ನು ನಿರ್ಲಕ್ಷಿಸಿ. ನಿಮ್ಮ ಖಾತೆಯು ಸಂಪೂರ್ಣ ಸುರಕ್ಷಿತವಾಗಿರುತ್ತದೆ.</li>
             </ul>
         </div>
     """
     text = (
-        f"AKV Nuditaranga 2026 - Password Reset Request\n\n"
+        f"AKV Nuditaranga 2026 - Password Reset Verification\n\n"
         f"Hello {student_name},\n\n"
-        f"We received a request to reset the password for your Acharya Kannada Vedike account ({to_email}).\n\n"
-        f"Reset Link (Valid for {expires_minutes} minutes):\n{reset_link}\n\n"
-        f"This single-use link will expire in {expires_minutes} minutes.\n"
-        f"Sent officially from {settings.EMAIL_FROM}.\n"
-        f"If you did not request this reset, please ignore this email."
+        f"We received a request to reset your Acharya Kannada Vedike account password ({to_email}).\n\n"
+        f"YOUR 6-DIGIT OTP: {otp_display if otp_display else 'See link below'}\n\n"
+        f"Enter this 6-digit OTP in the portal window to set your new password.\n"
+        f"Reset Link Alternative: {reset_link}\n\n"
+        f"This OTP expires in {expires_minutes} minutes.\n"
+        f"Sent officially from {settings.EMAIL_FROM}."
     )
     html = wrap_email_html(subject, content)
     return send_email(to_email, subject, html, text, reply_to=settings.EMAIL_FROM)
