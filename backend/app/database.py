@@ -2,6 +2,7 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import NullPool
 from .config import settings
 
 import logging
@@ -35,17 +36,29 @@ if db_url.startswith("sqlite"):
     connect_args = {"check_same_thread": False}
     engine = create_engine(db_url, connect_args=connect_args)
 else:
-    # Optimized PostgreSQL settings: pre-ping ensures healthy connections, pool size prevents exhaustion
+    connect_args = {"connect_timeout": 10}
+
+    # In serverless environments or pooled PostgreSQL (Supabase port 6543 / Neon PgBouncer in transaction mode),
+    # psycopg 3's automatic prepared statement caching causes:
+    # "(psycopg.errors.InvalidSqlStatementName) prepared statement _pg3_1 does not exist".
+    # Setting prepare_threshold=None disables prepared statement caching, making queries 100% compatible.
+    if "psycopg2" not in db_url:
+        try:
+            import psycopg
+            connect_args["prepare_threshold"] = None
+        except ImportError:
+            pass
+
+    # Optimized PostgreSQL settings: NullPool prevents connection leaks in serverless/PgBouncer,
+    # and pre-ping ensures healthy connections before executing queries.
     engine = create_engine(
         db_url,
+        poolclass=NullPool,
         pool_pre_ping=True,
-        pool_recycle=300,
-        pool_size=10,
-        max_overflow=20,
-        connect_args={"connect_timeout": 10}
+        connect_args=connect_args
     )
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, expire_on_commit=False, bind=engine)
 
 Base = declarative_base()
 

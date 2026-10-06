@@ -407,6 +407,11 @@ def forgot_password(
     if not user:
         return {"success": True, "message": success_msg}
 
+    # Extract user attributes immediately to avoid post-commit lazy query
+    user_id = user.id
+    user_email = user.email
+    user_name = user.name
+
     # Generate single-use secure random token
     raw_token = secrets.token_urlsafe(32)
     token_hash = hash_reset_token(raw_token)
@@ -414,12 +419,12 @@ def forgot_password(
 
     # Invalidate previous unused tokens for this user
     db.query(PasswordResetToken).filter(
-        PasswordResetToken.user_id == user.id,
+        PasswordResetToken.user_id == user_id,
         PasswordResetToken.used_at == None
     ).delete()
 
     reset_record = PasswordResetToken(
-        user_id=user.id,
+        user_id=user_id,
         token_hash=token_hash,
         expires_at=expires_at
     )
@@ -431,15 +436,15 @@ def forgot_password(
     reset_link = f"{frontend_base}/#reset-token={raw_token}"
 
     delivery_ok = send_password_reset_email(
-        to_email=user.email,
-        student_name=user.name,
+        to_email=user_email,
+        student_name=user_name,
         reset_link=reset_link,
         expires_minutes=10
     )
     if delivery_ok:
-        print(f"[PASSWORD RESET EMAIL] Automated reset email successfully dispatched to {user.email} from {settings.EMAIL_FROM}.", flush=True)
+        print(f"[PASSWORD RESET EMAIL] Automated reset email successfully dispatched to {user_email} from {settings.EMAIL_FROM}.", flush=True)
     else:
-        print(f"[PASSWORD RESET EMAIL NOTICE] Live SMTP dispatch could not be completed for {user.email}. Preserving 10-minute token in database.", flush=True)
+        print(f"[PASSWORD RESET EMAIL NOTICE] Live SMTP dispatch could not be completed for {user_email}. Preserving 10-minute token in database.", flush=True)
         print("=" * 70, flush=True)
         print(f"[AUTOMATED MAIL - PASSWORD RESET LINK GENERATED]", flush=True)
         print(f"From:    {settings.EMAIL_FROM_NAME} <{settings.EMAIL_FROM}>", flush=True)

@@ -1,11 +1,16 @@
 {
-  "production_version": "2.2.66",
-  "staged_version": "2.2.67",
+  "production_version": "2.3.1",
+  "staged_version": "2.3.2",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.1",
+      "released_at": "2026-10-06T19:29:00+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.1: PostgreSQL PgBouncer & Supabase Pooler Prepared Statement Fix: Resolved '(psycopg.errors.InvalidSqlStatementName) prepared statement \"_pg3_1\" does not exist' during Forgot Password and multi-query transactions by setting prepare_threshold=None in psycopg3 connect_args, switching serverless PostgreSQL to NullPool to eliminate connection leaks across PgBouncer/Supavisor, and configuring expire_on_commit=False in SessionLocal.; Password Reset Query Optimization: Extracted user_id, user_email, and user_name before db.commit() in /api/auth/forgot-password to avoid post-commit attribute re-querying.; Custom Subdomain Integration (akv.acharyahabba.com): Configured default production FRONTEND_URL to https://akv.acharyahabba.com, added origin and regex matching to FastAPI CORS middleware, updated canonical link & social sharing OpenGraph tags with absolute asset URLs in index.html, and added robots.txt & sitemap.xml."
+    },
     {
       "version": "2.2.66",
       "released_at": "2026-10-06T01:29:29+0530",

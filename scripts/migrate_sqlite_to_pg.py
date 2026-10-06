@@ -62,7 +62,14 @@ def migrate(sqlite_path: str, pg_url: str):
     sqlite_session = SqliteSession()
 
     # PostgreSQL Engine & Session
-    pg_engine = create_engine(pg_url, pool_pre_ping=True)
+    pg_connect_args = {"connect_timeout": 15}
+    if "psycopg2" not in pg_url:
+        try:
+            import psycopg
+            pg_connect_args["prepare_threshold"] = None
+        except ImportError:
+            pass
+    pg_engine = create_engine(pg_url, pool_pre_ping=True, connect_args=pg_connect_args)
     PgSession = sessionmaker(bind=pg_engine)
     pg_session = PgSession()
 

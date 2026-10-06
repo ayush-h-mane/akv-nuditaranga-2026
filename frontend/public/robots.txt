@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://akv.acharyahabba.com/sitemap.xml
