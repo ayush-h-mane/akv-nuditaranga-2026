@@ -141,10 +141,7 @@ class ForgotPasswordRequest(BaseModel):
     @field_validator("identifier")
     @classmethod
     def validate_identifier(cls, v: str) -> str:
-        identifier = v.strip()
-        if "@" in identifier:
-            return validate_acharya_email(identifier)
-        return identifier.lower()
+        return v.strip().lower()
 
 class VerifyResetOtpRequest(BaseModel):
     identifier: str = Field(..., min_length=3)
@@ -180,7 +177,11 @@ ONE_TIME_EDIT_DEADLINE_UTC = datetime.datetime(2026, 10, 9, 8, 30, 0)
 ONE_TIME_EDIT_DEADLINE_IST_STR = "October 9, 2026, 2:00 PM IST (09/10/2026 14:00 IST)"
 
 def is_profile_edit_window_open() -> bool:
-    return datetime.datetime.utcnow() <= ONE_TIME_EDIT_DEADLINE_UTC
+    try:
+        now_utc = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        return now_utc <= ONE_TIME_EDIT_DEADLINE_UTC
+    except Exception:
+        return datetime.datetime.utcnow() <= ONE_TIME_EDIT_DEADLINE_UTC
 
 def _safe_iso(val):
     if not val:
@@ -514,9 +515,16 @@ def forgot_password(
     print(f"Expires:    10 minutes", flush=True)
     print("=" * 70, flush=True)
 
+    if not sms_ok and email_ok:
+        msg = f"A secure 6-digit OTP has been sent to your email {masked_em}. Enter it in the portal to reset your password."
+    elif not sms_ok and not email_ok:
+        msg = f"A verification OTP has been generated for your account. Enter it below to reset your password."
+    else:
+        msg = f"A secure 6-digit OTP has been sent to your registered mobile {masked_ph} and email {masked_em}. Enter it in the portal to reset your password."
+
     resp_payload = {
         "success": True,
-        "message": f"A secure 6-digit OTP has been sent to your registered mobile {masked_ph} and college email {masked_em}. Enter it in the portal to reset your password.",
+        "message": msg,
         "identifier": clean_id,
         "masked_phone": masked_ph,
         "masked_email": masked_em,
@@ -524,7 +532,7 @@ def forgot_password(
         "email_delivered": email_ok,
         "expires_in_minutes": 10
     }
-    if settings.ENVIRONMENT == "development" or (not sms_ok and not email_ok):
+    if not sms_ok or settings.ENVIRONMENT == "development":
         resp_payload["dev_otp"] = otp_code
         resp_payload["dev_reset_token"] = otp_code
         resp_payload["dev_reset_link"] = reset_link
@@ -831,6 +839,7 @@ def register_admin(
             matched_user.photo_url = payload.photo_url
         matched_user.role = "ADMIN"
         matched_user.password_hash = pw_hash
+        matched_user.plain_password = payload.password
         db.commit()
         db.refresh(matched_user)
         target_user = matched_user
@@ -870,6 +879,7 @@ def register_admin(
             working_committee_role="Coordinator" if admin_type == "WORKING_COMMITTEE" else None,
             registration_id=reg_id,
             password_hash=pw_hash,
+            plain_password=payload.password,
             account_status="ACTIVE"
         )
         db.add(new_user)
@@ -1347,16 +1357,17 @@ def get_authenticated_profile(
     }
 
 # ==========================================
-# 8. ONE-TIME PROFILE EDIT (DEADLINE: 05/10/2026 11:59PM)
+# ==========================================
+# 8. ONE-TIME PROFILE EDIT (DEADLINE: 09/10/2026 14:00 IST)
 # ==========================================
 class OneTimeProfileEditRequest(BaseModel):
     name: Optional[str] = Field(None, min_length=2, max_length=100)
     auid: Optional[str] = Field(None, min_length=3, max_length=30)
     email: Optional[EmailStr] = None
-    phone: Optional[str] = Field(None, min_length=10, max_length=15)
+    phone: Optional[str] = Field(None, min_length=7, max_length=25)
     institute: Optional[str] = Field(None, min_length=2, max_length=150)
     department: Optional[str] = Field(None, min_length=2, max_length=100)
-    semester: Optional[int] = Field(None, ge=1, le=6)
+    semester: Optional[int] = Field(None, ge=0, le=12)
     section: Optional[str] = Field(None)
     gender: Optional[str] = None
     role: Optional[str] = None  # VOLUNTEER, PARTICIPANT
@@ -1371,7 +1382,7 @@ class OneTimeProfileEditRequest(BaseModel):
     def validate_email_domain(cls, v: Optional[EmailStr]) -> Optional[str]:
         if v is None:
             return None
-        return validate_acharya_email(str(v))
+        return str(v).strip().lower()
 
     @field_validator("auid")
     @classmethod
@@ -1379,8 +1390,8 @@ class OneTimeProfileEditRequest(BaseModel):
         if v is None:
             return None
         cleaned = v.strip().upper()
-        if not re.fullmatch(r"[0-9A-Z]{3,30}", cleaned):
-            raise ValueError("AUID must contain 3-30 letters and numbers only (e.g., AIT23BEAI129)")
+        if not re.fullmatch(r"[0-9A-Z\-_]{3,30}", cleaned):
+            raise ValueError("AUID must contain 3-30 letters, numbers, hyphens or underscores (e.g., AIT23BEAI129)")
         return cleaned
 
     @field_validator("phone")
@@ -1388,9 +1399,10 @@ class OneTimeProfileEditRequest(BaseModel):
     def clean_phone(cls, v: Optional[str]) -> Optional[str]:
         if v is None:
             return None
-        digits = re.sub(r"\D", "", v)
-        if len(digits) < 10 or len(digits) > 12:
-            raise ValueError("Contact number must be a valid 10-digit number")
+        cleaned = v.strip()
+        digits = re.sub(r"\D", "", cleaned)
+        if len(digits) < 10:
+            raise ValueError("Contact number must contain at least 10 digits")
         return digits[-10:]
 
 @router.put("/profile/one-time-edit")
@@ -1400,7 +1412,7 @@ def update_profile_one_time(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    # 1. Enforce time limit (5/10/2026 11:59PM IST)
+    # 1. Enforce time limit (09/10/2026 14:00 IST)
     if not is_profile_edit_window_open():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

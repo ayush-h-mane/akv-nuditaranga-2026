@@ -69,10 +69,6 @@ export const ForgotPasswordModal = ({ isOpen, onClose, onOpenResetView }) => {
       setError("Please enter your Registered Mobile Number, AUID, or College Email.");
       return;
     }
-    if (cleanId.includes("@") && !isAcharyaEmail(cleanId)) {
-      setError(ACHARYA_EMAIL_ERROR);
-      return;
-    }
 
     setLoading(true);
     setError("");
@@ -280,15 +276,15 @@ export const ForgotPasswordModal = ({ isOpen, onClose, onOpenResetView }) => {
               </div>
 
               {devOtp && (
-                <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl text-emerald-900 text-xs">
-                  <p className="font-bold flex items-center gap-1 text-emerald-800">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>Development Testing OTP: <span className="font-mono text-sm underline">{devOtp}</span></span>
+                <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl text-emerald-900 text-xs shadow-xs">
+                  <p className="font-bold flex items-center gap-1.5 text-emerald-800">
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Instant Verification Code: <span className="font-mono text-sm underline font-black">{devOtp}</span></span>
                   </p>
                   <button
                     type="button"
                     onClick={() => setOtp(devOtp)}
-                    className="mt-1.5 py-1 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[11px] font-bold"
+                    className="mt-2 py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold cursor-pointer transition-all active:scale-95 shadow-xs"
                   >
                     Click to Auto-Fill OTP ({devOtp})
                   </button>
