@@ -10,8 +10,10 @@ import {
   X,
   ShieldAlert,
   Save,
-  Info
+  Info,
+  QrCode
 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { InstituteDepartmentSelect } from "./InstituteDepartmentSelect";
 import { CandidatePhotoUpload } from "./CandidatePhotoUpload";
 import { AKV_DOMAINS } from "../config/institutesData";
@@ -28,8 +30,8 @@ export const MyProfileAttendance = ({ profile, attendanceData, loading, error, o
   const [localProfile, setLocalProfile] = useState(profile);
   const activeProfile = localProfile || profile;
 
-  // Deadline: October 5, 2026, 11:59 PM IST (23:59:59)
-  const deadline = new Date("2026-10-05T23:59:59+05:30");
+  // Deadline: October 9, 2026, 2:00 PM IST (14:00:00)
+  const deadline = new Date("2026-10-09T14:00:00+05:30");
   const isExpired = new Date() > deadline;
   const hasEdited = Boolean(activeProfile?.profile_edited_once);
   const canEdit = !hasEdited && !isExpired;
@@ -207,7 +209,7 @@ export const MyProfileAttendance = ({ profile, attendanceData, loading, error, o
               </div>
               <p className="mt-1 text-xs text-amber-800 leading-relaxed max-w-2xl">
                 You have a one-time opportunity to update all your account details (Name, AUID, Email, Phone, Dept, Sem, etc.).
-                This window is strictly valid until <strong>October 5, 2026, 11:59 PM IST (05/10/2026)</strong>.
+                This window is strictly valid until <strong>October 9, 2026, 2:00 PM IST (09/10/2026 14:00 IST)</strong>.
               </p>
             </div>
           </div>
@@ -236,9 +238,73 @@ export const MyProfileAttendance = ({ profile, attendanceData, loading, error, o
         <div className="flex items-center gap-3 rounded-2xl border border-stone-200 bg-stone-50 p-3.5 shadow-xs">
           <Clock3 className="h-5 w-5 text-stone-500 shrink-0" />
           <div className="text-xs text-stone-600">
-            <span className="font-bold">Profile Update Window Closed</span>: The one-time details update deadline ended on October 5, 2026, 11:59 PM.
+            <span className="font-bold">Profile Update Window Closed</span>: The one-time details update deadline ended on October 9, 2026, 2:00 PM IST.
           </div>
         </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* VOLUNTEER ATTENDANCE QR PASS (OFFICIAL)                   */}
+      {/* ========================================================= */}
+      {(activeProfile?.role === "VOLUNTEER" || activeProfile?.volunteer_domain) && (
+        <section className="rounded-3xl border-2 border-kar-red/25 bg-gradient-to-br from-white via-amber-50/30 to-red-50/25 p-5 sm:p-7 shadow-sm">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+            <div className="space-y-2 text-center sm:text-left flex-1">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-kar-red/10 border border-kar-red/20 text-kar-red text-[11px] font-black uppercase tracking-wider">
+                <QrCode className="w-3.5 h-3.5" />
+                <span>Official Volunteer Attendance Pass</span>
+              </div>
+              <h3 className="text-lg font-black text-stone-900 tracking-tight">
+                Scan QR Code for Daily Attendance Marking
+              </h3>
+              <p className="text-xs text-stone-600 max-w-lg leading-relaxed">
+                Present this official QR pass to your Domain Coordinator or Superadmin at the attendance desk for instant, timestamped Check-In and Check-Out.
+              </p>
+              <div className="pt-2 flex flex-wrap items-center justify-center sm:justify-start gap-2 text-xs">
+                <span className="font-bold text-stone-900">{activeProfile?.name}</span>
+                <span className="text-stone-300">•</span>
+                <span className="font-mono font-bold text-stone-700 bg-stone-100 px-2 py-0.5 rounded-md border border-stone-200">
+                  {activeProfile?.auid}
+                </span>
+                {activeProfile?.volunteer_domain && (
+                  <>
+                    <span className="text-stone-300">•</span>
+                    <span className="font-extrabold text-kar-red px-2.5 py-0.5 rounded-md bg-red-100 border border-red-200">
+                      {activeProfile.volunteer_domain} Domain
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="shrink-0 flex flex-col items-center p-4 bg-white rounded-2xl border-2 border-dashed border-kar-red/30 shadow-md">
+              <div className="p-2 bg-white rounded-xl">
+                <QRCodeSVG
+                  value={JSON.stringify({
+                    type: "VOLUNTEER_ATTENDANCE",
+                    auid: activeProfile?.auid || "",
+                    reg_id: activeProfile?.registration_id || "",
+                    user_id: activeProfile?.id || activeProfile?.user_id || "",
+                    name: activeProfile?.name || "",
+                    domain: activeProfile?.volunteer_domain || activeProfile?.akv_dept || "VOLUNTEER",
+                    role: "VOLUNTEER"
+                  })}
+                  size={165}
+                  level="M"
+                  includeMargin={false}
+                />
+              </div>
+              <div className="mt-2 text-center">
+                <span className="text-[10px] font-mono font-bold text-stone-600 block uppercase tracking-wider">
+                  {activeProfile?.registration_id || activeProfile?.auid}
+                </span>
+                <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full inline-block mt-0.5 border border-emerald-200">
+                  Ready to Scan
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
       )}
 
       {/* ========================================================= */}

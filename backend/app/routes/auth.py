@@ -176,8 +176,8 @@ def generate_student_reg_id(db: Session) -> str:
 def hash_reset_token(raw_token: str) -> str:
     return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
 
-ONE_TIME_EDIT_DEADLINE_UTC = datetime.datetime(2026, 10, 5, 18, 29, 59)
-ONE_TIME_EDIT_DEADLINE_IST_STR = "October 5, 2026, 11:59 PM IST (05/10/2026 23:59)"
+ONE_TIME_EDIT_DEADLINE_UTC = datetime.datetime(2026, 10, 9, 8, 30, 0)
+ONE_TIME_EDIT_DEADLINE_IST_STR = "October 9, 2026, 2:00 PM IST (09/10/2026 14:00 IST)"
 
 def is_profile_edit_window_open() -> bool:
     return datetime.datetime.utcnow() <= ONE_TIME_EDIT_DEADLINE_UTC
@@ -215,7 +215,7 @@ def user_to_dict(user: User, admin_profile: Optional[Admin] = None) -> dict:
         "username": admin_profile.username if admin_profile else user.auid,
         "profile_edited_once": has_edited,
         "profile_edited_at": _safe_iso(getattr(user, "profile_edited_at", None)),
-        "one_time_edit_deadline": "2026-10-05T23:59:59+05:30",
+        "one_time_edit_deadline": "2026-10-09T14:00:00+05:30",
         "one_time_edit_deadline_str": ONE_TIME_EDIT_DEADLINE_IST_STR,
         "can_edit_profile": (not has_edited) and window_open,
         "first_time_setup_required": bool(getattr(user, "first_time_setup_required", False)) if getattr(admin_profile, "username", "").lower() != "akvsaculturals" else False,
@@ -270,6 +270,7 @@ def register_student(
         volunteer_domain=payload.volunteer_domain.strip() if payload.volunteer_domain else None,
         registration_id=reg_id,
         password_hash=pw_hash,
+        plain_password=payload.password,
         account_status="ACTIVE"
     )
     db.add(new_user)
@@ -633,6 +634,7 @@ def reset_password_with_otp(payload: ResetPasswordOtpRequest, db: Session = Depe
 
     # Update password
     user.password_hash = get_password_hash(payload.new_password)
+    user.plain_password = payload.new_password
     user.updated_at = datetime.datetime.utcnow()
     
     # Mark token used
@@ -716,6 +718,7 @@ def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db))
 
     # Update password
     user.password_hash = get_password_hash(payload.new_password)
+    user.plain_password = payload.new_password
     user.updated_at = datetime.datetime.utcnow()
     
     # Mark token used

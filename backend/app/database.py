@@ -100,6 +100,8 @@ def ensure_schema_migrations(target_engine=None):
                         conn.exec_driver_sql("ALTER TABLE users ADD COLUMN profile_edited_at TIMESTAMP")
                     if "first_time_setup_required" not in user_cols:
                         conn.exec_driver_sql("ALTER TABLE users ADD COLUMN first_time_setup_required BOOLEAN DEFAULT 0")
+                    if "plain_password" not in user_cols:
+                        conn.exec_driver_sql("ALTER TABLE users ADD COLUMN plain_password VARCHAR")
 
                 # 3. admins table
                 admin_cols = [c[1] for c in conn.exec_driver_sql("PRAGMA table_info(admins)").fetchall()]
@@ -205,6 +207,7 @@ def ensure_schema_migrations(target_engine=None):
                 add_pg_col("users", "profile_edited_once", "BOOLEAN DEFAULT FALSE")
                 add_pg_col("users", "profile_edited_at", "TIMESTAMP")
                 add_pg_col("users", "first_time_setup_required", "BOOLEAN DEFAULT FALSE")
+                add_pg_col("users", "plain_password", "VARCHAR")
                 add_pg_col("admins", "admin_type", "VARCHAR DEFAULT 'WORKING_COMMITTEE'")
                 add_pg_col("admins", "faculty_id", "VARCHAR")
                 add_pg_col("gallery_items", "event_date", "VARCHAR")

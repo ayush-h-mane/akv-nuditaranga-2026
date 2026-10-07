@@ -112,8 +112,16 @@ def get_wc_members_query(db: Session):
         )
     )
 
+ATTENDANCE_DEADLINE_END_DATE = "2026-11-05"  # Active till 5/11/2026, then disabled
+
 def verify_wc_attendance_date_is_open(date_str: str):
-    if date_str > get_current_ist_date_str():
+    today = get_current_ist_date_str()
+    if today > ATTENDANCE_DEADLINE_END_DATE or date_str > ATTENDANCE_DEADLINE_END_DATE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Working committee attendance marking closed on November 5, 2026 (05/11/2026). Further attendance marking is disabled."
+        )
+    if date_str > today:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Attendance cannot be marked before the selected date arrives."

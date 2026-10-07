@@ -35,6 +35,7 @@ import {
 import { CameraQRScanner } from "../components/CameraQRScanner";
 import { EventImageUpload } from "../components/EventImageUpload";
 import { MyProfileAttendance } from "../components/MyProfileAttendance";
+import { RoleUpdatesBanner } from "../components/RoleUpdatesBanner";
 import { AKV_DOMAINS } from "../config/institutesData";
 
 export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
@@ -97,6 +98,14 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
 
   const [feedback, setFeedback] = useState({ type: "", text: "" });
   const selectedDateIsFuture = Boolean(selectedDate && selectedDate > new Date().toISOString().slice(0, 10));
+
+  // Volunteer Attendance QR Scanner State (v2.3.8)
+  const [showVolunteerScanner, setShowVolunteerScanner] = useState(false);
+  const [scannedVolunteerInfo, setScannedVolunteerInfo] = useState(null);
+  const [scannerFeedback, setScannerFeedback] = useState("");
+  const attendanceCutoffDate = "2026-11-05";
+  const todayIstStr = new Date().toISOString().slice(0, 10);
+  const isAttendanceWindowExpired = Boolean(todayIstStr > attendanceCutoffDate || (selectedDate && selectedDate > attendanceCutoffDate));
 
   // Cultural Gallery State
   const [galleryItems, setGalleryItems] = useState(() => api.getCachedGallery());
@@ -281,6 +290,43 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
       notify("error", err.message || "Check-Out failed.");
     } finally {
       setMarkingUserIds(prev => prev.filter(id => id !== participantUserId));
+    }
+  };
+
+  // QR Scan Handler for Volunteers
+  const handleScanVolunteerQR = (decodedText) => {
+    if (!decodedText) return;
+    try {
+      let targetAuid = "";
+      let targetUserId = null;
+      let targetRegId = "";
+
+      try {
+        const parsed = JSON.parse(decodedText);
+        targetAuid = (parsed.auid || "").trim().toUpperCase();
+        targetUserId = parsed.user_id || parsed.id || null;
+        targetRegId = (parsed.registration_id || parsed.reg_id || "").trim().toUpperCase();
+      } catch (e) {
+        const clean = decodedText.trim().toUpperCase();
+        targetAuid = clean;
+        targetRegId = clean;
+        if (/^\d+$/.test(clean)) targetUserId = parseInt(clean, 10);
+      }
+
+      const match = attendanceRoster.find(p => 
+        (targetUserId && p.user_id === targetUserId) ||
+        (targetAuid && p.auid && p.auid.toUpperCase() === targetAuid) ||
+        (targetRegId && p.registration_id && p.registration_id.toUpperCase() === targetRegId)
+      );
+
+      if (match) {
+        setScannedVolunteerInfo(match);
+        setScannerFeedback(`Found volunteer: ${match.name} (${match.auid})`);
+      } else {
+        setScannerFeedback(`Volunteer not found in current domain roster. Scanned: ${decodedText}`);
+      }
+    } catch (err) {
+      setScannerFeedback(`Could not process QR code: ${err.message}`);
     }
   };
 
@@ -592,6 +638,9 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
           </button>
         </div>
 
+        {/* Dedicated Admin Portal Updates Message Bar */}
+        <RoleUpdatesBanner role="ADMIN" />
+
         {activeTab === "my-account" && (
           <MyProfileAttendance
             profile={myAccountData?.profile || user}
@@ -645,6 +694,20 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-kar-red" : ""}`} />
                   <span>Refresh Roster</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setScannedVolunteerInfo(null);
+                    setScannerFeedback("");
+                    setShowVolunteerScanner(true);
+                  }}
+                  className="px-3.5 py-2 rounded-xl text-xs font-black text-white bg-emerald-600 hover:bg-emerald-700 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
+                  title="Scan Volunteer QR Pass"
+                >
+                  <Scan className="w-4 h-4 text-emerald-200" />
+                  <span>Scan Volunteer QR</span>
                 </button>
 
                 {attendanceSession.is_submitted ? (
@@ -863,21 +926,17 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto rounded-2xl border border-stone-200 bg-white max-w-4xl xl:max-w-5xl shadow-2xs">
-                <table className="w-full min-w-[620px] text-left text-xs table-fixed">
+              <div className="overflow-x-auto rounded-2xl border border-stone-200 bg-white max-w-2xl mx-auto shadow-xs">
+                <table className="w-full text-left text-xs">
                   <colgroup>
-                    <col className="w-[36%]" />
-                    <col className="w-[22%]" />
-                    <col className="w-[18%]" />
-                    <col className="w-[24%]" />
+                    <col className="w-[62%]" />
+                    <col className="w-[38%]" />
                   </colgroup>
-                  <thead className="bg-stone-50 text-stone-600 uppercase tracking-wider font-extrabold border-b border-stone-200">
+                  <thead className="bg-stone-50 text-stone-500 uppercase tracking-wider font-extrabold border-b border-stone-200">
                     <tr>
                       <th className="py-2.5 px-3.5">
-                        {role !== "SUPERADMIN" && (user?.volunteer_domain || user?.akv_dept) ? "Volunteer Name" : "Participant Name"}
+                        {role !== "SUPERADMIN" && (user?.volunteer_domain || user?.akv_dept) ? "Volunteer" : "Participant"}
                       </th>
-                      <th className="py-2.5 px-3.5">AUID</th>
-                      <th className="py-2.5 px-3.5">Status</th>
                       <th className="py-2.5 px-3.5 text-right">Attendance Action</th>
                     </tr>
                   </thead>
@@ -887,50 +946,43 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
                       const isLocked = attendanceSession.locked_for_admin && role !== "SUPERADMIN";
 
                       return (
-                        <tr key={p.user_id} className="hover:bg-stone-50/80 transition-colors">
-                          <td className="py-2.5 px-3.5 font-bold text-stone-900 truncate" title={p.name}>
-                            <span className="font-bold text-stone-900 block truncate text-sm">{p.name}</span>
-                            {p.akv_dept && p.akv_dept !== "--" && (
-                              <span className="text-[10px] text-kar-red font-semibold block truncate">
-                                {p.akv_dept}
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-2.5 px-3.5 font-mono text-stone-800 font-bold text-sm truncate" title={p.auid}>
-                            {p.auid}
-                          </td>
-                          <td className="py-2.5 px-3.5">
-                            <div className="flex flex-col items-start gap-0.5">
-                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold inline-block ${
-                                p.status === "COMPLETED"
-                                  ? "bg-blue-100 text-blue-800 border border-blue-200"
-                                  : p.status === "CHECKED_IN"
-                                  ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                                  : "bg-stone-100 text-stone-500"
-                              }`}>
-                                {p.status === "COMPLETED" && "COMPLETED"}
-                                {p.status === "CHECKED_IN" && "CHECKED IN"}
-                                {p.status === "NOT_MARKED" && "NOT MARKED"}
+                        <tr key={p.user_id} className="hover:bg-amber-50/20 transition-colors">
+                          <td className="py-3 px-3.5">
+                            <span className="font-bold text-stone-900 block text-sm leading-tight">{p.name}</span>
+                            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                              {p.akv_dept && p.akv_dept !== "--" && (
+                                <span className="text-[11px] text-kar-red font-semibold">
+                                  {p.akv_dept}
+                                </span>
+                              )}
+                              <span className="text-stone-300">•</span>
+                              <span className="font-mono text-[11px] font-bold text-stone-600">
+                                {p.auid}
                               </span>
                               {p.check_in_time && (
-                                <span className="text-[10px] text-stone-400 font-mono font-semibold pl-0.5">
+                                <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-mono font-bold border border-emerald-200">
                                   In: {p.check_in_time}
                                 </span>
                               )}
                             </div>
                           </td>
-                          <td className="py-2.5 px-3.5 text-right">
-                            {isLocked || selectedDateIsFuture ? (
+                          <td className="py-3 px-3.5 text-right">
+                            {isAttendanceWindowExpired ? (
                               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-bold text-stone-400 bg-stone-100 border border-stone-200 cursor-not-allowed">
                                 <Lock className="w-3.5 h-3.5" />
-                                <span>{selectedDateIsFuture ? "Opens on this date" : "Locked"}</span>
+                                <span>Closed (05/11/2026)</span>
+                              </span>
+                            ) : isLocked || selectedDateIsFuture ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-bold text-stone-400 bg-stone-100 border border-stone-200 cursor-not-allowed">
+                                <Lock className="w-3.5 h-3.5" />
+                                <span>{selectedDateIsFuture ? "Future Date" : "Locked"}</span>
                               </span>
                             ) : p.status === "NOT_MARKED" ? (
                               <button
                                 type="button"
                                 onClick={() => handleCheckIn(p.user_id)}
                                 disabled={isMarking}
-                                className="px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all flex items-center gap-1.5 ml-auto disabled:opacity-50 cursor-pointer active:scale-95"
+                                className="px-3.5 py-2 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all flex items-center gap-1.5 ml-auto disabled:opacity-50 cursor-pointer active:scale-95"
                               >
                                 <Check className="w-3.5 h-3.5" />
                                 <span>{isMarking ? "Recording..." : "CHECK IN"}</span>
@@ -940,14 +992,14 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
                                 type="button"
                                 onClick={() => handleCheckOut(p.user_id)}
                                 disabled={isMarking || !p.check_in_time || (p.check_in_time && !p.check_out_available)}
-                                className="px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-amber-500 hover:bg-amber-600 text-stone-950 shadow-xs transition-all flex items-center gap-1.5 ml-auto disabled:opacity-50 cursor-pointer active:scale-95"
+                                className="px-3.5 py-2 rounded-xl text-xs font-black bg-amber-500 hover:bg-amber-600 text-stone-950 shadow-xs transition-all flex items-center gap-1.5 ml-auto disabled:opacity-50 cursor-pointer active:scale-95"
                               >
                                 <Clock className="w-3.5 h-3.5" />
                                 <span>{isMarking ? "Recording..." : p.check_out_available === false ? "AFTER 1 HR" : "CHECK OUT"}</span>
                               </button>
                             ) : (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200">
-                                <CheckCheck className="w-3.5 h-3.5" />
+                              <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold text-emerald-800 bg-emerald-100/80 border border-emerald-200">
+                                <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
                                 <span>Completed</span>
                               </span>
                             )}
@@ -1340,6 +1392,134 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
                   <CheckSquare className="w-3.5 h-3.5 text-amber-300" />
                   <span>{submitLoading ? "Submitting & Locking..." : "Confirm & Submit Attendance"}</span>
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Volunteer Attendance QR Scanner Modal */}
+        {showVolunteerScanner && (
+          <div 
+            className="fixed inset-0 z-[110] bg-stone-950/70 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={(e) => e.target === e.currentTarget && setShowVolunteerScanner(false)}
+          >
+            <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col max-h-[92vh]">
+              <div className="bg-gradient-to-r from-stone-900 to-stone-950 p-4 sm:p-5 text-white flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Scan className="w-5 h-5 text-emerald-400" />
+                  <div>
+                    <h4 className="font-extrabold text-sm sm:text-base text-white">Scan Volunteer Attendance Pass</h4>
+                    <p className="text-[10px] text-stone-400">Position volunteer profile QR code in camera view</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => { setShowVolunteerScanner(false); setScannedVolunteerInfo(null); setScannerFeedback(""); }} 
+                  className="p-1.5 rounded-lg text-stone-400 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-4 sm:p-6 space-y-4 overflow-y-auto">
+                {!scannedVolunteerInfo ? (
+                  <div>
+                    <p className="text-xs text-stone-600 mb-3 text-center">
+                      Point camera at the QR code displayed in the volunteer's profile pass:
+                    </p>
+                    <div className="rounded-2xl overflow-hidden border-2 border-dashed border-emerald-500/50 bg-stone-950/5 p-2">
+                      <CameraQRScanner
+                        onScanSuccess={handleScanVolunteerQR}
+                        autoStart={true}
+                      />
+                    </div>
+                    {scannerFeedback && (
+                      <p className="mt-3 text-center text-xs font-bold text-amber-800 bg-amber-50 p-2.5 rounded-xl border border-amber-200">
+                        {scannerFeedback}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200 space-y-2 text-center">
+                      <CheckCircle2 className="w-9 h-9 text-emerald-600 mx-auto" />
+                      <h4 className="text-base font-extrabold text-stone-900">{scannedVolunteerInfo.name}</h4>
+                      <div className="flex items-center justify-center gap-2 text-xs">
+                        <span className="font-mono font-bold text-stone-700 bg-white px-2 py-0.5 rounded border border-stone-200">
+                          {scannedVolunteerInfo.auid}
+                        </span>
+                        <span className="text-stone-300">•</span>
+                        <span className="font-extrabold text-kar-red bg-red-100/80 px-2 py-0.5 rounded">
+                          {scannedVolunteerInfo.akv_dept || "Volunteer"}
+                        </span>
+                      </div>
+                      <div className="pt-2">
+                        <span className={`px-3 py-1 rounded-full text-xs font-black uppercase inline-block ${
+                          scannedVolunteerInfo.status === "COMPLETED" 
+                            ? "bg-blue-100 text-blue-900 border border-blue-200" 
+                            : scannedVolunteerInfo.status === "CHECKED_IN"
+                            ? "bg-emerald-100 text-emerald-900 border border-emerald-200"
+                            : "bg-stone-100 text-stone-700 border border-stone-200"
+                        }`}>
+                          Current Status: {scannedVolunteerInfo.status}
+                        </span>
+                        {scannedVolunteerInfo.check_in_time && (
+                          <p className="text-[11px] text-stone-500 font-mono mt-1 font-semibold">
+                            Check-In recorded at {scannedVolunteerInfo.check_in_time}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      {isAttendanceWindowExpired ? (
+                        <div className="p-3 bg-red-50 text-red-700 border border-red-200 rounded-xl text-center text-xs font-bold">
+                          Attendance window closed on 05/11/2026.
+                        </div>
+                      ) : scannedVolunteerInfo.status === "NOT_MARKED" ? (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await handleCheckIn(scannedVolunteerInfo.user_id);
+                            setShowVolunteerScanner(false);
+                            setScannedVolunteerInfo(null);
+                          }}
+                          className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                        >
+                          <Check className="w-4 h-4" />
+                          <span>RECORD CHECK-IN FOR {scannedVolunteerInfo.name.toUpperCase()}</span>
+                        </button>
+                      ) : scannedVolunteerInfo.status === "CHECKED_IN" ? (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await handleCheckOut(scannedVolunteerInfo.user_id);
+                            setShowVolunteerScanner(false);
+                            setScannedVolunteerInfo(null);
+                          }}
+                          className="w-full py-3 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-950 font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                        >
+                          <Clock className="w-4 h-4" />
+                          <span>RECORD CHECK-OUT FOR {scannedVolunteerInfo.name.toUpperCase()}</span>
+                        </button>
+                      ) : (
+                        <div className="p-3 bg-stone-100 text-stone-700 border border-stone-200 rounded-xl text-center text-xs font-bold">
+                          ✓ Attendance already completed for today.
+                        </div>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setScannedVolunteerInfo(null);
+                          setScannerFeedback("");
+                        }}
+                        className="w-full py-2.5 px-4 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs transition-colors cursor-pointer"
+                      >
+                        Scan Another Volunteer
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
