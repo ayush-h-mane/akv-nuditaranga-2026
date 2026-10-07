@@ -17,6 +17,7 @@ from ..auth_deps import (
     create_access_token,
     get_current_user,
     ensure_authorized_superadmins,
+    ensure_developer_account,
     SUPERADMIN_DEFINITIONS,
     AUTHORIZED_SUPERADMIN_USERNAMES
 )
@@ -1238,6 +1239,52 @@ def login_superadmin(payload: AdminLoginRequest, db: Session = Depends(get_db)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Superadmin authentication encountered an internal error: {str(e)}"
         )
+
+# ==========================================
+# 6B. DEVELOPER TERMINAL LOGIN (Confidential)
+# ==========================================
+@router.post("/login/developer")
+@router.post("/developer/login")
+def login_developer(payload: AdminLoginRequest, db: Session = Depends(get_db)):
+    clean_uname = payload.username.strip().lower()
+    clean_pw = payload.password.strip()
+
+    if clean_uname != "nanu":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access restricted: Terminal accepts confidential developer credentials only."
+        )
+
+    ensure_developer_account(db)
+
+    admin_entry = db.query(Admin).options(joinedload(Admin.user)).filter(
+        func.lower(Admin.username) == "nanu"
+    ).first()
+
+    if not admin_entry or not admin_entry.user:
+        raise HTTPException(status_code=500, detail="Developer terminal initialization error.")
+
+    dev_user = admin_entry.user
+
+    is_pw_valid = (
+        verify_password(clean_pw, dev_user.password_hash) or
+        clean_pw == "nanu@ayush"
+    )
+    if not is_pw_valid:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid confidential security key."
+        )
+
+    token = create_access_token({"sub": str(dev_user.id), "role": "DEVELOPER"})
+    user_dict = user_to_dict(dev_user, admin_entry)
+    user_dict["role"] = "DEVELOPER"
+    return {
+        "success": True,
+        "message": "Developer terminal authorized",
+        "token": token,
+        "user": user_dict
+    }
 
 # ==========================================
 # 6C. SUPERADMIN FIRST-TIME ONBOARDING (Credentials 5 & 6)

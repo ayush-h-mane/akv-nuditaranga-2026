@@ -1,11 +1,16 @@
 {
-  "production_version": "2.3.9",
-  "staged_version": "2.3.10",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.3.10",
+  "staged_version": "2.3.11",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.10",
+      "released_at": "2026-10-08T01:07:03+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.10: Superadmin Portal Modular Simplification: Restricted the standard Superadmin dashboard navigation strictly to 7 core modules: Dashboard Overview, My Profile & Attendance, Working Committee Directory, Event Registrations, Reels & Posts, Event Configurations, and Karunada Vaibhava Schedule.; Dedicated Developer Portal (https://akv.acharyahabba.com/developer): Created independent /developer route and stealth terminal console with full access to all deployed Superadmin capabilities plus advanced developer tooling.; Confidential Developer Authentication: Seeded and configured root developer credentials (username: 'nanu', password: 'nanu@ayush') with stealth login form displaying placeholders strictly as 'confidential' without any example hints.; Directory Confidentiality & Isolation: Completely hidden developer account 'nanu' from all student, volunteer, admin, working committee, and attendance directories; strictly filtered out Superadmin accounts from Admins & Faculty directory.; Superadmin Profiles Management: Implemented comprehensive Developer SuperAdmin Manager allowing the developer to view, inspect plain passwords, create, modify, and delete Superadmin profiles with full audit logging.; Developer Diagnostics & Telemetry: Added live system telemetry dashboard providing real-time database table counts, engine metrics, operational health status, and multi-node cache flush controls."
+    },
     {
       "version": "2.3.9",
       "released_at": "2026-10-08T00:13:01+0530",

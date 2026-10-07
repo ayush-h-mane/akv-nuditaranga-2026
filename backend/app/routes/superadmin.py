@@ -113,7 +113,14 @@ def list_students(
     current_user: User = Depends(require_superadmin),
     db: Session = Depends(get_db)
 ):
-    query = db.query(User).options(defer(User.photo_url), defer(User.password_hash)).filter(User.role != "SUPERADMIN")
+    query = db.query(User).options(
+        defer(User.photo_url), defer(User.password_hash)
+    ).filter(
+        User.role != "SUPERADMIN",
+        User.role != "DEVELOPER",
+        func.lower(User.auid) != "dev-nanu",
+        func.lower(User.email) != "nanu.dev@acharyahabba.com"
+    )
 
     if role and role.upper() != "ALL":
         query = query.filter(User.role == role.upper())
@@ -268,10 +275,16 @@ def list_admins(
     current_user: User = Depends(require_superadmin),
     db: Session = Depends(get_db)
 ):
-    # Retrieve all registered coordinators, faculty admins, and committee members (excluding only root system account)
+    # Retrieve registered coordinators and faculty admins (strictly excluding Superadmins and Developer)
     admins = db.query(Admin).options(
         joinedload(Admin.user).defer(User.password_hash)
     ).join(User, Admin.user_id == User.id).filter(
+        User.role != "SUPERADMIN",
+        Admin.admin_type != "SUPERADMIN",
+        User.role != "DEVELOPER",
+        Admin.admin_type != "DEVELOPER",
+        func.lower(Admin.username) != "nanu",
+        func.lower(User.email) != "nanu.dev@acharyahabba.com",
         func.lower(User.email) != "akv@acharya.ac.in",
         func.lower(Admin.username) != "akv-nt-2026"
     ).order_by(
@@ -554,7 +567,11 @@ def list_all_volunteers(
     """
     query = db.query(User).options(
         defer(User.password_hash)
-    ).filter(User.role == "VOLUNTEER")
+    ).filter(
+        User.role == "VOLUNTEER",
+        User.role != "DEVELOPER",
+        User.auid != "DEV-NANU"
+    )
 
     if department and department != "all":
         query = query.filter(User.department == department)
