@@ -1,11 +1,16 @@
 {
-  "production_version": "2.3.5",
-  "staged_version": "2.3.6",
+  "production_version": "2.3.6",
+  "staged_version": "2.3.7",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.6",
+      "released_at": "2026-10-07T08:33:46+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.6: Vercel Deployment Size Optimization: Configured .vercelignore with comprehensive exclusion rules filtering out ~31.5 MB of unreferenced mockups, duplicate public images, local SQLite database dumps, and test scripts while preserving all local files intact on disk."
+    },
     {
       "version": "2.3.5",
       "released_at": "2026-10-06T21:53:21+0530",
