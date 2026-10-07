@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { useModalAlert } from "../context/ModalAlertContext";
@@ -337,15 +337,27 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
     }
   };
 
+  const scanInProgressRef = useRef(false);
+  const lastScanTimestampRef = useRef(0);
+
   // QR Scan Handler for Volunteers (Integrated 1-Hour Lock & Review Check-Out Workflow)
   const handleScanVolunteerQR = async (decodedText) => {
-    if (!decodedText || scanProcessing) return;
+    const now = Date.now();
+    if (!decodedText || scanInProgressRef.current || (now - lastScanTimestampRef.current < 2500)) {
+      return;
+    }
+    // Synchronous immediate lock: stops multiple video frames from triggering requests
+    scanInProgressRef.current = true;
+    lastScanTimestampRef.current = now;
     setScanProcessing(true);
+
+    // Immediately close camera scanner modal so video feed is stopped instantly
+    setShowVolunteerScanner(false);
+    setScannedVolunteerInfo(null);
+    setScannerFeedback("");
+
     try {
       const res = await api.scanAttendanceQR(decodedText, selectedDate);
-      setShowVolunteerScanner(false);
-      setScannedVolunteerInfo(null);
-      setScannerFeedback("");
       setScanResultModalData(res);
       setShowScanResultModal(true);
 
@@ -410,7 +422,6 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
         }
       }
     } catch (err) {
-      setShowVolunteerScanner(false);
       setScanResultModalData({
         success: false,
         action: "ERROR",
@@ -420,7 +431,10 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
       });
       setShowScanResultModal(true);
     } finally {
-      setTimeout(() => setScanProcessing(false), 800);
+      setTimeout(() => {
+        scanInProgressRef.current = false;
+        setScanProcessing(false);
+      }, 1500);
     }
   };
 
@@ -1648,6 +1662,7 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
             setScanResultModalData(null);
           }}
           onScanNext={() => {
+            scanInProgressRef.current = false;
             setShowScanResultModal(false);
             setScanResultModalData(null);
             setShowVolunteerScanner(true);

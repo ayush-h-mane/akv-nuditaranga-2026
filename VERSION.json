@@ -1,11 +1,16 @@
 {
-  "production_version": "2.3.11",
-  "staged_version": "2.3.12",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.3.12",
+  "staged_version": "2.3.13",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.12",
+      "released_at": "2026-10-08T02:34:12+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.12: QR Scanner Rapid Multi-Fire & Looping Popup Fix: Eliminated the continuous non-stop popups and flood of duplicate attendance requests caused by stale closure state and unpaused video frames in CameraQRScanner.; Atomic Ref-Level Throttling & Immediate Camera Teardown: Introduced synchronous isLockedRef and scanInProgressRef locks across CameraQRScanner, AdminPage, and SuperAdminDashboard, pausing video analysis immediately upon QR detection and closing the scanner modal instantly before the HTTP request is awaited.; Frame Debouncing: Enforced a 3.5-second frame cooldown on identical codes, guaranteeing exactly one API request and one modal popup per scan interaction."
+    },
     {
       "version": "2.3.11",
       "released_at": "2026-10-08T02:10:35+0530",

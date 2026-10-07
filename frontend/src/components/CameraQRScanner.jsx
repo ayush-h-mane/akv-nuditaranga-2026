@@ -30,6 +30,9 @@ export const CameraQRScanner = ({
   
   const qrScannerRef = useRef(null);
   const readerId = useRef(`akv-qr-reader-${Math.random().toString(36).substring(2, 9)}`).current;
+  const isLockedRef = useRef(false);
+  const lastScannedTextRef = useRef("");
+  const lastScannedTimeRef = useRef(0);
 
   // Sound generator using Web Audio API (no external asset needed)
   const playBeep = () => {
@@ -77,6 +80,7 @@ export const CameraQRScanner = ({
   // Manage camera scanning lifecycle
   useEffect(() => {
     if (!isScanning) {
+      isLockedRef.current = true;
       if (qrScannerRef.current) {
         qrScannerRef.current
           .stop()
@@ -92,6 +96,7 @@ export const CameraQRScanner = ({
       return;
     }
 
+    isLockedRef.current = false;
     setErrorMessage("");
     const scanner = new Html5Qrcode(readerId);
     qrScannerRef.current = scanner;
@@ -113,8 +118,19 @@ export const CameraQRScanner = ({
       cameraConfig,
       scanConfig,
       (decodedText) => {
-        // Debounce if same code is rapidly re-read
-        if (decodedText === lastScannedCode) return;
+        const now = Date.now();
+        // Synchronous atomic lock check: prevent duplicate frame processing
+        if (isLockedRef.current) return;
+
+        // Debounce if same code is re-read within 3.5 seconds
+        if (lastScannedTextRef.current === decodedText && (now - lastScannedTimeRef.current < 3500)) {
+          return;
+        }
+
+        // Lock synchronously immediately
+        isLockedRef.current = true;
+        lastScannedTextRef.current = decodedText;
+        lastScannedTimeRef.current = now;
         setLastScannedCode(decodedText);
 
         // Feedback
@@ -122,6 +138,13 @@ export const CameraQRScanner = ({
         if (navigator.vibrate) {
           navigator.vibrate([100, 50, 100]);
         }
+
+        // Pause HTML5 QR code scanning so no further frames are analyzed by the video worker
+        try {
+          if (scanner && typeof scanner.pause === "function") {
+            scanner.pause(true);
+          }
+        } catch (e) {}
 
         // Parse JSON or plain ID
         let cleanId = decodedText;
@@ -135,12 +158,21 @@ export const CameraQRScanner = ({
         }
 
         if (onScanSuccess) {
-          onScanSuccess(cleanId, decodedText);
+          try {
+            onScanSuccess(cleanId, decodedText);
+          } catch (err) {
+            console.error("onScanSuccess error:", err);
+          }
         }
 
-        // Reset debounce after 3 seconds so same pass can be scanned again later if needed
+        // Reset debounce after 3 seconds
         setTimeout(() => {
-          setLastScannedCode(null);
+          isLockedRef.current = false;
+          try {
+            if (scanner && typeof scanner.resume === "function" && isScanning) {
+              scanner.resume();
+            }
+          } catch (e) {}
         }, 3000);
       },
       (error) => {
