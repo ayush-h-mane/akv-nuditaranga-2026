@@ -49,27 +49,37 @@ import {
   Scan,
   Copy,
   EyeOff,
-  QrCode
+  QrCode,
+  KeyRound,
+  Cpu
 } from "lucide-react";
 import { EventImageUpload } from "../components/EventImageUpload";
 import { MyProfileAttendance } from "../components/MyProfileAttendance";
 import { CameraQRScanner } from "../components/CameraQRScanner";
 import { RoleUpdatesBanner } from "../components/RoleUpdatesBanner";
 import { AKV_DOMAINS } from "../config/institutesData";
+import { DeveloperSuperAdminManager } from "../components/DeveloperSuperAdminManager";
+import { DeveloperDiagnostics } from "../components/DeveloperDiagnostics";
 
-export const SuperAdminDashboard = ({ onNavigateHome }) => {
+export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false }) => {
   const { user, logout, refreshUser } = useAuth();
   const { showError, showWarning, showSuccess, showInfo } = useModalAlert();
-  const [activeSection, setActiveSection] = useState("overview");
-  // Sections: overview, admins, students, volunteers, attendance, exports, events, audit-logs
+  const isDev = Boolean(
+    isDeveloperMode ||
+    user?.role === "DEVELOPER" ||
+    user?.username?.toLowerCase() === "nanu"
+  );
+  const [activeSection, setActiveSection] = useState(isDev ? "superadmin-manager" : "overview");
+  // Sections: overview, admins, students, volunteers, attendance, exports, events, audit-logs, superadmin-manager, developer-health
 
   // 6 Authorized Superadmin Usernames lockdown
   const AUTHORIZED_SUPERADMINS = ["akvsadayt", "akvsapriya", "akvsaarjun", "akvsaculturals", "akvsatejas", "akvsarakshi"];
   const isAuthorizedSuperadmin = Boolean(
-    user &&
-    user.role === "SUPERADMIN" &&
-    user.username &&
-    AUTHORIZED_SUPERADMINS.includes(user.username.toLowerCase())
+    isDev ||
+    (user &&
+      user.role === "SUPERADMIN" &&
+      user.username &&
+      AUTHORIZED_SUPERADMINS.includes(user.username.toLowerCase()))
   );
 
   // First-Time Setup State for Credentials 5 & 6 (Mr. Tejas K & Mrs. Rakshitha B. T)
@@ -1448,12 +1458,19 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
       <header className="bg-stone-900 text-white border-b border-stone-800 sticky top-0 z-30 shadow-md">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-kar-red to-red-700 flex items-center justify-center text-white shadow-xs">
-              <ShieldAlert className="w-5 h-5 text-amber-300" />
+            <div className={`w-9 h-9 rounded-xl ${isDev ? "bg-gradient-to-br from-emerald-600 to-teal-700" : "bg-gradient-to-br from-kar-red to-red-700"} flex items-center justify-center text-white shadow-xs`}>
+              {isDev ? <Cpu className="w-5 h-5 text-amber-300" /> : <ShieldAlert className="w-5 h-5 text-amber-300" />}
             </div>
-            <span className="font-extrabold text-base tracking-tight text-white">
-              Superadmin Portal
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="font-extrabold text-base tracking-tight text-white">
+                {isDev ? "Developer Portal" : "Superadmin Portal"}
+              </span>
+              {isDev && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-black tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  ROOT // NANU
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
@@ -1493,12 +1510,13 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
         {/* Navigation Sidebar */}
         <aside className="w-full md:w-64 shrink-0 space-y-1 bg-white p-3 rounded-3xl border border-stone-200 shadow-xs self-start">
           <div className="px-3 py-2 text-[11px] font-extrabold uppercase tracking-wider text-stone-400">
-            System Modules
+            {isDev ? "Developer & Master Modules" : "System Modules"}
           </div>
 
-          {[
+          {(isDev ? [
+            { id: "superadmin-manager", label: "Superadmin Profiles Manager", icon: KeyRound, isDev: true },
+            { id: "developer-health", label: "Developer Diagnostics & Health", icon: Cpu, isDev: true },
             { id: "overview", label: "Dashboard Overview", icon: BarChart3 },
-            { id: "my-account", label: "My Profile & Attendance", icon: UserPlus },
             { id: "admins", label: `Admins & Faculty Directory ${metrics?.pending_admins ? `(${metrics.pending_admins})` : ""}`, icon: ShieldCheck, alert: metrics?.pending_admins > 0 },
             { id: "volunteers", label: "Volunteers Directory", icon: UserCheck },
             { id: "students", label: "Participants Directory", icon: Users },
@@ -1509,10 +1527,18 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
             { id: "activities", label: "Major Vedike Activities", icon: Sparkles },
             { id: "reels", label: "Reels & Posts", icon: Film },
             { id: "exports", label: "Attendance & Data Exports", icon: FileSpreadsheet },
-            { id: "events", label: "Event Configuration", icon: Calendar },
+            { id: "events", label: "Event Configurations", icon: Calendar },
             { id: "festival-schedule", label: "Karunada Vaibhava Schedule", icon: MapPin },
             { id: "audit-logs", label: "Security Audit Trail", icon: History }
-          ].map((tab) => {
+          ] : [
+            { id: "overview", label: "Dashboard Overview", icon: BarChart3 },
+            { id: "my-account", label: "My Profile & Attendance", icon: UserPlus },
+            { id: "working-committee", label: "Working Committee Directory", icon: Briefcase },
+            { id: "event-registrations", label: "Event Registrations", icon: Trophy },
+            { id: "reels", label: "Reels & Posts", icon: Film },
+            { id: "events", label: "Event Configurations", icon: Calendar },
+            { id: "festival-schedule", label: "Karunada Vaibhava Schedule", icon: MapPin }
+          ]).map((tab) => {
             const Icon = tab.icon;
             const isActive = activeSection === tab.id;
             return (
@@ -1520,14 +1546,19 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                 key={tab.id}
                 onClick={() => setActiveSection(tab.id)}
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all ${isActive
-                  ? "bg-gradient-to-r from-kar-red to-red-600 text-white shadow-sm"
+                  ? tab.isDev
+                    ? "bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-sm"
+                    : "bg-gradient-to-r from-kar-red to-red-600 text-white shadow-sm"
                   : "text-stone-700 hover:bg-stone-50"
                   }`}
               >
                 <div className="flex items-center gap-2.5">
-                  <Icon className={`w-4 h-4 ${isActive ? "text-amber-200" : "text-stone-500"}`} />
+                  <Icon className={`w-4 h-4 ${isActive ? "text-amber-200" : tab.isDev ? "text-emerald-600" : "text-stone-500"}`} />
                   <span>{tab.label}</span>
                 </div>
+                {tab.isDev && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                )}
                 {tab.alert && (
                   <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
                 )}
@@ -1540,7 +1571,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
         <main className="flex-1 space-y-6">
 
           {/* Role-Specific Updates Banner */}
-          <RoleUpdatesBanner role="SUPERADMIN" />
+          <RoleUpdatesBanner role={isDev ? "DEVELOPER" : "SUPERADMIN"} />
 
           {/* Notifications */}
           {feedback.text && (
@@ -1559,41 +1590,30 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
           )}
 
           {/* ==================================================== */}
+          {/* DEVELOPER SECTION 1: SUPERADMIN PROFILES MANAGER     */}
+          {/* ==================================================== */}
+          {isDev && activeSection === "superadmin-manager" && (
+            <DeveloperSuperAdminManager
+              showError={showError}
+              showSuccess={showSuccess}
+            />
+          )}
+
+          {/* ==================================================== */}
+          {/* DEVELOPER SECTION 2: SYSTEM DIAGNOSTICS & TELEMETRY */}
+          {/* ==================================================== */}
+          {isDev && activeSection === "developer-health" && (
+            <DeveloperDiagnostics
+              showError={showError}
+              showSuccess={showSuccess}
+            />
+          )}
+
+          {/* ==================================================== */}
           {/* SECTION 1: OVERVIEW METRICS                          */}
           {/* ==================================================== */}
           {activeSection === "overview" && (
             <div className="space-y-6">
-              {/* Alert Banner for Pending Admin Approvals */}
-              {metrics?.pending_admins > 0 && (
-                <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-amber-500/15 via-kar-red/10 to-amber-500/10 border border-amber-300 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-black shadow-xs shrink-0">
-                      <ShieldAlert className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-extrabold text-stone-900 flex items-center gap-2">
-                        <span>Action Required: {metrics.pending_admins} Pending Admin {metrics.pending_admins === 1 ? "Registration" : "Registrations"}</span>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-200 text-amber-900 border border-amber-300 animate-pulse">
-                          Awaiting Review
-                        </span>
-                      </h4>
-                      <p className="text-xs text-stone-600 mt-0.5">
-                        New faculty coordinators or committee members have submitted registration requests and require authorization to access admin portals.
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setAdminApprovalFilter("pending");
-                      setActiveSection("admins");
-                    }}
-                    className="px-4 py-2 rounded-xl bg-stone-900 hover:bg-black text-amber-300 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
-                  >
-                    <span>Review Requests ({metrics.pending_admins}) &rarr;</span>
-                  </button>
-                </div>
-              )}
-
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div className="bg-white p-5 rounded-3xl border border-stone-200 shadow-xs">
                   <span className="text-[11px] font-bold text-stone-400 uppercase">Total Students</span>
