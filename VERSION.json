@@ -1,13 +1,16 @@
 {
-  "production_version": "2.3.6",
-  "staged_version": "2.3.7",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.3.7",
+  "staged_version": "2.3.8",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
-  "pending_changes": [
-    "Mascot Image Whitelist & Cache-Bust Fix: Updated .vercelignore to explicitly whitelist public and dist images, ensuring /images/nograj.png is never excluded during Vercel deployment, and added cache-busting query parameter (?v=2026) to force immediate browser & CDN refresh."
-  ],
+  "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.7",
+      "released_at": "2026-10-07T08:52:55+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.7: Mascot Image Whitelist & Cache-Bust Fix: Updated .vercelignore to explicitly whitelist public and dist images, ensuring /images/nograj.png is never excluded during Vercel deployment, and added cache-busting query parameter (?v=2026) to force immediate browser & CDN refresh."
+    },
     {
       "version": "2.3.6",
       "released_at": "2026-10-07T08:33:46+0530",
