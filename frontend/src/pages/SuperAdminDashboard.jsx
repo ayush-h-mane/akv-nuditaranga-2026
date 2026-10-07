@@ -218,6 +218,17 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
   const [selectedVolunteer, setSelectedVolunteer] = useState(null);
   const [showVolunteerPassword, setShowVolunteerPassword] = useState(false);
   const [copiedVolunteerPassword, setCopiedVolunteerPassword] = useState(false);
+  const [editingVolunteerPassword, setEditingVolunteerPassword] = useState(false);
+  const [newVolunteerPasswordInput, setNewVolunteerPasswordInput] = useState("");
+  const [passwordUpdating, setPasswordUpdating] = useState(false);
+  const [passwordSuccessMsg, setPasswordSuccessMsg] = useState("");
+
+  // Admin Details & Password Modal State (v2.3.9)
+  const [selectedAdmin, setSelectedAdmin] = useState(null);
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
+  const [copiedAdminPassword, setCopiedAdminPassword] = useState(false);
+  const [editingAdminPassword, setEditingAdminPassword] = useState(false);
+  const [newAdminPasswordInput, setNewAdminPasswordInput] = useState("");
 
   // Volunteer Attendance QR Scanner State (v2.3.8)
   const [showSuperAdminVolunteerScanner, setShowSuperAdminVolunteerScanner] = useState(false);
@@ -1268,6 +1279,38 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
     }
   };
 
+  const handleUpdateUserPassword = async (userId, targetType) => {
+    const inputVal = targetType === "volunteer" ? newVolunteerPasswordInput.trim() : newAdminPasswordInput.trim();
+    if (!inputVal || inputVal.length < 4) {
+      notify("error", "Password must be at least 4 characters long.");
+      return;
+    }
+    setPasswordUpdating(true);
+    setPasswordSuccessMsg("");
+    try {
+      const res = await api.setSuperAdminUserPassword(userId, inputVal);
+      const msg = res.message || "Password updated successfully!";
+      setPasswordSuccessMsg(msg);
+      notify("success", msg);
+      if (targetType === "volunteer") {
+        setSelectedVolunteer(prev => prev ? { ...prev, plain_password: inputVal } : null);
+        setVolunteersList(prev => prev.map(v => (v.id === userId || v.user_id === userId) ? { ...v, plain_password: inputVal } : v));
+        setEditingVolunteerPassword(false);
+        setNewVolunteerPasswordInput("");
+      } else if (targetType === "admin") {
+        setSelectedAdmin(prev => prev ? { ...prev, plain_password: inputVal } : null);
+        setAdminsList(prev => prev.map(a => (a.user_id === userId || a.id === userId) ? { ...a, plain_password: inputVal } : a));
+        setEditingAdminPassword(false);
+        setNewAdminPasswordInput("");
+      }
+      setTimeout(() => setPasswordSuccessMsg(""), 3500);
+    } catch (err) {
+      notify("error", err.message || "Failed to update password.");
+    } finally {
+      setPasswordUpdating(false);
+    }
+  };
+
   const categoryMapping = {
     cultural: "ಸಾಂಸ್ಕೃತಿಕ",
     traditional: "ಜಾನಪದ & ಸಾಂಪ್ರದಾಯಿಕ",
@@ -1754,7 +1797,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
           {/* SECTION 2: ADMIN APPROVALS & ROSTER                 */}
           {/* ==================================================== */}
           {activeSection === "admins" && (() => {
-            const validAdmins = adminsList.filter((a) => a.role !== "SUPERADMIN" && a.admin_type !== "SUPERADMIN");
+            const validAdmins = adminsList.filter((a) => a.username !== "akv-nt-2026" && a.email !== "akv@acharya.ac.in");
             const pendingAdminsCount = validAdmins.filter((a) => a.approval_status === "PENDING_APPROVAL").length;
             const approvedAdminsCount = validAdmins.filter((a) => a.approval_status === "APPROVED").length;
             const filteredAdminsList = validAdmins.filter((adm) => {
@@ -1869,7 +1912,17 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                         {filteredAdminsList.map((adm) => {
                           const isSuperAdmin = adm.role === "SUPERADMIN";
                           return (
-                            <tr key={adm.id} className="hover:bg-stone-50/80 transition-colors">
+                            <tr 
+                              key={adm.id} 
+                              onClick={() => {
+                                setSelectedAdmin(adm);
+                                setShowAdminPassword(false);
+                                setCopiedAdminPassword(false);
+                                setEditingAdminPassword(false);
+                                setNewAdminPasswordInput("");
+                              }}
+                              className="hover:bg-amber-50/50 cursor-pointer transition-colors"
+                            >
                               <td className="py-3 px-3">
                                 <div className="flex items-center gap-2.5">
                                   {adm.photo_url ? (
@@ -1926,10 +1979,31 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                               </td>
                               <td className="py-3 px-3 text-right">
                                 <div className="flex items-center justify-end gap-1.5">
+                                  {/* View Details & Password Button */}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedAdmin(adm);
+                                      setShowAdminPassword(false);
+                                      setCopiedAdminPassword(false);
+                                      setEditingAdminPassword(false);
+                                      setNewAdminPasswordInput("");
+                                    }}
+                                    className="px-2.5 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-amber-400 text-[11px] font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer active:scale-95"
+                                    title="View Details & Password"
+                                  >
+                                    <Eye className="w-3.5 h-3.5 text-amber-400" />
+                                    <span className="text-white">View Details</span>
+                                  </button>
+
                                   {adm.approval_status === "PENDING_APPROVAL" && (
                                     <>
                                       <button
-                                        onClick={() => handleApproveAdmin(adm.id, adm.full_name || adm.auid)}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleApproveAdmin(adm.id, adm.full_name || adm.auid);
+                                        }}
                                         className="p-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-bold flex items-center gap-1 shadow-xs cursor-pointer"
                                         title="Approve Admin"
                                       >
@@ -1937,7 +2011,10 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                                         <span>Approve</span>
                                       </button>
                                       <button
-                                        onClick={() => handleRejectAdmin(adm.id, adm.full_name || adm.auid)}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleRejectAdmin(adm.id, adm.full_name || adm.auid);
+                                        }}
                                         className="p-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-kar-red text-[11px] font-bold flex items-center gap-1 cursor-pointer"
                                         title="Reject Admin"
                                       >
@@ -1949,7 +2026,10 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
                                   {adm.approval_status === "APPROVED" && !isSuperAdmin && (
                                     <button
-                                      onClick={() => handleToggleAdmin(adm.id)}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleToggleAdmin(adm.id);
+                                      }}
                                       className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border cursor-pointer ${adm.account_status === "ACTIVE"
                                         ? "border-stone-300 text-stone-600 hover:bg-stone-100"
                                         : "border-red-300 text-red-700 bg-red-50 hover:bg-red-100"
@@ -1961,7 +2041,10 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
                                   {!isSuperAdmin ? (
                                     <button
-                                      onClick={() => handleDeleteAdmin(adm.id, adm.full_name || adm.auid, adm.role)}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteAdmin(adm.id, adm.full_name || adm.auid, adm.role);
+                                      }}
                                       className="p-1.5 text-stone-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
                                       title="Delete Admin"
                                     >
@@ -1979,6 +2062,299 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                         })}
                       </tbody>
                     </table>
+                  </div>
+                )}
+
+                {/* Admin Details & Password Modal */}
+                {selectedAdmin && (
+                  <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in"
+                    onClick={(e) => e.target === e.currentTarget && setSelectedAdmin(null)}
+                  >
+                    <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col max-h-[90vh] animate-scale-in">
+                      {/* Modal Header */}
+                      <div className="p-5 bg-gradient-to-r from-stone-900 to-stone-800 text-white flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          {selectedAdmin.photo_url ? (
+                            <img
+                              src={selectedAdmin.photo_url}
+                              alt={selectedAdmin.full_name}
+                              className="w-11 h-11 rounded-2xl object-cover border-2 border-amber-400/60 shadow-md shrink-0"
+                            />
+                          ) : (
+                            <div className="w-11 h-11 rounded-2xl bg-amber-500 text-stone-950 font-black text-base flex items-center justify-center shadow-md shrink-0">
+                              {(selectedAdmin.full_name || "A").charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div>
+                            <h4 className="font-extrabold text-base text-white flex items-center gap-2">
+                              <span>{selectedAdmin.full_name || "Admin"}</span>
+                            </h4>
+                            <div className="flex items-center gap-2 text-xs text-stone-300">
+                              <span className="font-mono">{selectedAdmin.username || selectedAdmin.auid}</span>
+                              <span>•</span>
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                                {selectedAdmin.admin_type === "FACULTY_COORDINATOR"
+                                  ? "Faculty Coordinator"
+                                  : selectedAdmin.role === "SUPERADMIN"
+                                    ? "Super Admin"
+                                    : "Working Committee"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setSelectedAdmin(null)}
+                          className="p-2 rounded-xl text-stone-400 hover:text-white hover:bg-stone-800 transition-colors cursor-pointer"
+                          aria-label="Close"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+
+                      {/* Modal Body */}
+                      <div className="p-4 sm:p-6 space-y-4 overflow-y-auto">
+                        {/* Account Password Card */}
+                        <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300/80 rounded-2xl p-4 shadow-xs space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-black uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
+                              <Lock className="w-3.5 h-3.5 text-amber-700" />
+                              <span>Administrator Account Password</span>
+                            </span>
+                            <span className="text-[10px] font-bold text-amber-800 bg-amber-200/60 px-2 py-0.5 rounded-full">
+                              Superadmin Access Only
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2 bg-white p-2.5 rounded-xl border border-amber-200">
+                            <div className="flex-1 font-mono text-sm font-bold text-stone-900 select-all truncate">
+                              {selectedAdmin.plain_password ? (
+                                showAdminPassword ? selectedAdmin.plain_password : "••••••••••••"
+                              ) : (
+                                <span className="text-xs text-amber-700 italic font-sans font-medium">
+                                  [Password Hashed - Use "Assign New Password" below to set & view]
+                                </span>
+                              )}
+                            </div>
+
+                            {selectedAdmin.plain_password && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => setShowAdminPassword(!showAdminPassword)}
+                                  className="p-1.5 rounded-lg text-stone-600 hover:bg-amber-100 transition-colors cursor-pointer"
+                                  title={showAdminPassword ? "Hide Password" : "Show Password"}
+                                >
+                                  {showAdminPassword ? <EyeOff className="w-4 h-4 text-stone-700" /> : <Eye className="w-4 h-4 text-stone-700" />}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(selectedAdmin.plain_password);
+                                    setCopiedAdminPassword(true);
+                                    setTimeout(() => setCopiedAdminPassword(false), 2000);
+                                  }}
+                                  className="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer shadow-xs active:scale-95"
+                                  title="Copy Password"
+                                >
+                                  {copiedAdminPassword ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                                  <span>{copiedAdminPassword ? "Copied" : "Copy"}</span>
+                                </button>
+                              </>
+                            )}
+                          </div>
+
+                          {/* Password Reset / Edit Action */}
+                          {!editingAdminPassword ? (
+                            <div className="flex items-center justify-between pt-1">
+                              <p className="text-[10px] text-amber-800">
+                                Password recorded for administrative access and credential recovery.
+                              </p>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingAdminPassword(true);
+                                    setNewAdminPasswordInput(selectedAdmin.plain_password || "AkvAdmin@2026");
+                                  }}
+                                  className="text-[11px] font-bold text-amber-900 hover:text-kar-red underline cursor-pointer"
+                                >
+                                  {selectedAdmin.plain_password ? "Change Password" : "Assign New Password"}
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="pt-2 border-t border-amber-200/80 space-y-2">
+                              <label className="block text-[11px] font-bold text-stone-800">
+                                Set New Administrator Password:
+                              </label>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={newAdminPasswordInput}
+                                  onChange={(e) => setNewAdminPasswordInput(e.target.value)}
+                                  placeholder="Enter new password (min 4 chars)"
+                                  className="flex-1 px-3 py-1.5 rounded-xl border border-stone-300 text-xs font-mono focus:ring-2 focus:ring-amber-500 focus:outline-hidden bg-white"
+                                />
+                                <button
+                                  type="button"
+                                  disabled={passwordUpdating}
+                                  onClick={() => handleUpdateUserPassword(selectedAdmin.user_id || selectedAdmin.id, "admin")}
+                                  className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-xs cursor-pointer shadow-xs disabled:opacity-50"
+                                >
+                                  {passwordUpdating ? "Saving..." : "Save Password"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingAdminPassword(false)}
+                                  className="px-2.5 py-1.5 rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold text-xs cursor-pointer"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                              <div className="flex items-center gap-1.5 pt-1">
+                                <span className="text-[10px] text-stone-500">Quick suggestions:</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setNewAdminPasswordInput("AkvAdmin@2026")}
+                                  className="text-[10px] px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-mono font-bold hover:bg-amber-200 cursor-pointer"
+                                >
+                                  AkvAdmin@2026
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setNewAdminPasswordInput("Akv@2026")}
+                                  className="text-[10px] px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-mono font-bold hover:bg-amber-200 cursor-pointer"
+                                >
+                                  Akv@2026
+                                </button>
+                              </div>
+                              {passwordSuccessMsg && (
+                                <p className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
+                                  <Check className="w-3.5 h-3.5" />
+                                  <span>{passwordSuccessMsg}</span>
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Full Details Grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                          <div className="bg-stone-50 p-3 rounded-xl border border-stone-200 space-y-1">
+                            <span className="text-[10px] font-extrabold uppercase text-stone-400 block">Username</span>
+                            <p className="font-mono font-bold text-stone-900">{selectedAdmin.username || "N/A"}</p>
+                          </div>
+
+                          <div className="bg-stone-50 p-3 rounded-xl border border-stone-200 space-y-1">
+                            <span className="text-[10px] font-extrabold uppercase text-stone-400 block">
+                              {selectedAdmin.admin_type === "FACULTY_COORDINATOR" ? "Faculty ID / AUID" : "AUID"}
+                            </span>
+                            <p className="font-mono font-bold text-stone-900">
+                              {selectedAdmin.faculty_id || selectedAdmin.auid || "N/A"}
+                            </p>
+                          </div>
+
+                          <div className="bg-stone-50 p-3 rounded-xl border border-stone-200 space-y-1">
+                            <span className="text-[10px] font-extrabold uppercase text-stone-400 block">Email</span>
+                            <p className="font-bold text-stone-800 truncate">
+                              <a href={`mailto:${selectedAdmin.email}`} className="text-kar-red hover:underline">
+                                {selectedAdmin.email || "N/A"}
+                              </a>
+                            </p>
+                          </div>
+
+                          <div className="bg-stone-50 p-3 rounded-xl border border-stone-200 space-y-1">
+                            <span className="text-[10px] font-extrabold uppercase text-stone-400 block">Contact Phone</span>
+                            <p className="font-mono font-bold text-stone-800">
+                              <a href={`tel:${selectedAdmin.phone}`} className="hover:text-kar-red">
+                                {selectedAdmin.phone || "N/A"}
+                              </a>
+                            </p>
+                          </div>
+
+                          <div className="bg-stone-50 p-3 rounded-xl border border-stone-200 space-y-1">
+                            <span className="text-[10px] font-extrabold uppercase text-stone-400 block">Institute</span>
+                            <p className="font-bold text-stone-800">{selectedAdmin.institute || "Acharya"}</p>
+                          </div>
+
+                          <div className="bg-stone-50 p-3 rounded-xl border border-stone-200 space-y-1">
+                            <span className="text-[10px] font-extrabold uppercase text-stone-400 block">Department</span>
+                            <p className="font-bold text-stone-800">{selectedAdmin.department || "N/A"}</p>
+                          </div>
+
+                          <div className="bg-stone-50 p-3 rounded-xl border border-stone-200 space-y-1">
+                            <span className="text-[10px] font-extrabold uppercase text-stone-400 block">Approval Status</span>
+                            <p className="font-bold">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                                selectedAdmin.approval_status === "APPROVED"
+                                  ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                  : selectedAdmin.approval_status === "PENDING_APPROVAL"
+                                    ? "bg-amber-100 text-amber-900 border border-amber-300"
+                                    : "bg-red-100 text-red-800 border border-red-200"
+                              }`}>
+                                {selectedAdmin.approval_status || "PENDING"}
+                              </span>
+                            </p>
+                          </div>
+
+                          <div className="bg-stone-50 p-3 rounded-xl border border-stone-200 space-y-1">
+                            <span className="text-[10px] font-extrabold uppercase text-stone-400 block">Account Status</span>
+                            <p className="font-bold">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-stone-100 text-stone-700 border border-stone-200">
+                                {selectedAdmin.account_status || "ACTIVE"}
+                              </span>
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Approval / Status Actions */}
+                        {selectedAdmin.approval_status === "PENDING_APPROVAL" && (
+                          <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between gap-3">
+                            <span className="text-xs font-bold text-amber-900">
+                              This administrator account is awaiting approval.
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleApproveAdmin(selectedAdmin.id, selectedAdmin.full_name || selectedAdmin.auid);
+                                  setSelectedAdmin(prev => prev ? { ...prev, approval_status: "APPROVED" } : null);
+                                }}
+                                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                                <span>Approve</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleRejectAdmin(selectedAdmin.id, selectedAdmin.full_name || selectedAdmin.auid);
+                                  setSelectedAdmin(prev => prev ? { ...prev, approval_status: "REJECTED" } : null);
+                                }}
+                                className="px-3 py-1.5 rounded-xl bg-red-100 hover:bg-red-200 text-kar-red font-bold text-xs flex items-center gap-1 cursor-pointer"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                                <span>Reject</span>
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Modal Footer */}
+                      <div className="p-4 bg-stone-50 border-t border-stone-200 flex items-center justify-end">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedAdmin(null)}
+                          className="px-5 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs shadow-xs cursor-pointer transition-all active:scale-95"
+                        >
+                          Close Details
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -3010,8 +3386,8 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                             {selectedVolunteer.plain_password ? (
                               showVolunteerPassword ? selectedVolunteer.plain_password : "••••••••••••"
                             ) : (
-                              <span className="text-xs text-stone-400 italic font-sans">
-                                [Hashed on Registration - Plaintext unavailable for legacy record]
+                              <span className="text-xs text-amber-700 italic font-sans font-medium">
+                                [Password Hashed - Use "Assign New Password" below to set & view]
                               </span>
                             )}
                           </div>
@@ -3042,9 +3418,70 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                             </>
                           )}
                         </div>
-                        <p className="text-[10px] text-amber-800">
-                          Password recorded during volunteer registration for administrative support.
-                        </p>
+                        {/* Password Reset / Edit Action */}
+                        {!editingVolunteerPassword ? (
+                          <div className="flex items-center justify-between pt-1">
+                            <p className="text-[10px] text-amber-800">
+                              Password recorded for administrative support and recovery.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingVolunteerPassword(true);
+                                setNewVolunteerPasswordInput(selectedVolunteer.plain_password || "Akv@2026");
+                              }}
+                              className="text-[11px] font-bold text-amber-900 hover:text-kar-red underline cursor-pointer shrink-0"
+                            >
+                              {selectedVolunteer.plain_password ? "Change Password" : "Assign New Password"}
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="pt-2 border-t border-amber-200/80 space-y-2">
+                            <label className="block text-[11px] font-bold text-stone-800">
+                              Set New Password:
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={newVolunteerPasswordInput}
+                                onChange={(e) => setNewVolunteerPasswordInput(e.target.value)}
+                                placeholder="Enter new password (min 4 chars)"
+                                className="flex-1 px-3 py-1.5 rounded-xl border border-stone-300 text-xs font-mono focus:ring-2 focus:ring-amber-500 focus:outline-hidden bg-white"
+                              />
+                              <button
+                                type="button"
+                                disabled={passwordUpdating}
+                                onClick={() => handleUpdateUserPassword(selectedVolunteer.id || selectedVolunteer.user_id, "volunteer")}
+                                className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-xs cursor-pointer shadow-xs disabled:opacity-50"
+                              >
+                                {passwordUpdating ? "Saving..." : "Save Password"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setEditingVolunteerPassword(false)}
+                                className="px-2.5 py-1.5 rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold text-xs cursor-pointer"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                            <div className="flex items-center gap-1.5 pt-1">
+                              <span className="text-[10px] text-stone-500">Quick suggestion:</span>
+                              <button
+                                type="button"
+                                onClick={() => setNewVolunteerPasswordInput("Akv@2026")}
+                                className="text-[10px] px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-mono font-bold hover:bg-amber-200 cursor-pointer"
+                              >
+                                Akv@2026
+                              </button>
+                            </div>
+                            {passwordSuccessMsg && (
+                              <p className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
+                                <Check className="w-3.5 h-3.5" />
+                                <span>{passwordSuccessMsg}</span>
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       {/* Full Details Grid */}

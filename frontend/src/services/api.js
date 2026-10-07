@@ -215,7 +215,31 @@ async function readApiResponse(res) {
   const raw = await res.text();
   if (!raw) return {};
   try {
-    return JSON.parse(raw);
+    const data = JSON.parse(raw);
+    if (data && data.detail !== undefined) {
+      if (Array.isArray(data.detail)) {
+        const formatted = data.detail
+          .map((item) => {
+            if (typeof item === "string") return item;
+            const field = Array.isArray(item.loc)
+              ? item.loc.filter((x) => x !== "body").join(" ")
+              : "";
+            const msg = item.msg || item.message || JSON.stringify(item);
+            return field ? `${field}: ${msg}` : msg;
+          })
+          .filter(Boolean)
+          .join(". ");
+        data.raw_detail = data.detail;
+        data.detail = formatted || `Validation error (${res.status})`;
+      } else if (typeof data.detail === "object" && data.detail !== null) {
+        data.raw_detail = data.detail;
+        data.detail =
+          data.detail.msg ||
+          data.detail.message ||
+          JSON.stringify(data.detail);
+      }
+    }
+    return data;
   } catch {
     let clean = raw.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
     if (clean.length > 200) {
@@ -619,7 +643,10 @@ export const api = {
     });
     const data = await readApiResponse(res);
     if (!res.ok) {
-      throw new Error(data.detail || `Profile update failed (${res.status}).`);
+      const errMsg = (typeof data?.detail === "string" && data.detail)
+        ? data.detail
+        : `Profile update failed (${res.status}).`;
+      throw new Error(errMsg);
     }
     if (data.user) {
       try {
@@ -629,6 +656,72 @@ export const api = {
         }
       } catch (e) {}
     }
+    return data;
+  },
+
+  async forgotPassword(identifier) {
+    const res = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ identifier: (identifier || "").trim() })
+    });
+    const data = await readApiResponse(res);
+    if (!res.ok) {
+      throw new Error(data.detail || `Forgot password request failed (${res.status}).`);
+    }
+    return data;
+  },
+
+  async verifyResetOtp(identifier, otp) {
+    const res = await fetch(`${API_BASE_URL}/auth/verify-reset-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        identifier: (identifier || "").trim(), 
+        otp: (otp || "").trim() 
+      })
+    });
+    const data = await readApiResponse(res);
+    if (!res.ok) {
+      throw new Error(data.detail || `OTP verification failed (${res.status}).`);
+    }
+    return data;
+  },
+
+  async resetPasswordWithOtp(identifier, otp, newPassword, confirmPassword) {
+    const res = await fetch(`${API_BASE_URL}/auth/reset-password-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        identifier: (identifier || "").trim(),
+        otp: (otp || "").trim(),
+        new_password: newPassword,
+        confirm_password: confirmPassword
+      })
+    });
+    const data = await readApiResponse(res);
+    if (!res.ok) {
+      throw new Error(data.detail || `Password reset failed (${res.status}).`);
+    }
+    return data;
+  },
+
+  async setSuperAdminUserPassword(userId, newPassword) {
+    const res = await fetch(`${API_BASE_URL}/superadmin/users/${userId}/set-password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({ new_password: newPassword })
+    });
+    const data = await readApiResponse(res);
+    if (!res.ok) {
+      throw new Error(data.detail || `Failed to update password (${res.status}).`);
+    }
+    invalidateMemCache("sa_admins");
+    invalidateMemCache("sa_volunteers");
+    invalidateMemCache("sa_students");
     return data;
   },
 
@@ -1309,21 +1402,46 @@ export const api = {
     }
   },
 
+  async setSuperAdminUserPassword(userId, newPassword) {
+    const res = await fetch(`${API_BASE_URL}/superadmin/users/${userId}/set-password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({ new_password: newPassword })
+    });
+    const data = await readApiResponse(res);
+    if (!res.ok) {
+      throw new Error(data.detail || `Failed to update password (${res.status})`);
+    }
+    invalidateMemCache("sa_volunteers");
+    invalidateMemCache("sa_admins");
+    invalidateMemCache("sa_students");
+    return data;
+  },
+
   getCachedVolunteers(params = {}) {
     const cacheKey = `sa_volunteers_${params.department || ""}_${params.search || ""}`;
     return getFromMemCache(cacheKey, 300000);
   },
 
   async listAllVolunteers(params = {}, forceFresh = false) {
-    const cacheKey = `sa_volunteers_${params.department || ""}_${params.search || ""}`;
-    if (!forceFresh) {
+    let resolvedParams = params;
+    let resolvedForceFresh = forceFresh;
+    if (typeof params === "boolean") {
+      resolvedForceFresh = params;
+      resolvedParams = {};
+    }
+    const cacheKey = `sa_volunteers_${resolvedParams?.department || ""}_${resolvedParams?.search || ""}`;
+    if (!resolvedForceFresh) {
       const cached = getFromMemCache(cacheKey, 30000);
       if (cached) return cached;
     }
     return fetchWithDeduplication(cacheKey, async () => {
       try {
-        const qParams = { ...params };
-        if (forceFresh) qParams._t = Date.now();
+        const qParams = { ...resolvedParams };
+        if (resolvedForceFresh) qParams._t = Date.now();
         const query = new URLSearchParams(qParams).toString();
         const res = await fetch(`${API_BASE_URL}/superadmin/volunteers${query ? `?${query}` : ""}`, {
           cache: forceFresh ? "no-store" : "default",

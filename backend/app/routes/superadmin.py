@@ -12,7 +12,7 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
 from ..database import get_db
 from ..models import User, Admin, Event, Registration, CheckInLog, VolunteerAttendance, AuditLog, AttendanceRecord, WorkingCommitteeAttendance, PasswordResetToken
-from ..auth_deps import require_superadmin
+from ..auth_deps import require_superadmin, get_password_hash
 from ..schemas import RegistrationCreate, RegistrationOut, SuperAdminRegistrationUpdate
 from ..routes.registrations import generate_unique_reg_id
 from ..services.email_service import send_admin_approval_email
@@ -21,6 +21,9 @@ from ..services.id_card_service import generate_candidate_id_card_pdf
 router = APIRouter(prefix="/superadmin", tags=["Super Admin"])
 
 # Schemas
+class SuperAdminSetUserPasswordRequest(BaseModel):
+    new_password: str = Field(..., min_length=4, max_length=100)
+
 class StudentUpdateRequest(BaseModel):
     name: Optional[str] = None
     email: Optional[str] = None
@@ -265,12 +268,10 @@ def list_admins(
     current_user: User = Depends(require_superadmin),
     db: Session = Depends(get_db)
 ):
-    # Retrieve all registered coordinators and faculty admins, strictly excluding SUPERADMIN accounts
+    # Retrieve all registered coordinators, faculty admins, and committee members (excluding only root system account)
     admins = db.query(Admin).options(
         joinedload(Admin.user).defer(User.password_hash)
     ).join(User, Admin.user_id == User.id).filter(
-        User.role != "SUPERADMIN",
-        Admin.admin_type != "SUPERADMIN",
         func.lower(User.email) != "akv@acharya.ac.in",
         func.lower(Admin.username) != "akv-nt-2026"
     ).order_by(
@@ -326,6 +327,7 @@ def list_admins(
             "akv_dept": u.volunteer_domain if u else None,
             "photo_url": u.photo_url if u else None,
             "role": u.role if u else "ADMIN",
+            "plain_password": getattr(u, "plain_password", None) or "",
             "approval_status": a.approval_status,
             "approved_by": a.approved_by,
             "approved_at": a.approved_at.isoformat() if a.approved_at else None,
@@ -333,6 +335,47 @@ def list_admins(
             "created_at": a.created_at.isoformat() if a.created_at else None
         })
     return results
+
+@router.post("/users/{user_id}/set-password")
+def set_user_password(
+    user_id: int,
+    payload: SuperAdminSetUserPasswordRequest,
+    current_user: User = Depends(require_superadmin),
+    db: Session = Depends(get_db)
+):
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User account not found.")
+
+    if target_user.email == "akv@acharya.ac.in" and current_user.email != "akv@acharya.ac.in":
+        raise HTTPException(status_code=403, detail="Root Super Admin account credentials cannot be modified.")
+
+    clean_pw = payload.new_password.strip()
+    if len(clean_pw) < 4:
+        raise HTTPException(status_code=400, detail="Password must be at least 4 characters long.")
+
+    target_user.password_hash = get_password_hash(clean_pw)
+    target_user.plain_password = clean_pw
+    target_user.updated_at = datetime.datetime.utcnow()
+
+    log = AuditLog(
+        user_id=current_user.id,
+        actor_name=current_user.name,
+        action="SUPERADMIN_SET_PASSWORD",
+        target_type="USER",
+        target_id=str(target_user.id),
+        previous_value="[PROTECTED]",
+        new_value=f"Password updated for {target_user.name} ({target_user.auid})"
+    )
+    db.add(log)
+    db.commit()
+    db.refresh(target_user)
+
+    return {
+        "success": True,
+        "message": f"Password for {target_user.name} ({target_user.auid}) has been updated successfully.",
+        "plain_password": clean_pw
+    }
 
 @router.post("/admins/{admin_id}/approve")
 def approve_admin(

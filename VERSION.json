@@ -1,11 +1,16 @@
 {
-  "production_version": "2.3.8",
-  "staged_version": "2.3.9",
+  "production_version": "2.3.9",
+  "staged_version": "2.3.10",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.9",
+      "released_at": "2026-10-08T00:13:01+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.9: Fixed Modal Deadline Header: Corrected the outdated deadline text in the One-Time Profile Update modal from October 5, 2026, 11:59 PM IST to October 9, 2026, 2:00 PM IST (09/10/2026 14:00 IST), unifying all banner and modal timestamps under a single source of truth.; Eliminated [object Object] API Error Display: Upgraded readApiResponse in api.js and error handling in MyProfileAttendance to parse FastAPI/Pydantic validation error arrays and objects into clear, human-readable error messages instead of rendering [object Object].; Robust Profile Update Validation & Support for Master Accounts: Expanded OneTimeProfileEditRequest validators in auth.py to allow hyphens and underscores in AUIDs (supporting ADM-MANE and official superadmins), accepted registered and valid emails, relaxed semester bounds (0\u201312), and sanitized phone numbers to 10 digits before saving.; Volunteer & Admin Password Visibility in Superadmin Portal: Backfilled plaintext passwords across SQLite and PostgreSQL for legacy accounts; updated /api/superadmin/volunteers and /api/superadmin/admins to expose plain_password; eliminated stale caching in api.listAllVolunteers; and replaced unavailable legacy text with clear guidance and quick password presets.; Administrator Details & Password Modal: Added full details popup modal for administrators in SuperAdminDashboard featuring show/hide password toggle, clipboard copy, and direct 'Change Password / Assign New Password' functionality.; Superadmin Direct Password Set API: Implemented POST /api/superadmin/users/{user_id}/set-password and api.setSuperAdminUserPassword allowing Superadmin to directly assign and update passwords for any volunteer, administrator, or student account.; Restored In-Portal Forgot Password Workflow: Implemented missing frontend methods api.forgotPassword, api.verifyResetOtp, and api.resetPasswordWithOtp in api.js; removed restrictive email domain checks; and ensured instant OTP display (dev_otp) when SMS gateway is unconfigured or offline."
+    },
     {
       "version": "2.3.8",
       "released_at": "2026-10-07T22:42:01+0530",

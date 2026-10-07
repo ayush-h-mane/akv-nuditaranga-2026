@@ -26,13 +26,15 @@ const Field = ({ label, value }) => (
   </div>
 );
 
+const ONE_TIME_DEADLINE = new Date("2026-10-09T14:00:00+05:30");
+const ONE_TIME_DEADLINE_STR = "October 9, 2026, 2:00 PM IST (09/10/2026 14:00 IST)";
+
 export const MyProfileAttendance = ({ profile, attendanceData, loading, error, onRefresh }) => {
   const [localProfile, setLocalProfile] = useState(profile);
   const activeProfile = localProfile || profile;
 
   // Deadline: October 9, 2026, 2:00 PM IST (14:00:00)
-  const deadline = new Date("2026-10-09T14:00:00+05:30");
-  const isExpired = new Date() > deadline;
+  const isExpired = new Date() > ONE_TIME_DEADLINE;
   const hasEdited = Boolean(activeProfile?.profile_edited_once);
   const canEdit = !hasEdited && !isExpired;
 
@@ -102,18 +104,45 @@ export const MyProfileAttendance = ({ profile, attendanceData, loading, error, o
       setEditError("Please check the confirmation box acknowledging that this is a ONE-TIME edit.");
       return;
     }
+
+    const cleanName = (form.name || "").trim();
+    if (!cleanName || cleanName.length < 2) {
+      setEditError("Full Name must be at least 2 characters long.");
+      return;
+    }
+
+    const cleanAuid = (form.auid || "").trim().toUpperCase();
+    if (!cleanAuid || cleanAuid.length < 3) {
+      setEditError("AUID must be at least 3 characters long.");
+      return;
+    }
+
+    const cleanEmail = (form.email || "").trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes("@")) {
+      setEditError("Please enter a valid email address.");
+      return;
+    }
+
+    const rawPhone = (form.phone || "").trim();
+    const digitsOnly = rawPhone.replace(/\D/g, "");
+    if (digitsOnly.length < 10) {
+      setEditError("Please enter a valid 10-digit mobile number.");
+      return;
+    }
+    const cleanPhone = digitsOnly.slice(-10);
+
     setSubmitting(true);
     setEditError("");
     try {
       const payload = {
-        name: form.name.trim(),
-        auid: form.auid.trim().toUpperCase(),
-        email: form.email.trim().toLowerCase(),
-        phone: form.phone.trim(),
-        institute: form.institute.trim(),
-        department: form.department.trim(),
+        name: cleanName,
+        auid: cleanAuid,
+        email: cleanEmail,
+        phone: cleanPhone,
+        institute: (form.institute || "").trim(),
+        department: (form.department || "").trim(),
         semester: Number(form.semester) || 1,
-        section: form.section?.trim() || "A",
+        section: (form.section || "A").trim(),
         gender: form.gender,
         role: form.role,
         volunteer_domain: form.volunteer_domain ? form.volunteer_domain.trim() : null,
@@ -135,7 +164,11 @@ export const MyProfileAttendance = ({ profile, attendanceData, loading, error, o
         if (onRefresh) onRefresh();
       }, 1500);
     } catch (err) {
-      setEditError(err.message || "Failed to update profile details. Please try again.");
+      let msg = err?.message;
+      if (!msg || msg === "[object Object]") {
+        msg = typeof err === "string" ? err : (err?.detail || "Failed to update profile details. Please verify your information and try again.");
+      }
+      setEditError(msg);
     } finally {
       setSubmitting(false);
     }
@@ -209,7 +242,7 @@ export const MyProfileAttendance = ({ profile, attendanceData, loading, error, o
               </div>
               <p className="mt-1 text-xs text-amber-800 leading-relaxed max-w-2xl">
                 You have a one-time opportunity to update all your account details (Name, AUID, Email, Phone, Dept, Sem, etc.).
-                This window is strictly valid until <strong>October 9, 2026, 2:00 PM IST (09/10/2026 14:00 IST)</strong>.
+                This window is strictly valid until <strong>{ONE_TIME_DEADLINE_STR}</strong>.
               </p>
             </div>
           </div>
@@ -238,7 +271,7 @@ export const MyProfileAttendance = ({ profile, attendanceData, loading, error, o
         <div className="flex items-center gap-3 rounded-2xl border border-stone-200 bg-stone-50 p-3.5 shadow-xs">
           <Clock3 className="h-5 w-5 text-stone-500 shrink-0" />
           <div className="text-xs text-stone-600">
-            <span className="font-bold">Profile Update Window Closed</span>: The one-time details update deadline ended on October 9, 2026, 2:00 PM IST.
+            <span className="font-bold">Profile Update Window Closed</span>: The one-time details update deadline ended on {ONE_TIME_DEADLINE_STR}.
           </div>
         </div>
       )}
@@ -433,7 +466,7 @@ export const MyProfileAttendance = ({ profile, attendanceData, loading, error, o
                 <div>
                   <h3 className="text-xl font-extrabold text-stone-900">One-Time Profile Update</h3>
                   <p className="text-xs font-bold text-amber-800">
-                    Window Deadline: October 5, 2026, 11:59 PM IST (05/10/2026)
+                    Window Deadline: {ONE_TIME_DEADLINE_STR}
                   </p>
                 </div>
               </div>
