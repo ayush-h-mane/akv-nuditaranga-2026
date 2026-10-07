@@ -1,11 +1,16 @@
 {
-  "production_version": "2.3.10",
-  "staged_version": "2.3.11",
+  "production_version": "2.3.11",
+  "staged_version": "2.3.12",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.11",
+      "released_at": "2026-10-08T02:10:35+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.11: Volunteer Domain Matching Fix: Implemented fuzzy domain normalization and synonym mapping (ignoring casing, whitespace, and 'Domain' suffixes) to ensure volunteers registered under the same domain are always recognized and permitted for attendance marking without 403 or false mismatches.; QR Attendance 1-Hour Lock Workflow: On first scan, automatically marks Check-In and locks the volunteer pass for 1 hour against premature check-out scans. If scanned during this 1-hour window, displays the remaining lockout countdown in minutes.; Coordinator Review & Confirmation for Check-Out (No Auto Check-Out): Scanning the volunteer QR pass after the 1-hour window verifies the shift and displays the volunteer details with an explicit 'Confirm Check-Out' button so the coordinator can review and manually choose to record check-out instead of automatically committing check-out on scan.; Real-Time Pop-Up Confirmation Windows: Integrated dedicated AttendanceScanResultModal displaying 'Check in successful' with pass lockout details on 1st scan, and 'Checkout successful and attendance is submitted for today' upon confirming check-out.; Manual Check-In & Check-Out Suite: Added dedicated Manual Check-In / Out modal with search by AUID, USN, Reg ID, or Name, as well as direct row action buttons for both Admin and Superadmin portals."
+    },
     {
       "version": "2.3.10",
       "released_at": "2026-10-08T01:07:03+0530",

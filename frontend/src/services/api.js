@@ -1979,17 +1979,33 @@ export const api = {
     return data;
   },
 
-  async markAttendanceCheckOut(userId, date = null) {
+  async markAttendanceCheckOut(userId, date = null, force = false) {
     const res = await fetch(`${API_BASE_URL}/attendance/check-out`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         ...getAuthHeaders()
       },
-      body: JSON.stringify({ user_id: userId, date })
+      body: JSON.stringify({ user_id: userId, date, force })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Check-Out failed");
+    invalidateMemCache("official_att");
+    invalidateMemCache("sa_stats");
+    return data;
+  },
+
+  async scanAttendanceQR(qrData, date = null) {
+    const res = await fetch(`${API_BASE_URL}/attendance/scan`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({ qr_data: qrData, date })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Attendance QR scan failed");
     invalidateMemCache("official_att");
     invalidateMemCache("sa_stats");
     return data;
