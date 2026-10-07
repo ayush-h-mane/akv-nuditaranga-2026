@@ -4,7 +4,9 @@
   "status": "STAGED_DEVELOPMENT",
   "active_branch": "develop",
   "production_branch": "main",
-  "pending_changes": [],
+  "pending_changes": [
+    "Mascot Image Whitelist & Cache-Bust Fix: Updated .vercelignore to explicitly whitelist public and dist images, ensuring /images/nograj.png is never excluded during Vercel deployment, and added cache-busting query parameter (?v=2026) to force immediate browser & CDN refresh."
+  ],
   "history": [
     {
       "version": "2.3.6",

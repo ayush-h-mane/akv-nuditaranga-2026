@@ -3,24 +3,15 @@
 .env.*
 !.env.example
 
-# Unused Root Mockups & Heavy Media (~16.4 MB saved)
-Nograj sitting posture.png
-Comic for web 1.png
-Comin for web 3D.png
-Nograj.png
-AKV_Nuditaranga_2026_Architecture_Documentation.pdf
+# Whitelist all public assets and images
+!frontend/public/images/**
+!frontend/dist/images/**
 
-# Unused Public Images (~3.1 MB saved)
-frontend/public/images/nograj-sitting-transparent.png
-frontend/public/images/comin-for-web-3d-original.png
-frontend/public/images/acharya-logo-crisp.png
-
-# Unused Frontend Template Assets & Backup Files
-frontend/src/assets/hero.png
-frontend/src/assets/react.svg
-frontend/src/assets/vite.svg
-frontend/postcss.config.js.bak
-frontend/vercel.json
+# Unused Root Mockups (explicit root paths with leading slash)
+/Comic for web 1.png
+/Comin for web 3D.png
+/Nograj sitting posture.png
+/AKV_Nuditaranga_2026_Architecture_Documentation.pdf
 
 # Local Python, Virtual Environments & Caches
 .venv/
@@ -32,7 +23,7 @@ __pycache__/
 *.pyo
 *.pyd
 
-# Local Databases & Backup Dumps (~12 MB saved)
+# Local Databases & Backup Dumps
 *.db
 *.db-journal
 *.backup*
