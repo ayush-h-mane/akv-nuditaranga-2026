@@ -39,7 +39,7 @@ export const FestivalMascot = () => {
         </div>
         <div className="relative mx-auto flex h-[330px] w-full max-w-[340px] items-end justify-center sm:h-[430px] sm:max-w-[440px] lg:h-[500px] lg:max-w-none">
           <div className="pointer-events-none absolute bottom-5 left-1/2 h-10 w-3/4 -translate-x-1/2 rounded-full bg-amber-900/15 blur-2xl" />
-          <img src="/images/nograj.png" alt={kannada ? "ಕರ್ನಾಟಕ ಧ್ವಜ ಹಿಡಿದಿರುವ ನೋಗ್ರಾಜ್" : "NOGRAJ holding the Karnataka flag"} className="relative z-10 h-full w-auto max-w-full object-contain object-bottom drop-shadow-[0_12px_16px_rgba(69,32,10,0.18)] motion-safe:animate-[float_5s_ease-in-out_infinite]" />
+          <img src="/images/nograj.png?v=2026" alt={kannada ? "ಕರ್ನಾಟಕ ಧ್ವಜ ಹಿಡಿದಿರುವ ನೋಗ್ರಾಜ್" : "NOGRAJ holding the Karnataka flag"} className="relative z-10 h-full w-auto max-w-full object-contain object-bottom drop-shadow-[0_12px_16px_rgba(69,32,10,0.18)] motion-safe:animate-[float_5s_ease-in-out_infinite]" />
         </div>
       </div>
     </section>
