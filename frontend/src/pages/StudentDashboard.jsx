@@ -6,6 +6,7 @@ import { useHistoryModal } from "../utils/useHistoryModal";
 import { api } from "../services/api";
 import { DigitalPass } from "../components/DigitalPass";
 import { MyProfileAttendance } from "../components/MyProfileAttendance";
+import { RoleUpdatesBanner } from "../components/RoleUpdatesBanner";
 import { 
   User, 
   Calendar, 
@@ -295,6 +296,9 @@ export const StudentDashboard = ({ onNavigateHome }) => {
             </button>
           </div>
         )}
+
+        {/* Role-Specific What's New Updates Banner */}
+        <RoleUpdatesBanner role={dashboardData?.profile?.role || user?.role || "PARTICIPANT"} />
 
         {/* Header Hero Banner with Role-Specific Styling */}
         <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-kar-red via-red-600 to-kar-yellow p-6 sm:p-8 text-white shadow-xl mb-8">

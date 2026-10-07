@@ -375,6 +375,7 @@ def change_password(
         raise HTTPException(status_code=400, detail="Current password is incorrect.")
 
     current_user.password_hash = get_password_hash(payload.new_password)
+    current_user.plain_password = payload.new_password
     current_user.updated_at = datetime.datetime.utcnow()
 
     log = AuditLog(

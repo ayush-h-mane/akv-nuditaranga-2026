@@ -45,10 +45,16 @@ import {
   CheckSquare,
   Briefcase,
   UserPlus,
-  Trophy
+  Trophy,
+  Scan,
+  Copy,
+  EyeOff,
+  QrCode
 } from "lucide-react";
 import { EventImageUpload } from "../components/EventImageUpload";
 import { MyProfileAttendance } from "../components/MyProfileAttendance";
+import { CameraQRScanner } from "../components/CameraQRScanner";
+import { RoleUpdatesBanner } from "../components/RoleUpdatesBanner";
 import { AKV_DOMAINS } from "../config/institutesData";
 
 export const SuperAdminDashboard = ({ onNavigateHome }) => {
@@ -187,7 +193,7 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
   // Search & Filters
   const [studentSearch, setStudentSearch] = useState("");
-  const [studentRoleFilter, setStudentRoleFilter] = useState("ALL");
+  const [studentRoleFilter, setStudentRoleFilter] = useState("PARTICIPANT");
   const [attendanceDateFilter, setAttendanceDateFilter] = useState("");
   const [attendanceDeptFilter, setAttendanceDeptFilter] = useState("all");
   const [auditActionFilter, setAuditActionFilter] = useState("all");
@@ -206,6 +212,21 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
   const [eventRegFilter, setEventRegFilter] = useState("all");
   const [registrationEditor, setRegistrationEditor] = useState(null);
   const [registrationSaving, setRegistrationSaving] = useState(false);
+  const [selectedGroupRegistration, setSelectedGroupRegistration] = useState(null);
+
+  // Volunteer Details & Password Modal State (v2.3.8)
+  const [selectedVolunteer, setSelectedVolunteer] = useState(null);
+  const [showVolunteerPassword, setShowVolunteerPassword] = useState(false);
+  const [copiedVolunteerPassword, setCopiedVolunteerPassword] = useState(false);
+
+  // Volunteer Attendance QR Scanner State (v2.3.8)
+  const [showSuperAdminVolunteerScanner, setShowSuperAdminVolunteerScanner] = useState(false);
+  const [superAdminScannedVolunteer, setSuperAdminScannedVolunteer] = useState(null);
+  const [superAdminScannerFeedback, setSuperAdminScannerFeedback] = useState("");
+
+  // Attendance Cutoff Rule: 05/11/2026
+  const ATTENDANCE_CUTOFF_DATE = "2026-11-05";
+  const todayIstStr = new Date().toISOString().slice(0, 10);
 
   // Official Multi-Day Attendance State (v2.1.2)
   const [attendanceConfigDates, setAttendanceConfigDates] = useState(() => {
@@ -220,6 +241,12 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
     }
     return "";
   });
+
+  const isAttendanceCutoffPassed = Boolean(
+    todayIstStr > ATTENDANCE_CUTOFF_DATE || 
+    (selectedOfficialDate && selectedOfficialDate > ATTENDANCE_CUTOFF_DATE)
+  );
+
   const [officialAttendanceRoster, setOfficialAttendanceRoster] = useState(() => api.getCachedAttendance()?.participants || []);
   const [officialAttendanceSession, setOfficialAttendanceSession] = useState({
     is_submitted: false,
@@ -246,6 +273,43 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
   const [attendanceMarkingIds, setAttendanceMarkingIds] = useState([]);
   const [officialExportLoading, setOfficialExportLoading] = useState(false);
   const [csvExportLoading, setCsvExportLoading] = useState(false);
+
+  // QR Scan Handler for Volunteers in Superadmin Attendance
+  const handleSuperAdminScanVolunteerQR = (decodedText) => {
+    if (!decodedText) return;
+    try {
+      let targetAuid = "";
+      let targetUserId = null;
+      let targetRegId = "";
+
+      try {
+        const parsed = JSON.parse(decodedText);
+        targetAuid = (parsed.auid || "").trim().toUpperCase();
+        targetUserId = parsed.user_id || parsed.id || null;
+        targetRegId = (parsed.registration_id || parsed.reg_id || "").trim().toUpperCase();
+      } catch (e) {
+        const clean = decodedText.trim().toUpperCase();
+        targetAuid = clean;
+        targetRegId = clean;
+        if (/^\d+$/.test(clean)) targetUserId = parseInt(clean, 10);
+      }
+
+      const match = officialAttendanceRoster.find(p => 
+        (targetUserId && p.user_id === targetUserId) ||
+        (targetAuid && p.auid && p.auid.toUpperCase() === targetAuid) ||
+        (targetRegId && p.reg_id && p.reg_id.toUpperCase() === targetRegId)
+      );
+
+      if (match) {
+        setSuperAdminScannedVolunteer(match);
+        setSuperAdminScannerFeedback("");
+      } else {
+        setSuperAdminScannerFeedback(`Volunteer not found in current roster (${targetAuid || decodedText.slice(0, 20)}). Ensure the volunteer is listed for this event date.`);
+      }
+    } catch (err) {
+      setSuperAdminScannerFeedback("Invalid QR code format. Please scan a valid AKV volunteer pass.");
+    }
+  };
 
   const loadFestivalSchedule = async (forceFresh = false) => {
     try {
@@ -962,6 +1026,10 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
   // Official Multi-Day Attendance Action Handlers (v2.1.2)
   const handleSuperAdminCheckIn = async (participantUserId) => {
+    if (isAttendanceCutoffPassed) {
+      notify("error", "Attendance marking disabled. The deadline was 05/11/2026.");
+      return;
+    }
     if (attendanceMarkingIds.includes(participantUserId)) return;
     setAttendanceMarkingIds((ids) => [...ids, participantUserId]);
     try {
@@ -988,6 +1056,10 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
   };
 
   const handleSuperAdminCheckOut = async (participantUserId) => {
+    if (isAttendanceCutoffPassed) {
+      notify("error", "Attendance marking disabled. The deadline was 05/11/2026.");
+      return;
+    }
     if (attendanceMarkingIds.includes(participantUserId)) return;
     setAttendanceMarkingIds((ids) => [...ids, participantUserId]);
     try {
@@ -1384,15 +1456,15 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
           {[
             { id: "overview", label: "Dashboard Overview", icon: BarChart3 },
             { id: "my-account", label: "My Profile & Attendance", icon: UserPlus },
-            { id: "admins", label: `Admin Approvals ${metrics?.pending_admins ? `(${metrics.pending_admins})` : ""}`, icon: ShieldCheck, alert: metrics?.pending_admins > 0 },
+            { id: "admins", label: `Admins & Faculty Directory ${metrics?.pending_admins ? `(${metrics.pending_admins})` : ""}`, icon: ShieldCheck, alert: metrics?.pending_admins > 0 },
+            { id: "volunteers", label: "Volunteers Directory", icon: UserCheck },
+            { id: "students", label: "Participants Directory", icon: Users },
+            { id: "working-committee", label: "Working Committee Directory", icon: Briefcase },
+            { id: "event-registrations", label: "Event Registrations", icon: Trophy },
+            { id: "attendance", label: "Daily Attendance Records", icon: Clock },
+            { id: "id-cards", label: "Participant ID Cards", icon: ShieldCheck },
             { id: "activities", label: "Major Vedike Activities", icon: Sparkles },
             { id: "reels", label: "Reels & Posts", icon: Film },
-            { id: "students", label: "Student Directory", icon: Users },
-            { id: "event-registrations", label: "Event Registrations", icon: Trophy },
-            { id: "volunteers", label: "Volunteer Management", icon: UserCheck },
-            { id: "id-cards", label: "Participant ID Cards", icon: ShieldCheck },
-            { id: "attendance", label: "Daily Attendance Records", icon: Clock },
-            { id: "working-committee", label: "Working Committee", icon: Briefcase },
             { id: "exports", label: "Attendance & Data Exports", icon: FileSpreadsheet },
             { id: "events", label: "Event Configuration", icon: Calendar },
             { id: "festival-schedule", label: "Karunada Vaibhava Schedule", icon: MapPin },
@@ -1423,6 +1495,9 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
 
         {/* Workspace Content */}
         <main className="flex-1 space-y-6">
+
+          {/* Role-Specific Updates Banner */}
+          <RoleUpdatesBanner role="SUPERADMIN" />
 
           {/* Notifications */}
           {feedback.text && (
@@ -2431,72 +2506,99 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                           }
                         }
 
+                        const eventObj = eventsList.find(e => e.id === reg.event_id);
+                        const eventTitle = eventObj ? (eventObj.title_en || eventObj.title_kn || reg.event_id) : reg.event_id;
+
                         return (
-                          <tr key={reg.id || reg.registration_id} className="hover:bg-amber-50/20 transition-colors">
-                            <td className="py-3 px-3 font-mono font-bold text-amber-900">
-                              {reg.registration_id}
-                            </td>
-                            <td className="py-3 px-3">
-                              <span className="font-extrabold text-stone-900 block">{reg.event_id}</span>
-                              <span className="text-[10px] text-stone-500">
-                                {new Date(reg.created_at || Date.now()).toLocaleDateString("en-IN")}
-                              </span>
-                            </td>
-                            <td className="py-3 px-3">
-                              <span className="font-bold text-stone-900 block">{reg.full_name}</span>
-                              <span className="text-[11px] text-stone-500 font-mono">
-                                {reg.phone} {reg.email ? `• ${reg.email}` : ""}
-                              </span>
-                            </td>
-                            <td className="py-3 px-3 font-mono font-bold text-stone-800">
-                              {reg.auid || reg.usn}
-                            </td>
-                            <td className="py-3 px-3">
-                              {reg.is_team ? (
-                                <div className="space-y-1">
-                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 text-purple-800">
-                                    Team: {reg.team_name || "Group"} ({members.length + 1} members)
-                                  </span>
-                                  {members.length > 0 && (
-                                    <div className="text-[10px] text-stone-600 bg-stone-50 p-1.5 rounded-lg border border-stone-200 space-y-0.5 max-w-xs">
-                                      {members.map((m, idx) => (
-                                        <div key={idx} className="truncate">
-                                          • <strong className="text-stone-800">{m.name}</strong> ({m.auid || m.usn || m.faculty_id || "ID"}) - {m.department || "Dept"}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900">
-                                  Solo Participant
+                            <tr 
+                              key={reg.id || reg.registration_id} 
+                              onClick={() => {
+                                if (reg.is_team) setSelectedGroupRegistration(reg);
+                              }}
+                              className={`transition-colors ${reg.is_team ? "hover:bg-purple-50/40 cursor-pointer" : "hover:bg-amber-50/20"}`}
+                            >
+                              <td className="py-3 px-3 font-mono font-bold text-amber-900">
+                                {reg.registration_id}
+                              </td>
+                              <td className="py-3 px-3">
+                                <span className="font-extrabold text-stone-900 block leading-tight">{eventTitle}</span>
+                                <span className="text-[10px] font-mono text-kar-red font-bold bg-red-50 border border-red-100 px-1.5 py-0.5 rounded-md inline-block mt-1">
+                                  ID: {reg.event_id}
                                 </span>
-                              )}
-                            </td>
-                            <td className="py-3 px-3 text-stone-600">
-                              <span className="font-semibold block">{reg.department}</span>
-                              <span className="text-[10px] text-stone-400 block truncate max-w-xs">{reg.institute}</span>
-                            </td>
-                            <td className="py-3 px-3 text-right">
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                {reg.status || "Registered"}
-                              </span>
-                            </td>
-                            <td className="py-3 px-3 text-right whitespace-nowrap">
-                              <button type="button" onClick={() => openRegistrationEditor(reg)} className="p-1.5 rounded-lg text-stone-600 hover:bg-amber-100 hover:text-amber-800" title="Edit registration" aria-label={`Edit ${reg.registration_id}`}>
-                                <Pencil className="w-3.5 h-3.5" />
-                              </button>
-                              <button type="button" onClick={() => handleDeleteEventRegistration(reg)} className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-100" title="Delete registration" aria-label={`Delete ${reg.registration_id}`}>
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                                <span className="text-[10px] text-stone-400 block mt-0.5">
+                                  {new Date(reg.created_at || Date.now()).toLocaleDateString("en-IN")}
+                                </span>
+                              </td>
+                              <td className="py-3 px-3">
+                                <span className="font-bold text-stone-900 block">{reg.full_name}</span>
+                                <span className="text-[11px] text-stone-500 font-mono">
+                                  {reg.phone} {reg.email ? `• ${reg.email}` : ""}
+                                </span>
+                              </td>
+                              <td className="py-3 px-3 font-mono font-bold text-stone-800">
+                                {reg.auid || reg.usn}
+                              </td>
+                              <td className="py-3 px-3">
+                                {reg.is_team ? (
+                                  <div className="space-y-1">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedGroupRegistration(reg);
+                                      }}
+                                      className="px-2.5 py-1 rounded-xl text-[10px] font-black bg-purple-100 hover:bg-purple-200 text-purple-900 border border-purple-200 inline-flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer text-left"
+                                      title="Click to view full group details"
+                                    >
+                                      <Users className="w-3.5 h-3.5 text-purple-700" />
+                                      <span>Team: {reg.team_name || "Group"} ({members.length + 1} members)</span>
+                                      <span className="text-purple-600 font-bold ml-0.5">↗</span>
+                                    </button>
+                                    {members.length > 0 && (
+                                      <div className="text-[10px] text-stone-600 bg-stone-50 p-1.5 rounded-lg border border-stone-200 space-y-0.5 max-w-xs">
+                                        {members.slice(0, 2).map((m, idx) => (
+                                          <div key={idx} className="truncate">
+                                            • <strong className="text-stone-800">{m.name}</strong> ({m.auid || m.usn || m.faculty_id || "ID"}) - {m.department || "Dept"}
+                                          </div>
+                                        ))}
+                                        {members.length > 2 && (
+                                          <div className="text-[9px] text-stone-400 font-semibold italic">
+                                            +{members.length - 2} more members (Tap to view full roster)
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900">
+                                    Solo Participant
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-3 px-3 text-stone-600">
+                                <span className="font-semibold block">{reg.department}</span>
+                                <span className="text-[10px] text-stone-400 block truncate max-w-xs">{reg.institute}</span>
+                              </td>
+                              <td className="py-3 px-3 text-right">
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                  {reg.status || "Registered"}
+                                </span>
+                              </td>
+                              <td className="py-3 px-3 text-right whitespace-nowrap">
+                                <button type="button" onClick={(e) => { e.stopPropagation(); openRegistrationEditor(reg); }} className="p-1.5 rounded-lg text-stone-600 hover:bg-amber-100 hover:text-amber-800" title="Edit registration" aria-label={`Edit ${reg.registration_id}`}>
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                                <button type="button" onClick={(e) => { e.stopPropagation(); handleDeleteEventRegistration(reg); }} className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-100" title="Delete registration" aria-label={`Delete ${reg.registration_id}`}>
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
 
               {registrationEditor && (
                 <div className="fixed inset-0 z-[100] bg-stone-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6" onMouseDown={(e) => e.target === e.currentTarget && setRegistrationEditor(null)}>
@@ -2572,6 +2674,178 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                   </form>
                 </div>
               )}
+
+              {/* Group Event Registration Details Popup Modal (v2.3.8) */}
+              {selectedGroupRegistration && (() => {
+                let parsedMembers = [];
+                if (selectedGroupRegistration.team_members) {
+                  try {
+                    parsedMembers = typeof selectedGroupRegistration.team_members === "string" 
+                      ? JSON.parse(selectedGroupRegistration.team_members) 
+                      : selectedGroupRegistration.team_members;
+                  } catch (e) {
+                    parsedMembers = [];
+                  }
+                }
+                const ev = eventsList.find(e => e.id === selectedGroupRegistration.event_id);
+                const evName = ev ? (ev.title_en || ev.title_kn || selectedGroupRegistration.event_id) : selectedGroupRegistration.event_id;
+
+                return (
+                  <div 
+                    className="fixed inset-0 z-[110] bg-stone-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5"
+                    onClick={(e) => e.target === e.currentTarget && setSelectedGroupRegistration(null)}
+                  >
+                    <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col max-h-[92vh]">
+                      {/* Modal Header */}
+                      <div className="bg-gradient-to-r from-purple-900 via-stone-900 to-stone-950 p-4 sm:p-5 text-white flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-2xl bg-purple-600 flex items-center justify-center text-white shadow-sm shrink-0">
+                            <Users className="w-5 h-5 text-purple-200" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-black text-base text-white">
+                                {selectedGroupRegistration.team_name || "Group Event Registration"}
+                              </h3>
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-400 text-purple-950 uppercase">
+                                Group Event
+                              </span>
+                            </div>
+                            <p className="text-xs text-stone-300 mt-0.5">
+                              Event: <strong className="text-amber-300">{evName}</strong> (ID: <span className="font-mono">{selectedGroupRegistration.event_id}</span>)
+                            </p>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => setSelectedGroupRegistration(null)} 
+                          className="p-2 rounded-xl text-stone-400 hover:text-white hover:bg-stone-800 transition-colors cursor-pointer"
+                          aria-label="Close"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+
+                      {/* Modal Body */}
+                      <div className="p-4 sm:p-6 space-y-5 overflow-y-auto">
+                        {/* Summary Badges */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                          <div className="bg-stone-50 p-3 rounded-xl border border-stone-200">
+                            <span className="text-[10px] font-extrabold uppercase text-stone-400 block">Registration ID</span>
+                            <span className="font-mono font-bold text-stone-900">{selectedGroupRegistration.registration_id}</span>
+                          </div>
+                          <div className="bg-stone-50 p-3 rounded-xl border border-stone-200">
+                            <span className="text-[10px] font-extrabold uppercase text-stone-400 block">Status</span>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200 inline-block mt-0.5">
+                              {selectedGroupRegistration.status || "Registered"}
+                            </span>
+                          </div>
+                          <div className="bg-stone-50 p-3 rounded-xl border border-stone-200">
+                            <span className="text-[10px] font-extrabold uppercase text-stone-400 block">Total Team Size</span>
+                            <span className="font-black text-stone-900">{parsedMembers.length + 1} Members</span>
+                          </div>
+                          <div className="bg-stone-50 p-3 rounded-xl border border-stone-200">
+                            <span className="text-[10px] font-extrabold uppercase text-stone-400 block">Registered On</span>
+                            <span className="font-bold text-stone-700">{new Date(selectedGroupRegistration.created_at || Date.now()).toLocaleDateString("en-IN")}</span>
+                          </div>
+                        </div>
+
+                        {/* Team Leader Card */}
+                        <div className="bg-purple-50/70 border border-purple-200 rounded-2xl p-4 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-xs font-black uppercase tracking-wider text-purple-900 flex items-center gap-1.5">
+                              <Trophy className="w-4 h-4 text-purple-700" />
+                              <span>Team Leader / Primary Registrant</span>
+                            </h4>
+                            <span className="text-[10px] font-extrabold text-purple-700 bg-purple-200/60 px-2 py-0.5 rounded-full">
+                              Lead Contact
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 text-xs">
+                            <div>
+                              <span className="text-[10px] text-stone-500 block">Full Name:</span>
+                              <strong className="text-stone-900 text-sm">{selectedGroupRegistration.full_name}</strong>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-stone-500 block">AUID / USN:</span>
+                              <strong className="font-mono text-stone-900">{selectedGroupRegistration.auid || selectedGroupRegistration.usn || "N/A"}</strong>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-stone-500 block">Phone:</span>
+                              <span className="font-mono text-stone-800">{selectedGroupRegistration.phone}</span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-stone-500 block">Email:</span>
+                              <span className="text-stone-800 truncate block">{selectedGroupRegistration.email || "N/A"}</span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-stone-500 block">Institute:</span>
+                              <span className="text-stone-800">{selectedGroupRegistration.institute}</span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-stone-500 block">Department & Semester:</span>
+                              <span className="text-stone-800">{selectedGroupRegistration.department} {selectedGroupRegistration.semester ? `(Sem ${selectedGroupRegistration.semester})` : ""}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Additional Team Members Roster */}
+                        <div className="space-y-2.5">
+                          <h4 className="text-xs font-black uppercase tracking-wider text-stone-700 flex items-center justify-between">
+                            <span>Team Members Roster ({parsedMembers.length})</span>
+                            <span className="text-[11px] font-normal text-stone-400">All registered squad members</span>
+                          </h4>
+
+                          {parsedMembers.length === 0 ? (
+                            <div className="p-4 rounded-xl bg-stone-50 border border-stone-200 text-center text-xs text-stone-500">
+                              No additional team members listed.
+                            </div>
+                          ) : (
+                            <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                              {parsedMembers.map((m, idx) => (
+                                <div key={idx} className="p-3 bg-stone-50 hover:bg-stone-100/80 rounded-xl border border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs transition-colors">
+                                  <div className="flex items-center gap-2.5">
+                                    <span className="w-6 h-6 rounded-lg bg-stone-200 text-stone-700 font-black text-xs flex items-center justify-center shrink-0">
+                                      {idx + 2}
+                                    </span>
+                                    <div>
+                                      <strong className="text-stone-900 text-sm block">{m.name}</strong>
+                                      <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-stone-500 mt-0.5">
+                                        <span className="font-mono font-bold text-stone-700 bg-white px-1.5 py-0.5 rounded border border-stone-200">
+                                          {m.auid || m.usn || m.faculty_id || "ID"}
+                                        </span>
+                                        <span>•</span>
+                                        <span>{m.department || "Dept"}</span>
+                                        {m.institute && <span>({m.institute})</span>}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  {(m.phone || m.email) && (
+                                    <div className="text-[11px] font-mono text-stone-600 sm:text-right shrink-0">
+                                      {m.phone && <div>{m.phone}</div>}
+                                      {m.email && <div className="text-stone-400 text-[10px]">{m.email}</div>}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Modal Footer */}
+                      <div className="bg-stone-50 p-3 sm:p-4 border-t border-stone-200 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedGroupRegistration(null)}
+                          className="px-5 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs cursor-pointer transition-colors shadow-xs"
+                        >
+                          Close Details
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
@@ -2604,20 +2878,35 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                     <tr className="border-b border-stone-200 text-stone-400 uppercase tracking-wider font-extrabold">
                       <th className="py-3 px-3">Volunteer Name</th>
                       <th className="py-3 px-3">AUID</th>
+                      <th className="py-3 px-3">Domain</th>
                       <th className="py-3 px-3">Department</th>
                       <th className="py-3 px-3">Contact</th>
                       <th className="py-3 px-3">Today's Status</th>
-                      <th className="py-3 px-3">Total Days Present</th>
+                      <th className="py-3 px-3">Days Present</th>
+                      <th className="py-3 px-3 text-right">Profile & Password</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100">
                     {volunteersList.map((vol) => (
-                      <tr key={vol.user_id} className="hover:bg-stone-50/80">
+                      <tr 
+                        key={vol.user_id} 
+                        onClick={() => {
+                          setSelectedVolunteer(vol);
+                          setShowVolunteerPassword(false);
+                          setCopiedVolunteerPassword(false);
+                        }}
+                        className="hover:bg-red-50/40 cursor-pointer transition-colors"
+                      >
                         <td className="py-3 px-3 font-bold text-stone-900">
                           {vol.name}
                         </td>
                         <td className="py-3 px-3 font-mono font-bold text-stone-700">
                           {vol.auid}
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className="font-extrabold text-kar-red bg-red-50 border border-red-100 px-2 py-0.5 rounded-md text-[11px]">
+                            {vol.volunteer_domain || "General"}
+                          </span>
                         </td>
                         <td className="py-3 px-3 text-stone-600">
                           {vol.department}
@@ -2638,11 +2927,217 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                         <td className="py-3 px-3 font-extrabold text-stone-800">
                           {vol.total_days_present} days
                         </td>
+                        <td className="py-3 px-3 text-right">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedVolunteer(vol);
+                              setShowVolunteerPassword(false);
+                              setCopiedVolunteerPassword(false);
+                            }}
+                            className="px-2.5 py-1 rounded-xl text-[11px] font-black bg-stone-900 hover:bg-stone-800 text-white inline-flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer active:scale-95"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-amber-400" />
+                            <span>View Details</span>
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+
+              {/* Volunteer Registration Details & Account Password Popup Modal (v2.3.8) */}
+              {selectedVolunteer && (
+                <div 
+                  className="fixed inset-0 z-[110] bg-stone-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5"
+                  onClick={(e) => e.target === e.currentTarget && setSelectedVolunteer(null)}
+                >
+                  <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col max-h-[92vh]">
+                    {/* Modal Header */}
+                    <div className="bg-gradient-to-r from-stone-900 to-stone-950 p-4 sm:p-5 text-white flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-kar-red to-red-600 flex items-center justify-center text-white font-black text-sm shadow-sm overflow-hidden shrink-0">
+                          {selectedVolunteer.photo_url ? (
+                            <img src={selectedVolunteer.photo_url} alt={selectedVolunteer.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <span>{selectedVolunteer.name?.slice(0, 2)?.toUpperCase() || "VO"}</span>
+                          )}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-black text-base text-white">
+                              {selectedVolunteer.name}
+                            </h3>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-400 text-stone-950">
+                              VOLUNTEER
+                            </span>
+                          </div>
+                          <p className="text-xs text-stone-300 font-mono mt-0.5">
+                            AUID: <strong className="text-amber-300">{selectedVolunteer.auid}</strong>
+                            {selectedVolunteer.registration_id && (
+                              <span> • Reg ID: <strong className="text-stone-200">{selectedVolunteer.registration_id}</strong></span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => setSelectedVolunteer(null)} 
+                        className="p-2 rounded-xl text-stone-400 hover:text-white hover:bg-stone-800 transition-colors cursor-pointer"
+                        aria-label="Close"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    {/* Modal Body */}
+                    <div className="p-4 sm:p-6 space-y-4 overflow-y-auto">
+                      {/* Account Password Card */}
+                      <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300/80 rounded-2xl p-4 shadow-xs space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-black uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
+                            <Lock className="w-3.5 h-3.5 text-amber-700" />
+                            <span>Volunteer Account Password</span>
+                          </span>
+                          <span className="text-[10px] font-bold text-amber-800 bg-amber-200/60 px-2 py-0.5 rounded-full">
+                            Superadmin Access Only
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2 bg-white p-2.5 rounded-xl border border-amber-200">
+                          <div className="flex-1 font-mono text-sm font-bold text-stone-900 select-all truncate">
+                            {selectedVolunteer.plain_password ? (
+                              showVolunteerPassword ? selectedVolunteer.plain_password : "••••••••••••"
+                            ) : (
+                              <span className="text-xs text-stone-400 italic font-sans">
+                                [Hashed on Registration - Plaintext unavailable for legacy record]
+                              </span>
+                            )}
+                          </div>
+
+                          {selectedVolunteer.plain_password && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => setShowVolunteerPassword(!showVolunteerPassword)}
+                                className="p-1.5 rounded-lg text-stone-600 hover:bg-amber-100 transition-colors cursor-pointer"
+                                title={showVolunteerPassword ? "Hide Password" : "Show Password"}
+                              >
+                                {showVolunteerPassword ? <EyeOff className="w-4 h-4 text-stone-700" /> : <Eye className="w-4 h-4 text-stone-700" />}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(selectedVolunteer.plain_password);
+                                  setCopiedVolunteerPassword(true);
+                                  setTimeout(() => setCopiedVolunteerPassword(false), 2000);
+                                }}
+                                className="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer shadow-xs active:scale-95"
+                                title="Copy Password"
+                              >
+                                {copiedVolunteerPassword ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                                <span>{copiedVolunteerPassword ? "Copied" : "Copy"}</span>
+                              </button>
+                            </>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-amber-800">
+                          Password recorded during volunteer registration for administrative support.
+                        </p>
+                      </div>
+
+                      {/* Full Details Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                        <div className="bg-stone-50 p-3 rounded-xl border border-stone-200 space-y-1">
+                          <span className="text-[10px] font-extrabold uppercase text-stone-400 block">Volunteer Domain</span>
+                          <p className="font-black text-kar-red text-sm">
+                            {selectedVolunteer.volunteer_domain || "General Volunteer"}
+                          </p>
+                        </div>
+
+                        <div className="bg-stone-50 p-3 rounded-xl border border-stone-200 space-y-1">
+                          <span className="text-[10px] font-extrabold uppercase text-stone-400 block">Account Status</span>
+                          <p className="font-extrabold text-stone-900">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-200">
+                              {selectedVolunteer.account_status || "Active"}
+                            </span>
+                          </p>
+                        </div>
+
+                        <div className="bg-stone-50 p-3 rounded-xl border border-stone-200 space-y-1">
+                          <span className="text-[10px] font-extrabold uppercase text-stone-400 block">Phone Number</span>
+                          <p className="font-bold font-mono text-stone-900">{selectedVolunteer.phone || "Not provided"}</p>
+                        </div>
+
+                        <div className="bg-stone-50 p-3 rounded-xl border border-stone-200 space-y-1">
+                          <span className="text-[10px] font-extrabold uppercase text-stone-400 block">Email Address</span>
+                          <p className="font-medium text-stone-800 truncate" title={selectedVolunteer.email}>{selectedVolunteer.email || "Not provided"}</p>
+                        </div>
+
+                        <div className="bg-stone-50 p-3 rounded-xl border border-stone-200 space-y-1">
+                          <span className="text-[10px] font-extrabold uppercase text-stone-400 block">Institute</span>
+                          <p className="font-bold text-stone-900">{selectedVolunteer.institute || "Acharya Institutes"}</p>
+                        </div>
+
+                        <div className="bg-stone-50 p-3 rounded-xl border border-stone-200 space-y-1">
+                          <span className="text-[10px] font-extrabold uppercase text-stone-400 block">Department / Branch</span>
+                          <p className="font-bold text-stone-900">{selectedVolunteer.department || "N/A"}</p>
+                        </div>
+
+                        <div className="bg-stone-50 p-3 rounded-xl border border-stone-200 space-y-1">
+                          <span className="text-[10px] font-extrabold uppercase text-stone-400 block">Semester & Section</span>
+                          <p className="font-bold text-stone-900">
+                            Semester {selectedVolunteer.semester || "N/A"} • Section {selectedVolunteer.section || "N/A"}
+                          </p>
+                        </div>
+
+                        <div className="bg-stone-50 p-3 rounded-xl border border-stone-200 space-y-1">
+                          <span className="text-[10px] font-extrabold uppercase text-stone-400 block">Gender</span>
+                          <p className="font-bold text-stone-900">{selectedVolunteer.gender || "Not specified"}</p>
+                        </div>
+
+                        <div className="bg-stone-50 p-3 rounded-xl border border-stone-200 space-y-1">
+                          <span className="text-[10px] font-extrabold uppercase text-stone-400 block">Today's Attendance</span>
+                          <p className="font-bold">
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                              selectedVolunteer.today_attendance === "PRESENT"
+                                ? "bg-emerald-100 text-emerald-800"
+                                : selectedVolunteer.today_attendance === "ABSENT"
+                                ? "bg-red-100 text-red-800"
+                                : "bg-stone-200 text-stone-600"
+                            }`}>
+                              {selectedVolunteer.today_attendance || "NOT MARKED"}
+                            </span>
+                          </p>
+                        </div>
+
+                        <div className="bg-stone-50 p-3 rounded-xl border border-stone-200 space-y-1">
+                          <span className="text-[10px] font-extrabold uppercase text-stone-400 block">Total Days Present</span>
+                          <p className="font-black text-stone-900">{selectedVolunteer.total_days_present || 0} Days</p>
+                        </div>
+                      </div>
+
+                      {selectedVolunteer.created_at && (
+                        <div className="text-[11px] text-stone-400 text-center font-mono">
+                          Registration Date: {new Date(selectedVolunteer.created_at).toLocaleString("en-IN")}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Modal Footer */}
+                    <div className="bg-stone-50 p-3 sm:p-4 border-t border-stone-200 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedVolunteer(null)}
+                        className="px-5 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs cursor-pointer transition-colors shadow-xs"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -2676,8 +3171,23 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                   </p>
                 </div>
 
-                {/* Superadmin Actions: Export & Unlock */}
+                {/* Superadmin Actions: Scan QR, Export & Unlock */}
                 <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSuperAdminScannedVolunteer(null);
+                      setSuperAdminScannerFeedback("");
+                      setShowSuperAdminVolunteerScanner(true);
+                    }}
+                    disabled={isAttendanceCutoffPassed}
+                    className="px-3.5 py-2 rounded-xl text-xs font-black text-white bg-emerald-600 hover:bg-emerald-700 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95 disabled:opacity-50"
+                    title="Scan Volunteer QR Pass"
+                  >
+                    <Scan className="w-4 h-4 text-emerald-200" />
+                    <span>Scan Volunteer QR</span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={handleOfficialExcelExport}
@@ -2700,6 +3210,19 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                   )}
                 </div>
               </div>
+
+              {/* Attendance Cutoff Notice (05/11/2026) */}
+              {isAttendanceCutoffPassed && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-3 text-xs text-red-900 max-w-4xl xl:max-w-5xl">
+                  <AlertCircle className="w-5 h-5 text-kar-red shrink-0" />
+                  <div>
+                    <span className="font-extrabold text-sm block">Attendance Marking Closed (05/11/2026 Cutoff Reached)</span>
+                    <span className="text-stone-600">
+                      Attendance marking for Nuditaranga 2026 was active until 5th November 2026. Marking attendance has been disabled.
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {/* Event Date Selector Pills */}
               <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-4xl xl:max-w-5xl">
@@ -2894,121 +3417,367 @@ export const SuperAdminDashboard = ({ onNavigateHome }) => {
                   <p className="text-xs text-stone-500">Try adjusting your filters or date selection.</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto rounded-2xl border border-stone-200 bg-white max-w-4xl xl:max-w-5xl shadow-2xs">
-                  <table className="w-full min-w-[620px] text-left text-xs table-fixed">
-                    <colgroup>
-                      <col className="w-[36%]" />
-                      <col className="w-[22%]" />
-                      <col className="w-[18%]" />
-                      <col className="w-[24%]" />
-                    </colgroup>
-                    <thead className="bg-stone-50 text-stone-600 uppercase tracking-wider font-extrabold border-b border-stone-200">
-                      <tr>
-                        <th className="py-2.5 px-3.5">Name</th>
-                        <th className="py-2.5 px-3.5">AUID</th>
-                        <th className="py-2.5 px-3.5">Status</th>
-                        <th className="py-2.5 px-3.5 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-stone-100 bg-white">
-                      {officialAttendanceRoster.map((p) => (
-                        <tr key={p.user_id} className="hover:bg-stone-50/80 transition-colors">
-                          <td className="py-2.5 px-3.5 font-bold text-stone-900 truncate" title={p.name}>
-                            <span className="truncate block">{p.name}</span>
-                          </td>
-                          <td className="py-2.5 px-3.5 font-mono font-bold text-stone-700 truncate" title={p.auid}>
-                            {p.auid}
-                          </td>
-                          <td className="py-2.5 px-3.5">
-                            <div className="flex flex-col items-start gap-0.5">
-                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold inline-block ${p.status === "COMPLETED"
-                                ? "bg-blue-100 text-blue-800 border border-blue-200"
-                                : p.status === "CHECKED_IN"
-                                  ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                                  : "bg-stone-100 text-stone-500"
-                                }`}>
-                                {p.status === "COMPLETED" && "COMPLETED"}
-                                {p.status === "CHECKED_IN" && "CHECKED IN"}
-                                {p.status === "NOT_MARKED" && "NOT MARKED"}
+                <>
+                  {/* Mobile View: Rearranged Card Layout (< sm) */}
+                  <div className="sm:hidden space-y-3 max-w-4xl xl:max-w-5xl">
+                    {officialAttendanceRoster.map((p) => (
+                      <div key={p.user_id} className="bg-white p-4 rounded-2xl border border-stone-200 shadow-xs space-y-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <h4 className="text-sm font-extrabold text-stone-900 truncate" title={p.name}>
+                              {p.name}
+                            </h4>
+                            <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                              <span className="font-mono text-xs font-bold text-stone-700 bg-stone-100 px-2 py-0.5 rounded border border-stone-200">
+                                {p.auid}
                               </span>
-                              {p.check_in_time && (
-                                <span className="text-[10px] text-stone-400 font-mono font-semibold pl-0.5">
-                                  In: {p.check_in_time}
+                              {p.akv_dept && (
+                                <span className="text-[10px] font-extrabold text-kar-red bg-red-50 border border-red-100 px-2 py-0.5 rounded">
+                                  {p.akv_dept}
                                 </span>
                               )}
                             </div>
-                          </td>
-                          <td className="py-2.5 px-3.5 text-right">
-                            <div className="flex items-center justify-end gap-1 flex-nowrap">
-                              {/* Quick Mark controls for Superadmin */}
-                              {p.status === "NOT_MARKED" && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleSuperAdminCheckIn(p.user_id)}
-                                  disabled={attendanceMarkingIds.includes(p.user_id)}
-                                  className="px-2 py-1 rounded-lg text-[10px] font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs cursor-pointer transition-all active:scale-95"
-                                  title="Superadmin Check-In"
-                                >
-                                  {attendanceMarkingIds.includes(p.user_id) ? "…" : "Check In"}
-                                </button>
-                              )}
-                              {p.status === "CHECKED_IN" && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleSuperAdminCheckOut(p.user_id)}
-                                  disabled={attendanceMarkingIds.includes(p.user_id)}
-                                  className="px-2 py-1 rounded-lg text-[10px] font-extrabold bg-amber-500 hover:bg-amber-600 text-stone-950 shadow-xs cursor-pointer transition-all active:scale-95"
-                                  title="Superadmin Check-Out"
-                                >
-                                  {attendanceMarkingIds.includes(p.user_id) ? "…" : "Check Out"}
-                                </button>
-                              )}
+                          </div>
+                          <span className={`shrink-0 px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
+                            p.status === "COMPLETED"
+                              ? "bg-blue-100 text-blue-800 border border-blue-200"
+                              : p.status === "CHECKED_IN"
+                                ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                : "bg-stone-100 text-stone-600"
+                          }`}>
+                            {p.status === "COMPLETED" ? "COMPLETED" : p.status === "CHECKED_IN" ? "CHECKED IN" : "NOT MARKED"}
+                          </span>
+                        </div>
 
-                              {/* Edit Modal Button */}
-                              {p.record_id && (
-                                <button
-                                  type="button"
-                                  onClick={() => setEditRecordModal({
-                                    record_id: p.record_id,
-                                    user_id: p.user_id,
-                                    name: p.name,
-                                    reg_id: p.reg_id,
-                                    auid: p.auid,
-                                    date: selectedOfficialDate,
-                                    check_in_time: p.check_in_time || "",
-                                    check_out_time: p.check_out_time || "",
-                                    reason: ""
-                                  })}
-                                  className="p-1 rounded-md border border-stone-200 hover:bg-stone-100 text-stone-700 cursor-pointer transition-colors"
-                                  title="Edit Timestamps"
-                                >
-                                  <Pencil className="w-3 h-3" />
-                                </button>
-                              )}
+                        {(p.check_in_time || p.check_out_time) && (
+                          <div className="flex items-center gap-3 text-xs text-stone-600 font-mono bg-stone-50 p-2.5 rounded-xl border border-stone-100">
+                            {p.check_in_time && (
+                              <span>In: <strong className="text-stone-900">{p.check_in_time}</strong></span>
+                            )}
+                            {p.check_out_time && (
+                              <span>Out: <strong className="text-stone-900">{p.check_out_time}</strong></span>
+                            )}
+                          </div>
+                        )}
 
-                              {/* Reset Button */}
-                              {p.record_id && (
-                                <button
-                                  type="button"
-                                  onClick={() => setResetModal({
-                                    record_id: p.record_id,
-                                    name: p.name,
-                                    auid: p.auid,
-                                    date: selectedOfficialDate,
-                                    reason: ""
-                                  })}
-                                  className="p-1 rounded-md border border-stone-200 hover:bg-red-50 text-red-600 cursor-pointer transition-colors"
-                                  title="Reset Record"
-                                >
-                                  <RotateCcw className="w-3 h-3" />
-                                </button>
+                        {/* Mobile Action Controls */}
+                        <div className="flex items-center gap-2 pt-1 border-t border-stone-100">
+                          {p.status === "NOT_MARKED" && (
+                            <button
+                              type="button"
+                              onClick={() => handleSuperAdminCheckIn(p.user_id)}
+                              disabled={isAttendanceCutoffPassed || attendanceMarkingIds.includes(p.user_id)}
+                              className="flex-1 py-2.5 px-3 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              <span>{attendanceMarkingIds.includes(p.user_id) ? "Checking In…" : "Check In"}</span>
+                            </button>
+                          )}
+                          {p.status === "CHECKED_IN" && (
+                            <button
+                              type="button"
+                              onClick={() => handleSuperAdminCheckOut(p.user_id)}
+                              disabled={isAttendanceCutoffPassed || attendanceMarkingIds.includes(p.user_id)}
+                              className="flex-1 py-2.5 px-3 rounded-xl text-xs font-black bg-amber-500 hover:bg-amber-600 text-stone-950 shadow-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                            >
+                              <Clock className="w-3.5 h-3.5" />
+                              <span>{attendanceMarkingIds.includes(p.user_id) ? "Checking Out…" : "Check Out"}</span>
+                            </button>
+                          )}
+                          {p.status === "COMPLETED" && (
+                            <div className="flex-1 py-2 px-3 rounded-xl text-xs font-bold text-center bg-blue-50 text-blue-800 border border-blue-100">
+                              Completed
+                            </div>
+                          )}
+
+                          {p.record_id && (
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => setEditRecordModal({
+                                  record_id: p.record_id,
+                                  user_id: p.user_id,
+                                  name: p.name,
+                                  reg_id: p.reg_id,
+                                  auid: p.auid,
+                                  date: selectedOfficialDate,
+                                  check_in_time: p.check_in_time || "",
+                                  check_out_time: p.check_out_time || "",
+                                  reason: ""
+                                })}
+                                className="p-2 rounded-xl border border-stone-200 hover:bg-stone-100 text-stone-700 cursor-pointer"
+                                title="Edit Timestamps"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setResetModal({
+                                  record_id: p.record_id,
+                                  name: p.name,
+                                  auid: p.auid,
+                                  date: selectedOfficialDate,
+                                  reason: ""
+                                })}
+                                className="p-2 rounded-xl border border-stone-200 hover:bg-red-50 text-red-600 cursor-pointer"
+                                title="Reset Record"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Desktop View: Wide Table Layout (hidden sm:block) */}
+                  <div className="hidden sm:block overflow-x-auto rounded-2xl border border-stone-200 bg-white max-w-4xl xl:max-w-5xl shadow-2xs">
+                    <table className="w-full min-w-[620px] text-left text-xs table-fixed">
+                      <colgroup>
+                        <col className="w-[36%]" />
+                        <col className="w-[22%]" />
+                        <col className="w-[18%]" />
+                        <col className="w-[24%]" />
+                      </colgroup>
+                      <thead className="bg-stone-50 text-stone-600 uppercase tracking-wider font-extrabold border-b border-stone-200">
+                        <tr>
+                          <th className="py-2.5 px-3.5">Name</th>
+                          <th className="py-2.5 px-3.5">AUID</th>
+                          <th className="py-2.5 px-3.5">Status</th>
+                          <th className="py-2.5 px-3.5 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-stone-100 bg-white">
+                        {officialAttendanceRoster.map((p) => (
+                          <tr key={p.user_id} className="hover:bg-stone-50/80 transition-colors">
+                            <td className="py-2.5 px-3.5 font-bold text-stone-900 truncate" title={p.name}>
+                              <span className="truncate block">{p.name}</span>
+                            </td>
+                            <td className="py-2.5 px-3.5 font-mono font-bold text-stone-700 truncate" title={p.auid}>
+                              {p.auid}
+                            </td>
+                            <td className="py-2.5 px-3.5">
+                              <div className="flex flex-col items-start gap-0.5">
+                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold inline-block ${p.status === "COMPLETED"
+                                  ? "bg-blue-100 text-blue-800 border border-blue-200"
+                                  : p.status === "CHECKED_IN"
+                                    ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                    : "bg-stone-100 text-stone-500"
+                                  }`}>
+                                  {p.status === "COMPLETED" && "COMPLETED"}
+                                  {p.status === "CHECKED_IN" && "CHECKED IN"}
+                                  {p.status === "NOT_MARKED" && "NOT MARKED"}
+                                </span>
+                                {p.check_in_time && (
+                                  <span className="text-[10px] text-stone-400 font-mono font-semibold pl-0.5">
+                                    In: {p.check_in_time}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-2.5 px-3.5 text-right">
+                              <div className="flex items-center justify-end gap-1 flex-nowrap">
+                                {/* Quick Mark controls for Superadmin */}
+                                {p.status === "NOT_MARKED" && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSuperAdminCheckIn(p.user_id)}
+                                    disabled={isAttendanceCutoffPassed || attendanceMarkingIds.includes(p.user_id)}
+                                    className="px-2 py-1 rounded-lg text-[10px] font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs cursor-pointer transition-all active:scale-95 disabled:opacity-50"
+                                    title="Superadmin Check-In"
+                                  >
+                                    {attendanceMarkingIds.includes(p.user_id) ? "…" : "Check In"}
+                                  </button>
+                                )}
+                                {p.status === "CHECKED_IN" && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSuperAdminCheckOut(p.user_id)}
+                                    disabled={isAttendanceCutoffPassed || attendanceMarkingIds.includes(p.user_id)}
+                                    className="px-2 py-1 rounded-lg text-[10px] font-extrabold bg-amber-500 hover:bg-amber-600 text-stone-950 shadow-xs cursor-pointer transition-all active:scale-95 disabled:opacity-50"
+                                    title="Superadmin Check-Out"
+                                  >
+                                    {attendanceMarkingIds.includes(p.user_id) ? "…" : "Check Out"}
+                                  </button>
+                                )}
+
+                                {/* Edit Modal Button */}
+                                {p.record_id && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditRecordModal({
+                                      record_id: p.record_id,
+                                      user_id: p.user_id,
+                                      name: p.name,
+                                      reg_id: p.reg_id,
+                                      auid: p.auid,
+                                      date: selectedOfficialDate,
+                                      check_in_time: p.check_in_time || "",
+                                      check_out_time: p.check_out_time || "",
+                                      reason: ""
+                                    })}
+                                    className="p-1 rounded-md border border-stone-200 hover:bg-stone-100 text-stone-700 cursor-pointer transition-colors"
+                                    title="Edit Timestamps"
+                                  >
+                                    <Pencil className="w-3 h-3" />
+                                  </button>
+                                )}
+
+                                {/* Reset Button */}
+                                {p.record_id && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setResetModal({
+                                      record_id: p.record_id,
+                                      name: p.name,
+                                      auid: p.auid,
+                                      date: selectedOfficialDate,
+                                      reason: ""
+                                    })}
+                                    className="p-1 rounded-md border border-stone-200 hover:bg-red-50 text-red-600 cursor-pointer transition-colors"
+                                    title="Reset Record"
+                                  >
+                                    <RotateCcw className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+
+              {/* Volunteer Attendance QR Scanner Modal in Superadmin */}
+              {showSuperAdminVolunteerScanner && (
+                <div 
+                  className="fixed inset-0 z-[110] bg-stone-950/70 backdrop-blur-sm flex items-center justify-center p-4"
+                  onClick={(e) => e.target === e.currentTarget && setShowSuperAdminVolunteerScanner(false)}
+                >
+                  <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col max-h-[92vh]">
+                    <div className="bg-gradient-to-r from-stone-900 to-stone-950 p-4 sm:p-5 text-white flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Scan className="w-5 h-5 text-emerald-400" />
+                        <h3 className="font-black text-sm sm:text-base text-white">
+                          Scan Volunteer Attendance Pass
+                        </h3>
+                      </div>
+                      <button 
+                        onClick={() => { setShowSuperAdminVolunteerScanner(false); setSuperAdminScannedVolunteer(null); setSuperAdminScannerFeedback(""); }} 
+                        className="p-1.5 rounded-lg text-stone-400 hover:text-white"
+                        aria-label="Close"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    <div className="p-4 sm:p-6 space-y-4 overflow-y-auto">
+                      {!superAdminScannedVolunteer ? (
+                        <div>
+                          <p className="text-xs text-stone-600 mb-3 text-center">
+                            Scan the QR code displayed in the volunteer's profile pass to mark attendance:
+                          </p>
+                          <div className="rounded-2xl overflow-hidden border-2 border-dashed border-emerald-500/50 bg-stone-950/5 p-2">
+                            <CameraQRScanner
+                              onScanSuccess={handleSuperAdminScanVolunteerQR}
+                              autoStart={true}
+                            />
+                          </div>
+                          {superAdminScannerFeedback && (
+                            <p className="mt-3 text-center text-xs font-bold text-amber-800 bg-amber-50 p-2.5 rounded-xl border border-amber-200">
+                              {superAdminScannerFeedback}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200 space-y-2 text-center">
+                            <CheckCircle2 className="w-9 h-9 text-emerald-600 mx-auto" />
+                            <h4 className="text-base font-extrabold text-stone-900">{superAdminScannedVolunteer.name}</h4>
+                            <div className="flex items-center justify-center gap-2 text-xs">
+                              <span className="font-mono font-bold text-stone-700 bg-white px-2 py-0.5 rounded border border-stone-200">
+                                {superAdminScannedVolunteer.auid}
+                              </span>
+                              <span className="text-stone-300">•</span>
+                              <span className="font-extrabold text-kar-red bg-red-100/80 px-2 py-0.5 rounded">
+                                {superAdminScannedVolunteer.akv_dept || "Volunteer"}
+                              </span>
+                            </div>
+                            <div className="pt-2">
+                              <span className={`px-3 py-1 rounded-full text-xs font-black uppercase inline-block ${
+                                superAdminScannedVolunteer.status === "COMPLETED" 
+                                  ? "bg-blue-100 text-blue-900 border border-blue-200" 
+                                  : superAdminScannedVolunteer.status === "CHECKED_IN"
+                                  ? "bg-emerald-100 text-emerald-900 border border-emerald-200"
+                                  : "bg-stone-100 text-stone-700 border border-stone-200"
+                              }`}>
+                                Current Status: {superAdminScannedVolunteer.status}
+                              </span>
+                              {superAdminScannedVolunteer.check_in_time && (
+                                <p className="text-xs text-stone-500 font-mono mt-1">
+                                  Check-in Time: {superAdminScannedVolunteer.check_in_time}
+                                </p>
                               )}
                             </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3 pt-2">
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                await handleSuperAdminCheckIn(superAdminScannedVolunteer.user_id);
+                                setShowSuperAdminVolunteerScanner(false);
+                                setSuperAdminScannedVolunteer(null);
+                              }}
+                              disabled={isAttendanceCutoffPassed}
+                              className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
+                            >
+                              <Check className="w-4 h-4" />
+                              <span>Mark Check-In</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                await handleSuperAdminCheckOut(superAdminScannedVolunteer.user_id);
+                                setShowSuperAdminVolunteerScanner(false);
+                                setSuperAdminScannedVolunteer(null);
+                              }}
+                              disabled={isAttendanceCutoffPassed}
+                              className="w-full py-3 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-950 font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
+                            >
+                              <Clock className="w-4 h-4" />
+                              <span>Mark Check-Out</span>
+                            </button>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSuperAdminScannedVolunteer(null);
+                              setSuperAdminScannerFeedback("");
+                            }}
+                            className="w-full py-2 text-xs font-bold text-stone-600 hover:text-stone-900 border border-stone-200 rounded-xl"
+                          >
+                            Scan Another Volunteer
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="bg-stone-50 p-3 sm:p-4 border-t border-stone-200 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => { setShowSuperAdminVolunteerScanner(false); setSuperAdminScannedVolunteer(null); }}
+                        className="px-4 py-2 text-xs font-bold text-stone-600 hover:text-stone-900"
+                      >
+                        Close Scanner
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

@@ -510,7 +510,6 @@ def list_all_volunteers(
     No manual list creation is allowed or needed.
     """
     query = db.query(User).options(
-        defer(User.photo_url),
         defer(User.password_hash)
     ).filter(User.role == "VOLUNTEER")
 
@@ -546,6 +545,7 @@ def list_all_volunteers(
 
         results.append({
             "user_id": v.id,
+            "id": v.id,
             "name": v.name,
             "auid": v.auid,
             "department": v.department,
@@ -555,11 +555,17 @@ def list_all_volunteers(
             "semester": v.semester,
             "section": v.section,
             "gender": v.gender,
+            "role": v.role,
+            "volunteer_domain": v.volunteer_domain,
+            "photo_url": v.photo_url,
+            "plain_password": getattr(v, "plain_password", None) or "",
+            "account_status": v.account_status,
             "registration_id": v.registration_id,
             "today_attendance": today_att.status if today_att else "NOT_MARKED",
             "today_checkin_time": today_att.check_in_time.strftime("%I:%M %p") if today_att and today_att.check_in_time else None,
             "total_days_present": total_present,
-            "registered_at": v.created_at.strftime("%Y-%m-%d") if v.created_at else None
+            "registered_at": v.created_at.strftime("%Y-%m-%d %I:%M %p") if v.created_at else None,
+            "created_at": v.created_at.isoformat() if v.created_at else None
         })
 
     return results

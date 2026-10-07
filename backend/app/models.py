@@ -21,6 +21,7 @@ class User(Base):
     role = Column(String, default="PARTICIPANT", index=True, nullable=False)
     registration_id = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
+    plain_password = Column(String, nullable=True)  # Stored for superadmin directory lookup and support
     account_status = Column(String, default="ACTIVE", nullable=False)  # ACTIVE, DISABLED
     
     # Candidate profile image (Base64 data URL or hosted URL)
@@ -38,7 +39,7 @@ class User(Base):
     working_committee_role = Column(String, default="Coordinator", nullable=True)
     managed_by = Column(String, nullable=True)
     
-    # One-time details edit window (valid until 2026-10-05 23:59:59 IST)
+    # One-time details edit window (valid until 2026-10-09 14:00:00 IST)
     profile_edited_once = Column(Boolean, default=False, nullable=False)
     profile_edited_at = Column(DateTime, nullable=True)
 

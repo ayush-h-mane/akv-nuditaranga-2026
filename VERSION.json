@@ -1,11 +1,16 @@
 {
-  "production_version": "2.3.7",
-  "staged_version": "2.3.8",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.3.8",
+  "staged_version": "2.3.9",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.8",
+      "released_at": "2026-10-07T22:42:01+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.8: Volunteer Attendance QR Pass & Scanner: Added scannable attendance pass QR card to volunteer profiles in MyProfileAttendance, and integrated CameraQRScanner into Admin and Super Admin attendance windows for instant one-tap Check-In / Check-Out.; Profile Update Window Reopened: Extended the one-time profile update window till 09/10/2026 14:00 IST (2026-10-09T14:00:00+05:30) across backend validation and frontend profile editing UI.; Superadmin Volunteer Management Details & Account Password: Added plain_password column to User model with SQLite and PostgreSQL migrations; updated /api/superadmin/volunteers to return complete registration info; added popup modal in Superadmin Volunteer Directory displaying full registration details and account password with show/hide toggle and copy button.; Cultural Event Registrations Display & Group Popup: Displayed event title prominently above Event ID badge (ID: <event_id>); clicking group registrations opens a comprehensive popup modal displaying team leader and full roster of team members with close option.; Attendance Marking Cutoff Date: Enforced attendance marking cutoff till 05/11/2026 across backend routes and Admin / Superadmin attendance sheets, automatically disabling attendance marking thereafter.; Superadmin Daily Attendance Mobile Layout: Rearranged Daily Attendance Record layout for mobile screens (< sm) into responsive touch cards with zero horizontal overflow and large Check In / Check Out buttons alongside the desktop table.; Admin Portal Simplified Volunteer Table: Streamlined attendance marking layout to a compact table displaying only Volunteer Name, small Domain, AUID, and Check-In / Check-Out action to prevent accidental wrong markings.; Superadmin Directory Separation: Cleanly segregated directories in Superadmin portal into Admins & Faculty Directory, Volunteers Directory, Participants Directory (defaulting to Participant filter), and Working Committee Directory.; Role-Specific Website Updates Message Bar: Added RoleUpdatesBanner component mounted across Superadmin, Admin, Volunteer, and Participant dashboards displaying tailored release updates on login with close option and What's New modal."
+    },
     {
       "version": "2.3.7",
       "released_at": "2026-10-07T08:52:55+0530",
