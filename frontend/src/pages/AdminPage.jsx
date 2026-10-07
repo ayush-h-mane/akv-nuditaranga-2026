@@ -36,6 +36,7 @@ import { CameraQRScanner } from "../components/CameraQRScanner";
 import { EventImageUpload } from "../components/EventImageUpload";
 import { MyProfileAttendance } from "../components/MyProfileAttendance";
 import { RoleUpdatesBanner } from "../components/RoleUpdatesBanner";
+import { AttendanceScanResultModal } from "../components/AttendanceScanResultModal";
 import { AKV_DOMAINS } from "../config/institutesData";
 
 export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
@@ -103,6 +104,12 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
   const [showVolunteerScanner, setShowVolunteerScanner] = useState(false);
   const [scannedVolunteerInfo, setScannedVolunteerInfo] = useState(null);
   const [scannerFeedback, setScannerFeedback] = useState("");
+  const [scanResultModalData, setScanResultModalData] = useState(null);
+  const [showScanResultModal, setShowScanResultModal] = useState(false);
+  const [scanProcessing, setScanProcessing] = useState(false);
+  const [scanCheckOutLoading, setScanCheckOutLoading] = useState(false);
+  const [showManualModal, setShowManualModal] = useState(false);
+  const [manualSearchQuery, setManualSearchQuery] = useState("");
   const attendanceCutoffDate = "2026-11-05";
   const todayIstStr = new Date().toISOString().slice(0, 10);
   const isAttendanceWindowExpired = Boolean(todayIstStr > attendanceCutoffDate || (selectedDate && selectedDate > attendanceCutoffDate));
@@ -167,13 +174,6 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
 
       if (res && res.success) {
         let participants = res.participants || [];
-        if (adminDomain) {
-          const domNorm = adminDomain.toLowerCase().replace(/s$/, "").trim();
-          participants = participants.filter(p => {
-            const pDom = (p.akv_dept || p.volunteer_domain || "").toLowerCase().trim();
-            return pDom.includes(domNorm) || domNorm.includes(pDom.replace(/s$/, ""));
-          });
-        }
         setAttendanceRoster(participants);
         setAttendanceSession(res.session || {
           is_submitted: false,
@@ -293,40 +293,134 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
     }
   };
 
-  // QR Scan Handler for Volunteers
-  const handleScanVolunteerQR = (decodedText) => {
-    if (!decodedText) return;
+  // Handler to confirm Check-Out from the scan result modal after 1-hour review
+  const handleConfirmScanCheckOut = async (participantUserId) => {
+    if (!participantUserId || scanCheckOutLoading) return;
+    setScanCheckOutLoading(true);
     try {
-      let targetAuid = "";
-      let targetUserId = null;
-      let targetRegId = "";
+      const res = await api.markAttendanceCheckOut(participantUserId, selectedDate);
+      setAttendanceRoster(prev => prev.map(p => {
+        if (p.user_id === participantUserId) {
+          return {
+            ...p,
+            status: "COMPLETED",
+            check_out_time: res.record?.check_out_time || p.check_out_time,
+            can_mark: false,
+            check_out_available: false,
+            lock_remaining_minutes: 0
+          };
+        }
+        return p;
+      }));
+      setAttendanceSummary(prev => ({
+        ...prev,
+        checked_in: Math.max(0, prev.checked_in - 1),
+        completed: prev.completed + 1
+      }));
+      setScanResultModalData({
+        success: true,
+        action: "CHECK_OUT",
+        status: "COMPLETED",
+        message: "Checkout successful and attendance is submitted for today",
+        volunteer: res.volunteer || scanResultModalData?.volunteer,
+        record: res.record,
+        check_in_time: res.check_in_time || scanResultModalData?.check_in_time,
+        check_out_time: res.check_out_time || res.record?.check_out_time,
+        duration_hours: res.duration_hours || scanResultModalData?.duration_hours,
+        date: selectedDate
+      });
+      notify("success", res.message || "Checkout successful and attendance is submitted for today");
+    } catch (err) {
+      notify("error", err.message || "Failed to confirm check-out.");
+    } finally {
+      setScanCheckOutLoading(false);
+    }
+  };
 
-      try {
-        const parsed = JSON.parse(decodedText);
-        targetAuid = (parsed.auid || "").trim().toUpperCase();
-        targetUserId = parsed.user_id || parsed.id || null;
-        targetRegId = (parsed.registration_id || parsed.reg_id || "").trim().toUpperCase();
-      } catch (e) {
-        const clean = decodedText.trim().toUpperCase();
-        targetAuid = clean;
-        targetRegId = clean;
-        if (/^\d+$/.test(clean)) targetUserId = parseInt(clean, 10);
-      }
+  // QR Scan Handler for Volunteers (Integrated 1-Hour Lock & Review Check-Out Workflow)
+  const handleScanVolunteerQR = async (decodedText) => {
+    if (!decodedText || scanProcessing) return;
+    setScanProcessing(true);
+    try {
+      const res = await api.scanAttendanceQR(decodedText, selectedDate);
+      setShowVolunteerScanner(false);
+      setScannedVolunteerInfo(null);
+      setScannerFeedback("");
+      setScanResultModalData(res);
+      setShowScanResultModal(true);
 
-      const match = attendanceRoster.find(p => 
-        (targetUserId && p.user_id === targetUserId) ||
-        (targetAuid && p.auid && p.auid.toUpperCase() === targetAuid) ||
-        (targetRegId && p.registration_id && p.registration_id.toUpperCase() === targetRegId)
-      );
+      if (res.volunteer && res.record) {
+        setAttendanceRoster(prev => {
+          const exists = prev.some(p => p.user_id === res.volunteer.user_id);
+          if (exists) {
+            return prev.map(p => {
+              if (p.user_id === res.volunteer.user_id) {
+                return {
+                  ...p,
+                  status: res.record.status,
+                  check_in_time: res.record.check_in_time || p.check_in_time,
+                  check_out_time: res.record.check_out_time || p.check_out_time,
+                  check_out_available: res.action === "READY_FOR_CHECK_OUT",
+                  lock_remaining_minutes: res.lock_remaining_minutes || 0
+                };
+              }
+              return p;
+            });
+          } else {
+            return [{
+              id: res.record.id,
+              record_id: res.record.id,
+              user_id: res.volunteer.user_id,
+              reg_id: res.volunteer.registration_id,
+              name: res.volunteer.name,
+              auid: res.volunteer.auid,
+              institute: "Acharya",
+              department: res.volunteer.department,
+              akv_dept: res.volunteer.domain,
+              volunteer_domain: res.volunteer.domain,
+              contact: "--",
+              role: "VOLUNTEER",
+              photo_url: null,
+              check_in_time: res.record.check_in_time,
+              check_out_time: res.record.check_out_time,
+              check_out_available: false,
+              lock_remaining_minutes: res.lock_remaining_minutes || 0,
+              attendance_units: 0.0,
+              status: res.record.status,
+              submitted: false,
+              submitted_by: null,
+              last_modified_by: null,
+              can_mark: res.record.status !== "COMPLETED"
+            }, ...prev];
+          }
+        });
 
-      if (match) {
-        setScannedVolunteerInfo(match);
-        setScannerFeedback(`Found volunteer: ${match.name} (${match.auid})`);
-      } else {
-        setScannerFeedback(`Volunteer not found in current domain roster. Scanned: ${decodedText}`);
+        if (res.action === "CHECK_IN") {
+          setAttendanceSummary(prev => ({
+            ...prev,
+            checked_in: prev.checked_in + 1,
+            not_marked: Math.max(0, prev.not_marked - 1)
+          }));
+        } else if (res.action === "CHECK_OUT") {
+          setAttendanceSummary(prev => ({
+            ...prev,
+            checked_in: Math.max(0, prev.checked_in - 1),
+            completed: prev.completed + 1
+          }));
+        }
       }
     } catch (err) {
-      setScannerFeedback(`Could not process QR code: ${err.message}`);
+      setShowVolunteerScanner(false);
+      setScanResultModalData({
+        success: false,
+        action: "ERROR",
+        message: err.message || "Failed to scan volunteer pass.",
+        detail: err.message || "Attendance scanning error.",
+        volunteer: null
+      });
+      setShowScanResultModal(true);
+    } finally {
+      setTimeout(() => setScanProcessing(false), 800);
     }
   };
 
@@ -710,6 +804,16 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
                   <span>Scan Volunteer QR</span>
                 </button>
 
+                <button
+                  type="button"
+                  onClick={() => setShowManualModal(true)}
+                  className="px-3.5 py-2 rounded-xl text-xs font-black text-stone-950 bg-amber-400 hover:bg-amber-500 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
+                  title="Manual Check-In / Out Entry"
+                >
+                  <UserCheck className="w-4 h-4 text-stone-950" />
+                  <span>Manual Check-In / Out</span>
+                </button>
+
                 {attendanceSession.is_submitted ? (
                   <div className="px-3.5 py-2 rounded-xl text-xs font-bold text-stone-500 bg-stone-100 border border-stone-200 flex items-center gap-1.5 cursor-not-allowed">
                     <Lock className="w-3.5 h-3.5 text-stone-400" />
@@ -991,11 +1095,22 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
                               <button
                                 type="button"
                                 onClick={() => handleCheckOut(p.user_id)}
-                                disabled={isMarking || !p.check_in_time || (p.check_in_time && !p.check_out_available)}
-                                className="px-3.5 py-2 rounded-xl text-xs font-black bg-amber-500 hover:bg-amber-600 text-stone-950 shadow-xs transition-all flex items-center gap-1.5 ml-auto disabled:opacity-50 cursor-pointer active:scale-95"
+                                disabled={isMarking}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-black shadow-xs transition-all flex items-center gap-1.5 ml-auto cursor-pointer active:scale-95 disabled:opacity-50 ${
+                                  p.check_out_available !== false
+                                    ? "bg-amber-500 hover:bg-amber-600 text-stone-950"
+                                    : "bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300"
+                                }`}
+                                title={p.lock_remaining_minutes ? `1-Hour Lock Active (${p.lock_remaining_minutes}m remaining)` : "Record Check-Out"}
                               >
                                 <Clock className="w-3.5 h-3.5" />
-                                <span>{isMarking ? "Recording..." : p.check_out_available === false ? "AFTER 1 HR" : "CHECK OUT"}</span>
+                                <span>
+                                  {isMarking 
+                                    ? "Recording..." 
+                                    : p.check_out_available === false 
+                                      ? `CHECK OUT (${p.lock_remaining_minutes || 60}m)` 
+                                      : "CHECK OUT"}
+                                </span>
                               </button>
                             ) : (
                               <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold text-emerald-800 bg-emerald-100/80 border border-emerald-200">
@@ -1520,6 +1635,132 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Attendance Scan Result Pop-up Modal */}
+        <AttendanceScanResultModal
+          isOpen={showScanResultModal}
+          onClose={() => {
+            setShowScanResultModal(false);
+            setScanResultModalData(null);
+          }}
+          onScanNext={() => {
+            setShowScanResultModal(false);
+            setScanResultModalData(null);
+            setShowVolunteerScanner(true);
+          }}
+          onConfirmCheckOut={handleConfirmScanCheckOut}
+          checkOutLoading={scanCheckOutLoading}
+          result={scanResultModalData}
+          date={selectedDate}
+        />
+
+        {/* Manual Check-In / Check-Out Modal */}
+        {showManualModal && (
+          <div 
+            className="fixed inset-0 z-[120] bg-stone-950/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
+            onClick={(e) => e.target === e.currentTarget && setShowManualModal(false)}
+          >
+            <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col max-h-[90vh] animate-scale-up">
+              <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 p-4 sm:p-5 text-stone-950 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <UserCheck className="w-5 h-5 text-stone-950" />
+                  <div>
+                    <h4 className="font-extrabold text-sm sm:text-base text-stone-950">
+                      Manual Volunteer Check-In / Out
+                    </h4>
+                    <p className="text-[10px] text-stone-800 font-medium">
+                      Select or search volunteer by AUID, USN, Reg ID, or Name
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowManualModal(false)} 
+                  className="p-1.5 rounded-lg text-stone-900 hover:bg-black/10 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-4 sm:p-6 space-y-4 overflow-y-auto">
+                <div className="relative">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+                  <input
+                    type="text"
+                    value={manualSearchQuery}
+                    onChange={(e) => setManualSearchQuery(e.target.value)}
+                    placeholder="Search volunteer by AUID, Name, or Reg ID..."
+                    className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-kar-red"
+                    autoFocus
+                  />
+                </div>
+
+                <div className="space-y-2 max-h-72 overflow-y-auto divide-y divide-stone-100 pr-1">
+                  {attendanceRoster
+                    .filter(p => {
+                      if (!manualSearchQuery.trim()) return true;
+                      const q = manualSearchQuery.toLowerCase();
+                      return (
+                        (p.name && p.name.toLowerCase().includes(q)) ||
+                        (p.auid && p.auid.toLowerCase().includes(q)) ||
+                        (p.reg_id && p.reg_id.toLowerCase().includes(q)) ||
+                        (p.department && p.department.toLowerCase().includes(q))
+                      );
+                    })
+                    .slice(0, 20)
+                    .map(vol => (
+                      <div key={vol.user_id} className="pt-2 pb-2 flex items-center justify-between gap-2 hover:bg-stone-50 p-2 rounded-xl">
+                        <div className="min-w-0 flex-1">
+                          <strong className="text-xs text-stone-900 block truncate">{vol.name}</strong>
+                          <div className="flex items-center gap-1.5 text-[10px] text-stone-500 font-mono">
+                            <span>{vol.auid}</span>
+                            <span>•</span>
+                            <span className="text-kar-red font-sans font-bold">{vol.akv_dept || "Domain"}</span>
+                          </div>
+                          {vol.check_in_time && (
+                            <span className="text-[10px] text-emerald-700 font-semibold block">
+                              In: {vol.check_in_time} {vol.check_out_time ? `| Out: ${vol.check_out_time}` : ""}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {vol.status === "NOT_MARKED" && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleCheckIn(vol.user_id);
+                              }}
+                              disabled={markingUserIds.includes(vol.user_id)}
+                              className="px-2.5 py-1.5 rounded-lg text-[10px] font-black bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer transition-all active:scale-95 disabled:opacity-50"
+                            >
+                              Check-In
+                            </button>
+                          )}
+                          {vol.status === "CHECKED_IN" && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleCheckOut(vol.user_id);
+                              }}
+                              disabled={markingUserIds.includes(vol.user_id)}
+                              className="px-2.5 py-1.5 rounded-lg text-[10px] font-black bg-amber-500 hover:bg-amber-600 text-stone-950 cursor-pointer transition-all active:scale-95 disabled:opacity-50"
+                            >
+                              Check-Out
+                            </button>
+                          )}
+                          {vol.status === "COMPLETED" && (
+                            <span className="px-2 py-1 rounded-md text-[10px] font-bold bg-blue-100 text-blue-800">
+                              Completed
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                </div>
               </div>
             </div>
           </div>

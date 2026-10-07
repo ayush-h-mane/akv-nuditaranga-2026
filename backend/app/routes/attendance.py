@@ -1,5 +1,7 @@
 import io
 import datetime
+import json
+import re
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
@@ -35,31 +37,112 @@ from ..utils.timezone import (
 router = APIRouter(prefix="/attendance", tags=["Attendance"])
 
 DEPARTMENT_GROUPS = [
-    ("PROMOTIONS", ["promotions", "promotion"]),
-    ("DECORATIONS", ["decorations", "decoration"]),
-    ("SOCIAL MEDIA", ["social media", "socialmedia", "social_media"]),
+    ("PROMOTIONS", ["promotions", "promotion", "promo"]),
+    ("DECORATIONS", ["decorations", "decoration", "decor"]),
+    ("SOCIAL MEDIA", ["social media", "socialmedia", "social_media", "social"]),
     ("LOGISTICS", ["logistics", "logistic"]),
-    ("CULTURALS", ["culturals", "cultural"]),
+    ("CULTURALS", ["culturals", "cultural", "culture"]),
     ("CONTENT", ["content"]),
-    ("DEFENCE", ["defence", "defense"]),
-    ("EMCEE", ["emcee", "anchor"]),
+    ("DEFENCE", ["defence", "defense", "security", "discipline"]),
+    ("EMCEE", ["emcee", "anchor", "anchoring"]),
     ("MARKETING", ["marketing"]),
-    ("TECHNICAL", ["technical", "tech"]),
-    ("PHOTOGRAPHY", ["photography", "photo"]),
-    ("VIDEOGRAPHY", ["videography", "video"]),
-    ("HOSPITALITY", ["hospitality"]),
-    ("DEVELOPER", ["developer", "dev"])
+    ("TECHNICAL", ["technical", "tech", "audio", "sound"]),
+    ("PHOTOGRAPHY", ["photography", "photo", "photographer"]),
+    ("VIDEOGRAPHY", ["videography", "video", "videographer"]),
+    ("HOSPITALITY", ["hospitality", "food", "guest"]),
+    ("DEVELOPER", ["developer", "dev", "tech_dev"])
 ]
 
+def normalize_domain_string(domain: Optional[str]) -> str:
+    """Normalize domain strings for forgiving matching (strip suffixes, punctuation, plurals)."""
+    if not domain:
+        return ""
+    d = domain.strip().lower()
+    # Replace separators with spaces
+    d = re.sub(r'[\-_/&,.]', ' ', d)
+    # Remove common filler words
+    d = re.sub(r'\b(domain|committee|team|dept|department|wing|group|cell|head|lead|coordinator|volunteers|volunteer)\b', ' ', d)
+    # Singularize tokens
+    tokens = [t.rstrip('s') for t in d.split() if len(t) > 1]
+    return ' '.join(tokens)
+
+def are_domains_matching(admin_domain: Optional[str], volunteer_domain: Optional[str], admin_role: str = "ADMIN") -> bool:
+    """
+    Checks if an admin's assigned domain matches a volunteer's registered domain flexibly.
+    Handles 'Promotions' vs 'Promotions Domain', casing, pluralization, and common aliases.
+    Superadmins and Universal / Working Committee admins can mark all domains.
+    """
+    if admin_role == "SUPERADMIN":
+        return True
+
+    if not admin_domain:
+        return True
+
+    admin_norm = normalize_domain_string(admin_domain)
+    # Universal / overall roles can mark for any domain
+    universal_keywords = ["all", "overall", "core", "working", "admin", "fest", "management", "general"]
+    if any(k in admin_norm for k in universal_keywords) or admin_norm == "":
+        return True
+
+    if not volunteer_domain:
+        # If volunteer has no specific domain, allow admin to mark attendance
+        return True
+
+    vol_norm = normalize_domain_string(volunteer_domain)
+    if not vol_norm:
+        return True
+
+    # 1. Exact normalized match
+    if admin_norm == vol_norm:
+        return True
+
+    # 2. Substring match
+    if admin_norm in vol_norm or vol_norm in admin_norm:
+        return True
+
+    # 3. Known department group aliases
+    admin_raw = admin_domain.strip().lower()
+    vol_raw = volunteer_domain.strip().lower()
+
+    for group_name, aliases in DEPARTMENT_GROUPS:
+        admin_match = any(a in admin_raw or admin_raw in a or a in admin_norm for a in aliases)
+        vol_match = any(a in vol_raw or vol_raw in a or a in vol_norm for a in aliases)
+        if admin_match and vol_match:
+            return True
+
+    # 4. Token overlap
+    admin_tokens = set(t for t in admin_norm.split() if len(t) >= 3)
+    vol_tokens = set(t for t in vol_norm.split() if len(t) >= 3)
+    if admin_tokens and vol_tokens and (admin_tokens & vol_tokens):
+        return True
+
+    return False
+
 def get_domain_aliases(domain_name: Optional[str]) -> List[str]:
-    """Returns aliases for a given volunteer or coordinator domain name."""
+    """Returns aliases and matching tokens for a given domain name for SQL filtering."""
     if not domain_name:
         return []
-    dom = domain_name.strip().lower()
-    for group_name, aliases in DEPARTMENT_GROUPS:
-        if any(a == dom or a in dom or dom in a for a in aliases):
-            return aliases
-    return [dom, dom.rstrip('s')]
+    dom_raw = domain_name.strip().lower()
+    norm = normalize_domain_string(domain_name)
+    
+    universal_keywords = ["all", "overall", "core", "working", "admin", "fest", "general"]
+    if any(k in norm for k in universal_keywords):
+        return []
+
+    aliases = set()
+    aliases.add(dom_raw)
+    if norm:
+        aliases.add(norm)
+        for t in norm.split():
+            if len(t) >= 3:
+                aliases.add(t)
+
+    for group_name, group_aliases in DEPARTMENT_GROUPS:
+        if any(a in dom_raw or dom_raw in a or a in norm for a in group_aliases):
+            aliases.update(group_aliases)
+            break
+
+    return list(aliases)
 
 def attendance_units(check_in_at, check_out_at) -> float:
     """Convert completed attendance duration into full-day units."""
@@ -82,6 +165,11 @@ class CheckInRequest(BaseModel):
 
 class CheckOutRequest(BaseModel):
     user_id: int = Field(..., description="Participant User ID")
+    date: Optional[str] = Field(None, description="Event date YYYY-MM-DD (defaults to server IST date)")
+    force: Optional[bool] = Field(False, description="Superadmin override to force check-out without waiting 1 hour")
+
+class AttendanceScanRequest(BaseModel):
+    qr_data: str = Field(..., description="Scanned QR code data (raw text, AUID, USN, or JSON string)")
     date: Optional[str] = Field(None, description="Event date YYYY-MM-DD (defaults to server IST date)")
 
 class SubmitAttendanceRequest(BaseModel):
@@ -246,20 +334,22 @@ def get_attendance_roster(
     )
 
     if current_user.role == "ADMIN" and current_user.volunteer_domain:
-        # Strictly display ONLY the admin's assigned AKV domain volunteers/students
+        # Display admin's assigned AKV domain volunteers (unless universal/all)
         admin_aliases = get_domain_aliases(current_user.volunteer_domain)
-        domain_filters = [func.lower(User.volunteer_domain).like(f"%{a}%") for a in admin_aliases]
-        user_query = user_query.filter(
-            User.volunteer_domain.isnot(None),
-            or_(*domain_filters)
-        )
+        if admin_aliases:
+            domain_filters = [func.lower(User.volunteer_domain).like(f"%{a}%") for a in admin_aliases]
+            user_query = user_query.filter(
+                User.volunteer_domain.isnot(None),
+                or_(*domain_filters)
+            )
     elif akv_dept and akv_dept != "all":
         domain_aliases = get_domain_aliases(akv_dept)
-        domain_filters = [func.lower(User.volunteer_domain).like(f"%{a}%") for a in domain_aliases]
-        user_query = user_query.filter(
-            User.volunteer_domain.isnot(None),
-            or_(*domain_filters)
-        )
+        if domain_aliases:
+            domain_filters = [func.lower(User.volunteer_domain).like(f"%{a}%") for a in domain_aliases]
+            user_query = user_query.filter(
+                User.volunteer_domain.isnot(None),
+                or_(*domain_filters)
+            )
 
     if department and department != "all":
         user_query = user_query.filter(User.department == department)
@@ -291,7 +381,7 @@ def get_attendance_roster(
     records_by_uid = {r.user_id: r for r in records}
 
     # 4. Statistics for this date (scoped to admin's domain if domain admin, otherwise all eligible participants)
-    if current_user.role == "ADMIN" and current_user.volunteer_domain:
+    if current_user.role == "ADMIN" and current_user.volunteer_domain and get_domain_aliases(current_user.volunteer_domain):
         admin_aliases = get_domain_aliases(current_user.volunteer_domain)
         domain_filters = [func.lower(User.volunteer_domain).like(f"%{a}%") for a in admin_aliases]
         domain_match = and_(User.volunteer_domain.isnot(None), or_(*domain_filters))
@@ -302,7 +392,7 @@ def get_attendance_roster(
             .join(User, AttendanceRecord.user_id == User.id)
             .filter(AttendanceRecord.attendance_date == target_date, domain_match)
             .group_by(AttendanceRecord.status).all())
-    elif akv_dept and akv_dept != "all":
+    elif akv_dept and akv_dept != "all" and get_domain_aliases(akv_dept):
         domain_aliases = get_domain_aliases(akv_dept)
         domain_filters = [func.lower(User.volunteer_domain).like(f"%{a}%") for a in domain_aliases]
         domain_match = and_(User.volunteer_domain.isnot(None), or_(*domain_filters))
@@ -329,6 +419,7 @@ def get_attendance_roster(
         count_not_marked = 0
 
     # 5. Build participant list
+    now_utc_curr = get_current_utc_datetime()
     participants_output = []
     for u in users:
         rec = records_by_uid.get(u.id)
@@ -342,10 +433,10 @@ def get_attendance_roster(
         cin_time = format_to_ist_time(rec.check_in_at) if rec and rec.check_in_at else None
         cout_time = format_to_ist_time(rec.check_out_at) if rec and rec.check_out_at else None
         units = attendance_units(rec.check_in_at, rec.check_out_at) if rec else 0.0
-        check_out_available = bool(
-            rec and rec.check_in_at and not rec.check_out_at and
-            (get_current_utc_datetime() - rec.check_in_at).total_seconds() >= 3600
-        )
+
+        elapsed_sec = (now_utc_curr - rec.check_in_at).total_seconds() if (rec and rec.check_in_at) else 0
+        check_out_available = bool(rec and rec.check_in_at and not rec.check_out_at and elapsed_sec >= 3600)
+        lock_remaining_minutes = max(1, int((3600 - elapsed_sec + 59) // 60)) if (rec and rec.check_in_at and not rec.check_out_at and elapsed_sec < 3600) else 0
 
         participants_output.append({
             "id": rec.id if rec else None,
@@ -357,12 +448,14 @@ def get_attendance_roster(
             "institute": u.institute,
             "department": u.department,
             "akv_dept": u.volunteer_domain or "--",
+            "volunteer_domain": u.volunteer_domain or "--",
             "contact": u.phone,
             "role": u.role,
             "photo_url": None,
             "check_in_time": cin_time,
             "check_out_time": cout_time,
             "check_out_available": check_out_available,
+            "lock_remaining_minutes": lock_remaining_minutes,
             "attendance_units": units,
             "status": current_status,
             "submitted": is_submitted or (rec.submitted if rec else False),
@@ -418,12 +511,10 @@ def mark_check_in(
     if not user:
         raise HTTPException(status_code=404, detail="Participant not found")
     if current_user.role == "ADMIN" and current_user.volunteer_domain:
-        admin_aliases = get_domain_aliases(current_user.volunteer_domain)
-        user_dom = (user.volunteer_domain or "").lower()
-        if not (user.volunteer_domain and any(a in user_dom for a in admin_aliases)):
+        if not are_domains_matching(current_user.volunteer_domain, user.volunteer_domain, current_user.role):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"You can mark attendance only for volunteers in your AKV domain ({current_user.volunteer_domain})."
+                detail=f"Volunteer '{user.name}' is registered under '{user.volunteer_domain or 'General'}' domain. You can only mark attendance for '{current_user.volunteer_domain}' domain."
             )
 
     now_utc = get_current_utc_datetime()
@@ -512,12 +603,10 @@ def mark_check_out(
     if not user:
         raise HTTPException(status_code=404, detail="Participant not found")
     if current_user.role == "ADMIN" and current_user.volunteer_domain:
-        admin_aliases = get_domain_aliases(current_user.volunteer_domain)
-        user_dom = (user.volunteer_domain or "").lower()
-        if not (user.volunteer_domain and any(a in user_dom for a in admin_aliases)):
+        if not are_domains_matching(current_user.volunteer_domain, user.volunteer_domain, current_user.role):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"You can mark attendance only for volunteers in your AKV domain ({current_user.volunteer_domain})."
+                detail=f"Volunteer '{user.name}' is registered under '{user.volunteer_domain or 'General'}' domain. You can only mark attendance for '{current_user.volunteer_domain}' domain."
             )
 
     now_utc = get_current_utc_datetime()
@@ -540,7 +629,7 @@ def mark_check_out(
         )
 
     elapsed = now_utc - rec.check_in_at
-    if elapsed.total_seconds() < 3600:
+    if elapsed.total_seconds() < 3600 and not (current_user.role == "SUPERADMIN" or payload.force):
         remaining_minutes = max(1, 60 - int(elapsed.total_seconds() // 60))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -569,7 +658,8 @@ def mark_check_out(
 
     return {
         "success": True,
-        "message": f"Check-Out recorded for {user.name} at {format_to_ist_time(rec.check_out_at)}. Attendance completed.",
+        "action": "CHECK_OUT",
+        "message": "Checkout successful and attendance is submitted for today",
         "record": {
             "id": rec.id,
             "user_id": user.id,
@@ -577,8 +667,265 @@ def mark_check_out(
             "check_in_time": format_to_ist_time(rec.check_in_at),
             "check_out_time": format_to_ist_time(rec.check_out_at),
             "date": target_date
-        }
+        },
+        "volunteer": {
+            "user_id": user.id,
+            "name": user.name,
+            "auid": user.auid,
+            "registration_id": user.registration_id,
+            "domain": user.volunteer_domain or "--",
+            "department": user.department or "--"
+        },
+        "check_in_time": format_to_ist_time(rec.check_in_at),
+        "check_out_time": format_to_ist_time(rec.check_out_at),
+        "duration_hours": round(elapsed.total_seconds() / 3600, 2),
+        "date": target_date
     }
+
+
+@router.post("/scan")
+def scan_volunteer_attendance(
+    payload: AttendanceScanRequest,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Unified QR scan attendance marking endpoint.
+    1. Resolves participant directly from the database by user_id, AUID, registration_id, or phone.
+    2. Validates domain matching (flexible, forgiving of 'Domain' suffix, casing, plurals).
+    3. If 1st scan: Marks Check-In and locks for 1 hour. Returns action: 'CHECK_IN'.
+    4. If scanned within 1 hour: Rejects with action: 'LOCKED' and remaining minutes.
+    5. If 2nd scan after 1 hour: Marks Check-Out and submits attendance for today. Returns action: 'CHECK_OUT'.
+    6. If scanned again: Returns action: 'ALREADY_COMPLETED'.
+    """
+    target_date = payload.date.strip() if payload.date else get_current_ist_date_str()
+    verify_attendance_date_is_open(target_date)
+    verify_session_not_locked(db, target_date, current_user)
+
+    qr_text = payload.qr_data.strip()
+    target_user_id: Optional[int] = None
+    target_auid: Optional[str] = None
+    target_reg_id: Optional[str] = None
+
+    try:
+        parsed = json.loads(qr_text)
+        if isinstance(parsed, dict):
+            target_user_id = parsed.get("user_id") or parsed.get("id")
+            target_auid = parsed.get("auid")
+            target_reg_id = parsed.get("reg_id") or parsed.get("registration_id")
+    except Exception:
+        pass
+
+    if not (target_user_id or target_auid or target_reg_id):
+        if qr_text.isdigit():
+            target_user_id = int(qr_text)
+        target_auid = qr_text
+        target_reg_id = qr_text
+
+    user_query = db.query(User).options(defer(User.photo_url), defer(User.password_hash))
+    filters = []
+    if target_user_id:
+        try:
+            filters.append(User.id == int(target_user_id))
+        except (ValueError, TypeError):
+            pass
+    if target_auid:
+        filters.append(func.lower(User.auid) == target_auid.lower())
+    if target_reg_id:
+        filters.append(func.lower(User.registration_id) == target_reg_id.lower())
+    filters.append(func.lower(User.phone) == qr_text.lower())
+
+    user = user_query.filter(or_(*filters)).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Volunteer pass not found in database. (Scanned: {qr_text[:30]})"
+        )
+
+    # Domain authorization check
+    if current_user.role == "ADMIN" and current_user.volunteer_domain:
+        if not are_domains_matching(current_user.volunteer_domain, user.volunteer_domain, current_user.role):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Volunteer '{user.name}' is registered under '{user.volunteer_domain or 'General'}' domain. You can only mark attendance for '{current_user.volunteer_domain}' domain."
+            )
+
+    now_utc = get_current_utc_datetime()
+
+    rec = db.query(AttendanceRecord).filter(
+        AttendanceRecord.user_id == user.id,
+        AttendanceRecord.attendance_date == target_date
+    ).first()
+
+    # CASE 1: FIRST SCAN -> CHECK-IN & 1-HOUR LOCKOUT
+    if not rec or rec.check_in_at is None:
+        if not rec:
+            rec = AttendanceRecord(
+                user_id=user.id,
+                attendance_date=target_date,
+                check_in_at=now_utc,
+                status="CHECKED_IN",
+                last_modified_by=current_user.name,
+                last_modified_at=now_utc
+            )
+            db.add(rec)
+        else:
+            rec.check_in_at = now_utc
+            rec.status = "CHECKED_IN"
+            rec.last_modified_by = current_user.name
+            rec.last_modified_at = now_utc
+
+        db.flush()
+
+        audit = AttendanceAuditLog(
+            attendance_id=rec.id,
+            user_id=user.id,
+            participant_name=user.name,
+            attendance_date=target_date,
+            action="CHECK_IN",
+            new_check_in=format_to_ist_time(rec.check_in_at),
+            modified_by=current_user.name,
+            modified_at=now_utc,
+            reason="QR Scan Check-In (1-Hour Lock Initiated)"
+        )
+        db.add(audit)
+        db.commit()
+
+        locked_until_dt = rec.check_in_at + datetime.timedelta(hours=1)
+        check_in_time_str = format_to_ist_time(rec.check_in_at)
+        locked_until_str = format_to_ist_time(locked_until_dt)
+
+        return {
+            "success": True,
+            "action": "CHECK_IN",
+            "status": "CHECKED_IN",
+            "message": "Check in successful",
+            "volunteer": {
+                "user_id": user.id,
+                "name": user.name,
+                "auid": user.auid,
+                "registration_id": user.registration_id,
+                "domain": user.volunteer_domain or "--",
+                "department": user.department or "--"
+            },
+            "record": {
+                "id": rec.id,
+                "user_id": user.id,
+                "status": rec.status,
+                "check_in_time": check_in_time_str,
+                "check_out_time": None,
+                "date": target_date
+            },
+            "check_in_time": check_in_time_str,
+            "check_out_time": None,
+            "lock_remaining_minutes": 60,
+            "locked_until": locked_until_str,
+            "date": target_date
+        }
+
+    # CASE 2: ALREADY COMPLETED (CHECK-IN AND CHECK-OUT DONE)
+    if rec.check_out_at is not None:
+        check_in_time_str = format_to_ist_time(rec.check_in_at)
+        check_out_time_str = format_to_ist_time(rec.check_out_at)
+        return {
+            "success": True,
+            "action": "ALREADY_COMPLETED",
+            "status": "COMPLETED",
+            "message": "Attendance is already completed for today",
+            "volunteer": {
+                "user_id": user.id,
+                "name": user.name,
+                "auid": user.auid,
+                "registration_id": user.registration_id,
+                "domain": user.volunteer_domain or "--",
+                "department": user.department or "--"
+            },
+            "record": {
+                "id": rec.id,
+                "user_id": user.id,
+                "status": rec.status,
+                "check_in_time": check_in_time_str,
+                "check_out_time": check_out_time_str,
+                "date": target_date
+            },
+            "check_in_time": check_in_time_str,
+            "check_out_time": check_out_time_str,
+            "date": target_date
+        }
+
+    # CASE 3: HAS CHECK-IN, WAITING FOR CHECK-OUT
+    elapsed_seconds = (now_utc - rec.check_in_at).total_seconds()
+    check_in_time_str = format_to_ist_time(rec.check_in_at)
+    locked_until_dt = rec.check_in_at + datetime.timedelta(hours=1)
+    locked_until_str = format_to_ist_time(locked_until_dt)
+
+    if elapsed_seconds < 3600:
+        # LOCKED: LESS THAN 1 HOUR ELAPSED
+        remaining_secs = 3600 - elapsed_seconds
+        remaining_mins = max(1, int((remaining_secs + 59) // 60))
+
+        return {
+            "success": False,
+            "action": "LOCKED",
+            "status": "CHECKED_IN",
+            "message": f"QR pass is locked for 1 hour after check-in.",
+            "detail": f"Check-Out will be unlocked after 1 hour from Check-In. Please wait {remaining_mins} more minute(s) (Unlocks at {locked_until_str}).",
+            "volunteer": {
+                "user_id": user.id,
+                "name": user.name,
+                "auid": user.auid,
+                "registration_id": user.registration_id,
+                "domain": user.volunteer_domain or "--",
+                "department": user.department or "--"
+            },
+            "record": {
+                "id": rec.id,
+                "user_id": user.id,
+                "status": rec.status,
+                "check_in_time": check_in_time_str,
+                "check_out_time": None,
+                "date": target_date
+            },
+            "check_in_time": check_in_time_str,
+            "lock_remaining_minutes": remaining_mins,
+            "locked_until": locked_until_str,
+            "date": target_date
+        }
+    else:
+        # SECOND SCAN (>= 1 HOUR ELAPSED) -> 1-Hour Lock Passed! Ready for Check-Out!
+        # Do NOT auto-record check-out on scan. Return READY_FOR_CHECK_OUT so coordinator
+        # can review volunteer details and manually confirm Check-Out.
+        duration_hrs = round(elapsed_seconds / 3600, 2)
+        check_out_preview = format_to_ist_time(now_utc)
+
+        return {
+            "success": True,
+            "action": "READY_FOR_CHECK_OUT",
+            "status": "CHECKED_IN",
+            "message": "1-hour requirement satisfied. Ready for Check-Out.",
+            "volunteer": {
+                "user_id": user.id,
+                "name": user.name,
+                "auid": user.auid,
+                "registration_id": user.registration_id,
+                "domain": user.volunteer_domain or "--",
+                "department": user.department or "--"
+            },
+            "record": {
+                "id": rec.id,
+                "user_id": user.id,
+                "status": rec.status,
+                "check_in_time": check_in_time_str,
+                "check_out_time": None,
+                "date": target_date
+            },
+            "check_in_time": check_in_time_str,
+            "check_out_time_preview": check_out_preview,
+            "duration_hours": duration_hrs,
+            "lock_remaining_minutes": 0,
+            "can_check_out": True,
+            "date": target_date
+        }
 
 
 # ==============================================================================

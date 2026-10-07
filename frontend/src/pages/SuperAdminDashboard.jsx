@@ -60,6 +60,7 @@ import { RoleUpdatesBanner } from "../components/RoleUpdatesBanner";
 import { AKV_DOMAINS } from "../config/institutesData";
 import { DeveloperSuperAdminManager } from "../components/DeveloperSuperAdminManager";
 import { DeveloperDiagnostics } from "../components/DeveloperDiagnostics";
+import { AttendanceScanResultModal } from "../components/AttendanceScanResultModal";
 
 export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false }) => {
   const { user, logout, refreshUser } = useAuth();
@@ -294,41 +295,130 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
   const [attendanceMarkingIds, setAttendanceMarkingIds] = useState([]);
   const [officialExportLoading, setOfficialExportLoading] = useState(false);
   const [csvExportLoading, setCsvExportLoading] = useState(false);
+  const [superAdminScanResultData, setSuperAdminScanResultData] = useState(null);
+  const [showSuperAdminScanResultModal, setShowSuperAdminScanResultModal] = useState(false);
+  const [superAdminScanProcessing, setSuperAdminScanProcessing] = useState(false);
+  const [superAdminScanCheckOutLoading, setSuperAdminScanCheckOutLoading] = useState(false);
+  const [showSuperAdminManualModal, setShowSuperAdminManualModal] = useState(false);
+  const [superAdminManualSearch, setSuperAdminManualSearch] = useState("");
 
   // QR Scan Handler for Volunteers in Superadmin Attendance
-  const handleSuperAdminScanVolunteerQR = (decodedText) => {
-    if (!decodedText) return;
+  const handleSuperAdminScanVolunteerQR = async (decodedText) => {
+    if (!decodedText || superAdminScanProcessing) return;
+    setSuperAdminScanProcessing(true);
     try {
-      let targetAuid = "";
-      let targetUserId = null;
-      let targetRegId = "";
+      const res = await api.scanAttendanceQR(decodedText, selectedOfficialDate);
+      setShowSuperAdminVolunteerScanner(false);
+      setSuperAdminScannedVolunteer(null);
+      setSuperAdminScannerFeedback("");
+      setSuperAdminScanResultData(res);
+      setShowSuperAdminScanResultModal(true);
 
-      try {
-        const parsed = JSON.parse(decodedText);
-        targetAuid = (parsed.auid || "").trim().toUpperCase();
-        targetUserId = parsed.user_id || parsed.id || null;
-        targetRegId = (parsed.registration_id || parsed.reg_id || "").trim().toUpperCase();
-      } catch (e) {
-        const clean = decodedText.trim().toUpperCase();
-        targetAuid = clean;
-        targetRegId = clean;
-        if (/^\d+$/.test(clean)) targetUserId = parseInt(clean, 10);
-      }
+      if (res.volunteer && res.record) {
+        setOfficialAttendanceRoster(prev => {
+          const exists = prev.some(p => p.user_id === res.volunteer.user_id);
+          if (exists) {
+            return prev.map(p => {
+              if (p.user_id === res.volunteer.user_id) {
+                return {
+                  ...p,
+                  status: res.record.status,
+                  check_in_time: res.record.check_in_time || p.check_in_time,
+                  check_out_time: res.record.check_out_time || p.check_out_time,
+                  record_id: res.record.id || p.record_id,
+                  lock_remaining_minutes: res.lock_remaining_minutes || 0
+                };
+              }
+              return p;
+            });
+          } else {
+            return [{
+              id: res.record.id,
+              record_id: res.record.id,
+              user_id: res.volunteer.user_id,
+              reg_id: res.volunteer.registration_id,
+              name: res.volunteer.name,
+              auid: res.volunteer.auid,
+              department: res.volunteer.department,
+              akv_dept: res.volunteer.domain,
+              volunteer_domain: res.volunteer.domain,
+              check_in_time: res.record.check_in_time,
+              check_out_time: res.record.check_out_time,
+              status: res.record.status,
+              lock_remaining_minutes: res.lock_remaining_minutes || 0
+            }, ...prev];
+          }
+        });
 
-      const match = officialAttendanceRoster.find(p => 
-        (targetUserId && p.user_id === targetUserId) ||
-        (targetAuid && p.auid && p.auid.toUpperCase() === targetAuid) ||
-        (targetRegId && p.reg_id && p.reg_id.toUpperCase() === targetRegId)
-      );
-
-      if (match) {
-        setSuperAdminScannedVolunteer(match);
-        setSuperAdminScannerFeedback("");
-      } else {
-        setSuperAdminScannerFeedback(`Volunteer not found in current roster (${targetAuid || decodedText.slice(0, 20)}). Ensure the volunteer is listed for this event date.`);
+        if (res.action === "CHECK_IN") {
+          setOfficialAttendanceSummary(prev => ({
+            ...prev,
+            checked_in: prev.checked_in + 1,
+            not_marked: Math.max(0, prev.not_marked - 1)
+          }));
+        } else if (res.action === "CHECK_OUT") {
+          setOfficialAttendanceSummary(prev => ({
+            ...prev,
+            checked_in: Math.max(0, prev.checked_in - 1),
+            completed: prev.completed + 1
+          }));
+        }
       }
     } catch (err) {
-      setSuperAdminScannerFeedback("Invalid QR code format. Please scan a valid AKV volunteer pass.");
+      setShowSuperAdminVolunteerScanner(false);
+      setSuperAdminScanResultData({
+        success: false,
+        action: "ERROR",
+        message: err.message || "Failed to mark attendance for volunteer.",
+        detail: err.message || "Volunteer scan error.",
+        volunteer: null
+      });
+      setShowSuperAdminScanResultModal(true);
+    } finally {
+      setTimeout(() => setSuperAdminScanProcessing(false), 800);
+    }
+  };
+
+  const handleSuperAdminConfirmScanCheckOut = async (participantUserId) => {
+    if (!participantUserId || superAdminScanCheckOutLoading) return;
+    setSuperAdminScanCheckOutLoading(true);
+    try {
+      const res = await api.markAttendanceCheckOut(participantUserId, selectedOfficialDate);
+      setOfficialAttendanceRoster(prev => prev.map(p => {
+        if (p.user_id === participantUserId) {
+          return {
+            ...p,
+            status: "COMPLETED",
+            check_out_time: res.record?.check_out_time || p.check_out_time,
+            can_mark: false,
+            check_out_available: false,
+            lock_remaining_minutes: 0
+          };
+        }
+        return p;
+      }));
+      setOfficialAttendanceSummary(prev => ({
+        ...prev,
+        checked_in: Math.max(0, prev.checked_in - 1),
+        completed: prev.completed + 1
+      }));
+      setSuperAdminScanResultData({
+        success: true,
+        action: "CHECK_OUT",
+        status: "COMPLETED",
+        message: "Checkout successful and attendance is submitted for today",
+        volunteer: res.volunteer || superAdminScanResultData?.volunteer,
+        record: res.record,
+        check_in_time: res.check_in_time || superAdminScanResultData?.check_in_time,
+        check_out_time: res.check_out_time || res.record?.check_out_time,
+        duration_hours: res.duration_hours || superAdminScanResultData?.duration_hours,
+        date: selectedOfficialDate
+      });
+      notify("success", res.message || "Checkout successful and attendance is submitted for today");
+    } catch (err) {
+      notify("error", err.message || "Failed to confirm check-out.");
+    } finally {
+      setSuperAdminScanCheckOutLoading(false);
     }
   };
 
@@ -3647,6 +3737,17 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
 
                   <button
                     type="button"
+                    onClick={() => setShowSuperAdminManualModal(true)}
+                    disabled={isAttendanceCutoffPassed}
+                    className="px-3.5 py-2 rounded-xl text-xs font-black text-stone-950 bg-amber-400 hover:bg-amber-500 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95 disabled:opacity-50"
+                    title="Manual Check-In / Out Entry"
+                  >
+                    <UserCheck className="w-4 h-4 text-stone-950" />
+                    <span>Manual Check-In / Out</span>
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={handleOfficialExcelExport}
                     disabled={officialExportLoading}
                     className="px-3.5 py-2 rounded-xl text-xs font-bold text-stone-700 bg-white border border-stone-300 hover:bg-stone-50 flex items-center gap-1.5 transition-all shadow-xs disabled:opacity-50 cursor-pointer"
@@ -4232,6 +4333,153 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                         className="px-4 py-2 text-xs font-bold text-stone-600 hover:text-stone-900"
                       >
                         Close Scanner
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Attendance Scan Result Pop-up Modal (SuperAdmin) */}
+              <AttendanceScanResultModal
+                isOpen={showSuperAdminScanResultModal}
+                onClose={() => {
+                  setShowSuperAdminScanResultModal(false);
+                  setSuperAdminScanResultData(null);
+                }}
+                onScanNext={() => {
+                  setShowSuperAdminScanResultModal(false);
+                  setSuperAdminScanResultData(null);
+                  setShowSuperAdminVolunteerScanner(true);
+                }}
+                onConfirmCheckOut={handleSuperAdminConfirmScanCheckOut}
+                checkOutLoading={superAdminScanCheckOutLoading}
+                result={superAdminScanResultData}
+                date={selectedOfficialDate}
+              />
+
+              {/* Manual Check-In / Check-Out Modal (SuperAdmin) */}
+              {showSuperAdminManualModal && (
+                <div 
+                  className="fixed inset-0 z-[120] bg-stone-950/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
+                  onClick={(e) => e.target === e.currentTarget && setShowSuperAdminManualModal(false)}
+                >
+                  <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col max-h-[90vh] animate-scale-up">
+                    <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 p-4 sm:p-5 text-stone-950 flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <UserCheck className="w-5 h-5 text-stone-950" />
+                        <div>
+                          <h4 className="font-extrabold text-sm sm:text-base text-stone-950">
+                            SuperAdmin Manual Volunteer Check-In / Out
+                          </h4>
+                          <p className="text-[10px] text-stone-800 font-medium">
+                            Select or search volunteer by AUID, USN, Reg ID, or Name
+                          </p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => setShowSuperAdminManualModal(false)} 
+                        className="p-1.5 rounded-lg text-stone-900 hover:bg-black/10 transition-colors cursor-pointer"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    <div className="p-4 sm:p-6 space-y-4 overflow-y-auto">
+                      <div className="relative">
+                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+                        <input
+                          type="text"
+                          value={superAdminManualSearch}
+                          onChange={(e) => setSuperAdminManualSearch(e.target.value)}
+                          placeholder="Search volunteer by AUID, Name, or Reg ID..."
+                          className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-kar-red"
+                          autoFocus
+                        />
+                      </div>
+
+                      <div className="space-y-2 max-h-72 overflow-y-auto divide-y divide-stone-100 pr-1">
+                        {officialAttendanceRoster
+                          .filter(p => {
+                            if (!superAdminManualSearch.trim()) return true;
+                            const q = superAdminManualSearch.toLowerCase();
+                            return (
+                              (p.name && p.name.toLowerCase().includes(q)) ||
+                              (p.auid && p.auid.toLowerCase().includes(q)) ||
+                              (p.reg_id && p.reg_id.toLowerCase().includes(q)) ||
+                              (p.department && p.department.toLowerCase().includes(q)) ||
+                              (p.akv_dept && p.akv_dept.toLowerCase().includes(q)) ||
+                              (p.volunteer_domain && p.volunteer_domain.toLowerCase().includes(q))
+                            );
+                          })
+                          .slice(0, 25)
+                          .map(vol => (
+                            <div key={vol.user_id} className="pt-2 pb-2 flex items-center justify-between gap-2 hover:bg-stone-50 p-2 rounded-xl">
+                              <div className="min-w-0 flex-1">
+                                <strong className="text-xs text-stone-900 block truncate">{vol.name}</strong>
+                                <div className="flex items-center gap-1.5 text-[10px] text-stone-500 font-mono">
+                                  <span>{vol.auid}</span>
+                                  <span>•</span>
+                                  <span className="text-kar-red font-sans font-bold">{vol.akv_dept || vol.volunteer_domain || "Domain"}</span>
+                                </div>
+                                {vol.check_in_time && (
+                                  <span className="text-[10px] text-emerald-700 font-semibold block">
+                                    In: {vol.check_in_time} {vol.check_out_time ? `| Out: ${vol.check_out_time}` : ""}
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {vol.status === "NOT_MARKED" && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSuperAdminCheckIn(vol.user_id)}
+                                    disabled={attendanceMarkingIds.includes(vol.user_id)}
+                                    className="px-2.5 py-1.5 rounded-lg text-[10px] font-black bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer transition-all active:scale-95 disabled:opacity-50"
+                                  >
+                                    Check-In
+                                  </button>
+                                )}
+                                {vol.status === "CHECKED_IN" && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSuperAdminCheckOut(vol.user_id)}
+                                    disabled={attendanceMarkingIds.includes(vol.user_id)}
+                                    className="px-2.5 py-1.5 rounded-lg text-[10px] font-black bg-amber-500 hover:bg-amber-600 text-stone-950 cursor-pointer transition-all active:scale-95 disabled:opacity-50"
+                                  >
+                                    Check-Out
+                                  </button>
+                                )}
+                                {vol.status === "COMPLETED" && (
+                                  <span className="px-2 py-1 rounded-md text-[10px] font-bold bg-blue-100 text-blue-800">
+                                    Completed
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        {officialAttendanceRoster.filter(p => {
+                          if (!superAdminManualSearch.trim()) return true;
+                          const q = superAdminManualSearch.toLowerCase();
+                          return (
+                            (p.name && p.name.toLowerCase().includes(q)) ||
+                            (p.auid && p.auid.toLowerCase().includes(q)) ||
+                            (p.reg_id && p.reg_id.toLowerCase().includes(q))
+                          );
+                        }).length === 0 && (
+                          <p className="text-center text-xs text-stone-400 py-6">
+                            No volunteers found matching your query.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="bg-stone-50 p-3 sm:p-4 border-t border-stone-200 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setShowSuperAdminManualModal(false)}
+                        className="px-4 py-2 text-xs font-bold text-stone-600 hover:text-stone-900 cursor-pointer"
+                      >
+                        Close
                       </button>
                     </div>
                   </div>
