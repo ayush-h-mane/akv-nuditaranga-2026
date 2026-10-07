@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useModalAlert } from "../context/ModalAlertContext";
 import { api } from "../services/api";
@@ -301,16 +301,26 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
   const [superAdminScanCheckOutLoading, setSuperAdminScanCheckOutLoading] = useState(false);
   const [showSuperAdminManualModal, setShowSuperAdminManualModal] = useState(false);
   const [superAdminManualSearch, setSuperAdminManualSearch] = useState("");
+  const superAdminScanInProgressRef = useRef(false);
+  const superAdminLastScanTimeRef = useRef(0);
 
   // QR Scan Handler for Volunteers in Superadmin Attendance
   const handleSuperAdminScanVolunteerQR = async (decodedText) => {
-    if (!decodedText || superAdminScanProcessing) return;
+    const now = Date.now();
+    if (!decodedText || superAdminScanInProgressRef.current || (now - superAdminLastScanTimeRef.current < 2500)) {
+      return;
+    }
+    superAdminScanInProgressRef.current = true;
+    superAdminLastScanTimeRef.current = now;
     setSuperAdminScanProcessing(true);
+
+    // Immediately close camera scanner modal so video feed is stopped instantly
+    setShowSuperAdminVolunteerScanner(false);
+    setSuperAdminScannedVolunteer(null);
+    setSuperAdminScannerFeedback("");
+
     try {
       const res = await api.scanAttendanceQR(decodedText, selectedOfficialDate);
-      setShowSuperAdminVolunteerScanner(false);
-      setSuperAdminScannedVolunteer(null);
-      setSuperAdminScannerFeedback("");
       setSuperAdminScanResultData(res);
       setShowSuperAdminScanResultModal(true);
 
@@ -326,6 +336,7 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                   check_in_time: res.record.check_in_time || p.check_in_time,
                   check_out_time: res.record.check_out_time || p.check_out_time,
                   record_id: res.record.id || p.record_id,
+                  check_out_available: res.action === "READY_FOR_CHECK_OUT",
                   lock_remaining_minutes: res.lock_remaining_minutes || 0
                 };
               }
@@ -345,6 +356,7 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
               check_in_time: res.record.check_in_time,
               check_out_time: res.record.check_out_time,
               status: res.record.status,
+              check_out_available: false,
               lock_remaining_minutes: res.lock_remaining_minutes || 0
             }, ...prev];
           }
@@ -365,7 +377,6 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
         }
       }
     } catch (err) {
-      setShowSuperAdminVolunteerScanner(false);
       setSuperAdminScanResultData({
         success: false,
         action: "ERROR",
@@ -375,7 +386,10 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
       });
       setShowSuperAdminScanResultModal(true);
     } finally {
-      setTimeout(() => setSuperAdminScanProcessing(false), 800);
+      setTimeout(() => {
+        superAdminScanInProgressRef.current = false;
+        setSuperAdminScanProcessing(false);
+      }, 1500);
     }
   };
 
@@ -4347,6 +4361,7 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                   setSuperAdminScanResultData(null);
                 }}
                 onScanNext={() => {
+                  superAdminScanInProgressRef.current = false;
                   setShowSuperAdminScanResultModal(false);
                   setSuperAdminScanResultData(null);
                   setShowSuperAdminVolunteerScanner(true);
