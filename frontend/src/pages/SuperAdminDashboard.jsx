@@ -1626,7 +1626,7 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
             { id: "students", label: "Participants Directory", icon: Users },
             { id: "working-committee", label: "Working Committee Directory", icon: Briefcase },
             { id: "event-registrations", label: "Event Registrations", icon: Trophy },
-            { id: "attendance", label: "Daily Attendance Records", icon: Clock },
+            { id: "attendance", label: "Volunteer Attendance", icon: UserCheck },
             { id: "id-cards", label: "Participant ID Cards", icon: ShieldCheck },
             { id: "activities", label: "Major Vedike Activities", icon: Sparkles },
             { id: "reels", label: "Reels & Posts", icon: Film },
@@ -1637,6 +1637,7 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
           ] : [
             { id: "overview", label: "Dashboard Overview", icon: BarChart3 },
             { id: "my-account", label: "My Profile & Attendance", icon: UserPlus },
+            { id: "attendance", label: "Volunteer Attendance", icon: UserCheck },
             { id: "working-committee", label: "Working Committee Directory", icon: Briefcase },
             { id: "event-registrations", label: "Event Registrations", icon: Trophy },
             { id: "reels", label: "Reels & Posts", icon: Film },
@@ -3713,7 +3714,7 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                   <div className="flex items-center gap-2">
                     <h3 className="font-extrabold text-base sm:text-lg text-stone-900 flex items-center gap-2">
                       <Clock className="w-5 h-5 text-kar-red" />
-                      <span>Official Event Attendance — {selectedOfficialDate || "Select Date"}</span>
+                      <span>Volunteer Attendance — {selectedOfficialDate || "Select Date"}</span>
                     </h3>
                     {officialAttendanceSession.is_submitted ? (
                       <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-red-100 text-red-800 border border-red-200 flex items-center gap-1">
@@ -3728,7 +3729,7 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                     )}
                   </div>
                   <p className="text-xs text-stone-500 mt-0.5">
-                    Superadmin controls: Indian Standard Time (IST) timestamps, edit check-in/out times, unlock submitted sessions, and audit logging.
+                    Superadmin controls: Mark check-in and check-out for volunteers via QR scan or manual entry, Indian Standard Time (IST) timestamps, edit times, and unlock sessions.
                   </p>
                 </div>
 
