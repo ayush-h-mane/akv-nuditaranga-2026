@@ -6,7 +6,7 @@ from typing import List, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session, defer, joinedload
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, and_, distinct
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
@@ -79,6 +79,15 @@ def get_superadmin_stats(
     )
     today_present = today_counts.get("PRESENT", 0)
     today_absent = today_counts.get("ABSENT", 0)
+
+    # Also count official AttendanceRecord check-ins / completions for today
+    official_today_present = db.query(func.count(AttendanceRecord.id)).filter(
+        AttendanceRecord.attendance_date == today_str,
+        AttendanceRecord.status.in_(["CHECKED_IN", "COMPLETED"])
+    ).scalar() or 0
+    if official_today_present > 0:
+        today_present = max(today_present, official_today_present)
+        today_absent = max(0, total_volunteers - today_present)
 
     return {
         "success": True,
@@ -589,19 +598,64 @@ def list_all_volunteers(
     volunteers = query.order_by(User.name.asc()).all()
     today_str = datetime.date.today().strftime("%Y-%m-%d")
     volunteer_ids = [v.id for v in volunteers]
-    today_records = db.query(VolunteerAttendance).filter(
-        VolunteerAttendance.date == today_str,
-        VolunteerAttendance.user_id.in_(volunteer_ids) if volunteer_ids else False,
-    ).all()
-    today_by_user = {record.user_id: record for record in today_records}
-    present_counts = dict(db.query(VolunteerAttendance.user_id, func.count(VolunteerAttendance.id))
-        .filter(VolunteerAttendance.status == "PRESENT", VolunteerAttendance.user_id.in_(volunteer_ids) if volunteer_ids else False)
-        .group_by(VolunteerAttendance.user_id).all())
+
+    # 1. Query official AttendanceRecord for today and completed attendance days (checked in and checked out)
+    official_today = {}
+    official_days_counts = {}
+    if volunteer_ids:
+        today_recs = db.query(AttendanceRecord).filter(
+            AttendanceRecord.attendance_date == today_str,
+            AttendanceRecord.user_id.in_(volunteer_ids)
+        ).all()
+        official_today = {r.user_id: r for r in today_recs}
+
+        # Count completed days where volunteer has checked in and checked out (or status is COMPLETED)
+        completed_counts = db.query(
+            AttendanceRecord.user_id,
+            func.count(distinct(AttendanceRecord.attendance_date))
+        ).filter(
+            AttendanceRecord.user_id.in_(volunteer_ids),
+            or_(
+                and_(AttendanceRecord.check_in_at.isnot(None), AttendanceRecord.check_out_at.isnot(None)),
+                AttendanceRecord.status == "COMPLETED"
+            )
+        ).group_by(AttendanceRecord.user_id).all()
+        official_days_counts = dict(completed_counts)
+
+    # 2. Legacy VolunteerAttendance support
+    legacy_today = {}
+    legacy_counts = {}
+    if volunteer_ids:
+        today_records = db.query(VolunteerAttendance).filter(
+            VolunteerAttendance.date == today_str,
+            VolunteerAttendance.user_id.in_(volunteer_ids)
+        ).all()
+        legacy_today = {record.user_id: record for record in today_records}
+        legacy_counts = dict(db.query(VolunteerAttendance.user_id, func.count(VolunteerAttendance.id))
+            .filter(VolunteerAttendance.status == "PRESENT", VolunteerAttendance.user_id.in_(volunteer_ids))
+            .group_by(VolunteerAttendance.user_id).all())
 
     results = []
     for v in volunteers:
-        today_att = today_by_user.get(v.id)
-        total_present = present_counts.get(v.id, 0)
+        off_rec = official_today.get(v.id)
+        leg_rec = legacy_today.get(v.id)
+
+        if off_rec:
+            if off_rec.status == "COMPLETED":
+                today_status = "PRESENT"
+            elif off_rec.status == "CHECKED_IN":
+                today_status = "CHECKED_IN"
+            else:
+                today_status = off_rec.status or "NOT_MARKED"
+            cin_time_str = off_rec.check_in_at.strftime("%I:%M %p") if off_rec.check_in_at else None
+        elif leg_rec:
+            today_status = leg_rec.status
+            cin_time_str = leg_rec.check_in_time.strftime("%I:%M %p") if leg_rec.check_in_time else None
+        else:
+            today_status = "NOT_MARKED"
+            cin_time_str = None
+
+        total_present = max(official_days_counts.get(v.id, 0), legacy_counts.get(v.id, 0))
 
         results.append({
             "user_id": v.id,
@@ -621,8 +675,8 @@ def list_all_volunteers(
             "plain_password": getattr(v, "plain_password", None) or "",
             "account_status": v.account_status,
             "registration_id": v.registration_id,
-            "today_attendance": today_att.status if today_att else "NOT_MARKED",
-            "today_checkin_time": today_att.check_in_time.strftime("%I:%M %p") if today_att and today_att.check_in_time else None,
+            "today_attendance": today_status,
+            "today_checkin_time": cin_time_str,
             "total_days_present": total_present,
             "registered_at": v.created_at.strftime("%Y-%m-%d %I:%M %p") if v.created_at else None,
             "created_at": v.created_at.isoformat() if v.created_at else None

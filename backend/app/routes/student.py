@@ -150,8 +150,11 @@ def get_student_dashboard(
         "stats": {
             "registered_events_count": len(registered_events),
             "total_available_events": total_events_count,
-            "volunteer_days_present": len([r for r in volunteer_attendance_records if r["status"] == "PRESENT"]),
-            "attendance_days_present": len([r for r in attendance_records if r["status"] == "COMPLETED"])
+            "volunteer_days_present": max(
+                len([r for r in volunteer_attendance_records if r["status"] == "PRESENT"]),
+                len([r for r in attendance_records if r["status"] == "COMPLETED" or (r.get("check_in_time") and r.get("check_out_time"))])
+            ),
+            "attendance_days_present": len([r for r in attendance_records if r["status"] == "COMPLETED" or (r.get("check_in_time") and r.get("check_out_time"))])
         },
         "registered_events": registered_events,
         "registered_event_ids": list(registered_event_ids),

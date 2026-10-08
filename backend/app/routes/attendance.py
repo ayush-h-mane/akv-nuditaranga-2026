@@ -145,15 +145,11 @@ def get_domain_aliases(domain_name: Optional[str]) -> List[str]:
     return list(aliases)
 
 def attendance_units(check_in_at, check_out_at) -> float:
-    """Convert completed attendance duration into full-day units."""
+    """Convert completed attendance duration into full-day units (1 day if checked in and checked out)."""
     if not check_in_at or not check_out_at:
         return 0.0
-    hours = (check_out_at - check_in_at).total_seconds() / 3600
-    if hours >= 8:
-        return 1.0
-    if hours >= 4:
-        return 0.5
-    return 0.0
+    return 1.0
+
 
 # ==============================================================================
 # PYDANTIC SCHEMAS
@@ -1481,8 +1477,8 @@ def export_attendance_excel(
             date_times.append(time_in_str)
             date_times.append(time_out_str)
 
-            if rec:
-                days_present += attendance_units(rec.check_in_at, rec.check_out_at)
+            if rec and rec.check_in_at and rec.check_out_at:
+                days_present += 1
 
             if rec and rec.submitted_by:
                 managed_by_set.add(rec.submitted_by)

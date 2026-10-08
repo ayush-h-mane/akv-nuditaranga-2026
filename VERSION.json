@@ -1,11 +1,16 @@
 {
-  "production_version": "2.3.12",
-  "staged_version": "2.3.13",
+  "production_version": "2.3.13",
+  "staged_version": "2.3.14",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.13",
+      "released_at": "2026-10-09T00:46:32+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.13: Volunteer Attendance 1-Day Count Logic: Updated attendance days calculation across attendance and working committee modules (attendance_units, make_dept_row, and make_wc_row) so that whenever a volunteer has completed attendance (checked in and checked out for an hour/shift), it counts as 1 full day of attendance (1.0 units).; Superadmin Volunteers Directory Total Days Sync: Updated /api/superadmin/volunteers to count completed attendance days directly from AttendanceRecord (records where the volunteer has checked in and checked out or marked COMPLETED) as 1 day each, providing real-time, accurate attendance totals across the Superadmin portal.; Student & Volunteer Profile Days Sync: Synchronized student and volunteer profile statistics in /api/student/me so that completed attendance records with check-in and check-out count as 1 full day present for both attendance_days_present and volunteer_days_present.; Volunteer Attendance Option in SuperAdmin Portal: Added dedicated 'Volunteer Attendance' navigation option to the SuperAdmin portal with direct access to date-based rosters, domain filters, search, camera QR scanner, and manual Check-In / Check-Out controls, enabling SuperAdmins to easily mark and manage volunteer attendance."
+    },
     {
       "version": "2.3.12",
       "released_at": "2026-10-08T02:34:12+0530",
