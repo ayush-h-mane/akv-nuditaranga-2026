@@ -100,13 +100,13 @@ def ensure_schema_migrations(target_engine=None):
                     if "volunteer_domain" not in user_cols:
                         conn.exec_driver_sql("ALTER TABLE users ADD COLUMN volunteer_domain VARCHAR")
                     if "admin_type" not in user_cols:
-                        conn.exec_driver_sql("ALTER TABLE users ADD COLUMN admin_type VARCHAR DEFAULT 'WORKING_COMMITTEE'")
+                        conn.exec_driver_sql("ALTER TABLE users ADD COLUMN admin_type VARCHAR")
                     if "faculty_id" not in user_cols:
                         conn.exec_driver_sql("ALTER TABLE users ADD COLUMN faculty_id VARCHAR")
                     if "is_working_committee" not in user_cols:
                         conn.exec_driver_sql("ALTER TABLE users ADD COLUMN is_working_committee BOOLEAN DEFAULT 0")
                     if "working_committee_role" not in user_cols:
-                        conn.exec_driver_sql("ALTER TABLE users ADD COLUMN working_committee_role VARCHAR DEFAULT 'Coordinator'")
+                        conn.exec_driver_sql("ALTER TABLE users ADD COLUMN working_committee_role VARCHAR")
                     if "managed_by" not in user_cols:
                         conn.exec_driver_sql("ALTER TABLE users ADD COLUMN managed_by VARCHAR")
                     if "profile_edited_once" not in user_cols:
@@ -233,10 +233,10 @@ def ensure_schema_migrations(target_engine=None):
                 add_pg_col("registrations", "user_id", "INTEGER REFERENCES users(id)")
                 add_pg_col("users", "photo_url", "TEXT")
                 add_pg_col("users", "volunteer_domain", "VARCHAR")
-                add_pg_col("users", "admin_type", "VARCHAR DEFAULT 'WORKING_COMMITTEE'")
+                add_pg_col("users", "admin_type", "VARCHAR")
                 add_pg_col("users", "faculty_id", "VARCHAR")
                 add_pg_col("users", "is_working_committee", "BOOLEAN DEFAULT FALSE")
-                add_pg_col("users", "working_committee_role", "VARCHAR DEFAULT 'Coordinator'")
+                add_pg_col("users", "working_committee_role", "VARCHAR")
                 add_pg_col("users", "managed_by", "VARCHAR")
                 add_pg_col("users", "profile_edited_once", "BOOLEAN DEFAULT FALSE")
                 add_pg_col("users", "profile_edited_at", "TIMESTAMP")
@@ -288,19 +288,24 @@ def ensure_schema_migrations(target_engine=None):
             with eng.connect() as conn:
                 conn.exec_driver_sql("DELETE FROM admins WHERE username IN ('akv-nt-2026', 'superadmin', 'akvadmin')")
                 conn.exec_driver_sql("DELETE FROM users WHERE email = 'akv@acharya.ac.in' OR auid = 'AKV-SUPERADMIN' OR registration_id = 'AKV-SA-0001'")
-                # Clean up legacy default working_committee_role and admin_type from students/volunteers
+                # Clean up legacy default working_committee_role and admin_type from users who are not working committee
                 conn.exec_driver_sql("""
                     UPDATE users 
                     SET working_committee_role = NULL 
                     WHERE (is_working_committee IS NULL OR is_working_committee = 0)
                       AND (volunteer_domain != 'Working Committee' OR volunteer_domain IS NULL)
-                      AND role IN ('STUDENT', 'PARTICIPANT', 'VOLUNTEER')
+                      AND role != 'WORKING_COMMITTEE'
                 """)
                 conn.exec_driver_sql("""
                     UPDATE users 
                     SET admin_type = NULL 
                     WHERE (is_working_committee IS NULL OR is_working_committee = 0)
-                      AND role IN ('STUDENT', 'PARTICIPANT', 'VOLUNTEER')
+                      AND role NOT IN ('ADMIN', 'WORKING_COMMITTEE')
+                """)
+                conn.exec_driver_sql("""
+                    UPDATE users 
+                    SET working_committee_role = NULL, admin_type = NULL 
+                    WHERE role = 'SUPERADMIN' AND (is_working_committee IS NULL OR is_working_committee = 0)
                 """)
                 conn.commit()
         except Exception as cleanup_err:

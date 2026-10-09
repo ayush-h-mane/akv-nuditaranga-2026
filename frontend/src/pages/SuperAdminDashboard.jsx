@@ -4866,14 +4866,16 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                                   <>
                                     <button
                                       type="button"
-                                      disabled={wcMarkingIds.includes(m.user_id)}
+                                      disabled={wcMarkingIds.includes(m.user_id) || isAbsent}
                                       onClick={() => handleWcMarkAttendance(m.user_id, "PRESENT")}
-                                      className={`px-3 py-1.5 rounded-lg font-extrabold text-[11px] shadow-xs flex items-center gap-1 transition-all cursor-pointer ${
+                                      className={`px-3 py-1.5 rounded-lg font-extrabold text-[11px] shadow-xs flex items-center gap-1 transition-all ${
                                         isPresent
-                                          ? "bg-emerald-700 text-white ring-2 ring-emerald-300"
-                                          : "bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white border border-emerald-300"
+                                          ? "bg-emerald-700 text-white ring-2 ring-emerald-300 cursor-default"
+                                          : isAbsent
+                                            ? "bg-stone-100 text-stone-400 border border-stone-200 cursor-not-allowed opacity-40 shadow-none"
+                                            : "bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white border border-emerald-300 cursor-pointer"
                                       } ${wcMarkingIds.includes(m.user_id) ? "opacity-50 cursor-wait" : ""}`}
-                                      title="Mark Present"
+                                      title={isAbsent ? "Disabled: Member marked Absent (Use Reset to change)" : isPresent ? "Marked Present" : "Mark Present"}
                                     >
                                       <CheckCircle2 className="w-3.5 h-3.5" />
                                       <span>PRESENT</span>
@@ -4881,14 +4883,16 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
 
                                     <button
                                       type="button"
-                                      disabled={wcMarkingIds.includes(m.user_id)}
+                                      disabled={wcMarkingIds.includes(m.user_id) || isPresent}
                                       onClick={() => handleWcMarkAttendance(m.user_id, "ABSENT")}
-                                      className={`px-3 py-1.5 rounded-lg font-extrabold text-[11px] shadow-xs flex items-center gap-1 transition-all cursor-pointer ${
+                                      className={`px-3 py-1.5 rounded-lg font-extrabold text-[11px] shadow-xs flex items-center gap-1 transition-all ${
                                         isAbsent
-                                          ? "bg-red-700 text-white ring-2 ring-red-300"
-                                          : "bg-red-50 text-red-700 hover:bg-red-600 hover:text-white border border-red-300"
+                                          ? "bg-red-700 text-white ring-2 ring-red-300 cursor-default"
+                                          : isPresent
+                                            ? "bg-stone-100 text-stone-400 border border-stone-200 cursor-not-allowed opacity-40 shadow-none"
+                                            : "bg-red-50 text-red-700 hover:bg-red-600 hover:text-white border border-red-300 cursor-pointer"
                                       } ${wcMarkingIds.includes(m.user_id) ? "opacity-50 cursor-wait" : ""}`}
-                                      title="Mark Absent"
+                                      title={isPresent ? "Disabled: Member marked Present (Use Reset to change)" : isAbsent ? "Marked Absent" : "Mark Absent"}
                                     >
                                       <X className="w-3.5 h-3.5" />
                                       <span>ABSENT</span>
@@ -5085,7 +5089,7 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                     <div>
                       <h4 className="font-extrabold text-base text-stone-900">Official Festival Attendance Workbook (.xlsx)</h4>
                       <p className="text-xs text-stone-600 mt-1 leading-relaxed">
-                        Standardized 15-sheet committee format (Sheets 1–13 Domains, Sheet 14 Working Committee, Sheet 15 Consolidated). Generates Indian Standard Time (IST) Time In & Time Out columns and Total Days Present.
+                        Standardized 15-sheet committee format (Sheets 1–13 Domains, Sheet 14 Working Committee Attendance, Sheet 15 Consolidated). Generates Indian Standard Time (IST) Time In & Time Out columns and Total Days Present.
                       </p>
                     </div>
                   </div>
