@@ -4,7 +4,12 @@
   "status": "STAGED_DEVELOPMENT",
   "active_branch": "develop",
   "production_branch": "main",
-  "pending_changes": [],
+  "pending_changes": [
+    "Working Committee Attendance Excel Export Fix: Resolved the issue where exported Working Committee Excel workbooks were generated empty with 0 data rows even though attendance was marked.",
+    "Working Committee Member Query Normalization: Fixed get_wc_members_query in working_committee_attendance.py by removing the restrictive User.role != 'SUPERADMIN' filter that inadvertently excluded working committee coordinators and admins, ensuring all users designated with is_working_committee=True, admin_type='WORKING_COMMITTEE', role='WORKING_COMMITTEE', volunteer_domain='Working Committee', or working_committee_role are properly recognized.",
+    "Marked Attendance Member Inclusion Safeguard: Added query safeguards across export_working_committee_excel (working_committee_attendance.py), export_attendance_excel (attendance.py), and get_working_committee_attendance (roster API) to automatically include any user with attendance records in working_committee_attendance, guaranteeing no marked attendance record is ever dropped from generated Excel workbooks or UI rosters.",
+    "Accurate Timestamp & Status Formatting in Workbooks: Enhanced export date columns across all sheets to output precise Indian Standard Time (IST) check-in and check-out timestamps when present, and explicit 'Present' / 'Absent' indicators instead of blank or placeholder fields."
+  ],
   "history": [
     {
       "version": "2.3.16",
