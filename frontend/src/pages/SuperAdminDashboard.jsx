@@ -4730,7 +4730,7 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                       <tr>
                         <th className="py-3 px-4">Name</th>
                         <th className="py-3 px-4">AUID</th>
-                        <th className="py-3 px-4">AKV_DOMAIN</th>
+                        <th className="py-3 px-4">Role / Domain</th>
                         <th className="py-3 px-4">Status</th>
                         <th className="py-3 px-4 text-right">Action</th>
                       </tr>
@@ -4751,8 +4751,11 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                             </td>
                             <td className="py-3 px-4">
                               <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800">
-                                {m.akv_dept || m.volunteer_domain || m.working_committee_role || "General"}
+                                {m.role || m.working_committee_role || m.akv_dept || "Coordinator"}
                               </span>
+                              {m.akv_dept && m.akv_dept !== "--" && m.akv_dept !== (m.role || m.working_committee_role) && (
+                                <span className="text-[10px] text-stone-500 font-medium block mt-0.5">{m.akv_dept}</span>
+                              )}
                             </td>
                             <td className="py-3 px-4">
                               <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${

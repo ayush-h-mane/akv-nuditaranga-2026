@@ -9,7 +9,28 @@ export default defineConfig({
     tailwindcss(),
   ],
   build: {
-    chunkSizeWarningLimit: 1200,
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('scheduler')) {
+              return 'vendor-react';
+            }
+            if (id.includes('lucide-react')) {
+              return 'vendor-icons';
+            }
+            if (id.includes('html5-qrcode') || id.includes('qrcode.react')) {
+              return 'vendor-qr';
+            }
+            if (id.includes('canvas-confetti')) {
+              return 'vendor-confetti';
+            }
+            return 'vendor-misc';
+          }
+        }
+      }
+    }
   },
   server: {
     port: 5173,

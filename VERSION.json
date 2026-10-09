@@ -1,11 +1,16 @@
 {
-  "production_version": "2.3.14",
-  "staged_version": "2.3.15",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.3.15",
+  "staged_version": "2.3.16",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.15",
+      "released_at": "2026-10-09T10:11:57+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.15: Working Committee Attendance Member Isolation: Restricted the working committee attendance roster and marking controls strictly to verified Working Committee members (is_working_committee is True, role is WORKING_COMMITTEE, volunteer_domain is Working Committee, or admin_type is WORKING_COMMITTEE with role in ADMIN/WORKING_COMMITTEE).; Eliminated Registered Students & Volunteers Leakage into Working Committee: Removed the blanket User.working_committee_role.isnot(None) condition that previously captured all registered students due to database column defaults, ensuring normal students, participants, and department volunteers never appear in the Working Committee attendance section.; Database Default Cleanups & Safe Onboarding: Removed default='Coordinator' and default='WORKING_COMMITTEE' from User model in models.py, ensured register_student sets is_working_committee=False and working_committee_role=None, and added migration cleanup in database.py stripping dummy working committee assignments from non-committee students.; Enhanced Member Assignment & Un-designation: Improved add_or_assign_wc_member in working_committee_attendance.py to designate existing users by AUID or email without account duplication errors, added DELETE /api/working-committee-attendance/members/{user_id} and api.removeWorkingCommitteeMember for easy member removal, and updated table header to 'Role / Domain' in SuperAdminDashboard.; Frontend Code-Splitting & 75% Initial Bundle Reduction: Converted SuperAdminDashboard (7,000+ lines), AdminPage, DeveloperPortal, CheckInPage, ResetPasswordView, ConfirmationPage, and RulesPage to dynamic React.lazy with Suspense and branded loading spinners. The initial entry chunk shrunk from 1,460 kB to 363 kB (75 kB gzip) for lightning-fast public initial load.; Vendor Chunk Isolation & DNS Prefetching: Configured Vite rollupOptions.output.manualChunks to split React, icons, confetti, and heavy QR scanner modules into independent cached vendor chunks. Added dns-prefetch and preconnect hints for Google Fonts in index.html for instant font rendering.; SQLite High-Concurrency Tuning (WAL Mode & Memory Cache): Configured SQLAlchemy connection listener for SQLite: enabled PRAGMA journal_mode=WAL for non-blocking concurrent reads and writes, PRAGMA synchronous=NORMAL, 64MB RAM page cache (cache_size=-64000), in-memory temp tables (temp_store=MEMORY), 256MB mmap_size, and 10s busy_timeout to eliminate 'database is locked' errors during festival peak traffic.; High-Performance Database Indexes & N+1 Query Elimination: Created 24 composite and single indexes across users, registrations, events, attendance, checkin logs, and audit logs for both SQLite and PostgreSQL. Batch-loaded user attributes in Working Committee and volunteer audit log routes, eliminating round-trip N+1 query loops."
+    },
     {
       "version": "2.3.14",
       "released_at": "2026-10-09T09:23:07+0530",
