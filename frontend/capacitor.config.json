@@ -1,0 +1,39 @@
+{
+  "appId": "com.acharya.akv2026",
+  "appName": "AKV Nuditaranga 2026",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": false,
+    "allowNavigation": [
+      "akv.acharyahabba.com",
+      "*.acharyahabba.com",
+      "*.supabase.co",
+      "images.unsplash.com",
+      "fonts.googleapis.com",
+      "fonts.gstatic.com"
+    ]
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2500,
+      "launchAutoHide": true,
+      "backgroundColor": "#1c1917",
+      "androidSplashResourceName": "splash",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false,
+      "splashFullScreen": true,
+      "splashImmersive": true
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#991b1b",
+      "overlaysWebView": false
+    }
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  }
+}

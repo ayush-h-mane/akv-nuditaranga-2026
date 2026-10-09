@@ -5,6 +5,12 @@ import { ModalAlertProvider } from "./context/ModalAlertContext";
 import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
 
+// Native Capacitor Plugins
+import { Capacitor } from "@capacitor/core";
+import { App as CapApp } from "@capacitor/app";
+import { StatusBar, Style } from "@capacitor/status-bar";
+import { SplashScreen } from "@capacitor/splash-screen";
+
 // Authentication & Core Dashboards
 import { AuthPortal } from "./pages/AuthPortal";
 import { StudentDashboard } from "./pages/StudentDashboard";
@@ -186,6 +192,63 @@ export function AppContent() {
   useEffect(() => {
     api.prefetchAll(user);
   }, [user]);
+
+  // Native Android Capacitor Lifecycle, Status Bar & Hardware Back Button
+  useEffect(() => {
+    if (typeof Capacitor === "undefined" || !Capacitor.isNativePlatform()) return;
+
+    // 1. Configure Native Status Bar with AKV Brand Color
+    try {
+      StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
+      StatusBar.setBackgroundColor({ color: "#991B1B" }).catch(() => {});
+    } catch (e) {
+      console.warn("StatusBar setup:", e);
+    }
+
+    // 2. Hide Native Splash Screen once web app is loaded
+    try {
+      SplashScreen.hide().catch(() => {});
+    } catch (e) {
+      console.warn("SplashScreen hide:", e);
+    }
+
+    // 3. Hardware / Gesture Back Button Handling
+    let lastBackPress = 0;
+    let backListenerPromise = null;
+    try {
+      backListenerPromise = CapApp.addListener("backButton", ({ canGoBack }) => {
+        // If a modal dialog is open, allow standard back handling to close it
+        const modalActive = document.querySelector('[role="dialog"]') || document.querySelector(".akv-modal");
+        if (modalActive) {
+          window.history.back();
+          return;
+        }
+
+        const currentPath = window.location.pathname.toLowerCase().replace(/\/+$/, "") || "/";
+        if (currentPath === "/" || !canGoBack) {
+          const now = Date.now();
+          if (now - lastBackPress < 2000) {
+            CapApp.exitApp();
+          } else {
+            lastBackPress = now;
+            if (window.history.length > 1) {
+              window.history.back();
+            }
+          }
+        } else {
+          window.history.back();
+        }
+      });
+    } catch (e) {
+      console.warn("BackButton listener setup:", e);
+    }
+
+    return () => {
+      if (backListenerPromise) {
+        backListenerPromise.then((handle) => handle?.remove && handle.remove()).catch(() => {});
+      }
+    };
+  }, []);
 
   // Navigate URL Path with browser history synchronization
   const navigatePath = useCallback((target, options = {}) => {

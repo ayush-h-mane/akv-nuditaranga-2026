@@ -8,12 +8,17 @@ import {
   initialAttendanceDates 
 } from "../config/catalogData";
 
+import { Capacitor } from "@capacitor/core";
+
 // Determine base API endpoint
-// When running in production (e.g. Vercel) without explicit VITE_API_URL, use same-origin relative path "/api"
-// to prevent mixed-content blocking and "Private Network Access / 3rd party permission" prompts on mobile.
+// When running in production web (e.g. Vercel) without explicit VITE_API_URL, use same-origin relative path "/api"
+// When running inside Capacitor native Android APK, route to the live production server.
 const API_BASE_URL = (() => {
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL.replace(/\/$/, "");
+  }
+  if (typeof Capacitor !== "undefined" && Capacitor.isNativePlatform()) {
+    return "https://akv.acharyahabba.com/api";
   }
   return "/api";
 })();
