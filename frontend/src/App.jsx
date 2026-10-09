@@ -5,21 +5,37 @@ import { ModalAlertProvider } from "./context/ModalAlertContext";
 import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
 
-// Authentication & Specialized Dashboards
+// Authentication & Core Dashboards
 import { AuthPortal } from "./pages/AuthPortal";
-import { ResetPasswordView } from "./pages/ResetPasswordView";
 import { StudentDashboard } from "./pages/StudentDashboard";
-import { SuperAdminDashboard } from "./pages/SuperAdminDashboard";
-import { DeveloperPortal } from "./pages/DeveloperPortal";
-import { AdminPage } from "./pages/AdminPage";
 
 // Public Pages & Events
 import { HomePage } from "./pages/HomePage";
 import { EventsPage } from "./pages/EventsPage";
 import { RegisterPage } from "./pages/RegisterPage";
-import { ConfirmationPage } from "./pages/ConfirmationPage";
-import { CheckInPage } from "./pages/CheckInPage";
-import { RulesPage } from "./pages/RulesPage";
+
+// Code-Split Dynamic Pages (Admin Suites, QR Scanner & Ancillary Views)
+const SuperAdminDashboard = React.lazy(() =>
+  import("./pages/SuperAdminDashboard").then((m) => ({ default: m.SuperAdminDashboard }))
+);
+const DeveloperPortal = React.lazy(() =>
+  import("./pages/DeveloperPortal").then((m) => ({ default: m.DeveloperPortal }))
+);
+const AdminPage = React.lazy(() =>
+  import("./pages/AdminPage").then((m) => ({ default: m.AdminPage }))
+);
+const CheckInPage = React.lazy(() =>
+  import("./pages/CheckInPage").then((m) => ({ default: m.CheckInPage }))
+);
+const ResetPasswordView = React.lazy(() =>
+  import("./pages/ResetPasswordView").then((m) => ({ default: m.ResetPasswordView }))
+);
+const ConfirmationPage = React.lazy(() =>
+  import("./pages/ConfirmationPage").then((m) => ({ default: m.ConfirmationPage }))
+);
+const RulesPage = React.lazy(() =>
+  import("./pages/RulesPage").then((m) => ({ default: m.RulesPage }))
+);
 
 // Direct Sections
 import { AboutSection } from "./sections/AboutSection";
@@ -31,6 +47,25 @@ import { ContactSection } from "./sections/ContactSection";
 import { api } from "./services/api";
 
 import { ShieldAlert } from "lucide-react";
+
+/**
+ * Branded suspense fallback for lazy-loaded route segments
+ */
+function PortalLoadingFallback({ message = "ಲೋಡ್ ಆಗುತ್ತಿದೆ... Loading..." }) {
+  return (
+    <div className="min-h-screen bg-stone-900 text-stone-100 flex items-center justify-center p-4 relative overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-1/3 left-1/3 w-80 h-80 bg-kar-red/15 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-1/3 right-1/3 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl animate-pulse" />
+      </div>
+      <div className="relative z-10 flex flex-col items-center gap-4 text-center max-w-sm px-6 py-8 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md shadow-2xl">
+        <div className="w-12 h-12 border-3 border-kar-red/30 border-t-kar-yellow rounded-full animate-spin" />
+        <p className="text-xs font-bold tracking-widest uppercase text-stone-300">{message}</p>
+        <span className="text-[10px] text-stone-500 font-medium tracking-wide">Acharya Kannada Vedike • Nuditaranga 2026</span>
+      </div>
+    </div>
+  );
+}
 
 /**
  * Access Denied & Wrong Portal Component
@@ -256,16 +291,18 @@ export function AppContent() {
   // ====================================================
   if (route.path === "/reset-password" || resetToken) {
     return (
-      <ResetPasswordView
-        token={resetToken}
-        onBackToLogin={() => {
-          if (window.location.hash) {
-            window.history.replaceState(null, "", window.location.pathname);
-          }
-          setResetToken("");
-          navigatePath("/student");
-        }}
-      />
+      <React.Suspense fallback={<PortalLoadingFallback message="ಲೋಡ್ ಆಗುತ್ತಿದೆ... Loading Reset View..." />}>
+        <ResetPasswordView
+          token={resetToken}
+          onBackToLogin={() => {
+            if (window.location.hash) {
+              window.history.replaceState(null, "", window.location.pathname);
+            }
+            setResetToken("");
+            navigatePath("/student");
+          }}
+        />
+      </React.Suspense>
     );
   }
 
@@ -366,10 +403,12 @@ export function AppContent() {
           onOpenAuthTab={() => navigatePath("/admin")}
         />
         <main className="flex-1">
-          <AdminPage
-            onNavigateHome={() => navigatePath("/")}
-            onOpenSuperAdmin={() => navigatePath("/superadmin")}
-          />
+          <React.Suspense fallback={<PortalLoadingFallback message="ಲೋಡ್ ಆಗುತ್ತಿದೆ... Loading Coordinator Portal..." />}>
+            <AdminPage
+              onNavigateHome={() => navigatePath("/")}
+              onOpenSuperAdmin={() => navigatePath("/superadmin")}
+            />
+          </React.Suspense>
         </main>
         <Footer setCurrentView={navigatePath} />
       </div>
@@ -420,10 +459,12 @@ export function AppContent() {
           onOpenAuthTab={() => navigatePath("/faculty")}
         />
         <main className="flex-1">
-          <AdminPage
-            onNavigateHome={() => navigatePath("/")}
-            onOpenSuperAdmin={() => navigatePath("/superadmin")}
-          />
+          <React.Suspense fallback={<PortalLoadingFallback message="ಲೋಡ್ ಆಗುತ್ತಿದೆ... Loading Faculty Portal..." />}>
+            <AdminPage
+              onNavigateHome={() => navigatePath("/")}
+              onOpenSuperAdmin={() => navigatePath("/superadmin")}
+            />
+          </React.Suspense>
         </main>
         <Footer setCurrentView={navigatePath} />
       </div>
@@ -467,9 +508,11 @@ export function AppContent() {
 
     // Authenticated Superadmin Full-Screen Master Workspace
     return (
-      <SuperAdminDashboard
-        onNavigateHome={() => navigatePath("/")}
-      />
+      <React.Suspense fallback={<PortalLoadingFallback message="ಲೋಡ್ ಆಗುತ್ತಿದೆ... Loading Superadmin Master Suite..." />}>
+        <SuperAdminDashboard
+          onNavigateHome={() => navigatePath("/")}
+        />
+      </React.Suspense>
     );
   }
 
@@ -478,9 +521,11 @@ export function AppContent() {
   // ====================================================
   if (route.portal === "developer" || route.path === "/developer") {
     return (
-      <DeveloperPortal
-        onNavigateHome={() => navigatePath("/")}
-      />
+      <React.Suspense fallback={<PortalLoadingFallback message="ಲೋಡ್ ಆಗುತ್ತಿದೆ... Loading Developer Suite..." />}>
+        <DeveloperPortal
+          onNavigateHome={() => navigatePath("/")}
+        />
+      </React.Suspense>
     );
   }
 
@@ -584,13 +629,15 @@ export function AppContent() {
           )}
 
           {route.path === "/rules" && (
-            <RulesPage onBack={() => {
-              if (window.history.length > 1) {
-                window.history.back();
-              } else {
-                navigatePath("/");
-              }
-            }} />
+            <React.Suspense fallback={<PortalLoadingFallback message="ಲೋಡ್ ಆಗುತ್ತಿದೆ... Loading Festival Rules..." />}>
+              <RulesPage onBack={() => {
+                if (window.history.length > 1) {
+                  window.history.back();
+                } else {
+                  navigatePath("/");
+                }
+              }} />
+            </React.Suspense>
           )}
 
           {route.path === "/register" && (
@@ -603,14 +650,18 @@ export function AppContent() {
           )}
 
           {route.path === "/confirmation" && (
-            <ConfirmationPage
-              confirmedRegistration={confirmedRegistration}
-              setCurrentView={navigatePath}
-            />
+            <React.Suspense fallback={<PortalLoadingFallback message="ಲೋಡ್ ಆಗುತ್ತಿದೆ... Loading Confirmation..." />}>
+              <ConfirmationPage
+                confirmedRegistration={confirmedRegistration}
+                setCurrentView={navigatePath}
+              />
+            </React.Suspense>
           )}
 
           {route.path === "/checkin" && (
-            <CheckInPage />
+            <React.Suspense fallback={<PortalLoadingFallback message="ಲೋಡ್ ಆಗುತ್ತಿದೆ... Loading Check-In Desk..." />}>
+              <CheckInPage />
+            </React.Suspense>
           )}
         </div>
       </main>

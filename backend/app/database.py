@@ -1,5 +1,5 @@
 import os
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
@@ -31,10 +31,25 @@ if db_url.startswith("sqlite:///./") and not is_production:
     abs_db_path = os.path.join(root_dir, db_url.replace("sqlite:///./", "")).replace("\\", "/")
     db_url = f"sqlite:///{abs_db_path}"
 
-# Engine options optimized for serverless PostgreSQL execution
+# Engine options optimized for SQLite and serverless PostgreSQL execution
 if db_url.startswith("sqlite"):
-    connect_args = {"check_same_thread": False}
+    connect_args = {"check_same_thread": False, "timeout": 20}
     engine = create_engine(db_url, connect_args=connect_args)
+
+    @event.listens_for(engine, "connect")
+    def set_sqlite_pragma(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        try:
+            cursor.execute("PRAGMA journal_mode = WAL")
+            cursor.execute("PRAGMA synchronous = NORMAL")
+            cursor.execute("PRAGMA cache_size = -64000")
+            cursor.execute("PRAGMA temp_store = MEMORY")
+            cursor.execute("PRAGMA mmap_size = 268435456")
+            cursor.execute("PRAGMA busy_timeout = 10000")
+        except Exception as pragma_err:
+            logger.debug(f"[SQLITE PRAGMA NOTICE] {pragma_err}")
+        finally:
+            cursor.close()
 else:
     connect_args = {"connect_timeout": 10}
 
@@ -128,15 +143,34 @@ def ensure_schema_migrations(target_engine=None):
                     if "tag_kn" not in act_cols:
                         conn.exec_driver_sql("ALTER TABLE activities ADD COLUMN tag_kn VARCHAR DEFAULT ''")
 
-                # Fast indexes
-                for idx_sql in [
+                # High performance indexes for SQLite
+                perf_indexes = [
                     "CREATE INDEX IF NOT EXISTS ix_attendance_date_user ON attendance_records(attendance_date, user_id)",
                     "CREATE INDEX IF NOT EXISTS ix_wc_attendance_date_user ON working_committee_attendance(attendance_date, working_committee_member_id)",
                     "CREATE INDEX IF NOT EXISTS ix_registrations_user_id ON registrations(user_id)",
                     "CREATE INDEX IF NOT EXISTS ix_registrations_event_id ON registrations(event_id)",
                     "CREATE INDEX IF NOT EXISTS ix_users_role_status ON users(role, account_status)",
-                    "CREATE INDEX IF NOT EXISTS ix_vol_att_date_user ON volunteer_attendance(date, user_id)"
-                ]:
+                    "CREATE INDEX IF NOT EXISTS ix_vol_att_date_user ON volunteer_attendance(date, user_id)",
+                    "CREATE INDEX IF NOT EXISTS ix_users_auid ON users(auid)",
+                    "CREATE INDEX IF NOT EXISTS ix_users_email ON users(email)",
+                    "CREATE INDEX IF NOT EXISTS ix_users_phone ON users(phone)",
+                    "CREATE INDEX IF NOT EXISTS ix_users_reg_id ON users(registration_id)",
+                    "CREATE INDEX IF NOT EXISTS ix_users_wc_role ON users(is_working_committee, role)",
+                    "CREATE INDEX IF NOT EXISTS ix_users_volunteer_domain ON users(volunteer_domain)",
+                    "CREATE INDEX IF NOT EXISTS ix_registrations_auid ON registrations(auid)",
+                    "CREATE INDEX IF NOT EXISTS ix_registrations_usn ON registrations(usn)",
+                    "CREATE INDEX IF NOT EXISTS ix_registrations_event_status ON registrations(event_id, status)",
+                    "CREATE INDEX IF NOT EXISTS ix_registrations_reg_id ON registrations(registration_id)",
+                    "CREATE INDEX IF NOT EXISTS ix_events_active_cat ON events(is_active, category)",
+                    "CREATE INDEX IF NOT EXISTS ix_events_type ON events(event_type)",
+                    "CREATE INDEX IF NOT EXISTS ix_vol_att_date_status ON volunteer_attendance(date, status)",
+                    "CREATE INDEX IF NOT EXISTS ix_wc_att_date_status ON working_committee_attendance(attendance_date, status)",
+                    "CREATE INDEX IF NOT EXISTS ix_checkin_logs_auid ON checkin_logs(auid)",
+                    "CREATE INDEX IF NOT EXISTS ix_checkin_logs_reg_id ON checkin_logs(registration_id)",
+                    "CREATE INDEX IF NOT EXISTS ix_att_audit_user_date ON attendance_audit_logs(attendance_date, user_id)",
+                    "CREATE INDEX IF NOT EXISTS ix_wc_audit_member_date ON working_committee_audit_logs(attendance_date, working_committee_member_id)"
+                ]
+                for idx_sql in perf_indexes:
                     try:
                         conn.exec_driver_sql(idx_sql)
                     except Exception:
@@ -216,14 +250,32 @@ def ensure_schema_migrations(target_engine=None):
                 add_pg_col("activities", "desc_kn", "TEXT DEFAULT ''")
                 add_pg_col("activities", "tag_kn", "VARCHAR DEFAULT ''")
 
-                # High performance composite indexes
+                # High performance composite and search indexes for PostgreSQL
                 for pg_idx_sql in [
                     "CREATE INDEX IF NOT EXISTS ix_attendance_date_user ON attendance_records(attendance_date, user_id)",
                     "CREATE INDEX IF NOT EXISTS ix_wc_attendance_date_user ON working_committee_attendance(attendance_date, working_committee_member_id)",
                     "CREATE INDEX IF NOT EXISTS ix_registrations_user_id ON registrations(user_id)",
                     "CREATE INDEX IF NOT EXISTS ix_registrations_event_id ON registrations(event_id)",
                     "CREATE INDEX IF NOT EXISTS ix_users_role_status ON users(role, account_status)",
-                    "CREATE INDEX IF NOT EXISTS ix_vol_att_date_user ON volunteer_attendance(date, user_id)"
+                    "CREATE INDEX IF NOT EXISTS ix_vol_att_date_user ON volunteer_attendance(date, user_id)",
+                    "CREATE INDEX IF NOT EXISTS ix_users_auid ON users(auid)",
+                    "CREATE INDEX IF NOT EXISTS ix_users_email ON users(email)",
+                    "CREATE INDEX IF NOT EXISTS ix_users_phone ON users(phone)",
+                    "CREATE INDEX IF NOT EXISTS ix_users_reg_id ON users(registration_id)",
+                    "CREATE INDEX IF NOT EXISTS ix_users_wc_role ON users(is_working_committee, role)",
+                    "CREATE INDEX IF NOT EXISTS ix_users_volunteer_domain ON users(volunteer_domain)",
+                    "CREATE INDEX IF NOT EXISTS ix_registrations_auid ON registrations(auid)",
+                    "CREATE INDEX IF NOT EXISTS ix_registrations_usn ON registrations(usn)",
+                    "CREATE INDEX IF NOT EXISTS ix_registrations_event_status ON registrations(event_id, status)",
+                    "CREATE INDEX IF NOT EXISTS ix_registrations_reg_id ON registrations(registration_id)",
+                    "CREATE INDEX IF NOT EXISTS ix_events_active_cat ON events(is_active, category)",
+                    "CREATE INDEX IF NOT EXISTS ix_events_type ON events(event_type)",
+                    "CREATE INDEX IF NOT EXISTS ix_vol_att_date_status ON volunteer_attendance(date, status)",
+                    "CREATE INDEX IF NOT EXISTS ix_wc_att_date_status ON working_committee_attendance(attendance_date, status)",
+                    "CREATE INDEX IF NOT EXISTS ix_checkin_logs_auid ON checkin_logs(auid)",
+                    "CREATE INDEX IF NOT EXISTS ix_checkin_logs_reg_id ON checkin_logs(registration_id)",
+                    "CREATE INDEX IF NOT EXISTS ix_att_audit_user_date ON attendance_audit_logs(attendance_date, user_id)",
+                    "CREATE INDEX IF NOT EXISTS ix_wc_audit_member_date ON working_committee_audit_logs(attendance_date, working_committee_member_id)"
                 ]:
                     try:
                         conn.exec_driver_sql(pg_idx_sql)
@@ -236,6 +288,20 @@ def ensure_schema_migrations(target_engine=None):
             with eng.connect() as conn:
                 conn.exec_driver_sql("DELETE FROM admins WHERE username IN ('akv-nt-2026', 'superadmin', 'akvadmin')")
                 conn.exec_driver_sql("DELETE FROM users WHERE email = 'akv@acharya.ac.in' OR auid = 'AKV-SUPERADMIN' OR registration_id = 'AKV-SA-0001'")
+                # Clean up legacy default working_committee_role and admin_type from students/volunteers
+                conn.exec_driver_sql("""
+                    UPDATE users 
+                    SET working_committee_role = NULL 
+                    WHERE (is_working_committee IS NULL OR is_working_committee = 0)
+                      AND (volunteer_domain != 'Working Committee' OR volunteer_domain IS NULL)
+                      AND role IN ('STUDENT', 'PARTICIPANT', 'VOLUNTEER')
+                """)
+                conn.exec_driver_sql("""
+                    UPDATE users 
+                    SET admin_type = NULL 
+                    WHERE (is_working_committee IS NULL OR is_working_committee = 0)
+                      AND role IN ('STUDENT', 'PARTICIPANT', 'VOLUNTEER')
+                """)
                 conn.commit()
         except Exception as cleanup_err:
             print(f"[CLEANUP NOTICE] {cleanup_err}")

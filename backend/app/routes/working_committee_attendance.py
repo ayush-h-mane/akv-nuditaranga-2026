@@ -4,7 +4,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session, defer
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, and_
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
@@ -102,17 +102,30 @@ def get_wc_members_query(db: Session):
     """
     Returns query for users who are recognized as Working Committee members:
     - User.is_working_committee is True
-    - OR User.admin_type == 'WORKING_COMMITTEE' and User.role in ['ADMIN', 'WORKING_COMMITTEE']
     - OR User.role == 'WORKING_COMMITTEE'
     - OR User.volunteer_domain == 'Working Committee'
+    - OR (User.admin_type == 'WORKING_COMMITTEE' and User.role.in_(['ADMIN', 'WORKING_COMMITTEE']))
+
+    Strictly excludes:
+    - Normal students, participants, and volunteers who are not in the working committee
+    - Developer account ('nanu' / 'DEV-NANU')
+    - Master Superadmin accounts (User.role == 'SUPERADMIN')
     """
-    return db.query(User).options(defer(User.photo_url), defer(User.password_hash)).filter(
+    return db.query(User).options(
+        defer(User.photo_url),
+        defer(User.password_hash)
+    ).filter(
+        User.role != "SUPERADMIN",
+        User.role != "DEVELOPER",
+        User.auid != "DEV-NANU",
         or_(
             User.is_working_committee == True,
-            (User.admin_type == "WORKING_COMMITTEE") & (User.role.in_(["ADMIN", "WORKING_COMMITTEE"])),
             User.role == "WORKING_COMMITTEE",
             User.volunteer_domain == "Working Committee",
-            User.working_committee_role.isnot(None)
+            and_(
+                User.admin_type == "WORKING_COMMITTEE",
+                User.role.in_(["ADMIN", "WORKING_COMMITTEE"])
+            )
         )
     )
 
@@ -150,7 +163,7 @@ def get_working_committee_attendance(
     Returns the Working Committee attendance roster for the selected date,
     including independent session submission/lock state and summary statistics.
     """
-    target_date = date.strip() if date else get_current_ist_date_str()
+    target_date = date.strip() if (date and isinstance(date, str)) else get_current_ist_date_str()
     today_ist = get_current_ist_date_str()
 
     # 1. Day Session state
@@ -169,7 +182,7 @@ def get_working_committee_attendance(
             func.lower(User.working_committee_role) == role_filter.strip().lower()
         )
 
-    if search and isinstance(search, str):
+    if search and isinstance(search, str) and search.strip():
         s = f"%{search.strip().lower()}%"
         member_query = member_query.filter(
             or_(
@@ -849,16 +862,23 @@ def get_wc_audit_logs(
 
     logs = query.order_by(WorkingCommitteeAuditLog.modified_at.desc()).offset(offset).limit(limit).all()
 
+    # Bulk fetch associated members to eliminate N+1 queries
+    member_ids = {l.working_committee_member_id for l in logs if l.working_committee_member_id}
+    members_map = {}
+    if member_ids:
+        members = db.query(User.id, User.volunteer_domain).filter(User.id.in_(member_ids)).all()
+        members_map = {m.id: (m.volunteer_domain or "--") for m in members}
+
     output = []
     for l in logs:
-        member = db.query(User).filter(User.id == l.working_committee_member_id).first()
+        akv_dept = members_map.get(l.working_committee_member_id, "--")
         output.append({
             "id": l.id,
             "attendance_id": l.attendance_id,
             "working_committee_member_id": l.working_committee_member_id,
             "member_name": l.member_name,
             "participant_name": l.member_name,
-            "akv_dept": member.volunteer_domain if member else "--",
+            "akv_dept": akv_dept,
             "date": l.attendance_date,
             "date_dmy": iso_date_to_dmy(l.attendance_date),
             "old_check_in": l.old_check_in,
@@ -930,18 +950,34 @@ def add_or_assign_wc_member(
     SUPERADMIN ONLY: Designates an existing user as Working Committee member,
     or creates a new member without account duplication.
     """
+    target_user = None
     if payload.user_id:
-        user = db.query(User).filter(User.id == payload.user_id).first()
-        if not user:
+        target_user = db.query(User).filter(User.id == payload.user_id).first()
+        if not target_user:
             raise HTTPException(status_code=404, detail="User not found")
-        user.is_working_committee = True
-        user.working_committee_role = payload.working_committee_role.strip() or "Coordinator"
+    elif payload.auid and payload.auid.strip():
+        target_user = db.query(User).filter(func.upper(User.auid) == payload.auid.strip().upper()).first()
+    elif payload.email and payload.email.strip():
+        target_user = db.query(User).filter(func.lower(User.email) == payload.email.strip().lower()).first()
+
+    if target_user:
+        target_user.is_working_committee = True
+        target_user.working_committee_role = payload.working_committee_role.strip() or "Coordinator"
         if payload.registration_id:
-            user.registration_id = payload.registration_id.strip()
+            target_user.registration_id = payload.registration_id.strip()
+        if payload.name and not target_user.name:
+            target_user.name = payload.name.strip()
+        if payload.phone and not target_user.phone:
+            target_user.phone = payload.phone.strip()
+        if payload.department and (not target_user.department or target_user.department == "Working Committee"):
+            target_user.department = payload.department.strip()
+        if payload.institute and not target_user.institute:
+            target_user.institute = payload.institute.strip()
         db.commit()
         return {
             "success": True,
-            "message": f"{user.name} designated as Working Committee ({user.working_committee_role})."
+            "message": f"{target_user.name} designated as Working Committee ({target_user.working_committee_role}).",
+            "member_id": target_user.id
         }
     
     # If creating a new user entity for Working Committee
@@ -1015,6 +1051,26 @@ def update_wc_member(
     return {"success": True, "message": f"Working Committee member {user.name} updated."}
 
 
+@router.delete("/members/{user_id}")
+def remove_wc_member(
+    user_id: int,
+    current_user: User = Depends(require_wc_superadmin),
+    db: Session = Depends(get_db)
+):
+    """
+    SUPERADMIN ONLY: Removes Working Committee designation from a user.
+    """
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Member not found")
+    user.is_working_committee = False
+    user.working_committee_role = None
+    if user.volunteer_domain == "Working Committee":
+        user.volunteer_domain = None
+    db.commit()
+    return {"success": True, "message": f"{user.name} removed from Working Committee."}
+
+
 # ==============================================================================
 # 7. COMBINED ATTENDANCE STATS
 # ==============================================================================
@@ -1030,7 +1086,7 @@ def get_combined_attendance_stats(
     Returns both dedicated Working Committee statistics and combined statistics:
     Department Members, Working Committee Members, Total Members, Checked-In, Completed, Not Marked.
     """
-    target_date = date.strip() if date else get_current_ist_date_str()
+    target_date = date.strip() if (date and isinstance(date, str)) else get_current_ist_date_str()
 
     # 1. Working Committee stats
     all_wc_users = get_wc_members_query(db).all()

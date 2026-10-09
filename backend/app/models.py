@@ -31,12 +31,12 @@ class User(Base):
     volunteer_domain = Column(String, nullable=True)
 
     # Admin designation & faculty identification
-    admin_type = Column(String, default="WORKING_COMMITTEE", nullable=True)  # FACULTY_COORDINATOR, WORKING_COMMITTEE
+    admin_type = Column(String, nullable=True)  # FACULTY_COORDINATOR, WORKING_COMMITTEE
     faculty_id = Column(String, nullable=True)
     
     # Working Committee designation
     is_working_committee = Column(Boolean, default=False, nullable=False, index=True)
-    working_committee_role = Column(String, default="Coordinator", nullable=True)
+    working_committee_role = Column(String, nullable=True)
     managed_by = Column(String, nullable=True)
     
     # One-time details edit window (valid until 2026-10-09 14:00:00 IST)

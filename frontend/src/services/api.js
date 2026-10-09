@@ -2472,6 +2472,19 @@ export const api = {
     return data;
   },
 
+  async removeWorkingCommitteeMember(userId) {
+    const res = await fetch(`${API_BASE_URL}/working-committee-attendance/members/${userId}`, {
+      method: "DELETE",
+      headers: {
+        ...getAuthHeaders()
+      }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to remove Working Committee member");
+    invalidateMemCache("wc_att");
+    return data;
+  },
+
   // ==========================================
   // EXISTING EVENTS, CHECK-IN & GALLERY APIs
   // ==========================================

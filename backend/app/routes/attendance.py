@@ -1236,15 +1236,22 @@ def get_attendance_audit_logs(
 
     logs = query.order_by(AttendanceAuditLog.modified_at.desc()).offset(offset).limit(limit).all()
 
+    # Bulk fetch associated users to eliminate N+1 queries
+    user_ids = {l.user_id for l in logs if l.user_id}
+    users_map = {}
+    if user_ids:
+        found_users = db.query(User.id, User.volunteer_domain).filter(User.id.in_(user_ids)).all()
+        users_map = {u.id: (u.volunteer_domain or "--") for u in found_users}
+
     output = []
     for l in logs:
-        audited_user = db.query(User).filter(User.id == l.user_id).first()
+        akv_dept = users_map.get(l.user_id, "--")
         output.append({
             "id": l.id,
             "attendance_id": l.attendance_id,
             "user_id": l.user_id,
             "participant_name": l.participant_name,
-            "akv_dept": audited_user.volunteer_domain if audited_user else "--",
+            "akv_dept": akv_dept,
             "date": l.attendance_date,
             "date_dmy": iso_date_to_dmy(l.attendance_date),
             "old_check_in": l.old_check_in,
