@@ -1531,6 +1531,54 @@ export const api = {
     return data;
   },
 
+  async broadcastProfileEditReopened(roleFilter = "ALL", customDeadlineStr = "October 10, 2026, 11:59 PM IST (10/10/2026 23:59 IST)") {
+    const res = await fetch(`${API_BASE_URL}/superadmin/broadcast/profile-edit-reopened`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({ role_filter: roleFilter, custom_deadline_str: customDeadlineStr })
+    });
+    const data = await readApiResponse(res);
+    if (!res.ok) {
+      throw new Error(data.detail || `Failed to broadcast notification (${res.status})`);
+    }
+    return data;
+  },
+
+  async resetUserProfileEdit(userId) {
+    const res = await fetch(`${API_BASE_URL}/superadmin/users/${userId}/reset-profile-edit`, {
+      method: "POST",
+      headers: {
+        ...getAuthHeaders()
+      }
+    });
+    const data = await readApiResponse(res);
+    if (!res.ok) {
+      throw new Error(data.detail || `Failed to reset profile edit lock (${res.status})`);
+    }
+    invalidateMemCache("sa_volunteers");
+    invalidateMemCache("sa_students");
+    return data;
+  },
+
+  async resetAllProfileEdits() {
+    const res = await fetch(`${API_BASE_URL}/superadmin/users/reset-all-profile-edits`, {
+      method: "POST",
+      headers: {
+        ...getAuthHeaders()
+      }
+    });
+    const data = await readApiResponse(res);
+    if (!res.ok) {
+      throw new Error(data.detail || `Failed to reset all profile edit locks (${res.status})`);
+    }
+    invalidateMemCache("sa_volunteers");
+    invalidateMemCache("sa_students");
+    return data;
+  },
+
   getCachedVolunteers(params = {}) {
     const cacheKey = `sa_volunteers_${params.department || ""}_${params.search || ""}`;
     return getFromMemCache(cacheKey, 300000);

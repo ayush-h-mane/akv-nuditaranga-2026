@@ -29,7 +29,7 @@ export const RoleUpdatesBanner = ({ role = "PARTICIPANT" }) => {
     ? "volunteer"
     : "participant";
 
-  const storageKey = `akv_updates_dismissed_${roleKey}_v238`;
+  const storageKey = `akv_updates_dismissed_${roleKey}_v2316`;
 
   const [dismissed, setDismissed] = useState(() => {
     try {
@@ -57,13 +57,23 @@ export const RoleUpdatesBanner = ({ role = "PARTICIPANT" }) => {
     superadmin: {
       badge: "SUPERADMIN UPDATES",
       badgeColor: "bg-red-500/20 text-red-300 border-red-500/30",
-      title: "Latest System & Superadmin Updates (v2.3.8)",
-      summary: "Volunteers & Participants Directory separation, volunteer credentials view, mobile attendance cards, and QR scanning.",
+      title: "Latest System & Superadmin Updates (v2.3.16)",
+      summary: "Profile details edit window officially reopened till October 10, 2026, 11:59 PM IST with broadcast alerts and lock controls.",
       updates: [
+        {
+          icon: Clock,
+          title: "Profile Edit Window Reopened Till 10/10/2026 23:59 IST",
+          desc: "One-time profile editing is reopened across the platform until October 10, 2026, 11:59 PM IST (10/10/2026 23:59 IST) for student corrections."
+        },
+        {
+          icon: Bell,
+          title: "Notification Broadcast & User Lock Reset",
+          desc: "SuperAdmins can broadcast the reopened deadline notice to all registered users and reset individual or bulk profile edit locks."
+        },
         {
           icon: Users,
           title: "Separated Directories",
-          desc: "Volunteers Directory, Participants Directory, and Working Committee / Admin Directory are now independently organized."
+          desc: "Volunteers Directory, Participants Directory, and Working Committee / Admin Directory are independently organized."
         },
         {
           icon: Eye,
@@ -76,32 +86,27 @@ export const RoleUpdatesBanner = ({ role = "PARTICIPANT" }) => {
           desc: "Instantly scan volunteers' digital profile QR codes with your camera for fast Check-In & Check-Out marking."
         },
         {
-          icon: Clock,
-          title: "Daily Attendance Mobile Optimization",
-          desc: "Daily Attendance Records window rearranged with mobile-friendly cards and large touch targets."
-        },
-        {
           icon: Calendar,
           title: "Attendance Window Open Till 05/11/2026",
           desc: "Official attendance marking is enabled through November 5, 2026."
-        },
-        {
-          icon: Sparkles,
-          title: "Event Registrations with Group Details Modal",
-          desc: "Displays Event Title with Event ID, and tapping any group registration opens a full team details popup."
         }
       ]
     },
     admin: {
       badge: "ADMIN PORTAL UPDATES",
       badgeColor: "bg-amber-500/20 text-amber-300 border-amber-500/30",
-      title: "Latest Admin & Coordinator Portal Updates (v2.3.8)",
-      summary: "Simplified attendance table layout to prevent mis-marking, Volunteer QR scanner, and extended attendance window.",
+      title: "Latest Admin & Coordinator Portal Updates (v2.3.16)",
+      summary: "Profile edit window reopened till 10/10/2026 23:59 IST, simplified attendance table, and volunteer QR scanner.",
       updates: [
+        {
+          icon: Clock,
+          title: "Profile Edit Window Reopened Till Oct 10 (11:59 PM IST)",
+          desc: "One-time profile editing has been reopened till October 10, 2026, 11:59 PM IST (10/10/2026 23:59 IST) for corrections."
+        },
         {
           icon: CheckCircle2,
           title: "Simplified Attendance Table Layout",
-          desc: "Clean 2-column view showing Name, Domain, AUID, and Check In / Check Out buttons only, with compact spacing."
+          desc: "Clean view showing Name, Domain, AUID, and Check In / Check Out buttons only, with compact spacing."
         },
         {
           icon: QrCode,
@@ -112,29 +117,24 @@ export const RoleUpdatesBanner = ({ role = "PARTICIPANT" }) => {
           icon: Calendar,
           title: "Attendance Marking Active Till 05/11/2026",
           desc: "Official attendance marking is enabled through November 5, 2026."
-        },
-        {
-          icon: Clock,
-          title: "Profile Edit Window Reopened",
-          desc: "One-time profile editing is reopened till 09/10/2026 14:00 IST for student corrections."
         }
       ]
     },
     volunteer: {
       badge: "VOLUNTEER UPDATES",
       badgeColor: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
-      title: "Latest Volunteer Portal Updates (v2.3.8)",
-      summary: "Official Attendance QR Pass in your profile, profile update window reopened till 09/10/2026 14:00 IST.",
+      title: "Latest Volunteer Portal Updates (v2.3.16)",
+      summary: "Profile details update window reopened till October 10, 2026, 11:59 PM IST and official attendance QR pass ready.",
       updates: [
+        {
+          icon: Clock,
+          title: "Profile Details Update Reopened Till Oct 10 (11:59 PM IST)",
+          desc: "The one-time details update window is open until October 10, 2026, 11:59 PM IST (10/10/2026 23:59 IST). Update your details in My Profile."
+        },
         {
           icon: QrCode,
           title: "Official Volunteer Attendance QR Pass",
           desc: "Your profile now displays your personal QR pass. Present it to coordinators for fast Check-In & Check-Out."
-        },
-        {
-          icon: Clock,
-          title: "Profile Details Update Reopened",
-          desc: "One-time details update window is open till October 9, 2026, 2:00 PM IST (09/10/2026 14:00 IST)."
         },
         {
           icon: CheckCircle2,
@@ -146,13 +146,13 @@ export const RoleUpdatesBanner = ({ role = "PARTICIPANT" }) => {
     participant: {
       badge: "STUDENT UPDATES",
       badgeColor: "bg-blue-500/20 text-blue-300 border-blue-500/30",
-      title: "Latest Student Portal Updates (v2.3.8)",
-      summary: "Profile Details Update window reopened till 09/10/2026 14:00 IST and digital passes ready.",
+      title: "Latest Student Portal Updates (v2.3.16)",
+      summary: "Profile details update window reopened till October 10, 2026, 11:59 PM IST and digital event passes ready.",
       updates: [
         {
           icon: Clock,
-          title: "Profile Details Update Window Reopened",
-          desc: "You can update your account details one-time until October 9, 2026, 2:00 PM IST (09/10/2026 14:00 IST)."
+          title: "Profile Details Update Window Reopened Till Oct 10",
+          desc: "You can update your account details one-time until October 10, 2026, 11:59 PM IST (10/10/2026 23:59 IST) under My Profile & Attendance."
         },
         {
           icon: QrCode,
@@ -181,7 +181,7 @@ export const RoleUpdatesBanner = ({ role = "PARTICIPANT" }) => {
           title="Review latest website updates for your profile"
         >
           <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-          <span>What's New in v2.3.8</span>
+          <span>What's New in v2.3.16</span>
         </button>
       </div>
     );
@@ -253,7 +253,7 @@ export const RoleUpdatesBanner = ({ role = "PARTICIPANT" }) => {
                   <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${currentContent.badgeColor}`}>
                     {currentContent.badge}
                   </span>
-                  <span className="text-[11px] font-mono text-amber-400">Release v2.3.8</span>
+                  <span className="text-[11px] font-mono text-amber-400">Release v2.3.16</span>
                 </div>
                 <h3 className="text-lg font-black text-white">{currentContent.title}</h3>
               </div>

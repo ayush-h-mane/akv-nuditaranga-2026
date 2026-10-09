@@ -15,7 +15,7 @@ from ..models import User, Admin, Event, Registration, CheckInLog, VolunteerAtte
 from ..auth_deps import require_superadmin, get_password_hash
 from ..schemas import RegistrationCreate, RegistrationOut, SuperAdminRegistrationUpdate
 from ..routes.registrations import generate_unique_reg_id
-from ..services.email_service import send_admin_approval_email
+from ..services.email_service import send_admin_approval_email, send_profile_edit_reopened_email
 from ..services.id_card_service import generate_candidate_id_card_pdf
 
 router = APIRouter(prefix="/superadmin", tags=["Super Admin"])
@@ -1594,4 +1594,162 @@ def download_superadmin_id_card(
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="AKV_ID_Card_{filename_id}.pdf"'},
     )
+
+
+# ==============================================================================
+# BROADCAST NOTIFICATIONS & PROFILE EDIT LOCK CONTROLS
+# ==============================================================================
+
+class BroadcastNotificationRequest(BaseModel):
+    role_filter: Optional[str] = "ALL"  # "ALL", "STUDENT", "VOLUNTEER", "ADMIN"
+    custom_deadline_str: Optional[str] = "October 10, 2026, 11:59 PM IST (10/10/2026 23:59 IST)"
+
+
+def _dispatch_broadcast_profile_edit_notice(
+    users_to_notify: List[dict],
+    deadline_str: str,
+    actor_name: str
+):
+    print(f"[BROADCAST NOTICE] Dispatching profile edit notice to {len(users_to_notify)} recipients...")
+    success_count = 0
+    fail_count = 0
+    for u in users_to_notify:
+        try:
+            ok = send_profile_edit_reopened_email(
+                to_email=u["email"],
+                user_name=u["name"],
+                deadline_str=deadline_str,
+                role=u["role"]
+            )
+            if ok:
+                success_count += 1
+            else:
+                fail_count += 1
+        except Exception as e:
+            print(f"[BROADCAST NOTICE ERROR] Failed to send email to {u.get('email')}: {e}")
+            fail_count += 1
+    print(f"[BROADCAST NOTICE COMPLETED] Success: {success_count}, Failed: {fail_count} (Triggered by {actor_name})")
+
+
+@router.post("/broadcast/profile-edit-reopened")
+def broadcast_profile_edit_reopened(
+    background_tasks: BackgroundTasks,
+    payload: Optional[BroadcastNotificationRequest] = None,
+    current_user: User = Depends(require_superadmin),
+    db: Session = Depends(get_db)
+):
+    """
+    Broadcasts the Profile Edit Window Reopened notification to all registered users
+    asynchronously via BackgroundTasks.
+    """
+    query = db.query(User).filter(User.account_status == "ACTIVE")
+    role_filter = (payload.role_filter.upper() if payload and payload.role_filter else "ALL").strip()
+
+    if role_filter in ("STUDENT", "PARTICIPANT"):
+        query = query.filter(User.role == "PARTICIPANT")
+    elif role_filter == "VOLUNTEER":
+        query = query.filter(User.role == "VOLUNTEER")
+    elif role_filter in ("ADMIN", "COORDINATOR"):
+        query = query.filter(User.role == "ADMIN")
+
+    users = query.all()
+    if not users:
+        return {"success": True, "recipient_count": 0, "message": "No active users found matching criteria."}
+
+    deadline_str = (payload.custom_deadline_str if payload and payload.custom_deadline_str else "October 10, 2026, 11:59 PM IST (10/10/2026 23:59 IST)").strip()
+
+    users_data = [
+        {"email": u.email, "name": u.name, "role": u.role}
+        for u in users
+        if u.email and "@" in u.email
+    ]
+
+    # Queue background task
+    background_tasks.add_task(
+        _dispatch_broadcast_profile_edit_notice,
+        users_data,
+        deadline_str,
+        current_user.name
+    )
+
+    # Audit Log
+    log = AuditLog(
+        user_id=current_user.id,
+        actor_name=current_user.name,
+        action="BROADCAST_PROFILE_EDIT_NOTICE",
+        target_type="SYSTEM",
+        target_id=f"RECIPIENTS_{len(users_data)}",
+        previous_value="",
+        new_value=f"Deadline: {deadline_str}, Filter: {role_filter}, Recipient Count: {len(users_data)}"
+    )
+    db.add(log)
+    db.commit()
+
+    return {
+        "success": True,
+        "recipient_count": len(users_data),
+        "message": f"Broadcast notification successfully queued for {len(users_data)} registered user(s)."
+    }
+
+
+@router.post("/users/{user_id}/reset-profile-edit")
+def reset_user_profile_edit(
+    user_id: int,
+    current_user: User = Depends(require_superadmin),
+    db: Session = Depends(get_db)
+):
+    """
+    Resets the one-time profile edit lock for a specific user, allowing them to re-edit their details.
+    """
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User account not found")
+
+    user.profile_edited_once = False
+
+    log = AuditLog(
+        user_id=current_user.id,
+        actor_name=current_user.name,
+        action="RESET_PROFILE_EDIT_LOCK",
+        target_type="USER",
+        target_id=str(user.id),
+        previous_value="profile_edited_once=True",
+        new_value="profile_edited_once=False"
+    )
+    db.add(log)
+    db.commit()
+
+    return {
+        "success": True,
+        "message": f"Profile edit lock has been reset for {user.name} ({user.auid}). They can now re-edit their details."
+    }
+
+
+@router.post("/users/reset-all-profile-edits")
+def reset_all_profile_edits(
+    current_user: User = Depends(require_superadmin),
+    db: Session = Depends(get_db)
+):
+    """
+    Unlocks and resets profile edit lock for all registered users across the platform.
+    """
+    count = db.query(User).filter(User.profile_edited_once == True).update({User.profile_edited_once: False})
+
+    log = AuditLog(
+        user_id=current_user.id,
+        actor_name=current_user.name,
+        action="RESET_ALL_PROFILE_EDIT_LOCKS",
+        target_type="SYSTEM",
+        target_id=f"COUNT_{count}",
+        previous_value="profile_edited_once=True",
+        new_value="profile_edited_once=False"
+    )
+    db.add(log)
+    db.commit()
+
+    return {
+        "success": True,
+        "unlocked_count": count,
+        "message": f"Profile edit lock has been reset for {count} user(s)."
+    }
 

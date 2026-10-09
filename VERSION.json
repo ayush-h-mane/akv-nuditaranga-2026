@@ -1,11 +1,16 @@
 {
-  "production_version": "2.3.15",
-  "staged_version": "2.3.16",
+  "production_version": "2.3.16",
+  "staged_version": "2.3.17",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.16",
+      "released_at": "2026-10-09T17:42:46+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.16: Profile Edit Window Reopened Till October 10, 2026: Extended the one-time profile details edit window until October 10, 2026, 11:59 PM IST (2026-10-10T23:59:59+05:30) across backend validation (auth.py) and frontend profile management UI (MyProfileAttendance.jsx), allowing registered students, volunteers, and coordinators to correct their Name, AUID, Email, Phone, Department, Year of Study, Domain, and Profile Photo.; All-Users Broadcast Email Notification System: Implemented send_profile_edit_reopened_email in email_service.py with bilingual (Kannada & English) branded email templates, and added POST /api/superadmin/broadcast/profile-edit-reopened for asynchronous background broadcast.; Broadcast Trigger & Profile Lock Controls in SuperAdmin Portal: Added high-visibility Profile Edit Window status card and controls to SuperAdmin Dashboard overview with 1-click 'Send Notification to All Users' and 'Unlock All Profile Locks', backed by POST /api/superadmin/users/{user_id}/reset-profile-edit and POST /api/superadmin/users/reset-all-profile-edits.; In-App Notification Banners & AuthPortal Alert: Updated RoleUpdatesBanner across Superadmin, Admin, Volunteer, and Participant dashboards with v2.3.16 cache key reset so all logged-in users immediately receive the announcement banner, and mounted an official announcement notice in AuthPortal above login and registration cards.; Standalone CLI Broadcast Script: Created scripts/broadcast_profile_edit_notice.py supporting dry runs, role filtering, lock resets, and live email dispatch with automated progress and delivery reporting."
+    },
     {
       "version": "2.3.15",
       "released_at": "2026-10-09T10:11:57+0530",

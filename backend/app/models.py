@@ -39,7 +39,7 @@ class User(Base):
     working_committee_role = Column(String, nullable=True)
     managed_by = Column(String, nullable=True)
     
-    # One-time details edit window (valid until 2026-10-09 14:00:00 IST)
+    # One-time details edit window (valid until 2026-10-10 23:59:59 IST)
     profile_edited_once = Column(Boolean, default=False, nullable=False)
     profile_edited_at = Column(DateTime, nullable=True)
 

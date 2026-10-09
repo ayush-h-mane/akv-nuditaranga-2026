@@ -437,6 +437,26 @@ export const AuthPortal = ({
 
       {/* Main Authentication Portal Card Container */}
       <main className="relative z-10 w-full max-w-2xl mx-auto px-4 py-6 my-auto">
+        {/* Reopened Profile Edit Notification Banner */}
+        <div className="mb-4 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 text-white p-3.5 sm:p-4 shadow-lg border border-amber-300 flex items-start gap-3">
+          <div className="rounded-xl bg-white/20 p-2 shrink-0">
+            <Sparkles className="w-5 h-5 text-amber-100" />
+          </div>
+          <div className="flex-1 text-left">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-white text-amber-950">
+                OFFICIAL NOTICE • ಸೂಚನೆ
+              </span>
+              <span className="text-xs font-black text-amber-100">
+                Profile Edit Window Reopened
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-amber-50 leading-relaxed font-medium">
+              The One-Time Profile Details Update Window has been <strong>reopened until October 10, 2026, 11:59 PM IST (10/10/2026 23:59 IST)</strong>. Registered students, volunteers, and coordinators can log in to update Name, AUID, Phone, Department, Year of Study, Domain, and Photo.
+            </p>
+          </div>
+        </div>
+
         <div className="bg-white text-stone-900 rounded-3xl shadow-2xl border border-amber-200/50 overflow-hidden backdrop-blur-md">
 
           {/* Karnataka Flag Colored Heraldic Header */}
