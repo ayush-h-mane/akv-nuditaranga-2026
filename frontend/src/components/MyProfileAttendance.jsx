@@ -26,14 +26,14 @@ const Field = ({ label, value }) => (
   </div>
 );
 
-const ONE_TIME_DEADLINE = new Date("2026-10-09T14:00:00+05:30");
-const ONE_TIME_DEADLINE_STR = "October 9, 2026, 2:00 PM IST (09/10/2026 14:00 IST)";
+const ONE_TIME_DEADLINE = new Date("2026-10-10T23:59:59+05:30");
+const ONE_TIME_DEADLINE_STR = "October 10, 2026, 11:59 PM IST (10/10/2026 23:59 IST)";
 
 export const MyProfileAttendance = ({ profile, attendanceData, loading, error, onRefresh }) => {
   const [localProfile, setLocalProfile] = useState(profile);
   const activeProfile = localProfile || profile;
 
-  // Deadline: October 9, 2026, 2:00 PM IST (14:00:00)
+  // Deadline: October 10, 2026, 11:59 PM IST (23:59:59)
   const isExpired = new Date() > ONE_TIME_DEADLINE;
   const hasEdited = Boolean(activeProfile?.profile_edited_once);
   const canEdit = !hasEdited && !isExpired;

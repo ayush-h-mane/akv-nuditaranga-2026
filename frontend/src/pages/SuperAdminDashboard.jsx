@@ -51,7 +51,8 @@ import {
   EyeOff,
   QrCode,
   KeyRound,
-  Cpu
+  Cpu,
+  Bell
 } from "lucide-react";
 import { EventImageUpload } from "../components/EventImageUpload";
 import { MyProfileAttendance } from "../components/MyProfileAttendance";
@@ -541,6 +542,42 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
       showWarning(text, "Attention / ಎಚ್ಚರಿಕೆ");
     } else if (type === "info") {
       showInfo(text, "Information / ಮಾಹಿತಿ");
+    }
+  };
+
+  const [broadcastLoading, setBroadcastLoading] = useState(false);
+  const [resetEditsLoading, setResetEditsLoading] = useState(false);
+
+  const handleBroadcastReopenNotice = async (roleFilter = "ALL") => {
+    if (!window.confirm("Broadcast email notification to all registered users that the profile edit window has been reopened till October 10, 2026, 11:59 PM IST?")) {
+      return;
+    }
+    try {
+      setBroadcastLoading(true);
+      const res = await api.broadcastProfileEditReopened(roleFilter);
+      notify("success", res.message || "Broadcast notification successfully dispatched to registered users!");
+    } catch (err) {
+      notify("error", err.message || "Failed to dispatch broadcast notification.");
+    } finally {
+      setBroadcastLoading(false);
+    }
+  };
+
+  const handleResetAllProfileEdits = async () => {
+    if (!window.confirm("Unlock and reset profile edit locks for all users? This will allow every user to update their details again.")) {
+      return;
+    }
+    try {
+      setResetEditsLoading(true);
+      const res = await api.resetAllProfileEdits();
+      notify("success", res.message || "Profile edit locks successfully reset!");
+      loadStats(true);
+      loadStudents(true);
+      loadVolunteers(true);
+    } catch (err) {
+      notify("error", err.message || "Failed to reset profile edit locks.");
+    } finally {
+      setResetEditsLoading(false);
     }
   };
 
@@ -1750,6 +1787,49 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                   <span className="text-[11px] font-bold text-stone-400 uppercase">Event Passes</span>
                   <p className="text-2xl font-extrabold text-stone-700 mt-1">{metrics?.total_event_registrations || metrics?.total_participants || 0}</p>
                   <span className="text-[10px] text-amber-600 font-bold">View Registrations &rarr;</span>
+                </div>
+              </div>
+
+              {/* Profile Details Reopened Window & Broadcast Notice Control */}
+              <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 rounded-3xl p-5 sm:p-6 text-white shadow-lg border border-amber-300 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="space-y-1 max-w-2xl text-left">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-white text-amber-950">
+                      PROFILE EDIT WINDOW ACTIVE
+                    </span>
+                    <span className="text-xs font-black text-amber-100 flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5" />
+                      Reopened Till October 10, 2026, 11:59 PM IST (10/10/2026 23:59 IST)
+                    </span>
+                  </div>
+                  <h3 className="text-base sm:text-lg font-black tracking-tight text-white">
+                    One-Time Profile Details Window Reopened
+                  </h3>
+                  <p className="text-xs text-amber-50 leading-relaxed font-medium">
+                    Registered students, volunteers, and coordinators can update Name, AUID, Phone, Department, Year of Study, Domain, and Photo in their profile until October 10, 2026, 11:59 PM IST.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2.5 shrink-0 self-end md:self-center">
+                  <button
+                    type="button"
+                    onClick={() => handleBroadcastReopenNotice("ALL")}
+                    disabled={broadcastLoading}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white hover:bg-stone-100 text-stone-900 text-xs font-black shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    <Bell className="w-4 h-4 text-amber-600" />
+                    <span>{broadcastLoading ? "Broadcasting..." : "Send Notification to All Users"}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleResetAllProfileEdits}
+                    disabled={resetEditsLoading}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-amber-950/40 hover:bg-amber-950/60 border border-amber-200/40 text-white text-xs font-black shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    <RotateCcw className="w-4 h-4 text-amber-200" />
+                    <span>{resetEditsLoading ? "Resetting..." : "Unlock All Profile Locks"}</span>
+                  </button>
                 </div>
               </div>
 

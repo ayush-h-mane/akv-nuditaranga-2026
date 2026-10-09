@@ -690,3 +690,94 @@ def send_admin_approval_email(to_email: str, admin_name: str, status: str):
     text = f"Hello {admin_name}, your AKV admin account has been {'approved' if is_approved else 'rejected'}."
     html = wrap_email_html(subject, content)
     return send_email(to_email, subject, html, text)
+
+def send_profile_edit_reopened_email(
+    to_email: str,
+    user_name: str,
+    deadline_str: str = "October 10, 2026, 11:59 PM IST (10/10/2026 23:59 IST)",
+    role: str = "PARTICIPANT"
+) -> bool:
+    """
+    Sends official notification to registered students, volunteers, and coordinators
+    announcing that the Profile Details Update window has been reopened till October 10, 2026, 11:59 PM IST.
+    """
+    subject = "AKV Nuditaranga 2026 – Profile Edit Option Reopened (Deadline: October 10, 2026)"
+    portal_link = f"{settings.FRONTEND_URL}/student" if role in ("PARTICIPANT", "VOLUNTEER") else f"{settings.FRONTEND_URL}/admin"
+    
+    content = f"""
+        <div style="text-align: center; margin-bottom: 24px;">
+            <span style="display: inline-block; padding: 5px 16px; background-color: #fef3c7; border: 1px solid #fde68a; border-radius: 9999px; font-size: 12px; font-weight: 800; color: #92400e; text-transform: uppercase; letter-spacing: 0.5px;">
+                📢 ಅಧಿಕೃತ ಸೂಚನೆ • Official Notification
+            </span>
+            <h2 style="color: #991b1b; margin: 14px 0 6px 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;">
+                ಪ್ರೊಫೈಲ್ ತಿದ್ದುಪಡಿ ಕಾಲಾವಕಾಶ ವಿಸ್ತರಣೆ<br>
+                <span style="font-size: 16px; font-weight: 600; color: #78716c;">Profile Details Edit Window Reopened</span>
+            </h2>
+        </div>
+
+        <p style="font-size: 15px; margin-bottom: 12px; color: #1c1917;">ನಮಸ್ಕಾರ / Hello <strong>{user_name}</strong>,</p>
+
+        <p style="font-size: 14px; color: #44403c; line-height: 1.6; margin-bottom: 14px;">
+            ಆಚಾರ್ಯ ಕನ್ನಡ ವೇದಿಕೆ (ನುಡಿತರಂಗ ೨೦೨೬) ವತಿಯಿಂದ ವಿದ್ಯಾರ್ಥಿಗಳು ಮತ್ತು ಸ್ವಯಂಸೇವಕರ ಮನವಿಯ ಮೇರೆಗೆ, ಖಾತೆಯ ಪ್ರೊಫೈಲ್ ವಿವರಗಳನ್ನು ಸರಿಪಡಿಸಲು / ನವೀಕರಿಸಲು ಏಕ-ಬಳಕೆಯ ತಿದ್ದುಪಡಿ ಕಾಲಾವಕಾಶವನ್ನು <strong>ಅಕ್ಟೋಬರ್ ೧೦, ೨೦೨೬ ರಾತ್ರಿ ೧೧:೫೯ ರವರೆಗೆ</strong> ಮರುತೆರೆಯಲಾಗಿದೆ.
+        </p>
+
+        <p style="font-size: 14px; color: #44403c; line-height: 1.6; margin-bottom: 20px;">
+            On popular request from students and coordinators, the <strong>One-Time Profile Details Update Window</strong> for <strong>Acharya Kannada Vedike – Nuditaranga 2026</strong> has been officially <strong>reopened until {deadline_str}</strong>.
+        </p>
+
+        <!-- Deadline Notice Card -->
+        <div style="background-color: #fefce8; border: 2px dashed #f59e0b; border-radius: 12px; padding: 20px; margin: 24px 0; text-align: center;">
+            <p style="margin: 0 0 6px 0; font-size: 13px; font-weight: 800; color: #92400e; text-transform: uppercase; letter-spacing: 0.8px;">
+                ⏰ ಅಂತಿಮ ಗಡುವು • Final Extended Deadline:
+            </p>
+            <div style="font-size: 20px; font-weight: 900; color: #b91c1c; margin: 6px 0;">
+                {deadline_str}
+            </div>
+            <p style="margin: 6px 0 0 0; font-size: 12px; color: #78350f; font-weight: 600;">
+                ಈ ಗಡುವಿನ ನಂತರ ಯಾವುದೇ ಬದಲಾವಣೆಗಳನ್ನು ಅನುಮತಿಸಲಾಗುವುದಿಲ್ಲ / No further edits permitted after this cutoff.
+            </p>
+        </div>
+
+        <!-- Editable Details Checklist -->
+        <div style="background-color: #fafaf9; border: 1px solid #e7e5e4; border-radius: 12px; padding: 18px; margin: 20px 0;">
+            <p style="margin: 0 0 10px 0; font-size: 14px; font-weight: 800; color: #1c1917;">
+                📝 ನೀವು ನವೀಕರಿಸಬಹುದಾದ ವಿವರಗಳು / Details You Can Update:
+            </p>
+            <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #44403c; line-height: 1.8;">
+                <li><strong>Full Name:</strong> ಸರಿಯಾದ ಹೆಸರು / Full registered name</li>
+                <li><strong>College AUID:</strong> ಅಧಿಕೃತ ಕಾಲೇಜು ಗುರುತಿನ ಸಂಖ್ಯೆ / Official AUID (e.g. AIT23BEAI129)</li>
+                <li><strong>Contact Phone:</strong> ೧೦-ಅಂಕಿಯ ಮೊಬೈಲ್ ಸಂಖ್ಯೆ / 10-digit mobile number</li>
+                <li><strong>Department & Year of Study:</strong> ವಿಭಾಗ ಮತ್ತು ವ್ಯಾಸಂಗದ ವರ್ಷ (1st to 6th Year)</li>
+                <li><strong>Volunteer Domain:</strong> ಸ್ವಯಂಸೇವಕ ಕಾರ್ಯಕ್ಷೇತ್ರ (Promotions, Culturals, Stage, etc.)</li>
+                <li><strong>Candidate Profile Photo:</strong> ಸ್ವಯಂ ಭಾವಚಿತ್ರ ಅಪ್‌ಲೋಡ್ / Digital ID card pass photo</li>
+            </ul>
+        </div>
+
+        <!-- Instructions -->
+        <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 0 8px 8px 0; padding: 14px 16px; margin: 20px 0; font-size: 13px; color: #1e40af; line-height: 1.6;">
+            <strong>ತಿದ್ದುಪಡಿ ಮಾಡುವ ವಿಧಾನ / How to Update:</strong>
+            <ol style="margin: 6px 0 0 0; padding-left: 18px;">
+                <li>ಕೆಳಗಿನ ಬಟನ್ ಕ್ಲಿಕ್ ಮಾಡಿ ನಿಮ್ಮ ಪೋರ್ಟಲ್‌ಗೆ ಲಾಗಿನ್ ಆಗಿ (Log in to your portal).</li>
+                <li><strong>"My Profile & Attendance"</strong> ಟ್ಯಾಬ್ ತೆರೆಯಿರಿ.</li>
+                <li><strong>"Edit My Details (1-Time)"</strong> ಬಟನ್ ಕ್ಲಿಕ್ ಮಾಡಿ ಸರಿಯಾದ ವಿವರಗಳನ್ನು ನಮೂದಿಸಿ ಸೇವ್ ಮಾಡಿ.</li>
+            </ol>
+        </div>
+
+        <!-- Call to Action -->
+        <div style="text-align: center; margin: 28px 0;">
+            <a href="{portal_link}" style="background: linear-gradient(135deg, #b91c1c 0%, #dc2626 60%, #ea580c 100%); color: #ffffff; text-decoration: none; padding: 14px 34px; border-radius: 10px; font-weight: 800; font-size: 14px; display: inline-block; box-shadow: 0 4px 14px rgba(185, 28, 28, 0.35); letter-spacing: 0.2px;">
+                ಪೋರ್ಟಲ್‌ಗೆ ಲಾಗಿನ್ ಆಗಿ / Log in to Portal &rarr;
+            </a>
+        </div>
+    """
+    text = (
+        f"AKV Nuditaranga 2026 - Profile Details Update Window Reopened\n\n"
+        f"Hello {user_name},\n\n"
+        f"The One-Time Profile Details Update Window has been officially reopened until {deadline_str}.\n\n"
+        f"Log in to your portal at {portal_link} and navigate to 'My Profile & Attendance' to review and update your Name, AUID, Phone, Department, Year of Study, Domain, and Photo.\n\n"
+        f"This opportunity is strictly valid until {deadline_str}.\n\n"
+        f"Acharya Kannada Vedike (AKV) - Nuditaranga 2026\n"
+        f"Official contact: {settings.EMAIL_FROM}"
+    )
+    html = wrap_email_html(subject, content)
+    return send_email(to_email, subject, html, text)
