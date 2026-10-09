@@ -1,11 +1,16 @@
 {
-  "production_version": "2.3.18",
-  "staged_version": "2.3.19",
+  "production_version": "2.3.19",
+  "staged_version": "2.3.20",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.19",
+      "released_at": "2026-10-09T23:57:46+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.19: Working Committee Member Isolation in Superadmin Portal: Updated get_wc_members_query in working_committee_attendance.py to filter strictly by is_working_committee=True, role='WORKING_COMMITTEE', or volunteer_domain='Working Committee', excluding all normal registered students, participants, and non-committee accounts.; Mutual Disablement of Present & Absent Buttons: In SuperAdminDashboard.jsx Working Committee attendance marking table, marking a member PRESENT automatically disables the ABSENT button with disabled styling and tooltip, and marking ABSENT automatically disables the PRESENT button. SuperAdmin Reset button allows clearing or switching status.; Dedicated Working Committee Attendance Sheet in Official Attendance Workbook: In backend/app/routes/attendance.py (export_attendance_excel), configured Sheet 14 'WORKING COMMITTEE ATTENDANCE' to exclusively contain verified Working Committee members and only their attendance records, completely isolating them from general participant sheets.; Database Column Default Cleanups & Safe Schema Migrations: Removed default 'WORKING_COMMITTEE' and 'Coordinator' column values from user table migrations in database.py, and added migration cleanup clearing stale committee roles from non-working-committee users."
+    },
     {
       "version": "2.3.18",
       "released_at": "2026-10-09T23:21:27+0530",

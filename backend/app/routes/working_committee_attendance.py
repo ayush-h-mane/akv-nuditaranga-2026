@@ -102,14 +102,13 @@ def get_wc_members_query(db: Session):
     """
     Returns query for users who are recognized as Working Committee members:
     - User.is_working_committee is True
-    - OR User.admin_type == 'WORKING_COMMITTEE'
     - OR User.role == 'WORKING_COMMITTEE'
     - OR User.volunteer_domain == 'Working Committee'
-    - OR (User.working_committee_role is not None and User.working_committee_role != '')
 
     Strictly excludes:
-    - Normal students, participants, and volunteers who are not in the working committee
+    - Normal students, participants, and general volunteers not in working committee
     - Developer account ('nanu' / 'DEV-NANU' / User.role == 'DEVELOPER')
+    - Disabled accounts
     """
     return db.query(User).options(
         defer(User.photo_url),
@@ -117,12 +116,11 @@ def get_wc_members_query(db: Session):
     ).filter(
         User.role != "DEVELOPER",
         User.auid != "DEV-NANU",
+        User.account_status != "DISABLED",
         or_(
             User.is_working_committee == True,
-            User.admin_type == "WORKING_COMMITTEE",
             User.role == "WORKING_COMMITTEE",
-            User.volunteer_domain == "Working Committee",
-            and_(User.working_committee_role.isnot(None), User.working_committee_role != "")
+            User.volunteer_domain == "Working Committee"
         )
     )
 
@@ -204,7 +202,17 @@ def get_working_committee_attendance(
         extra_roster = db.query(User).options(
             defer(User.photo_url),
             defer(User.password_hash)
-        ).filter(User.id.in_(missing_roster_uids)).all()
+        ).filter(
+            User.id.in_(missing_roster_uids),
+            User.role != "DEVELOPER",
+            User.auid != "DEV-NANU",
+            User.account_status != "DISABLED",
+            or_(
+                User.is_working_committee == True,
+                User.role == "WORKING_COMMITTEE",
+                User.volunteer_domain == "Working Committee"
+            )
+        ).all()
         members.extend(extra_roster)
         members.sort(key=lambda x: (x.name or "").lower())
         member_ids = {m.id for m in members}
@@ -1194,7 +1202,17 @@ def export_working_committee_excel(
         extra_users = db.query(User).options(
             defer(User.photo_url),
             defer(User.password_hash)
-        ).filter(User.id.in_(missing_ids)).all()
+        ).filter(
+            User.id.in_(missing_ids),
+            User.role != "DEVELOPER",
+            User.auid != "DEV-NANU",
+            User.account_status != "DISABLED",
+            or_(
+                User.is_working_committee == True,
+                User.role == "WORKING_COMMITTEE",
+                User.volunteer_domain == "Working Committee"
+            )
+        ).all()
         wc_members_list.extend(extra_users)
 
     members = sorted(wc_members_list, key=lambda x: (x.name or "").lower())
@@ -1209,7 +1227,7 @@ def export_working_committee_excel(
     # 3. Workbook
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.title = "WORKING COMMITTEE"
+    ws.title = "WORKING COMMITTEE ATTENDANCE"
 
     header_fill = PatternFill(start_color="991B1B", end_color="991B1B", fill_type="solid")
     summary_fill = PatternFill(start_color="F59E0B", end_color="F59E0B", fill_type="solid")
