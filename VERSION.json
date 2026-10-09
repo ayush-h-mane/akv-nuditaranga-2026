@@ -1,11 +1,16 @@
 {
-  "production_version": "2.3.19",
-  "staged_version": "2.3.20",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.3.20",
+  "staged_version": "2.3.21",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.20",
+      "released_at": "2026-10-10T00:42:30+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.20: Capacitor Native Android Integration: Integrated Capacitor native runtime with Application ID com.acharya.akv2026 and Application Name 'AKV Nuditaranga 2026'.; Android Native Build & APK Generation: Configured Gradle build with Android SDK 35 and Java 21, resolving AndroidX and Kotlin stdlib dependencies. Built installable debug APK (AKV_Nuditaranga_2026.apk, 10.1 MB) and Google Play release bundle (AKV_Nuditaranga_2026.aab, 8.8 MB).; Native Branding & Assets: Generated complete set of high-res launcher icons, adaptive round icons, foreground icons, and splash screens across mdpi, hdpi, xhdpi, xxhdpi, xxxhdpi densities using official AKV logo and Karnataka red/maroon styling (#991B1B).; Live Backend API Auto-Routing: Updated api.js to automatically route network calls to https://akv.acharyahabba.com/api when running inside native Android WebView, preserving all existing Supabase/FastAPI backend features.; Android UX, Hardware Back Button & Status Bar: Added Capacitor status bar theming (#991B1B) and hardware back button handling with double-tap exit prevention and modal dialog dismissal."
+    },
     {
       "version": "2.3.19",
       "released_at": "2026-10-09T23:57:46+0530",

@@ -23,6 +23,10 @@ dist/
 dist-ssr/
 *.local
 
+# Android Binaries
+*.apk
+*.aab
+
 # Logs
 *.log
 npm-debug.log*
