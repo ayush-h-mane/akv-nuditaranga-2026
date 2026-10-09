@@ -1490,7 +1490,10 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
         description_kn: newEvent.description_kn || newEvent.description_en,
         rules_kn: newEvent.rules_kn || newEvent.rules_en
       };
-      await api.createEvent(payload);
+      const created = await api.createEvent(payload);
+      if (created) {
+        setEventsList(prev => [...prev.filter(ev => ev.id !== created.id), created]);
+      }
       notify("success", `Event '${newEvent.title_en}' created successfully.`);
       setEventModal(null);
       setNewEvent({
@@ -1513,9 +1516,10 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
         rules_en: "1. Respect all event time limits.\n2. Judge decisions are final.",
         rules_kn: "೧. ಸಮಯ ಮಿತಿಯನ್ನು ಪಾಲಿಸಬೇಕು.\n೨. ತೀರ್ಪುಗಾರರ ತೀರ್ಮಾನವೇ ಅಂತಿಮ."
       });
-      loadEvents();
+      await loadEvents(true);
     } catch (err) {
       notify("error", err.message || "Failed to create event");
+      loadEvents(true);
     }
   };
 
@@ -1524,7 +1528,7 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
     if (!editEvent || !editEvent.id) return;
     try {
       const isTeam = editEvent.format === "group" || editEvent.format === "both" || editEvent.format === "duet" || Boolean(editEvent.is_team);
-      await api.updateEvent(editEvent.id, {
+      const updatePayload = {
         title_en: editEvent.title_en,
         title_kn: editEvent.title_kn,
         category: editEvent.category,
@@ -1532,7 +1536,7 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
         description_en: editEvent.description_en,
         description_kn: editEvent.description_kn,
         venue: editEvent.venue,
-        venue_kn: editEvent.venue_kn,
+        venue_kn: editEvent.venue_kn || editEvent.venue,
         event_date: editEvent.event_date,
         event_time: editEvent.event_time,
         reporting_time: editEvent.reporting_time,
@@ -1544,13 +1548,20 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
         rules_en: editEvent.rules_en,
         rules_kn: editEvent.rules_kn,
         is_active: Boolean(editEvent.is_active)
-      });
+      };
+      // Optimistically update React state immediately
+      setEventsList(prev => prev.map(item => item.id === editEvent.id ? { ...item, ...updatePayload } : item));
+      const res = await api.updateEvent(editEvent.id, updatePayload);
+      if (res) {
+        setEventsList(prev => prev.map(item => item.id === editEvent.id ? { ...item, ...res } : item));
+      }
       notify("success", `Event '${editEvent.title_en}' updated successfully.`);
       setEventModal(null);
       setEditEvent(null);
-      loadEvents();
+      await loadEvents(true);
     } catch (err) {
       notify("error", err.message || "Failed to update event");
+      loadEvents(true);
     }
   };
 
@@ -5230,8 +5241,16 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                       <button
                         type="button"
                         onClick={async () => {
-                          await api.updateEvent(ev.id, { is_active: !ev.is_active });
-                          loadEvents();
+                          try {
+                            const nextState = !ev.is_active;
+                            setEventsList(prev => prev.map(item => item.id === ev.id ? { ...item, is_active: nextState } : item));
+                            await api.updateEvent(ev.id, { is_active: nextState });
+                            notify("success", `Registrations for '${ev.title_en}' are now ${nextState ? "open" : "closed"}.`);
+                            await loadEvents(true);
+                          } catch (err) {
+                            notify("error", err.message || "Failed to update registration status");
+                            await loadEvents(true);
+                          }
                         }}
                         className="px-2.5 py-1 rounded-lg text-xs font-bold border border-stone-300 hover:bg-stone-100 transition-colors cursor-pointer"
                       >
@@ -5241,8 +5260,15 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                         type="button"
                         onClick={async () => {
                           if (window.confirm(`Delete event '${ev.title_en}'?`)) {
-                            await api.deleteEvent(ev.id);
-                            loadEvents();
+                            try {
+                              setEventsList(prev => prev.filter(item => item.id !== ev.id));
+                              await api.deleteEvent(ev.id);
+                              notify("success", `Event '${ev.title_en}' deleted successfully.`);
+                              await loadEvents(true);
+                            } catch (err) {
+                              notify("error", err.message || "Failed to delete event");
+                              await loadEvents(true);
+                            }
                           }
                         }}
                         className="p-1.5 text-stone-400 hover:text-red-600 transition-colors cursor-pointer"

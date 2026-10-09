@@ -14,7 +14,11 @@ def get_events(
     active_only: bool = True,
     db: Session = Depends(get_db)
 ):
-    response.headers["Cache-Control"] = "public, max-age=60, s-maxage=300, stale-while-revalidate=600"
+    if not active_only:
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+    else:
+        response.headers["Cache-Control"] = "public, max-age=5, s-maxage=15, stale-while-revalidate=30"
     query = db.query(Event)
     if active_only:
         query = query.filter(Event.is_active == True)
@@ -24,7 +28,8 @@ def get_events(
 
 @router.get("/{event_id}", response_model=EventOut)
 def get_event(event_id: str, response: Response, db: Session = Depends(get_db)):
-    response.headers["Cache-Control"] = "public, max-age=60, s-maxage=300, stale-while-revalidate=600"
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
@@ -80,7 +85,7 @@ def create_event(event_in: EventCreate, db: Session = Depends(get_db)):
         db.add(log)
         db.commit()
     except Exception:
-        pass
+        db.rollback()
 
     return new_event
 
@@ -88,13 +93,46 @@ def create_event(event_in: EventCreate, db: Session = Depends(get_db)):
 def update_event(event_id: str, event_update: EventUpdate, db: Session = Depends(get_db)):
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
-        raise HTTPException(status_code=404, detail="Event not found")
+        from ..seed import INITIAL_EVENTS
+        init_ev = next((e for e in INITIAL_EVENTS if e.get("id") == event_id), None)
+        if init_ev:
+            init_data = dict(init_ev)
+            update_data = event_update.model_dump(exclude_unset=True)
+            init_data.update(update_data)
+            init_data["id"] = event_id
+            event = Event(**init_data)
+            db.add(event)
+            db.commit()
+            db.refresh(event)
+        elif event_update.title_en:
+            update_data = event_update.model_dump(exclude_unset=True)
+            update_data["id"] = event_id
+            update_data.setdefault("title_kn", update_data.get("title_en"))
+            update_data.setdefault("category", "cultural")
+            update_data.setdefault("category_kn", "ಸಾಂಸ್ಕೃತಿಕ")
+            update_data.setdefault("description_en", "")
+            update_data.setdefault("description_kn", "")
+            update_data.setdefault("venue", "Acharya Campus")
+            update_data.setdefault("venue_kn", "ಆಚಾರ್ಯ ಆವರಣ")
+            update_data.setdefault("event_date", "02-11-2026")
+            update_data.setdefault("event_time", "10:00 AM")
+            update_data.setdefault("reporting_time", "09:30 AM")
+            update_data.setdefault("rules_en", "")
+            update_data.setdefault("rules_kn", "")
+            event = Event(**update_data)
+            db.add(event)
+            db.commit()
+            db.refresh(event)
+        else:
+            raise HTTPException(status_code=404, detail="Event not found")
+    else:
+        update_data = event_update.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(event, key, value)
+        db.commit()
+        db.refresh(event)
     
-    update_data = event_update.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(event, key, value)
-    
-    # Audit log entry
+    # Audit log entry safely isolated
     try:
         log = AuditLog(
             actor_name="Super Administrator",
@@ -105,11 +143,10 @@ def update_event(event_id: str, event_update: EventUpdate, db: Session = Depends
             new_value=f"Updated event details for {event.title_en} ({event_id})"
         )
         db.add(log)
+        db.commit()
     except Exception:
-        pass
+        db.rollback()
 
-    db.commit()
-    db.refresh(event)
     return event
 
 @router.delete("/{event_id}")

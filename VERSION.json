@@ -1,11 +1,16 @@
 {
-  "production_version": "2.3.17",
-  "staged_version": "2.3.18",
+  "production_version": "2.3.18",
+  "staged_version": "2.3.19",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.18",
+      "released_at": "2026-10-09T23:21:27+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.18: Superadmin Event Configuration Real-Time Update Fix: Resolved the issue in the Superadmin portal Event Configurations module where new changes to events (timings, venue, slots, rules, registration status) were not updating or reverting immediately after saving.; Database Event Seeding & Synchronization: Populated INITIAL_EVENTS in backend seed.py with all 11 official Nuditaranga 2026 events and updated seed_database() to auto-seed any missing events into the database table, resolving 404 Not Found errors previously occurring when editing events AKV-NT-04 through AKV-NT-10.; Backend Resilient Event Upsert & Isolation: Enhanced PUT /api/events/{event_id} in events.py with auto-creation/healing for standard events, prioritized database commit before audit logging, and added db.rollback() protection on audit failures.; HTTP Cache Invalidation for Admin Queries: Updated GET /api/events in events.py to return no-cache, no-store, must-revalidate headers when active_only=false (used by Superadmin), and shortened public cache from 60s/300s to 5s/15s to eliminate stale response caching by browsers and CDNs.; Frontend API Cache Sync & Inflight Request Invalidation: Upgraded updateEvent, createEvent, and deleteEvent in api.js to throw descriptive errors on HTTP failure, immediately synchronize in-memory memCache and localStorage, and invalidate inflight request deduplication maps.; SuperAdmin Dashboard Optimistic UI & Force-Fresh Network Reload: Added optimistic state updates across handleEditEventSubmit, handleCreateEventSubmit, registrations toggle, and delete event actions in SuperAdminDashboard.jsx, backed by await loadEvents(true) for immediate, non-cached fresh data retrieval."
+    },
     {
       "version": "2.3.17",
       "released_at": "2026-10-09T18:27:20+0530",
