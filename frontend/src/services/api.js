@@ -2607,6 +2607,7 @@ export const api = {
   },
 
   async createEvent(eventData) {
+    let createdEvent = null;
     try {
       const res = await fetch(`${API_BASE_URL}/events`, {
         method: "POST",
@@ -2616,13 +2617,21 @@ export const api = {
         },
         body: JSON.stringify(eventData)
       });
-      if (res.ok) return await res.json();
+      if (res.ok) {
+        createdEvent = await res.json();
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.detail || `Failed to create event (HTTP ${res.status})`);
+      }
     } catch (err) {
-      console.warn("Backend unavailable, saving event to client dataset:", err.message);
+      console.warn("Backend unavailable or returned error:", err.message);
+      if (err.message && !err.message.includes("Failed to fetch") && !err.message.includes("NetworkError")) {
+        throw err;
+      }
     }
     const list = getLocalEvents();
-    const newId = `AKV-NT-${String(list.length + 1).padStart(2, "0")}`;
-    const newEvent = {
+    const newId = (createdEvent && createdEvent.id) || eventData.id || `AKV-NT-${String(list.length + 1).padStart(2, "0")}`;
+    const newEvent = createdEvent || {
       ...eventData,
       id: newId,
       registered_count: 0,
@@ -2630,10 +2639,15 @@ export const api = {
     };
     list.push(newEvent);
     saveLocalEvents(list);
+    inflightRequests.delete("events_all");
+    for (const k of inflightRequests.keys()) {
+      if (k.startsWith("events_")) inflightRequests.delete(k);
+    }
     return newEvent;
   },
 
   async updateEvent(id, eventData) {
+    let updatedEvent = null;
     try {
       const res = await fetch(`${API_BASE_URL}/events/${id}`, {
         method: "PUT",
@@ -2643,18 +2657,32 @@ export const api = {
         },
         body: JSON.stringify(eventData)
       });
-      if (res.ok) return await res.json();
+      if (res.ok) {
+        updatedEvent = await res.json();
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.detail || `Failed to update event (HTTP ${res.status})`);
+      }
     } catch (err) {
-      console.warn("Backend unavailable, updating event in client dataset:", err.message);
+      console.warn("Backend update error:", err.message);
+      if (err.message && !err.message.includes("Failed to fetch") && !err.message.includes("NetworkError")) {
+        throw err;
+      }
     }
     const list = getLocalEvents();
     const idx = list.findIndex(e => e.id === id);
+    const finalEvent = updatedEvent ? { ...(idx !== -1 ? list[idx] : {}), ...updatedEvent } : { ...(idx !== -1 ? list[idx] : {}), ...eventData, id };
     if (idx !== -1) {
-      list[idx] = { ...list[idx], ...eventData };
-      saveLocalEvents(list);
-      return list[idx];
+      list[idx] = finalEvent;
+    } else {
+      list.push(finalEvent);
     }
-    throw new Error("Event not found");
+    saveLocalEvents(list);
+    inflightRequests.delete("events_all");
+    for (const k of inflightRequests.keys()) {
+      if (k.startsWith("events_")) inflightRequests.delete(k);
+    }
+    return finalEvent;
   },
 
   async deleteEvent(id) {
@@ -2663,13 +2691,23 @@ export const api = {
         method: "DELETE",
         headers: { ...getAuthHeaders() }
       });
-      if (res.ok) return await res.json();
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.detail || `Failed to delete event (HTTP ${res.status})`);
+      }
     } catch (err) {
-      console.warn("Backend unavailable, removing event from client dataset:", err.message);
+      console.warn("Backend delete error:", err.message);
+      if (err.message && !err.message.includes("Failed to fetch") && !err.message.includes("NetworkError")) {
+        throw err;
+      }
     }
     let list = getLocalEvents();
     list = list.filter(e => e.id !== id);
     saveLocalEvents(list);
+    inflightRequests.delete("events_all");
+    for (const k of inflightRequests.keys()) {
+      if (k.startsWith("events_")) inflightRequests.delete(k);
+    }
     return { success: true };
   },
 
