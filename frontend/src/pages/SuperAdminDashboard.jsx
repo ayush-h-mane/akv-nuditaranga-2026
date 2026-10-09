@@ -248,7 +248,7 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
 
   // Attendance Cutoff Rule: 05/11/2026
   const ATTENDANCE_CUTOFF_DATE = "2026-11-05";
-  const todayIstStr = new Date().toISOString().slice(0, 10);
+  const todayIstStr = api.getTodayIstDate ? api.getTodayIstDate() : new Date().toISOString().slice(0, 10);
 
   // Official Multi-Day Attendance State (v2.1.2)
   const [attendanceConfigDates, setAttendanceConfigDates] = useState(() => {
@@ -256,12 +256,14 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
     return cached?.dates || [];
   });
   const [selectedOfficialDate, setSelectedOfficialDate] = useState(() => {
+    const todayIst = api.getTodayIstDate ? api.getTodayIstDate() : new Date().toISOString().slice(0, 10);
     const cached = api.getCachedAttendanceConfigDates();
     if (cached?.dates && cached.dates.length > 0) {
-      const todayItem = cached.dates.find(d => d.is_today);
-      return todayItem ? todayItem.date : (cached.current_date || cached.dates[0]?.date || "");
+      const todayItem = cached.dates.find(d => d.date === todayIst || d.is_today);
+      if (todayItem) return todayItem.date;
+      if (cached.current_date === todayIst) return cached.current_date;
     }
-    return "";
+    return todayIst;
   });
 
   const isAttendanceCutoffPassed = Boolean(
@@ -607,13 +609,15 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
     try {
       if (!officialAttendanceRoster.length || forceFresh) setAttendanceActionLoading(true);
       let activeDate = dateOverride || selectedOfficialDate;
-      if (!activeDate) {
-        const datesRes = await api.getAttendanceConfigDates(forceFresh);
-        if (datesRes && datesRes.dates) {
-          setAttendanceConfigDates(datesRes.dates);
-          const todayItem = datesRes.dates.find(d => d.is_today);
-          activeDate = todayItem ? todayItem.date : (datesRes.current_date || datesRes.dates[0]?.date || "");
-          setSelectedOfficialDate(activeDate);
+      const datesRes = await api.getAttendanceConfigDates(forceFresh).catch(() => null);
+      if (datesRes && datesRes.dates) {
+        setAttendanceConfigDates(datesRes.dates);
+        const todayIst = api.getTodayIstDate ? api.getTodayIstDate() : (datesRes.current_date || "");
+        const todayItem = datesRes.dates.find(d => d.date === todayIst || d.is_today);
+        const defaultDate = todayItem ? todayItem.date : (datesRes.current_date || datesRes.dates[0]?.date || "");
+        if (!activeDate || !datesRes.dates.some(d => d.date === activeDate)) {
+          activeDate = defaultDate;
+          setSelectedOfficialDate(defaultDate);
         }
       }
       if (!activeDate) return;
@@ -666,13 +670,15 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
     try {
       setWcActionLoading(true);
       let activeDate = dateOverride || selectedOfficialDate;
-      if (!activeDate) {
-        const datesRes = await api.getAttendanceConfigDates(forceFresh).catch(() => null);
-        if (datesRes && datesRes.dates) {
-          setAttendanceConfigDates(datesRes.dates);
-          const todayItem = datesRes.dates.find(d => d.is_today);
-          activeDate = todayItem ? todayItem.date : (datesRes.current_date || datesRes.dates[0]?.date || "");
-          setSelectedOfficialDate(activeDate);
+      const datesRes = await api.getAttendanceConfigDates(forceFresh).catch(() => null);
+      if (datesRes && datesRes.dates) {
+        setAttendanceConfigDates(datesRes.dates);
+        const todayIst = api.getTodayIstDate ? api.getTodayIstDate() : (datesRes.current_date || "");
+        const todayItem = datesRes.dates.find(d => d.date === todayIst || d.is_today);
+        const defaultDate = todayItem ? todayItem.date : (datesRes.current_date || datesRes.dates[0]?.date || "");
+        if (!activeDate || !datesRes.dates.some(d => d.date === activeDate)) {
+          activeDate = defaultDate;
+          setSelectedOfficialDate(defaultDate);
         }
       }
       if (!activeDate) return;
@@ -1272,26 +1278,24 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
     }
   };
 
-  // Working Committee Attendance Handlers
-  const handleWcCheckIn = async (memberUserId) => {
+  const [wcMarkingIds, setWcMarkingIds] = useState([]);
+
+  // Working Committee Attendance Handlers (PRESENT / ABSENT marking)
+  const handleWcMarkAttendance = async (memberUserId, status) => {
     try {
-      const res = await api.markWorkingCommitteeCheckIn(memberUserId, selectedOfficialDate);
-      notify("success", res.message || "Working Committee Check-In recorded in IST.");
-      loadWcAttendance();
+      setWcMarkingIds(prev => [...prev, memberUserId]);
+      const res = await api.markWorkingCommitteeAttendance(memberUserId, status, selectedOfficialDate);
+      notify("success", res.message || `Working Committee marked ${status}.`);
+      await loadWcAttendance();
     } catch (err) {
-      notify("error", err.message || "Working Committee Check-In failed.");
+      notify("error", err.message || `Failed to mark ${status}.`);
+    } finally {
+      setWcMarkingIds(prev => prev.filter(id => id !== memberUserId));
     }
   };
 
-  const handleWcCheckOut = async (memberUserId) => {
-    try {
-      const res = await api.markWorkingCommitteeCheckOut(memberUserId, selectedOfficialDate);
-      notify("success", res.message || "Working Committee Check-Out recorded in IST.");
-      loadWcAttendance();
-    } catch (err) {
-      notify("error", err.message || "Working Committee Check-Out failed.");
-    }
-  };
+  const handleWcCheckIn = async (memberUserId) => handleWcMarkAttendance(memberUserId, "PRESENT");
+  const handleWcCheckOut = async (memberUserId) => handleWcMarkAttendance(memberUserId, "PRESENT");
 
   const handleSubmitWcAttendance = async () => {
     if (!window.confirm(`Submit and lock Working Committee attendance for ${selectedOfficialDate}?`)) return;
@@ -1311,9 +1315,10 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
       await api.editWorkingCommitteeRecord(wcEditRecordModal.record_id, {
         check_in_time: wcEditRecordModal.check_in_time || null,
         check_out_time: wcEditRecordModal.check_out_time || null,
+        status: wcEditRecordModal.status || undefined,
         reason: wcEditRecordModal.reason || "Superadmin Working Committee correction"
       });
-      notify("success", "Working Committee timestamps updated.");
+      notify("success", "Working Committee record updated.");
       setWcEditRecordModal(null);
       loadWcAttendance();
     } catch (err) {
@@ -3816,10 +3821,12 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                       }`}
                   >
                     <Calendar className="w-3.5 h-3.5 text-amber-400" />
-                    <span>{d.date_formatted || d.date}</span>
+                    <span>{d.dmy || d.date_dmy || d.date_formatted || d.date}</span>
                     {d.label && <span className="text-[10px] opacity-75 font-normal">({d.label})</span>}
                     {d.is_today && (
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse ml-0.5" title="Today" />
+                      <span className="px-1.5 py-0.5 text-[9px] font-black bg-emerald-500 text-white rounded-full ml-1 tracking-wider uppercase" title="Today">
+                        TODAY
+                      </span>
                     )}
                   </button>
                 ))}
@@ -4576,9 +4583,11 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                         : "bg-white text-stone-700 hover:bg-stone-100 border border-stone-200"
                         }`}
                     >
-                      <span>{d.date_dmy}</span>
+                      <span>{d.dmy || d.date_dmy || d.date_formatted || d.date}</span>
                       {d.is_today && (
-                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" title="Today" />
+                        <span className="px-1.5 py-0.5 text-[9px] font-black bg-emerald-500 text-white rounded-full ml-1 tracking-wider uppercase" title="Today">
+                          TODAY
+                        </span>
                       )}
                     </button>
                   ))}
@@ -4637,25 +4646,25 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                   <span className="text-[10px] font-bold uppercase text-stone-500">Total Members</span>
                 </div>
 
-                <div className="p-3.5 bg-amber-50 rounded-2xl border border-amber-200">
-                  <span className="block text-2xl font-extrabold text-amber-700">
-                    {wcAttendanceSummary.checked_in}
-                  </span>
-                  <span className="text-[10px] font-bold uppercase text-amber-800">Checked In</span>
-                </div>
-
                 <div className="p-3.5 bg-emerald-50 rounded-2xl border border-emerald-200">
                   <span className="block text-2xl font-extrabold text-emerald-700">
-                    {wcAttendanceSummary.completed}
+                    {wcAttendanceSummary.count_present ?? (wcAttendanceSummary.completed + wcAttendanceSummary.checked_in)}
                   </span>
-                  <span className="text-[10px] font-bold uppercase text-emerald-800">Completed</span>
+                  <span className="text-[10px] font-bold uppercase text-emerald-800">Present</span>
                 </div>
 
                 <div className="p-3.5 bg-red-50 rounded-2xl border border-red-200">
-                  <span className="block text-2xl font-extrabold text-kar-red">
-                    {wcAttendanceSummary.not_marked}
+                  <span className="block text-2xl font-extrabold text-red-600">
+                    {wcAttendanceSummary.count_absent ?? 0}
                   </span>
-                  <span className="text-[10px] font-bold uppercase text-red-800">Not Marked</span>
+                  <span className="text-[10px] font-bold uppercase text-red-800">Absent</span>
+                </div>
+
+                <div className="p-3.5 bg-stone-100 rounded-2xl border border-stone-200">
+                  <span className="block text-2xl font-extrabold text-stone-600">
+                    {wcAttendanceSummary.count_not_marked ?? wcAttendanceSummary.not_marked}
+                  </span>
+                  <span className="text-[10px] font-bold uppercase text-stone-600">Not Marked</span>
                 </div>
               </div>
 
@@ -4692,9 +4701,9 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                   className="px-3 py-2 rounded-xl border border-stone-200 text-xs focus:ring-2 focus:ring-purple-500 bg-white"
                 >
                   <option value="all">All Statuses</option>
+                  <option value="PRESENT">Present</option>
+                  <option value="ABSENT">Absent</option>
                   <option value="NOT_MARKED">Not Marked</option>
-                  <option value="CHECKED_IN">Checked In</option>
-                  <option value="COMPLETED">Completed</option>
                 </select>
               </div>
 
@@ -4728,9 +4737,9 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                     </thead>
                     <tbody className="divide-y divide-stone-100">
                       {wcAttendanceRoster.map((m) => {
-                        const isNotMarked = m.status === "NOT_MARKED";
-                        const isCheckedIn = m.status === "CHECKED_IN";
-                        const isCompleted = m.status === "COMPLETED";
+                        const isPresent = m.status === "PRESENT" || m.status === "COMPLETED" || m.status === "CHECKED_IN";
+                        const isAbsent = m.status === "ABSENT";
+                        const isNotMarked = !isPresent && !isAbsent;
 
                         return (
                           <tr key={m.user_id} className="hover:bg-purple-50/20 transition-colors">
@@ -4746,43 +4755,54 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                               </span>
                             </td>
                             <td className="py-3 px-4">
-                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${isCompleted
-                                ? "bg-emerald-100 text-emerald-800"
-                                : isCheckedIn
-                                  ? "bg-amber-100 text-amber-800"
-                                  : "bg-stone-100 text-stone-600"
-                                }`}>
-                                {isCompleted ? "Completed" : isCheckedIn ? "Checked In" : "Not Marked"}
+                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                                isPresent
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : isAbsent
+                                    ? "bg-red-100 text-red-800"
+                                    : "bg-stone-100 text-stone-600"
+                              }`}>
+                                {isPresent ? "Present" : isAbsent ? "Absent" : "Not Marked"}
                               </span>
                             </td>
                             <td className="py-3 px-4 text-right">
                               <div className="flex items-center justify-end gap-1.5">
-                                {/* Check-In Action */}
-                                {isNotMarked && (
-                                  <button
-                                    onClick={() => handleWcCheckIn(m.user_id)}
-                                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] shadow-xs flex items-center gap-1 transition-colors cursor-pointer"
-                                  >
-                                    <Clock className="w-3 h-3" />
-                                    <span>CHECK IN</span>
-                                  </button>
-                                )}
+                                {/* Direct Present / Absent Action Buttons */}
+                                {(!wcAttendanceSession?.is_submitted || wcAttendanceSession?.is_unlocked) ? (
+                                  <>
+                                    <button
+                                      type="button"
+                                      disabled={wcMarkingIds.includes(m.user_id)}
+                                      onClick={() => handleWcMarkAttendance(m.user_id, "PRESENT")}
+                                      className={`px-3 py-1.5 rounded-lg font-extrabold text-[11px] shadow-xs flex items-center gap-1 transition-all cursor-pointer ${
+                                        isPresent
+                                          ? "bg-emerald-700 text-white ring-2 ring-emerald-300"
+                                          : "bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white border border-emerald-300"
+                                      } ${wcMarkingIds.includes(m.user_id) ? "opacity-50 cursor-wait" : ""}`}
+                                      title="Mark Present"
+                                    >
+                                      <CheckCircle2 className="w-3.5 h-3.5" />
+                                      <span>PRESENT</span>
+                                    </button>
 
-                                {/* Check-Out Action */}
-                                {isCheckedIn && (
-                                  <button
-                                    onClick={() => handleWcCheckOut(m.user_id)}
-                                    className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-[11px] shadow-xs flex items-center gap-1 transition-colors cursor-pointer"
-                                  >
-                                    <CheckCircle2 className="w-3 h-3" />
-                                    <span>CHECK OUT</span>
-                                  </button>
-                                )}
-
-                                {/* Completed - 3rd attempt prevented */}
-                                {isCompleted && (
-                                  <span className="px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 font-extrabold text-[10px] flex items-center gap-1">
-                                    <CheckCircle2 className="w-3 h-3" />
+                                    <button
+                                      type="button"
+                                      disabled={wcMarkingIds.includes(m.user_id)}
+                                      onClick={() => handleWcMarkAttendance(m.user_id, "ABSENT")}
+                                      className={`px-3 py-1.5 rounded-lg font-extrabold text-[11px] shadow-xs flex items-center gap-1 transition-all cursor-pointer ${
+                                        isAbsent
+                                          ? "bg-red-700 text-white ring-2 ring-red-300"
+                                          : "bg-red-50 text-red-700 hover:bg-red-600 hover:text-white border border-red-300"
+                                      } ${wcMarkingIds.includes(m.user_id) ? "opacity-50 cursor-wait" : ""}`}
+                                      title="Mark Absent"
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                      <span>ABSENT</span>
+                                    </button>
+                                  </>
+                                ) : (
+                                  <span className="px-2.5 py-1 rounded-lg bg-stone-100 text-stone-500 font-extrabold text-[10px] flex items-center gap-1">
+                                    <Lock className="w-3 h-3" />
                                     <span>LOCKED</span>
                                   </span>
                                 )}
@@ -4794,9 +4814,7 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                                     member_user_id: m.user_id,
                                     name: m.name,
                                     registration_id: m.registration_id,
-                                    check_in_time: m.check_in_time || "",
-                                    check_out_time: m.check_out_time || "",
-                                    status: m.status,
+                                    status: isPresent ? "PRESENT" : isAbsent ? "ABSENT" : "NOT_MARKED",
                                     reason: ""
                                   })}
                                   className="p-1.5 rounded-lg border border-stone-200 hover:bg-stone-100 text-stone-600 cursor-pointer"
@@ -6660,17 +6678,16 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
 
               <div>
                 <label className="font-bold text-stone-700 uppercase block mb-1">
-                  Status Override
+                  Attendance Status
                 </label>
                 <select
-                  value={wcEditRecordModal.status || "AUTO"}
+                  value={wcEditRecordModal.status || "PRESENT"}
                   onChange={(e) => setWcEditRecordModal({ ...wcEditRecordModal, status: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-purple-500 bg-white"
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:ring-2 focus:ring-purple-500 bg-white font-bold"
                 >
-                  <option value="">Auto (Calculate from times)</option>
+                  <option value="PRESENT">PRESENT</option>
+                  <option value="ABSENT">ABSENT</option>
                   <option value="NOT_MARKED">NOT MARKED</option>
-                  <option value="CHECKED_IN">CHECKED IN</option>
-                  <option value="COMPLETED">COMPLETED</option>
                 </select>
               </div>
 
@@ -6701,7 +6718,7 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                   className="flex-1 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold shadow-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Check className="w-4 h-4" />
-                  <span>Save Timestamps</span>
+                  <span>Save Changes</span>
                 </button>
               </div>
             </form>

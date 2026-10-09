@@ -44,6 +44,12 @@ def attendance_units(check_in_at, check_out_at) -> float:
 # PYDANTIC SCHEMAS
 # ==============================================================================
 
+class WCMarkAttendanceRequest(BaseModel):
+    user_id: Optional[int] = Field(None, description="Working Committee User ID")
+    working_committee_member_id: Optional[int] = Field(None, description="Working Committee Member ID")
+    date: Optional[str] = Field(None, description="Event date YYYY-MM-DD (defaults to server IST date)")
+    status: str = Field(..., description="PRESENT or ABSENT")
+
 class WCCheckInRequest(BaseModel):
     user_id: Optional[int] = Field(None, description="Working Committee User ID")
     working_committee_member_id: Optional[int] = Field(None, description="Working Committee Member ID")
@@ -65,7 +71,7 @@ class WCUnlockSessionRequest(BaseModel):
 class WCEditAttendanceRequest(BaseModel):
     check_in_time: Optional[str] = Field(None, description="Time string (e.g. '09:30:22 AM' or ISO format)")
     check_out_time: Optional[str] = Field(None, description="Time string (e.g. '04:45:12 PM' or ISO format)")
-    status: Optional[str] = Field(None, description="NOT_MARKED, CHECKED_IN, COMPLETED")
+    status: Optional[str] = Field(None, description="PRESENT, ABSENT, NOT_MARKED, COMPLETED, CHECKED_IN")
     reason: str = Field(..., min_length=3, description="Audit reason for modifying official attendance")
 
 class WCResetAttendanceRequest(BaseModel):
@@ -105,7 +111,8 @@ def get_wc_members_query(db: Session):
             User.is_working_committee == True,
             (User.admin_type == "WORKING_COMMITTEE") & (User.role.in_(["ADMIN", "WORKING_COMMITTEE"])),
             User.role == "WORKING_COMMITTEE",
-            User.volunteer_domain == "Working Committee"
+            User.volunteer_domain == "Working Committee",
+            User.working_committee_role.isnot(None)
         )
     )
 
@@ -157,12 +164,12 @@ def get_working_committee_attendance(
     # 2. Query Working Committee members
     member_query = get_wc_members_query(db)
 
-    if role_filter and role_filter != "all":
+    if role_filter and isinstance(role_filter, str) and role_filter != "all":
         member_query = member_query.filter(
             func.lower(User.working_committee_role) == role_filter.strip().lower()
         )
 
-    if search:
+    if search and isinstance(search, str):
         s = f"%{search.strip().lower()}%"
         member_query = member_query.filter(
             or_(
@@ -193,9 +200,13 @@ def get_working_committee_attendance(
         .filter(WorkingCommitteeAttendance.attendance_date == target_date)
         .group_by(WorkingCommitteeAttendance.status).all())
 
-    count_checked_in = global_status_counts.get("CHECKED_IN", 0)
-    count_completed = global_status_counts.get("COMPLETED", 0)
-    count_not_marked = total_wc_count - (count_checked_in + count_completed)
+    count_present = (
+        global_status_counts.get("PRESENT", 0) +
+        global_status_counts.get("COMPLETED", 0) +
+        global_status_counts.get("CHECKED_IN", 0)
+    )
+    count_absent = global_status_counts.get("ABSENT", 0)
+    count_not_marked = total_wc_count - (count_present + count_absent)
     if count_not_marked < 0:
         count_not_marked = 0
 
@@ -203,18 +214,30 @@ def get_working_committee_attendance(
     output_members = []
     for m in members:
         rec = records_by_uid.get(m.id)
-        current_status = rec.status if rec else "NOT_MARKED"
+        raw_status = rec.status if rec else "NOT_MARKED"
+        if raw_status in ["CHECKED_IN", "COMPLETED", "PRESENT"]:
+            current_status = "PRESENT"
+        elif raw_status == "ABSENT":
+            current_status = "ABSENT"
+        else:
+            current_status = "NOT_MARKED"
 
-        if status_filter and status_filter != "all":
-            if current_status != status_filter.upper():
+        if status_filter and isinstance(status_filter, str) and status_filter != "all":
+            sf = status_filter.strip().upper()
+            if sf in ["CHECKED_IN", "COMPLETED", "PRESENT"] and current_status != "PRESENT":
+                continue
+            elif sf == "ABSENT" and current_status != "ABSENT":
+                continue
+            elif sf == "NOT_MARKED" and current_status != "NOT_MARKED":
                 continue
 
         cin_time = format_to_ist_time(rec.check_in_at) if rec and rec.check_in_at else None
         cout_time = format_to_ist_time(rec.check_out_at) if rec and rec.check_out_at else None
-        units = attendance_units(rec.check_in_at, rec.check_out_at) if rec else 0.0
+        units = 1.0 if current_status == "PRESENT" else 0.0
 
         output_members.append({
             "id": rec.id if rec else None,
+            "record_id": rec.id if rec else None,
             "user_id": m.id,
             "working_committee_member_id": m.id,
             "reg_id": m.registration_id or f"WC{m.id:03d}",
@@ -231,10 +254,13 @@ def get_working_committee_attendance(
             "check_out_time": cout_time,
             "attendance_units": units,
             "status": current_status,
+            "is_present": (current_status == "PRESENT"),
+            "is_absent": (current_status == "ABSENT"),
+            "is_not_marked": (current_status == "NOT_MARKED"),
             "submitted": is_submitted or (rec.submitted if rec else False),
             "submitted_by": rec.submitted_by if rec else submitted_by,
             "last_modified_by": rec.last_modified_by if rec else None,
-            "can_mark": current_status != "COMPLETED"
+            "can_mark": not is_submitted
         })
 
     return {
@@ -249,8 +275,13 @@ def get_working_committee_attendance(
         },
         "summary": {
             "total_members": total_wc_count,
-            "checked_in": count_checked_in,
-            "completed": count_completed,
+            "present": count_present,
+            "absent": count_absent,
+            "count_present": count_present,
+            "count_absent": count_absent,
+            "count_not_marked": count_not_marked,
+            "checked_in": count_present,
+            "completed": count_present,
             "not_marked": count_not_marked,
             "is_submitted": is_submitted
         },
@@ -259,9 +290,105 @@ def get_working_committee_attendance(
 
 
 # ==============================================================================
-# 2. TWO ATTENDANCE MARKINGS: CHECK-IN & CHECK-OUT
+# 2. WORKING COMMITTEE ATTENDANCE MARKING: PRESENT & ABSENT
 # ==============================================================================
 
+@router.post("/mark")
+def mark_wc_attendance(
+    payload: WCMarkAttendanceRequest,
+    current_user: User = Depends(require_wc_superadmin),
+    db: Session = Depends(get_db)
+):
+    """
+    Mark Working Committee Attendance directly as PRESENT or ABSENT.
+    Replaces check-in / check-out with clean single-tap Present/Absent state.
+    SUPERADMIN ONLY.
+    """
+    target_uid = payload.working_committee_member_id or payload.user_id
+    if not target_uid:
+        raise HTTPException(status_code=400, detail="Missing user_id or working_committee_member_id")
+
+    target_date = payload.date.strip() if payload.date else get_current_ist_date_str()
+    verify_wc_attendance_date_is_open(target_date)
+
+    norm_status = payload.status.strip().upper()
+    if norm_status not in ["PRESENT", "ABSENT"]:
+        raise HTTPException(status_code=400, detail="Status must be either PRESENT or ABSENT")
+
+    # Verify session not locked
+    session = db.query(WorkingCommitteeDaySession).filter(
+        WorkingCommitteeDaySession.attendance_date == target_date
+    ).first()
+    if session and session.is_submitted and current_user.role != "SUPERADMIN":
+        raise HTTPException(status_code=403, detail="Working Committee attendance session is submitted and locked.")
+
+    user = db.query(User).filter(User.id == target_uid).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Working Committee member not found")
+
+    now_utc = get_current_utc_datetime()
+
+    rec = db.query(WorkingCommitteeAttendance).filter(
+        WorkingCommitteeAttendance.working_committee_member_id == user.id,
+        WorkingCommitteeAttendance.attendance_date == target_date
+    ).first()
+
+    if rec:
+        if norm_status == "PRESENT":
+            rec.status = "PRESENT"
+            if not rec.check_in_at:
+                rec.check_in_at = now_utc
+            if not rec.check_out_at:
+                rec.check_out_at = now_utc
+        else:
+            rec.status = "ABSENT"
+            rec.check_in_at = None
+            rec.check_out_at = None
+        rec.last_modified_by = f"{current_user.name} (Super Admin)"
+        rec.last_modified_at = now_utc
+    else:
+        rec = WorkingCommitteeAttendance(
+            working_committee_member_id=user.id,
+            attendance_date=target_date,
+            status=norm_status,
+            check_in_at=now_utc if norm_status == "PRESENT" else None,
+            check_out_at=now_utc if norm_status == "PRESENT" else None,
+            last_modified_by=f"{current_user.name} (Super Admin)",
+            last_modified_at=now_utc
+        )
+        db.add(rec)
+
+    db.flush()
+
+    audit = WorkingCommitteeAuditLog(
+        attendance_id=rec.id,
+        working_committee_member_id=user.id,
+        member_name=user.name,
+        attendance_date=target_date,
+        action=f"MARK_{norm_status}",
+        new_check_in=format_to_ist_time(rec.check_in_at) if rec.check_in_at else norm_status,
+        modified_by=f"{current_user.name} (Super Admin)",
+        modified_at=now_utc,
+        reason=f"Working Committee attendance marked {norm_status}"
+    )
+    db.add(audit)
+    db.commit()
+
+    return {
+        "success": True,
+        "message": f"{user.name} marked {norm_status} for {iso_date_to_dmy(target_date)}.",
+        "record": {
+            "id": rec.id,
+            "working_committee_member_id": user.id,
+            "status": rec.status,
+            "check_in_time": format_to_ist_time(rec.check_in_at) if rec.check_in_at else None,
+            "check_out_time": format_to_ist_time(rec.check_out_at) if rec.check_out_at else None,
+            "date": target_date
+        }
+    }
+
+
+# Legacy Check-In & Check-Out Compatibility Endpoints
 @router.post("/check-in")
 def mark_wc_check_in(
     payload: WCCheckInRequest,
@@ -592,12 +719,24 @@ def edit_wc_attendance_record(
                 rec.check_out_at = now_utc
 
     if payload.status:
-        rec.status = payload.status.upper()
+        st = payload.status.upper()
+        if st in ["PRESENT", "COMPLETED", "CHECKED_IN"]:
+            rec.status = "PRESENT"
+            if not rec.check_in_at:
+                rec.check_in_at = now_utc
+            if not rec.check_out_at:
+                rec.check_out_at = now_utc
+        elif st == "ABSENT":
+            rec.status = "ABSENT"
+            rec.check_in_at = None
+            rec.check_out_at = None
+        else:
+            rec.status = "NOT_MARKED"
+            rec.check_in_at = None
+            rec.check_out_at = None
     else:
-        if rec.check_in_at and rec.check_out_at:
-            rec.status = "COMPLETED"
-        elif rec.check_in_at:
-            rec.status = "CHECKED_IN"
+        if rec.check_in_at or rec.check_out_at:
+            rec.status = "PRESENT"
         else:
             rec.status = "NOT_MARKED"
 
@@ -1068,12 +1207,17 @@ def export_working_committee_excel(
 
         for d in all_dates:
             rec = rec_lookup.get((m.id, d))
-            time_in_str = format_to_ist_time(rec.check_in_at) if rec and rec.check_in_at else "--"
-            time_out_str = format_to_ist_time(rec.check_out_at) if rec and rec.check_out_at else "--"
+            is_present = bool(rec and (
+                rec.status in ["PRESENT", "COMPLETED"] or 
+                (rec.check_in_at and rec.check_out_at) or 
+                (rec.status != "ABSENT" and rec.check_in_at)
+            ))
+            time_in_str = format_to_ist_time(rec.check_in_at) if (rec and rec.check_in_at and rec.check_in_at != rec.check_out_at) else ("Present" if is_present else ("Absent" if rec and rec.status == "ABSENT" else "--"))
+            time_out_str = format_to_ist_time(rec.check_out_at) if (rec and rec.check_out_at and rec.check_in_at != rec.check_out_at) else ("Present" if is_present else ("Absent" if rec and rec.status == "ABSENT" else "--"))
             date_times.append(time_in_str)
             date_times.append(time_out_str)
 
-            if rec and rec.check_in_at and rec.check_out_at:
+            if is_present:
                 days_present += 1
 
             if rec and rec.submitted_by:
@@ -1136,6 +1280,188 @@ def export_working_committee_excel(
             if len(val_str) > max_len:
                 max_len = len(val_str)
         ws.column_dimensions[col_letter].width = max(max_len + 4, 12)
+
+    # ==========================================================================
+    # SHEET 2: CONSOLIDATED (WORKING COMMITTEE & ALL DEPARTMENT VOLUNTEERS)
+    # ==========================================================================
+    ws_all = wb.create_sheet(title="CONSOLIDATED")
+    all_headers = ["Reg ID", "Name", "AUID", "Institute", "Dept", "AKV_DOMAIN"]
+    for d in all_dates:
+        dmy = iso_date_to_dmy(d)
+        all_headers.append(f"{dmy} Time In")
+        all_headers.append(f"{dmy} Time Out")
+    all_headers.extend([
+        "Total Days Present",
+        "Contact No.",
+        "Managed By",
+        "Member Type"
+    ])
+    total_cols_all = len(all_headers)
+    last_col_letter_all = get_column_letter(total_cols_all)
+
+    ws_all.merge_cells(f"A1:{last_col_letter_all}1")
+    ws_all["A1"] = "ACHARYA KANNADA VEDIKE (AKV) — NUDITARANGA 2026"
+    ws_all["A1"].font = font_title
+    ws_all["A1"].alignment = align_center
+
+    ws_all.merge_cells(f"A2:{last_col_letter_all}2")
+    ws_all["A2"] = f"Official Consolidated Attendance Sheet (Working Committee & All Department Volunteers) • Generated: {now_ist_str} • Generated By: {current_user.name}"
+    ws_all["A2"].font = font_sub
+    ws_all["A2"].alignment = align_center
+
+    ws_all.append([])
+    ws_all.append(all_headers)
+
+    header_row_all = 4
+    for col_idx in range(1, total_cols_all + 1):
+        cell = ws_all.cell(row=header_row_all, column=col_idx)
+        cell.font = font_header
+        cell.border = thin_border
+        cell.alignment = align_center
+        if all_headers[col_idx - 1] == "Total Days Present":
+            cell.fill = summary_fill
+            cell.font = Font(name="Calibri", size=11, bold=True, color="000000")
+        else:
+            cell.fill = header_fill
+
+    # Query Department volunteers
+    all_volunteers = db.query(User).options(defer(User.photo_url), defer(User.password_hash)).filter(
+        User.role.in_(["PARTICIPANT", "VOLUNTEER", "STUDENT"])
+    ).order_by(User.name.asc()).all()
+    dept_user_ids = [p.id for p in all_volunteers]
+
+    dept_records = db.query(AttendanceRecord).filter(
+        AttendanceRecord.user_id.in_(dept_user_ids)
+    ).all() if dept_user_ids else []
+    dept_rec_lookup = {(r.user_id, r.attendance_date): r for r in dept_records}
+
+    seen_ids = set()
+
+    # 1. Working Committee rows
+    for m in members:
+        seen_ids.add(m.id)
+        days_present = 0
+        date_times = []
+        managed_by_set = set()
+
+        for d in all_dates:
+            rec = rec_lookup.get((m.id, d))
+            is_present = bool(rec and (
+                rec.status in ["PRESENT", "COMPLETED"] or 
+                (rec.check_in_at and rec.check_out_at) or 
+                (rec.status != "ABSENT" and rec.check_in_at)
+            ))
+            time_in_str = format_to_ist_time(rec.check_in_at) if (rec and rec.check_in_at and rec.check_in_at != rec.check_out_at) else ("Present" if is_present else ("Absent" if rec and rec.status == "ABSENT" else "--"))
+            time_out_str = format_to_ist_time(rec.check_out_at) if (rec and rec.check_out_at and rec.check_in_at != rec.check_out_at) else ("Present" if is_present else ("Absent" if rec and rec.status == "ABSENT" else "--"))
+            date_times.append(time_in_str)
+            date_times.append(time_out_str)
+            if is_present:
+                days_present += 1
+
+            if rec and rec.submitted_by:
+                managed_by_set.add(rec.submitted_by)
+            elif rec and rec.last_modified_by:
+                managed_by_set.add(rec.last_modified_by)
+
+        managed_by_str = ", ".join(list(managed_by_set)) if managed_by_set else (m.managed_by or current_user.name or "AKV Superadmin")
+        registered_auid = (m.auid or "").strip().upper() or (m.faculty_id or "").strip().upper() or "--"
+        akv_domain_val = m.volunteer_domain or m.department or m.working_committee_role or "--"
+
+        row = [
+            m.registration_id or f"WC{m.id:03d}",
+            m.name,
+            registered_auid,
+            m.institute or "Acharya Institute of Technology",
+            m.department or "--",
+            akv_domain_val
+        ]
+        row.extend(date_times)
+        row.extend([
+            days_present,
+            m.phone or "--",
+            managed_by_str,
+            "WORKING COMMITTEE"
+        ])
+        ws_all.append(row)
+
+    # 2. Department volunteer rows
+    for p in all_volunteers:
+        if p.id in seen_ids:
+            continue
+        days_present = 0
+        date_times = []
+        managed_by_set = set()
+
+        for d in all_dates:
+            rec = dept_rec_lookup.get((p.id, d))
+            time_in_str = format_to_ist_time(rec.check_in_at) if rec and rec.check_in_at else ("Present" if rec and rec.status == "COMPLETED" else "--")
+            time_out_str = format_to_ist_time(rec.check_out_at) if rec and rec.check_out_at else ("Present" if rec and rec.status == "COMPLETED" else "--")
+            date_times.append(time_in_str)
+            date_times.append(time_out_str)
+
+            if rec and (rec.status == "COMPLETED" or (rec.check_in_at and rec.check_out_at) or rec.check_in_at):
+                days_present += 1
+
+            if rec and rec.submitted_by:
+                managed_by_set.add(rec.submitted_by)
+            elif rec and rec.last_modified_by:
+                managed_by_set.add(rec.last_modified_by)
+
+        managed_by_str = ", ".join(list(managed_by_set)) if managed_by_set else (p.managed_by or current_user.name or "AKV Coordinator")
+        registered_auid = (p.auid or "").strip().upper() or "--"
+        akv_domain_val = p.volunteer_domain or p.department or "--"
+
+        row = [
+            p.registration_id or f"AKVNT{p.id:04d}",
+            p.name,
+            registered_auid,
+            p.institute or "Acharya Institute of Technology",
+            p.department or "--",
+            akv_domain_val
+        ]
+        row.extend(date_times)
+        row.extend([
+            days_present,
+            p.phone or "--",
+            managed_by_str,
+            "VOLUNTEER / PARTICIPANT"
+        ])
+        ws_all.append(row)
+
+    end_data_all = ws_all.max_row
+    for row_idx in range(5, end_data_all + 1):
+        for col_idx in range(1, total_cols_all + 1):
+            cell = ws_all.cell(row=row_idx, column=col_idx)
+            cell.font = font_data
+            cell.border = thin_border
+            col_name = all_headers[col_idx - 1]
+            if col_name in ["Name", "Dept", "Institute", "AKV_DOMAIN", "Managed By", "Member Type"]:
+                cell.alignment = align_left
+            else:
+                cell.alignment = align_center
+
+            if col_name == "Total Days Present":
+                cell.font = font_bold_data
+                cell.alignment = align_center
+            elif col_name == "AUID":
+                cell.number_format = "@"
+                if cell.value is not None:
+                    cell.value = str(cell.value)
+
+    ws_all.freeze_panes = "A5"
+    if end_data_all > header_row_all:
+        ws_all.auto_filter.ref = f"A{header_row_all}:{last_col_letter_all}{end_data_all}"
+
+    for col in ws_all.columns:
+        col_letter = get_column_letter(col[0].column)
+        max_len = 0
+        for cell in col:
+            if cell.row in [1, 2, 3]:
+                continue
+            val_str = str(cell.value or "")
+            if len(val_str) > max_len:
+                max_len = len(val_str)
+        ws_all.column_dimensions[col_letter].width = max(max_len + 4, 12)
 
     output = io.BytesIO()
     wb.save(output)

@@ -1,11 +1,16 @@
 {
-  "production_version": "2.3.13",
-  "staged_version": "2.3.14",
+  "production_version": "2.3.14",
+  "staged_version": "2.3.15",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.14",
+      "released_at": "2026-10-09T09:23:07+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.14: Volunteer & Working Committee Attendance Real-Time Today Marking Fix: Fixed multi-day attendance configuration and date selection logic across frontend (api.js, AdminPage, SuperAdminDashboard) and backend (attendance.py, working_committee_attendance.py) to dynamically evaluate the current date in Indian Standard Time (Asia/Kolkata). Today's date is now guaranteed in configured dates with high-visibility 'TODAY' badges, and the UI automatically defaults to today's date rather than locking on stale cached past days.; Working Committee Attendance Simplified to Present & Absent Marking: Removed Check-In / Check-Out workflow for Working Committee members. Replaced with direct, 1-click 'Present' (emerald) and 'Absent' (rose) marking controls in the SuperAdmin dashboard table with active status indicators, locked session enforcement, and updated metrics (Total Members, Present, Absent, Not Marked).; Working Committee Attendance Backend Direct Mark Endpoint: Added POST /api/working-committee-attendance/mark supporting status 'PRESENT' or 'ABSENT' with audit logging, and updated roster computation to aggregate Present, Absent, and Not Marked counts cleanly.; Consolidated & Working Committee Attendance Sheets in Excel Exports: Added dedicated 'WORKING COMMITTEE' attendance sheet and combined 'CONSOLIDATED' attendance sheet (unifying Department Volunteers and Working Committee members with Member Type, AUID, Role/Domain, Status, Timestamps, and Marked By) to all attendance Excel exports across backend/app/routes/attendance.py, working_committee_attendance.py, and superadmin.py."
+    },
     {
       "version": "2.3.13",
       "released_at": "2026-10-09T00:46:32+0530",

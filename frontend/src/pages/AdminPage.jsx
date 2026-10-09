@@ -64,12 +64,14 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
     return cached?.dates || [];
   });
   const [selectedDate, setSelectedDate] = useState(() => {
+    const todayIst = api.getTodayIstDate ? api.getTodayIstDate() : new Date().toISOString().slice(0, 10);
     const cached = api.getCachedAttendanceConfigDates();
     if (cached?.dates && cached.dates.length > 0) {
-      const todayItem = cached.dates.find(d => d.is_today);
-      return todayItem ? todayItem.date : (cached.current_date || cached.dates[0]?.date || "");
+      const todayItem = cached.dates.find(d => d.date === todayIst || d.is_today);
+      if (todayItem) return todayItem.date;
+      if (cached.current_date === todayIst) return cached.current_date;
     }
-    return "";
+    return todayIst;
   });
   const [attendanceRoster, setAttendanceRoster] = useState([]);
   const [attendanceSession, setAttendanceSession] = useState({
@@ -98,7 +100,8 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
   const [checkinMode, setCheckinMode] = useState("camera"); // "camera" or "manual"
 
   const [feedback, setFeedback] = useState({ type: "", text: "" });
-  const selectedDateIsFuture = Boolean(selectedDate && selectedDate > new Date().toISOString().slice(0, 10));
+  const todayIstStr = api.getTodayIstDate ? api.getTodayIstDate() : new Date().toISOString().slice(0, 10);
+  const selectedDateIsFuture = Boolean(selectedDate && selectedDate > todayIstStr);
 
   // Volunteer Attendance QR Scanner State (v2.3.8)
   const [showVolunteerScanner, setShowVolunteerScanner] = useState(false);
@@ -111,7 +114,6 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
   const [showManualModal, setShowManualModal] = useState(false);
   const [manualSearchQuery, setManualSearchQuery] = useState("");
   const attendanceCutoffDate = "2026-11-05";
-  const todayIstStr = new Date().toISOString().slice(0, 10);
   const isAttendanceWindowExpired = Boolean(todayIstStr > attendanceCutoffDate || (selectedDate && selectedDate > attendanceCutoffDate));
 
   // Cultural Gallery State
@@ -142,12 +144,14 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
       const res = await api.getAttendanceConfigDates(forceFresh);
       if (res && res.dates) {
         setAttendanceDates(res.dates);
-        // Default to today if found, else first date
-        if (!selectedDate) {
-          const todayItem = res.dates.find(d => d.is_today);
-          const initialDate = todayItem ? todayItem.date : (res.current_date || res.dates[0]?.date || "");
-          setSelectedDate(initialDate);
-          return initialDate;
+        const todayIst = api.getTodayIstDate ? api.getTodayIstDate() : (res.current_date || "");
+        const todayItem = res.dates.find(d => d.date === todayIst || d.is_today);
+        const bestDate = todayItem ? todayItem.date : (res.current_date || res.dates[0]?.date || "");
+
+        // If no selectedDate, or if selectedDate is not present in the dates list, or selected was a past date and today exists
+        if (!selectedDate || !res.dates.some(d => d.date === selectedDate)) {
+          setSelectedDate(bestDate);
+          return bestDate;
         }
       }
     } catch (err) {
@@ -866,10 +870,12 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
                   }`}
                 >
                   <Calendar className="w-3.5 h-3.5 text-amber-400" />
-                  <span>{d.date_formatted || d.date}</span>
+                  <span>{d.dmy || d.date_dmy || d.date_formatted || d.date}</span>
                   {d.label && <span className="text-[10px] opacity-75 font-normal">({d.label})</span>}
                   {d.is_today && (
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse ml-0.5" title="Today" />
+                    <span className="px-1.5 py-0.5 text-[9px] font-black bg-emerald-500 text-white rounded-full ml-1 tracking-wider uppercase" title="Today">
+                      TODAY
+                    </span>
                   )}
                 </button>
               ))}
