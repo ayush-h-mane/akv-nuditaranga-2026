@@ -102,30 +102,27 @@ def get_wc_members_query(db: Session):
     """
     Returns query for users who are recognized as Working Committee members:
     - User.is_working_committee is True
+    - OR User.admin_type == 'WORKING_COMMITTEE'
     - OR User.role == 'WORKING_COMMITTEE'
     - OR User.volunteer_domain == 'Working Committee'
-    - OR (User.admin_type == 'WORKING_COMMITTEE' and User.role.in_(['ADMIN', 'WORKING_COMMITTEE']))
+    - OR (User.working_committee_role is not None and User.working_committee_role != '')
 
     Strictly excludes:
     - Normal students, participants, and volunteers who are not in the working committee
-    - Developer account ('nanu' / 'DEV-NANU')
-    - Master Superadmin accounts (User.role == 'SUPERADMIN')
+    - Developer account ('nanu' / 'DEV-NANU' / User.role == 'DEVELOPER')
     """
     return db.query(User).options(
         defer(User.photo_url),
         defer(User.password_hash)
     ).filter(
-        User.role != "SUPERADMIN",
         User.role != "DEVELOPER",
         User.auid != "DEV-NANU",
         or_(
             User.is_working_committee == True,
+            User.admin_type == "WORKING_COMMITTEE",
             User.role == "WORKING_COMMITTEE",
             User.volunteer_domain == "Working Committee",
-            and_(
-                User.admin_type == "WORKING_COMMITTEE",
-                User.role.in_(["ADMIN", "WORKING_COMMITTEE"])
-            )
+            and_(User.working_committee_role.isnot(None), User.working_committee_role != "")
         )
     )
 
@@ -196,7 +193,21 @@ def get_working_committee_attendance(
         )
 
     members = member_query.order_by(User.name.asc()).all()
-    member_ids = [m.id for m in members]
+    member_ids = {m.id for m in members}
+
+    # Ensure any member who already has an attendance record for this date is also included
+    date_attended_uids = [r[0] for r in db.query(WorkingCommitteeAttendance.working_committee_member_id).filter(
+        WorkingCommitteeAttendance.attendance_date == target_date
+    ).distinct().all()]
+    missing_roster_uids = [uid for uid in date_attended_uids if uid not in member_ids]
+    if missing_roster_uids:
+        extra_roster = db.query(User).options(
+            defer(User.photo_url),
+            defer(User.password_hash)
+        ).filter(User.id.in_(missing_roster_uids)).all()
+        members.extend(extra_roster)
+        members.sort(key=lambda x: (x.name or "").lower())
+        member_ids = {m.id for m in members}
 
     # 3. Query existing Working Committee attendance records for this date
     records = db.query(WorkingCommitteeAttendance).filter(
@@ -1172,8 +1183,21 @@ def export_working_committee_excel(
     if not all_dates:
         all_dates = ["2026-09-28", "2026-09-29", "2026-09-30", "2026-10-01", "2026-10-02"]
 
-    # 2. Members
-    members = get_wc_members_query(db).order_by(User.name.asc()).all()
+    # 2. Members: All members returned by get_wc_members_query PLUS any user with a marked record in WorkingCommitteeAttendance
+    wc_members_list = get_wc_members_query(db).all()
+    known_member_ids = {m.id for m in wc_members_list}
+
+    # Safeguard: Also include ANY user who has attendance marked in WorkingCommitteeAttendance
+    attended_user_ids = [r[0] for r in db.query(WorkingCommitteeAttendance.working_committee_member_id).distinct().all()]
+    missing_ids = [uid for uid in attended_user_ids if uid not in known_member_ids]
+    if missing_ids:
+        extra_users = db.query(User).options(
+            defer(User.photo_url),
+            defer(User.password_hash)
+        ).filter(User.id.in_(missing_ids)).all()
+        wc_members_list.extend(extra_users)
+
+    members = sorted(wc_members_list, key=lambda x: (x.name or "").lower())
     member_ids = [m.id for m in members]
 
     records = db.query(WorkingCommitteeAttendance).filter(
@@ -1268,8 +1292,8 @@ def export_working_committee_excel(
                 (rec.check_in_at and rec.check_out_at) or 
                 (rec.status != "ABSENT" and rec.check_in_at)
             ))
-            time_in_str = format_to_ist_time(rec.check_in_at) if (rec and rec.check_in_at and rec.check_in_at != rec.check_out_at) else ("Present" if is_present else ("Absent" if rec and rec.status == "ABSENT" else "--"))
-            time_out_str = format_to_ist_time(rec.check_out_at) if (rec and rec.check_out_at and rec.check_in_at != rec.check_out_at) else ("Present" if is_present else ("Absent" if rec and rec.status == "ABSENT" else "--"))
+            time_in_str = format_to_ist_time(rec.check_in_at) if (rec and rec.check_in_at) else ("Present" if is_present else ("Absent" if rec and rec.status == "ABSENT" else "--"))
+            time_out_str = format_to_ist_time(rec.check_out_at) if (rec and rec.check_out_at) else ("Present" if is_present else ("Absent" if rec and rec.status == "ABSENT" else "--"))
             date_times.append(time_in_str)
             date_times.append(time_out_str)
 
@@ -1407,8 +1431,8 @@ def export_working_committee_excel(
                 (rec.check_in_at and rec.check_out_at) or 
                 (rec.status != "ABSENT" and rec.check_in_at)
             ))
-            time_in_str = format_to_ist_time(rec.check_in_at) if (rec and rec.check_in_at and rec.check_in_at != rec.check_out_at) else ("Present" if is_present else ("Absent" if rec and rec.status == "ABSENT" else "--"))
-            time_out_str = format_to_ist_time(rec.check_out_at) if (rec and rec.check_out_at and rec.check_in_at != rec.check_out_at) else ("Present" if is_present else ("Absent" if rec and rec.status == "ABSENT" else "--"))
+            time_in_str = format_to_ist_time(rec.check_in_at) if (rec and rec.check_in_at) else ("Present" if is_present else ("Absent" if rec and rec.status == "ABSENT" else "--"))
+            time_out_str = format_to_ist_time(rec.check_out_at) if (rec and rec.check_out_at) else ("Present" if is_present else ("Absent" if rec and rec.status == "ABSENT" else "--"))
             date_times.append(time_in_str)
             date_times.append(time_out_str)
             if is_present:

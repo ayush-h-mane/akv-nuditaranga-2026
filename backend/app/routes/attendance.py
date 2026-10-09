@@ -1454,7 +1454,17 @@ def export_attendance_excel(
     wc_members = []
     wc_rec_lookup = {}
     if is_superadmin:
-        wc_members = get_wc_members_query(db).order_by(User.name.asc()).all()
+        wc_members_list = get_wc_members_query(db).all()
+        known_wc_ids = {m.id for m in wc_members_list}
+        attended_wc_ids = [r[0] for r in db.query(WorkingCommitteeAttendance.working_committee_member_id).distinct().all()]
+        missing_wc_ids = [uid for uid in attended_wc_ids if uid not in known_wc_ids]
+        if missing_wc_ids:
+            extra_wc = db.query(User).options(
+                defer(User.photo_url),
+                defer(User.password_hash)
+            ).filter(User.id.in_(missing_wc_ids)).all()
+            wc_members_list.extend(extra_wc)
+        wc_members = sorted(wc_members_list, key=lambda x: (x.name or "").lower())
         wc_member_ids = [m.id for m in wc_members]
         wc_records = db.query(WorkingCommitteeAttendance).filter(
             WorkingCommitteeAttendance.working_committee_member_id.in_(wc_member_ids)
@@ -1576,8 +1586,8 @@ def export_attendance_excel(
                 (rec.check_in_at and rec.check_out_at) or 
                 (rec.status != "ABSENT" and rec.check_in_at)
             ))
-            time_in_str = format_to_ist_time(rec.check_in_at) if (rec and rec.check_in_at and rec.check_in_at != rec.check_out_at) else ("Present" if is_present else ("Absent" if rec and rec.status == "ABSENT" else "--"))
-            time_out_str = format_to_ist_time(rec.check_out_at) if (rec and rec.check_out_at and rec.check_in_at != rec.check_out_at) else ("Present" if is_present else ("Absent" if rec and rec.status == "ABSENT" else "--"))
+            time_in_str = format_to_ist_time(rec.check_in_at) if (rec and rec.check_in_at) else ("Present" if is_present else ("Absent" if rec and rec.status == "ABSENT" else "--"))
+            time_out_str = format_to_ist_time(rec.check_out_at) if (rec and rec.check_out_at) else ("Present" if is_present else ("Absent" if rec and rec.status == "ABSENT" else "--"))
             date_times.append(time_in_str)
             date_times.append(time_out_str)
 

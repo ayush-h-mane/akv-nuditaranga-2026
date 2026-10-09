@@ -1055,7 +1055,7 @@ def export_attendance_xlsx(
         member_name = r.user.name if r.user else "Unknown Member"
         auid_val = ((r.user.auid if r.user else "") or "").strip().upper()
         role_val = (r.user.working_committee_role if r.user and r.user.working_committee_role else (r.user.volunteer_domain if r.user and r.user.volunteer_domain else "Working Committee"))
-        time_str = r.check_in_at.strftime("%I:%M %p") if r.check_in_at else ("Present" if r.status in ("PRESENT", "COMPLETED") else "N/A")
+        time_str = r.check_in_at.strftime("%I:%M %p") if r.check_in_at else ("Present" if r.status in ("PRESENT", "COMPLETED") else ("Absent" if r.status == "ABSENT" else "N/A"))
         marked_by = r.last_modified_by or r.submitted_by or "Super Admin"
         ws_wc.append([
             r.id,
@@ -1139,7 +1139,7 @@ def export_attendance_xlsx(
         member_name = r.user.name if r.user else "Unknown Member"
         auid_val = ((r.user.auid if r.user else "") or "").strip().upper()
         role_val = (r.user.working_committee_role if r.user and r.user.working_committee_role else (r.user.volunteer_domain if r.user and r.user.volunteer_domain else "Working Committee"))
-        time_str = r.check_in_at.strftime("%I:%M %p") if r.check_in_at else ("Present" if r.status in ("PRESENT", "COMPLETED") else "N/A")
+        time_str = r.check_in_at.strftime("%I:%M %p") if r.check_in_at else ("Present" if r.status in ("PRESENT", "COMPLETED") else ("Absent" if r.status == "ABSENT" else "N/A"))
         marked_by = r.last_modified_by or r.submitted_by or "Super Admin"
         combined_rows.append({
             "type": "Working Committee",
