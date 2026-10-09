@@ -57,6 +57,79 @@ async function fetchWithDeduplication(reqKey, fetchFn) {
   return promise;
 }
 
+export function getTodayIstDate() {
+  try {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Kolkata",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }).format(new Date());
+  } catch (e) {
+    const d = new Date();
+    const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+    const ist = new Date(utc + (3600000 * 5.5));
+    return ist.toISOString().split("T")[0];
+  }
+}
+
+export function normalizeAttendanceDates(data) {
+  if (!data) return data;
+  const todayIst = getTodayIstDate();
+  const rawDates = Array.isArray(data.dates) ? [...data.dates] : [];
+
+  const formatDmy = (dateStr) => {
+    try {
+      if (!dateStr) return "";
+      const parts = dateStr.split("-");
+      if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      return dateStr;
+    } catch {
+      return dateStr;
+    }
+  };
+
+  let hasToday = false;
+  const normalizedList = rawDates.map(item => {
+    const isToday = item.date === todayIst;
+    if (isToday) hasToday = true;
+    const dmy = item.dmy || item.date_dmy || item.date_formatted || formatDmy(item.date);
+    return {
+      ...item,
+      dmy,
+      date_dmy: dmy,
+      date_formatted: dmy,
+      is_today: isToday
+    };
+  });
+
+  if (!hasToday && todayIst) {
+    const dmy = formatDmy(todayIst);
+    let dayName = "Today";
+    try {
+      dayName = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: "Asia/Kolkata" }).format(new Date());
+    } catch {}
+    normalizedList.push({
+      date: todayIst,
+      dmy,
+      date_dmy: dmy,
+      date_formatted: dmy,
+      is_today: true,
+      day_name: dayName,
+      day_number: normalizedList.length + 1,
+      is_active: true
+    });
+  }
+
+  normalizedList.sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+
+  return {
+    ...data,
+    current_date: todayIst,
+    dates: normalizedList
+  };
+}
+
 // Local fallback storage keys
 const STORAGE_EVENTS_KEY = "akv_events_cache_v2";
 const STORAGE_REGS_KEY = "akv_registrations_cache_v2";
@@ -1849,6 +1922,10 @@ export const api = {
   // ==========================================
   // OFFICIAL ATTENDANCE SYSTEM APIs
   // ==========================================
+  getTodayIstDate() {
+    return getTodayIstDate();
+  },
+
   getCachedAttendanceConfigDates() {
     let cached = memCache.get("attendance_config_dates");
     if (!cached) {
@@ -1856,13 +1933,14 @@ export const api = {
       if (!cached || !cached.dates || cached.dates.length === 0) {
         cached = {
           success: true,
-          current_date: new Date().toISOString().split("T")[0],
+          current_date: getTodayIstDate(),
           dates: initialAttendanceDates
         };
       }
-      memCache.set("attendance_config_dates", cached);
     }
-    return cached;
+    const normalized = normalizeAttendanceDates(cached);
+    memCache.set("attendance_config_dates", normalized);
+    return normalized;
   },
 
   async getAttendanceConfigDates(forceFresh = false) {
@@ -1886,9 +1964,10 @@ export const api = {
         if (res.ok) {
           const data = await res.json();
           if (data && Array.isArray(data.dates) && data.dates.length > 0) {
-            memCache.set(key, data);
-            writeLocalJson(STORAGE_ATTENDANCE_KEY + "_dates", data);
-            return data;
+            const normalized = normalizeAttendanceDates(data);
+            memCache.set(key, normalized);
+            writeLocalJson(STORAGE_ATTENDANCE_KEY + "_dates", normalized);
+            return normalized;
           }
         }
       } catch (err) {
@@ -2168,6 +2247,33 @@ export const api = {
       setInMemCache(cacheKey, data);
       return data;
     });
+  },
+
+  async markWorkingCommitteeAttendance(memberUserId, status, date = null) {
+    const res = await fetch(`${API_BASE_URL}/working-committee-attendance/mark`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({
+        working_committee_member_id: memberUserId,
+        status: status.toUpperCase(),
+        date
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || `Working Committee mark ${status} failed`);
+    invalidateMemCache("wc_att");
+    return data;
+  },
+
+  async markWorkingCommitteePresent(memberUserId, date = null) {
+    return this.markWorkingCommitteeAttendance(memberUserId, "PRESENT", date);
+  },
+
+  async markWorkingCommitteeAbsent(memberUserId, date = null) {
+    return this.markWorkingCommitteeAttendance(memberUserId, "ABSENT", date);
   },
 
   async markWorkingCommitteeCheckIn(memberUserId, date = null) {

@@ -236,33 +236,44 @@ def get_configured_dates(
     today_ist = get_current_ist_date_str()
     configured = db.query(FestivalEventDate).filter(FestivalEventDate.is_active == True).order_by(FestivalEventDate.date.asc()).all()
     
-    # Also find any distinct dates present in attendance records
+    # Also find any distinct dates present in department & working committee attendance records
     record_dates = [r[0] for r in db.query(AttendanceRecord.attendance_date).distinct().all()]
-    
+    wc_record_dates = [r[0] for r in db.query(WorkingCommitteeAttendance.attendance_date).distinct().all()]
+    all_record_dates = set(record_dates + wc_record_dates)
+
     date_map = {}
     for c in configured:
+        dmy_str = iso_date_to_dmy(c.date)
         date_map[c.date] = {
             "date": c.date,
             "label": c.label,
-            "dmy": iso_date_to_dmy(c.date),
+            "dmy": dmy_str,
+            "date_dmy": dmy_str,
+            "date_formatted": dmy_str,
             "is_today": (c.date == today_ist)
         }
     
-    for rd in record_dates:
+    for rd in all_record_dates:
         if rd not in date_map:
+            dmy_str = iso_date_to_dmy(rd)
             date_map[rd] = {
                 "date": rd,
-                "label": f"Event Day ({iso_date_to_dmy(rd)})",
-                "dmy": iso_date_to_dmy(rd),
+                "label": f"Event Day ({dmy_str})",
+                "dmy": dmy_str,
+                "date_dmy": dmy_str,
+                "date_formatted": dmy_str,
                 "is_today": (rd == today_ist)
             }
             
     # If today's date is not in list, add it
     if today_ist not in date_map:
+        dmy_str = iso_date_to_dmy(today_ist)
         date_map[today_ist] = {
             "date": today_ist,
-            "label": f"Today ({iso_date_to_dmy(today_ist)})",
-            "dmy": iso_date_to_dmy(today_ist),
+            "label": f"Today ({dmy_str})",
+            "dmy": dmy_str,
+            "date_dmy": dmy_str,
+            "date_formatted": dmy_str,
             "is_today": True
         }
 
@@ -1502,6 +1513,49 @@ def export_attendance_excel(
         ])
         return row, days_present
 
+    # Helper to build participant row values
+    def make_dept_row(p, role_col_val):
+        days_present = 0
+        date_times = []
+        managed_by_set = set()
+
+        for d in all_dates:
+            rec = dept_rec_lookup.get((p.id, d))
+            is_present = bool(rec and (
+                rec.status in ["PRESENT", "COMPLETED"] or 
+                (rec.check_in_at and rec.check_out_at) or 
+                (rec.status != "ABSENT" and rec.check_in_at)
+            ))
+            time_in_str = format_to_ist_time(rec.check_in_at) if (rec and rec.check_in_at and rec.check_in_at != rec.check_out_at) else ("Present" if is_present else ("Absent" if rec and rec.status == "ABSENT" else "--"))
+            time_out_str = format_to_ist_time(rec.check_out_at) if (rec and rec.check_out_at and rec.check_in_at != rec.check_out_at) else ("Present" if is_present else ("Absent" if rec and rec.status == "ABSENT" else "--"))
+            date_times.append(time_in_str)
+            date_times.append(time_out_str)
+
+            if is_present:
+                days_present += 1
+
+            if rec and rec.submitted_by:
+                managed_by_set.add(rec.submitted_by)
+            elif rec and rec.last_modified_by:
+                managed_by_set.add(rec.last_modified_by)
+
+        managed_by_str = ", ".join(list(managed_by_set)) if managed_by_set else (p.managed_by or current_user.name or "AKV Coordinator")
+        row = [
+            p.registration_id or f"AKVNT{p.id:04d}",
+            p.name,
+            (p.auid or "").strip().upper() or "--",
+            p.institute or "Acharya Institute of Technology",
+            p.department or "--",
+            role_col_val
+        ]
+        row.extend(date_times)
+        row.extend([
+            days_present,
+            p.phone or "--",
+            managed_by_str
+        ])
+        return row, days_present
+
     # Helper to build Working Committee row values
     def make_wc_row(m, role_col_val):
         days_present = 0
@@ -1510,12 +1564,17 @@ def export_attendance_excel(
 
         for d in all_dates:
             rec = wc_rec_lookup.get((m.id, d))
-            time_in_str = format_to_ist_time(rec.check_in_at) if rec and rec.check_in_at else "--"
-            time_out_str = format_to_ist_time(rec.check_out_at) if rec and rec.check_out_at else "--"
+            is_present = bool(rec and (
+                rec.status in ["PRESENT", "COMPLETED"] or 
+                (rec.check_in_at and rec.check_out_at) or 
+                (rec.status != "ABSENT" and rec.check_in_at)
+            ))
+            time_in_str = format_to_ist_time(rec.check_in_at) if (rec and rec.check_in_at and rec.check_in_at != rec.check_out_at) else ("Present" if is_present else ("Absent" if rec and rec.status == "ABSENT" else "--"))
+            time_out_str = format_to_ist_time(rec.check_out_at) if (rec and rec.check_out_at and rec.check_in_at != rec.check_out_at) else ("Present" if is_present else ("Absent" if rec and rec.status == "ABSENT" else "--"))
             date_times.append(time_in_str)
             date_times.append(time_out_str)
 
-            if rec and rec.check_in_at and rec.check_out_at:
+            if is_present:
                 days_present += 1
 
             if rec and rec.submitted_by:
@@ -1525,7 +1584,7 @@ def export_attendance_excel(
 
         managed_by_str = ", ".join(list(managed_by_set)) if managed_by_set else (m.managed_by or current_user.name or "AKV Superadmin")
         row = [
-            m.registration_id or f"AKVNT{m.id:04d}",
+            m.registration_id or f"WC{m.id:03d}",
             m.name,
             (m.auid or "").strip().upper() or "--",
             m.institute or "Acharya Institute of Technology",
@@ -1576,54 +1635,52 @@ def export_attendance_excel(
         populate_attendance_worksheet(ws, group_sheet_name, sub_text, dept_headers, rows_data, common_col_widths)
 
     # ==========================================================================
-    # SHEET 14: WORKING COMMITTEE (SUPERADMIN ONLY)
+    # SHEET 14: WORKING COMMITTEE
     # ==========================================================================
-    if is_superadmin:
-        ws_wc = wb.create_sheet(title="WORKING COMMITTEE")
-        wc_headers = ["Reg ID", "Name", "AUID", "Institute", "Dept", "AKV_DOMAIN"]
-        wc_headers.extend(date_cols)
-        wc_headers.extend(["Total Days Present", "Contact No.", "Managed By"])
+    ws_wc = wb.create_sheet(title="WORKING COMMITTEE")
+    wc_headers = ["Reg ID", "Name", "AUID", "Institute", "Dept", "AKV_DOMAIN"]
+    wc_headers.extend(date_cols)
+    wc_headers.extend(["Total Days Present", "Contact No.", "Managed By"])
 
-        wc_rows_data = []
-        for m in wc_members:
+    wc_rows_data = []
+    for m in wc_members:
+        r_vals, _ = make_wc_row(m, m.volunteer_domain or m.department or m.working_committee_role or "Coordinator")
+        wc_rows_data.append(r_vals)
+
+    sub_text_wc = f"Official Working Committee Attendance • Generated: {now_ist_str} • Generated By: {current_user.name}"
+    populate_attendance_worksheet(ws_wc, "WORKING COMMITTEE", sub_text_wc, wc_headers, wc_rows_data, common_col_widths)
+
+    # ==========================================================================
+    # SHEET 15: CONSOLIDATED (SHEETS 1–13 + WORKING COMMITTEE)
+    # ==========================================================================
+    ws_all = wb.create_sheet(title="CONSOLIDATED")
+    all_headers = ["Reg ID", "Name", "AUID", "Institute", "Dept", "AKV_DOMAIN"]
+    all_headers.extend(date_cols)
+    all_headers.extend(["Total Days Present", "Contact No.", "Managed By", "Member Type"])
+
+    all_rows_data = []
+    seen_user_ids = set()
+
+    # 1. Normal Department Participants
+    for p in all_participants:
+        # Check if this user is also a working committee member
+        is_in_wc = any(m.id == p.id for m in wc_members)
+        if not is_in_wc:
+            r_vals, _ = make_dept_row(p, p.volunteer_domain or p.department or "--")
+            r_vals.append("DEPARTMENT")
+            all_rows_data.append(r_vals)
+            seen_user_ids.add(p.id)
+
+    # 2. Working Committee Members
+    for m in wc_members:
+        if m.id not in seen_user_ids:
             r_vals, _ = make_wc_row(m, m.volunteer_domain or m.department or m.working_committee_role or "Coordinator")
-            wc_rows_data.append(r_vals)
+            r_vals.append("WORKING COMMITTEE")
+            all_rows_data.append(r_vals)
+            seen_user_ids.add(m.id)
 
-        sub_text_wc = f"Official Working Committee Attendance • Generated: {now_ist_str} • Generated By: {current_user.name}"
-        populate_attendance_worksheet(ws_wc, "WORKING COMMITTEE", sub_text_wc, wc_headers, wc_rows_data, common_col_widths)
-
-    # ==========================================================================
-    # SHEET 15: ALL (CONSOLIDATED: SHEETS 1–13 + SHEET 14)
-    # ==========================================================================
-    if is_superadmin:
-        ws_all = wb.create_sheet(title="ALL")
-        all_headers = ["Reg ID", "Name", "AUID", "Institute", "Dept", "AKV_DOMAIN"]
-        all_headers.extend(date_cols)
-        all_headers.extend(["Total Days Present", "Contact No.", "Managed By", "Member Type"])
-
-        all_rows_data = []
-        seen_user_ids = set()
-
-        # 1. Normal Department Participants
-        for p in all_participants:
-            # Check if this user is also a working committee member
-            is_in_wc = any(m.id == p.id for m in wc_members)
-            if not is_in_wc:
-                r_vals, _ = make_dept_row(p, p.volunteer_domain or p.department or "--")
-                r_vals.append("DEPARTMENT")
-                all_rows_data.append(r_vals)
-                seen_user_ids.add(p.id)
-
-        # 2. Working Committee Members
-        for m in wc_members:
-            if m.id not in seen_user_ids:
-                r_vals, _ = make_wc_row(m, m.volunteer_domain or m.department or m.working_committee_role or "Coordinator")
-                r_vals.append("WORKING COMMITTEE")
-                all_rows_data.append(r_vals)
-                seen_user_ids.add(m.id)
-
-        sub_text_all = f"Official Consolidated Attendance Sheet (All Departments + Working Committee) • Generated: {now_ist_str} • Generated By: {current_user.name}"
-        populate_attendance_worksheet(ws_all, "ALL CONSOLIDATED", sub_text_all, all_headers, all_rows_data, common_col_widths)
+    sub_text_all = f"Official Consolidated Attendance Sheet (All Departments + Working Committee) • Generated: {now_ist_str} • Generated By: {current_user.name}"
+    populate_attendance_worksheet(ws_all, "CONSOLIDATED", sub_text_all, all_headers, all_rows_data, common_col_widths)
 
     # Save to BytesIO
     output = io.BytesIO()
