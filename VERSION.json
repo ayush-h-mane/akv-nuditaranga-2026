@@ -1,16 +1,16 @@
 {
-  "production_version": "2.3.23",
-  "staged_version": "2.3.24",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.3.24",
+  "staged_version": "2.3.25",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
-  "pending_changes": [
-    "Fix Vercel Serverless FUNCTION_INVOCATION_TIMEOUT on all login and API endpoints: Guarded on_startup, ensure_schema_migrations, seed_database, and init_superadmin against executing blocking DDL, table inspections, and bcrypt loops on Vercel cold-starts.",
-    "Removed incompatible '-c statement_timeout=15000' startup options from PostgreSQL connect_args, restoring clean connection handshakes with Supabase PgBouncer transaction poolers.",
-    "Optimized developer and superadmin authentication routines to avoid redundant bcrypt password rehashing when credentials already exist.",
-    "Enhanced studentLogin in api.js to use readApiResponse for resilient error parsing."
-  ],
+  "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.24",
+      "released_at": "2026-10-10T11:53:53+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.24: Fix Vercel Serverless FUNCTION_INVOCATION_TIMEOUT on all login and API endpoints: Guarded on_startup, ensure_schema_migrations, seed_database, and init_superadmin against executing blocking DDL, table inspections, and bcrypt loops on Vercel cold-starts.; Removed incompatible '-c statement_timeout=15000' startup options from PostgreSQL connect_args, restoring clean connection handshakes with Supabase PgBouncer transaction poolers.; Optimized developer and superadmin authentication routines to avoid redundant bcrypt password rehashing when credentials already exist.; Enhanced studentLogin in api.js to use readApiResponse for resilient error parsing."
+    },
     {
       "version": "2.3.23",
       "released_at": "2026-10-10T11:19:24+0530",
