@@ -1,11 +1,15 @@
 {
-  "production_version": "2.3.24",
-  "staged_version": "2.3.25",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.3.25",
+  "staged_version": "2.3.26",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
-  "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.25",
+      "released_at": "2026-10-11T00:15:20+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.25: Database Migration Security & RLS Compliance: Configured automatic Row Level Security (RLS) enablement and permission revocation (anon, authenticated) on _schema_migration_version for PostgreSQL in ensure_schema_migrations() to eliminate Supabase PostgREST linter warnings and prevent unauthorized schema metadata exposure."
+    },
     {
       "version": "2.3.24",
       "released_at": "2026-10-10T11:53:53+0530",
