@@ -1449,37 +1449,28 @@ def export_attendance_excel(
     ).all() if dept_user_ids else []
     dept_rec_lookup = {(r.user_id, r.attendance_date): r for r in dept_records}
 
-    # 3. Query Working Committee members & records (SuperAdmin only)
-    is_superadmin = (current_user.role == "SUPERADMIN")
-    wc_members = []
-    wc_rec_lookup = {}
-    if is_superadmin:
-        wc_members_list = get_wc_members_query(db).all()
-        known_wc_ids = {m.id for m in wc_members_list}
-        attended_wc_ids = [r[0] for r in db.query(WorkingCommitteeAttendance.working_committee_member_id).distinct().all()]
-        missing_wc_ids = [uid for uid in attended_wc_ids if uid not in known_wc_ids]
-        if missing_wc_ids:
-            extra_wc = db.query(User).options(
-                defer(User.photo_url),
-                defer(User.password_hash)
-            ).filter(
-                User.id.in_(missing_wc_ids),
-                User.role != "DEVELOPER",
-                User.auid != "DEV-NANU",
-                User.account_status != "DISABLED",
-                or_(
-                    User.is_working_committee == True,
-                    User.role == "WORKING_COMMITTEE",
-                    User.volunteer_domain == "Working Committee"
-                )
-            ).all()
-            wc_members_list.extend(extra_wc)
-        wc_members = sorted(wc_members_list, key=lambda x: (x.name or "").lower())
-        wc_member_ids = [m.id for m in wc_members]
-        wc_records = db.query(WorkingCommitteeAttendance).filter(
-            WorkingCommitteeAttendance.working_committee_member_id.in_(wc_member_ids)
-        ).all() if wc_member_ids else []
-        wc_rec_lookup = {(r.working_committee_member_id, r.attendance_date): r for r in wc_records}
+    # 3. Query Working Committee members & records (SuperAdmin / Developer)
+    wc_members_list = get_wc_members_query(db).all()
+    known_wc_ids = {m.id for m in wc_members_list}
+    attended_wc_ids = [r[0] for r in db.query(WorkingCommitteeAttendance.working_committee_member_id).distinct().all()]
+    missing_wc_ids = [uid for uid in attended_wc_ids if uid not in known_wc_ids]
+    if missing_wc_ids:
+        extra_wc = db.query(User).options(
+            defer(User.photo_url),
+            defer(User.password_hash)
+        ).filter(
+            User.id.in_(missing_wc_ids),
+            User.role != "DEVELOPER",
+            User.auid != "DEV-NANU",
+            User.account_status != "DISABLED"
+        ).all()
+        wc_members_list.extend(extra_wc)
+    wc_members = sorted(wc_members_list, key=lambda x: (x.name or "").lower())
+    wc_member_ids = [m.id for m in wc_members]
+    wc_records = db.query(WorkingCommitteeAttendance).filter(
+        WorkingCommitteeAttendance.working_committee_member_id.in_(wc_member_ids)
+    ).all() if wc_member_ids else []
+    wc_rec_lookup = {(r.working_committee_member_id, r.attendance_date): r for r in wc_records}
 
     # 4. Initialize Workbook
     wb = openpyxl.Workbook()
@@ -1502,43 +1493,6 @@ def export_attendance_excel(
         date_cols.append(f"{dmy} Time In")
         date_cols.append(f"{dmy} Time Out")
 
-    # Helper to build participant row values
-    def make_dept_row(p, role_col_val):
-        days_present = 0
-        date_times = []
-        managed_by_set = set()
-
-        for d in all_dates:
-            rec = dept_rec_lookup.get((p.id, d))
-            time_in_str = format_to_ist_time(rec.check_in_at) if rec and rec.check_in_at else "--"
-            time_out_str = format_to_ist_time(rec.check_out_at) if rec and rec.check_out_at else "--"
-            date_times.append(time_in_str)
-            date_times.append(time_out_str)
-
-            if rec and rec.check_in_at and rec.check_out_at:
-                days_present += 1
-
-            if rec and rec.submitted_by:
-                managed_by_set.add(rec.submitted_by)
-            elif rec and rec.last_modified_by:
-                managed_by_set.add(rec.last_modified_by)
-
-        managed_by_str = ", ".join(list(managed_by_set)) if managed_by_set else (p.managed_by or current_user.name or "AKV Coordinator")
-        row = [
-            p.registration_id or f"AKVNT{p.id:04d}",
-            p.name,
-            (p.auid or "").strip().upper() or "--",
-            p.institute or "Acharya Institute of Technology",
-            p.department or "--",
-            role_col_val
-        ]
-        row.extend(date_times)
-        row.extend([
-            days_present,
-            p.phone or "--",
-            managed_by_str
-        ])
-        return row, days_present
 
     # Helper to build participant row values
     def make_dept_row(p, role_col_val):

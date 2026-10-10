@@ -128,6 +128,8 @@ def update_event(event_id: str, event_update: EventUpdate, db: Session = Depends
     else:
         update_data = event_update.model_dump(exclude_unset=True)
         for key, value in update_data.items():
+            if value is None and key in ["title_kn", "category_kn", "description_kn", "venue_kn", "reporting_time", "rules_en", "rules_kn"]:
+                continue
             setattr(event, key, value)
         db.commit()
         db.refresh(event)
@@ -145,7 +147,7 @@ def update_event(event_id: str, event_update: EventUpdate, db: Session = Depends
         db.add(log)
         db.commit()
     except Exception:
-        db.rollback()
+        pass
 
     return event
 

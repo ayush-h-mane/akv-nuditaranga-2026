@@ -282,8 +282,20 @@ export const RegisterPage = ({
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const [rulesAccepted, setRulesAccepted] = useState(false);
+
   // Final Registration Submission
   const handleSubmit = async () => {
+    if (!rulesAccepted) {
+      showWarning(
+        lang === "kn"
+          ? "ದಯವಿಟ್ಟು ಮುಂದುವರಿಯುವ ಮೊದಲು ಸ್ಪರ್ಧಾ ನಿಯಮಾವಳಿಗಳನ್ನು ಪರಿಶೀಲಿಸಿ ಒಪ್ಪಿಗೆ ಸೂಚಿಸಿ."
+          : "Please review and accept the event rules and regulations before confirming registration.",
+        lang === "kn" ? "ನಿಯಮಾವಳಿಗಳ ಒಪ್ಪಿಗೆ ಅಗತ್ಯ" : "Rules Acceptance Required"
+      );
+      return;
+    }
+
     setSubmitting(true);
     setErrorMessage("");
 
@@ -869,6 +881,58 @@ export const RegisterPage = ({
                 </div>
               )}
 
+              {/* Event Rules & Regulations Display */}
+              {selectedEvent && (
+                <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/80 border border-amber-300 space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-amber-200">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 text-kar-red shrink-0" />
+                      <h4 className="font-extrabold text-stone-900 text-xs sm:text-sm font-kannada">
+                        {lang === "kn" ? "ಸ್ಪರ್ಧಾ ನಿಯಮಾವಳಿಗಳು & ಮಾರ್ಗಸೂಚಿಗಳು" : "Event Rules & Regulations"}
+                      </h4>
+                    </div>
+                    {selectedEvent.reporting_time && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200 text-amber-900">
+                        {lang === "kn" ? `ವರದಿ ಸಮಯ: ${selectedEvent.reporting_time}` : `Reporting: ${selectedEvent.reporting_time}`}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Rules list */}
+                  <div className="space-y-1.5 text-xs text-stone-700 font-kannada max-h-48 overflow-y-auto pr-1">
+                    {(lang === "kn" ? (selectedEvent.rules_kn || selectedEvent.rules_en) : (selectedEvent.rules_en || selectedEvent.rules_kn))
+                      ?.split("\n")
+                      .filter(r => r.trim().length > 0)
+                      .map((rule, idx) => (
+                        <div key={idx} className="flex items-start gap-2 bg-white/80 p-2 rounded-xl border border-amber-100">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                          <span className="leading-relaxed">{rule.trim()}</span>
+                        </div>
+                      )) || (
+                        <p className="text-stone-500 italic text-[11px]">
+                          {lang === "kn" ? "ಸಾಮಾನ್ಯ ಉತ್ಸವ ನಿಯಮಗಳು ಅನ್ವಯಿಸುತ್ತವೆ." : "Standard festival guidelines apply."}
+                        </p>
+                      )}
+                  </div>
+
+                  {/* Rules Agreement Checkbox */}
+                  <label className="flex items-start gap-2.5 pt-2 border-t border-amber-200 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      id="accept-rules-checkbox"
+                      checked={rulesAccepted}
+                      onChange={(e) => setRulesAccepted(e.target.checked)}
+                      className="mt-0.5 w-4 h-4 text-kar-red rounded border-amber-400 focus:ring-kar-red cursor-pointer"
+                    />
+                    <span className="text-xs font-bold text-stone-800 leading-relaxed font-kannada">
+                      {lang === "kn"
+                        ? "ನಾನು ಈ ಸ್ಪರ್ಧೆಯ ಎಲ್ಲಾ ನಿಯಮಾವಳಿಗಳನ್ನು ಓದಿದ್ದೇನೆ ಮತ್ತು ಪಾಲಿಸಲು ಒಪ್ಪಿಕೊಳ್ಳುತ್ತೇನೆ."
+                        : "I have read, understood, and agree to follow all the rules and regulations for this event."}
+                    </span>
+                  </label>
+                </div>
+              )}
+
               {/* Undertaking Declaration */}
               <div className="p-3.5 rounded-xl bg-amber-50/50 border border-amber-200 text-xs text-stone-600 font-kannada flex items-start gap-2">
                 <ShieldCheck className="w-4 h-4 text-kar-red flex-shrink-0 mt-0.5" />
@@ -886,7 +950,7 @@ export const RegisterPage = ({
               <button
                 onClick={handleBack}
                 disabled={submitting}
-                className="px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold text-stone-700 hover:bg-stone-100 transition-colors flex items-center gap-1.5"
+                className="px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold text-stone-700 hover:bg-stone-100 transition-colors flex items-center gap-1.5 cursor-pointer"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span>{t("registration.btnBack")}</span>
@@ -894,8 +958,11 @@ export const RegisterPage = ({
 
               <button
                 onClick={handleSubmit}
-                disabled={submitting}
-                className="px-8 py-3.5 rounded-2xl text-xs sm:text-sm font-black text-white bg-gradient-to-r from-kar-red via-red-600 to-kar-yellow shadow-lg hover:shadow-xl disabled:opacity-50 transition-all flex items-center gap-2"
+                disabled={submitting || !rulesAccepted}
+                className={`px-8 py-3.5 rounded-2xl text-xs sm:text-sm font-black text-white bg-gradient-to-r from-kar-red via-red-600 to-kar-yellow shadow-lg hover:shadow-xl transition-all flex items-center gap-2 cursor-pointer ${
+                  (!rulesAccepted || submitting) ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+                title={!rulesAccepted ? "Please accept the event rules to proceed" : "Confirm and Submit Registration"}
               >
                 {submitting ? (
                   <span>{t("registration.submitting")}</span>

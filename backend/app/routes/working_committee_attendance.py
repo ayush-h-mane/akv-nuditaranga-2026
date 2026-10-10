@@ -103,13 +103,29 @@ def get_wc_members_query(db: Session):
     Returns query for users who are recognized as Working Committee members:
     - User.is_working_committee is True
     - OR User.role == 'WORKING_COMMITTEE'
-    - OR User.volunteer_domain == 'Working Committee'
+    - OR User.admin_type == 'WORKING_COMMITTEE'
+    - OR User.admin_type contains 'working committee'
+    - OR User.volunteer_domain contains 'working committee'
+    - OR User.working_committee_role is not None and != ''
+    - OR User is registered in Admin table with admin_type == 'WORKING_COMMITTEE'
+    - OR User has attendance marked in WorkingCommitteeAttendance
 
     Strictly excludes:
-    - Normal students, participants, and general volunteers not in working committee
     - Developer account ('nanu' / 'DEV-NANU' / User.role == 'DEVELOPER')
     - Disabled accounts
     """
+    wc_admin_ids = [r[0] for r in db.query(Admin.user_id).filter(
+        Admin.admin_type.isnot(None),
+        or_(
+            Admin.admin_type == "WORKING_COMMITTEE",
+            func.lower(Admin.admin_type).like("%working%committee%"),
+            func.lower(Admin.admin_type).like("%committee%"),
+            and_(Admin.admin_type != "FACULTY_COORDINATOR", Admin.admin_type != "SUPERADMIN")
+        )
+    ).all()]
+
+    wc_attended_ids = [r[0] for r in db.query(WorkingCommitteeAttendance.working_committee_member_id).distinct().all()]
+
     return db.query(User).options(
         defer(User.photo_url),
         defer(User.password_hash)
@@ -120,7 +136,17 @@ def get_wc_members_query(db: Session):
         or_(
             User.is_working_committee == True,
             User.role == "WORKING_COMMITTEE",
-            User.volunteer_domain == "Working Committee"
+            User.admin_type == "WORKING_COMMITTEE",
+            func.lower(User.admin_type).like("%working%committee%"),
+            func.lower(User.admin_type).like("%committee%"),
+            func.lower(User.volunteer_domain).like("%working%committee%"),
+            func.lower(User.volunteer_domain).like("%committee%"),
+            func.lower(User.department).like("%working%committee%"),
+            func.lower(User.department).like("%committee%"),
+            and_(User.working_committee_role.isnot(None), User.working_committee_role != ""),
+            and_(User.role == "ADMIN", or_(User.admin_type == None, User.admin_type != "FACULTY_COORDINATOR")),
+            User.id.in_(wc_admin_ids) if wc_admin_ids else False,
+            User.id.in_(wc_attended_ids) if wc_attended_ids else False
         )
     )
 
@@ -206,12 +232,7 @@ def get_working_committee_attendance(
             User.id.in_(missing_roster_uids),
             User.role != "DEVELOPER",
             User.auid != "DEV-NANU",
-            User.account_status != "DISABLED",
-            or_(
-                User.is_working_committee == True,
-                User.role == "WORKING_COMMITTEE",
-                User.volunteer_domain == "Working Committee"
-            )
+            User.account_status != "DISABLED"
         ).all()
         members.extend(extra_roster)
         members.sort(key=lambda x: (x.name or "").lower())
@@ -1206,12 +1227,7 @@ def export_working_committee_excel(
             User.id.in_(missing_ids),
             User.role != "DEVELOPER",
             User.auid != "DEV-NANU",
-            User.account_status != "DISABLED",
-            or_(
-                User.is_working_committee == True,
-                User.role == "WORKING_COMMITTEE",
-                User.volunteer_domain == "Working Committee"
-            )
+            User.account_status != "DISABLED"
         ).all()
         wc_members_list.extend(extra_users)
 

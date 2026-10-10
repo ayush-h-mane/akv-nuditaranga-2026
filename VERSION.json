@@ -1,11 +1,16 @@
 {
-  "production_version": "2.3.20",
-  "staged_version": "2.3.21",
+  "production_version": "2.3.21",
+  "staged_version": "2.3.22",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.21",
+      "released_at": "2026-10-10T09:36:37+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.21: Working Committee Attendance Excel Export Fix: Removed restrictive role filtering on export_attendance_excel in backend/app/routes/attendance.py, ensuring all authorized Superadmins and Developers export the complete 15-sheet workbook with Sheet 14 'WORKING COMMITTEE ATTENDANCE' and Sheet 15 'CONSOLIDATED' fully populated with member details, roles, daily IST Time In & Time Out timestamps, days present, and contact numbers.; Working Committee Roster & Profile Inclusion: Broadened get_wc_members_query in working_committee_attendance.py to recognize all profiles registered as Working Committee (including admin registrations with admin_type != 'FACULTY_COORDINATOR', any user with committee domains or academic departments, is_working_committee=True, working_committee_role, or existing attendance records), guaranteeing all committee profiles appear for attendance marking in the SuperAdmin portal.; SuperAdmin Event Editing & Update Fix: Resolved event saving and persistence failures in the SuperAdmin portal Event Configurations module. Made text fields optional with default empty strings in backend/app/schemas.py (EventBase & EventUpdate) to avoid serialization errors on null values, skipped null assignments to NOT NULL SQLite text columns in backend/app/routes/events.py, decoupled AuditLog errors from rolling back committed events, and invalidated in-memory/inflight event caches upon updates in frontend/src/services/api.js.; Mandatory Event Rules & Regulations Display Prior to Registration: Integrated event rules and guidelines viewing into the registration flow before final confirmation. In frontend/src/pages/RegisterPage.jsx, added bilingual Event Rules & Regulations cards in Step 3 (Review & Confirm) with reporting time and a mandatory agreement checkbox required before submission. In frontend/src/pages/StudentDashboard.jsx, added a dedicated confirmation modal for solo event registrations displaying complete rules, reporting time, and an agreement checkbox, as well as rules display in the team registration modal."
+    },
     {
       "version": "2.3.20",
       "released_at": "2026-10-10T00:42:30+0530",

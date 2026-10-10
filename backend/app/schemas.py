@@ -24,11 +24,11 @@ class TeamMemberSchema(BaseModel):
 class EventBase(BaseModel):
     id: Optional[str] = None
     title_en: str
-    title_kn: str
+    title_kn: Optional[str] = ""
     category: str
-    category_kn: str
-    description_en: str
-    description_kn: str
+    category_kn: Optional[str] = ""
+    description_en: Optional[str] = ""
+    description_kn: Optional[str] = ""
     is_team: bool = False
     format: Optional[str] = "solo"  # solo, team, both
     min_team_size: int = 1
@@ -36,12 +36,12 @@ class EventBase(BaseModel):
     max_slots: int = Field(default=50, ge=0, le=10000)
     registered_count: int = 0
     venue: str
-    venue_kn: str
+    venue_kn: Optional[str] = ""
     event_date: str
     event_time: str
-    reporting_time: str
-    rules_en: str
-    rules_kn: str
+    reporting_time: Optional[str] = "09:00 AM"
+    rules_en: Optional[str] = ""
+    rules_kn: Optional[str] = ""
     is_active: bool = True
 
 class EventCreate(EventBase):
