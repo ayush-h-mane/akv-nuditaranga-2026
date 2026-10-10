@@ -4,13 +4,20 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import GalleryItem
 from ..schemas import GalleryItemOut, GalleryItemCreate, GalleryItemUpdate
+from ..cache import fast_cache
 
 router = APIRouter(prefix="/gallery", tags=["Gallery"])
 
 @router.get("", response_model=List[GalleryItemOut])
 def get_gallery_items(response: Response, db: Session = Depends(get_db)):
     response.headers["Cache-Control"] = "public, max-age=60, s-maxage=300, stale-while-revalidate=600"
-    return db.query(GalleryItem).order_by(GalleryItem.id.desc()).all()
+    cached = fast_cache.get("gallery_items")
+    if cached is not None:
+        return cached
+
+    results = db.query(GalleryItem).order_by(GalleryItem.id.desc()).all()
+    fast_cache.set("gallery_items", results, ttl_seconds=120)
+    return results
 
 @router.get("/{item_id}", response_model=GalleryItemOut)
 def get_gallery_item(item_id: int, response: Response, db: Session = Depends(get_db)):
@@ -34,6 +41,7 @@ def create_gallery_item(item_in: GalleryItemCreate, db: Session = Depends(get_db
     db.add(new_item)
     db.commit()
     db.refresh(new_item)
+    fast_cache.delete("gallery_items")
     return new_item
 
 @router.put("/{item_id}", response_model=GalleryItemOut)
@@ -57,6 +65,7 @@ def update_gallery_item(item_id: int, item_update: GalleryItemUpdate, db: Sessio
     
     db.commit()
     db.refresh(item)
+    fast_cache.delete("gallery_items")
     return item
 
 @router.delete("/{item_id}")
@@ -68,4 +77,5 @@ def delete_gallery_item(item_id: int, db: Session = Depends(get_db)):
     title = item.title_en
     db.delete(item)
     db.commit()
+    fast_cache.delete("gallery_items")
     return {"success": True, "message": f"Gallery item '{title}' deleted successfully"}

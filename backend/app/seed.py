@@ -349,56 +349,64 @@ INITIAL_REELS = [
     }
 ]
 
+_SEEDING_DONE = False
+
 def seed_database():
-    Base.metadata.create_all(bind=engine)
+    global _SEEDING_DONE
+    if _SEEDING_DONE:
+        return
+
+    # Check if database tables already exist before invoking heavy metadata create_all
+    try:
+        from sqlalchemy import inspect
+        inspector = inspect(engine)
+        if not inspector.has_table("events") or not inspector.has_table("users"):
+            Base.metadata.create_all(bind=engine)
+    except Exception:
+        Base.metadata.create_all(bind=engine)
+
     db = SessionLocal()
     try:
-        # Seed events: insert any missing events so all standard events are present in database
-        seeded_new_events = 0
-        for ev in INITIAL_EVENTS:
-            existing = db.query(Event).filter(Event.id == ev["id"]).first()
-            if not existing:
-                db_event = Event(**ev)
-                db.add(db_event)
-                seeded_new_events += 1
-        if seeded_new_events > 0:
+        # Seed events: single batch query for all existing event IDs
+        existing_event_ids = {r[0] for r in db.query(Event.id).all()}
+        missing_events = [ev for ev in INITIAL_EVENTS if ev["id"] not in existing_event_ids]
+        if missing_events:
+            for ev in missing_events:
+                db.add(Event(**ev))
             db.commit()
-            print(f"Seeded {seeded_new_events} missing Nuditaranga 2026 events into database!")
+            print(f"Seeded {len(missing_events)} missing Nuditaranga 2026 events into database!")
 
-        # Seed activities
-        act_count = db.query(Activity).count()
-        if act_count == 0 and len(INITIAL_ACTIVITIES) > 0:
+        # Seed activities using fast presence check
+        has_activities = db.query(Activity.id).first() is not None
+        if not has_activities and len(INITIAL_ACTIVITIES) > 0:
             print(f"Seeding {len(INITIAL_ACTIVITIES)} initial activities...")
             for act in INITIAL_ACTIVITIES:
-                db_act = Activity(**act)
-                db.add(db_act)
+                db.add(Activity(**act))
             db.commit()
             print("Activities successfully seeded!")
 
-        # Seed gallery
-        gal_count = db.query(GalleryItem).count()
-        if gal_count == 0 and len(INITIAL_GALLERY) > 0:
+        # Seed gallery using fast presence check
+        has_gallery = db.query(GalleryItem.id).first() is not None
+        if not has_gallery and len(INITIAL_GALLERY) > 0:
             print(f"Seeding {len(INITIAL_GALLERY)} initial gallery items...")
             for gal in INITIAL_GALLERY:
-                db_gal = GalleryItem(**gal)
-                db.add(db_gal)
+                db.add(GalleryItem(**gal))
             db.commit()
             print("Gallery successfully seeded!")
 
-        # Seed reels
-        reel_count = db.query(SocialPost).count()
-        if reel_count == 0 and len(INITIAL_REELS) > 0:
+        # Seed reels using fast presence check
+        has_reels = db.query(SocialPost.id).first() is not None
+        if not has_reels and len(INITIAL_REELS) > 0:
             print(f"Seeding {len(INITIAL_REELS)} initial reels...")
             for r in INITIAL_REELS:
-                db_reel = SocialPost(**r)
-                db.add(db_reel)
+                db.add(SocialPost(**r))
             db.commit()
             print("Reels successfully seeded!")
             
-        # Seed festival event dates
+        # Seed festival event dates using fast presence check
         from .models import FestivalEventDate
-        dates_count = db.query(FestivalEventDate).count()
-        if dates_count == 0:
+        has_dates = db.query(FestivalEventDate.id).first() is not None
+        if not has_dates:
             initial_dates = [
                 {"date": "2026-09-28", "label": "Day 1 (28/09/2026) - Inauguration & Literary"},
                 {"date": "2026-09-29", "label": "Day 2 (29/09/2026) - Traditional Arts & Rangoli"},
@@ -411,7 +419,8 @@ def seed_database():
                 db.add(FestivalEventDate(**d))
             db.commit()
             print("Festival event dates successfully seeded!")
-            
+
+        _SEEDING_DONE = True
     finally:
         db.close()
 

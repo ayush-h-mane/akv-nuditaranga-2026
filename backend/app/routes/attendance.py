@@ -23,6 +23,7 @@ from ..models import (
 )
 from .working_committee_attendance import get_wc_members_query
 from ..auth_deps import require_admin, require_superadmin, get_current_user
+from ..cache import fast_cache
 from ..utils.timezone import (
     IST,
     get_current_ist_datetime,
@@ -233,6 +234,10 @@ def get_configured_dates(
     """
     Returns list of configured event dates for attendance, plus any dates that have records.
     """
+    cached = fast_cache.get("attendance_config_dates")
+    if cached is not None:
+        return cached
+
     today_ist = get_current_ist_date_str()
     configured = db.query(FestivalEventDate).filter(FestivalEventDate.is_active == True).order_by(FestivalEventDate.date.asc()).all()
     
@@ -278,11 +283,13 @@ def get_configured_dates(
         }
 
     sorted_list = sorted(date_map.values(), key=lambda x: x["date"])
-    return {
+    result = {
         "success": True,
         "current_date": today_ist,
         "dates": sorted_list
     }
+    fast_cache.set("attendance_config_dates", result, ttl_seconds=60)
+    return result
 
 @router.post("/config-dates")
 def add_configured_date(
@@ -299,6 +306,7 @@ def add_configured_date(
     else:
         db.add(FestivalEventDate(date=clean_date, label=payload.label.strip(), is_active=True))
     db.commit()
+    fast_cache.delete("attendance_config_dates")
     return {"success": True, "message": f"Event date {clean_date} configured successfully."}
 
 

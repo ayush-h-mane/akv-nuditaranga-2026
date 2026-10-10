@@ -33,13 +33,14 @@ def get_student_dashboard(
     db: Session = Depends(get_db)
 ):
     # Fetch registered events for this student with eager-loaded event details
+    conds = [Registration.user_id == current_user.id]
+    if current_user.auid:
+        conds.append(Registration.auid == current_user.auid)
+    if current_user.email:
+        conds.append(Registration.email == current_user.email)
+
     registrations = db.query(Registration).options(joinedload(Registration.event)).filter(
-        or_(
-            Registration.user_id == current_user.id,
-            Registration.auid == current_user.auid,
-            func.upper(Registration.auid) == current_user.auid.upper(),
-            func.upper(Registration.email) == current_user.email.upper()
-        )
+        or_(*conds)
     ).order_by(Registration.created_at.desc()).all()
 
     registered_events = []

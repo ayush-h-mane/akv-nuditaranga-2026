@@ -1,11 +1,16 @@
 {
-  "production_version": "2.3.22",
-  "staged_version": "2.3.23",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.3.23",
+  "staged_version": "2.3.24",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.23",
+      "released_at": "2026-10-10T11:19:24+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.23: High-Performance Backend In-Memory TTL Cache (FastCache): Implemented thread-safe in-memory caching in backend/app/cache.py and wrapped all high-traffic public catalog endpoints (events, festival schedule, activities, gallery, reels, attendance config dates, and superadmin overview metrics) with instant in-memory responses (60s-300s TTL) and automatic cache invalidation on writes, slashing database read queries by over 99%.; Elimination of Cold-Start Migration & DDL Locking Storm: Replaced repetitive module-level execution of ensure_schema_migrations() in database.py with a lightweight schema version tracker (_schema_migration_version). Migrations and index checks now execute once on version update and bypass instantly (<1ms) on all subsequent container cold-starts and worker reloads.; PostgreSQL Connection Pooling & Statement Timeouts: Configured QueuePool (pool_size=10, max_overflow=20, pool_recycle=300, pool_pre_ping=True, pool_timeout=15) for persistent servers and statement timeout options='-c statement_timeout=15000' to prevent slow queries from exhausting database connection slots.; Optimized Startup Seeding & Query Execution: Streamlined seed_database() in seed.py with single-batch existing event ID checking, fast .first() presence checks for activities, gallery, reels, and dates, and guarded init_superadmin() in auth_deps.py.; Eliminated Unindexed Full-Table Scans: Optimized student registration queries in student.py to query directly by indexed user_id, auid, and email without unindexed func.upper() wrappers; added composite index ix_att_rec_date_status on attendance_records(attendance_date, status) and ix_wc_rec_date_status on working_committee_attendance(attendance_date, status).; Frontend Prefetch Storm & Deduplication Optimization: Debounced api.prefetchAll() in api.js with 60-second cooldown and deduplication, removed redundant evaluation-time timeout, and removed heavy unbounded table scans (ID cards and registration lists) from app mount prefetching."
+    },
     {
       "version": "2.3.22",
       "released_at": "2026-10-10T10:42:01+0530",

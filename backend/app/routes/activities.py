@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import Activity
 from ..schemas import ActivityOut, ActivityCreate, ActivityUpdate
+from ..cache import fast_cache
 
 router = APIRouter(prefix="/activities", tags=["Activities"])
 
@@ -15,12 +16,20 @@ def get_activities(
     db: Session = Depends(get_db)
 ):
     response.headers["Cache-Control"] = "public, max-age=60, s-maxage=300, stale-while-revalidate=600"
+    
+    cache_key = f"activities_{category}_{active_only}"
+    cached = fast_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     query = db.query(Activity)
     if active_only:
         query = query.filter(Activity.is_active == True)
     if category and category != "all":
         query = query.filter(Activity.category == category)
-    return query.order_by(Activity.id.asc()).all()
+    results = query.order_by(Activity.id.asc()).all()
+    fast_cache.set(cache_key, results, ttl_seconds=120)
+    return results
 
 @router.get("/{activity_id}", response_model=ActivityOut)
 def get_activity(activity_id: int, response: Response, db: Session = Depends(get_db)):
@@ -49,6 +58,7 @@ def create_activity(activity_in: ActivityCreate, db: Session = Depends(get_db)):
     db.add(new_act)
     db.commit()
     db.refresh(new_act)
+    fast_cache.delete_prefix("activities_")
     return new_act
 
 @router.put("/{activity_id}", response_model=ActivityOut)
@@ -82,6 +92,7 @@ def update_activity(activity_id: int, act_update: ActivityUpdate, db: Session = 
     
     db.commit()
     db.refresh(act)
+    fast_cache.delete_prefix("activities_")
     return act
 
 @router.delete("/{activity_id}")
@@ -93,4 +104,5 @@ def delete_activity(activity_id: int, db: Session = Depends(get_db)):
     title = act.title_en
     db.delete(act)
     db.commit()
+    fast_cache.delete_prefix("activities_")
     return {"success": True, "message": f"Activity '{title}' deleted successfully"}

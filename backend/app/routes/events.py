@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import Event, Registration, CheckInLog, AuditLog
 from ..schemas import EventOut, EventCreate, EventUpdate
+from ..cache import fast_cache
 
 router = APIRouter(prefix="/events", tags=["Events"])
 
@@ -18,13 +19,21 @@ def get_events(
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         response.headers["Pragma"] = "no-cache"
     else:
-        response.headers["Cache-Control"] = "public, max-age=5, s-maxage=15, stale-while-revalidate=30"
+        response.headers["Cache-Control"] = "public, max-age=15, s-maxage=60, stale-while-revalidate=120"
+        cache_key = f"events_{category}_{active_only}"
+        cached = fast_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
     query = db.query(Event)
     if active_only:
         query = query.filter(Event.is_active == True)
     if category and category != "all":
         query = query.filter(Event.category == category)
-    return query.all()
+    results = query.all()
+    if active_only:
+        fast_cache.set(f"events_{category}_{active_only}", results, ttl_seconds=60)
+    return results
 
 @router.get("/{event_id}", response_model=EventOut)
 def get_event(event_id: str, response: Response, db: Session = Depends(get_db)):
@@ -87,6 +96,7 @@ def create_event(event_in: EventCreate, db: Session = Depends(get_db)):
     except Exception:
         db.rollback()
 
+    fast_cache.delete_prefix("events_")
     return new_event
 
 @router.put("/{event_id}", response_model=EventOut)
@@ -149,6 +159,7 @@ def update_event(event_id: str, event_update: EventUpdate, db: Session = Depends
     except Exception:
         pass
 
+    fast_cache.delete_prefix("events_")
     return event
 
 @router.delete("/{event_id}")
@@ -180,4 +191,5 @@ def delete_event(event_id: str, db: Session = Depends(get_db)):
 
     db.delete(event)
     db.commit()
+    fast_cache.delete_prefix("events_")
     return {"success": True, "message": f"Event '{event.title_en}' deleted successfully"}
