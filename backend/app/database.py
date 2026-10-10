@@ -116,6 +116,11 @@ def ensure_schema_migrations(target_engine=None):
                     ")"
                 )
                 if eng.dialect.name == "postgresql":
+                    try:
+                        check_conn.exec_driver_sql("ALTER TABLE _schema_migration_version ENABLE ROW LEVEL SECURITY")
+                        check_conn.exec_driver_sql("REVOKE ALL ON TABLE _schema_migration_version FROM anon, authenticated")
+                    except Exception as rls_err:
+                        logger.debug(f"[RLS SETUP NOTICE] {rls_err}")
                     check_conn.commit()
                 row = check_conn.exec_driver_sql("SELECT version FROM _schema_migration_version WHERE id = 1").fetchone()
                 if row and row[0] >= CURRENT_SCHEMA_VERSION:
