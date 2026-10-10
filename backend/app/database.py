@@ -52,8 +52,7 @@ if db_url.startswith("sqlite"):
             cursor.close()
 else:
     connect_args = {
-        "connect_timeout": 5,
-        "options": "-c statement_timeout=15000"
+        "connect_timeout": 10
     }
 
     # In serverless environments or pooled PostgreSQL (Supabase port 6543 / Neon PgBouncer in transaction mode),
@@ -101,6 +100,10 @@ CURRENT_SCHEMA_VERSION = 3
 def ensure_schema_migrations(target_engine=None):
     global _MIGRATIONS_DONE
     if _MIGRATIONS_DONE and not target_engine:
+        return
+    # In Vercel serverless containers, bypass runtime DDL to prevent request invocation timeouts
+    if os.environ.get("VERCEL") and not target_engine:
+        _MIGRATIONS_DONE = True
         return
     eng = target_engine or engine
     try:

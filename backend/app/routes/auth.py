@@ -1094,7 +1094,6 @@ def login_superadmin(payload: AdminLoginRequest, db: Session = Depends(get_db)):
         if not admin_entry or not admin_entry.user or admin_entry.user.role != "SUPERADMIN":
             # Auto-seed authorized superadmin accounts into database if not yet present
             try:
-                ensure_schema_migrations()
                 ensure_authorized_superadmins(db)
             except Exception as seed_err:
                 db.rollback()
