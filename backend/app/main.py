@@ -83,6 +83,11 @@ app.add_middleware(
 # Startup routine
 @app.on_event("startup")
 def on_startup():
+    # In serverless production (Vercel), persistent PostgreSQL schema is already provisioned.
+    # Running blocking DDL migrations, table seeding, and bcrypt loops on cold start blocks HTTP requests
+    # and exceeds Vercel's serverless invocation timeout (FUNCTION_INVOCATION_TIMEOUT).
+    if os.environ.get("VERCEL"):
+        return
     ensure_schema_migrations()
     seed_database()
     init_superadmin()

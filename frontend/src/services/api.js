@@ -415,7 +415,7 @@ export const api = {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ auid: auid.trim(), password })
       });
-      const data = await res.json();
+      const data = await readApiResponse(res);
       if (!res.ok) {
         throw new Error(data.detail || "Invalid credentials.");
       }

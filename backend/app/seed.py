@@ -355,6 +355,9 @@ def seed_database():
     global _SEEDING_DONE
     if _SEEDING_DONE:
         return
+    if os.environ.get("VERCEL"):
+        _SEEDING_DONE = True
+        return
 
     # Check if database tables already exist before invoking heavy metadata create_all
     try:

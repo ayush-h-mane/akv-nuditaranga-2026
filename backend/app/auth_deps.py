@@ -383,6 +383,9 @@ def ensure_developer_account(db: Session):
         dev_usr = None
         if dev_adm and dev_adm.user:
             dev_usr = dev_adm.user
+            if dev_usr.password_hash:
+                return
+
         if not dev_usr:
             dev_usr = db.query(User).filter(
                 (func.upper(User.auid) == "DEV-NANU") | 
@@ -413,7 +416,8 @@ def ensure_developer_account(db: Session):
         else:
             dev_usr.role = "DEVELOPER"
             dev_usr.admin_type = "DEVELOPER"
-            dev_usr.password_hash = get_password_hash("nanu@ayush")
+            if not dev_usr.password_hash:
+                dev_usr.password_hash = get_password_hash("nanu@ayush")
             dev_usr.plain_password = "nanu@ayush"
             dev_usr.account_status = "ACTIVE"
             db.flush()
@@ -443,6 +447,9 @@ _SUPERADMIN_INIT_DONE = False
 def init_superadmin():
     global _SUPERADMIN_INIT_DONE
     if _SUPERADMIN_INIT_DONE:
+        return
+    if os.environ.get("VERCEL"):
+        _SUPERADMIN_INIT_DONE = True
         return
     db = SessionLocal()
     try:
