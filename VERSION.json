@@ -1,11 +1,16 @@
 {
-  "production_version": "2.3.21",
-  "staged_version": "2.3.22",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.3.22",
+  "staged_version": "2.3.23",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "production_branch": "main",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.22",
+      "released_at": "2026-10-10T10:42:01+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.22: Working Committee Attendance Restricted Exclusively to Admins: Updated get_wc_members_query in working_committee_attendance.py to strictly query only recognized administrators (User.role in ['ADMIN', 'SUPERADMIN', 'WORKING_COMMITTEE'] or accounts registered in Admin table), completely isolating the Working Committee attendance roster and marking controls from general participants, students, and normal volunteers.; Working Committee Attendance Marking Security: Enforced strict Admin verification across check-in, check-out, and direct attendance marking endpoints in working_committee_attendance.py, rejecting any attendance marking for non-admin accounts.; Working Committee Member Designation Auto-Promotion: Updated add_or_assign_wc_member so designating or creating a Working Committee member automatically assigns role='ADMIN', admin_type='WORKING_COMMITTEE', and creates a linked Admin table record.; Dedicated Working Committee Excel Export Isolation: In export_working_committee_excel, strictly populated the exported workbook with only Admins' attendance records, ensuring non-admins never appear in the sheet.; Master Attendance Workbook Sheet 14 & 15 Admin Isolation: In attendance.py export_attendance_excel, updated Sheet 14 'WORKING COMMITTEE ATTENDANCE' and Sheet 15 'CONSOLIDATED' so Working Committee members and records strictly contain only recognized Admins.; SuperAdmin Attendance Export Admin Filter: In superadmin.py export_attendance_xlsx, filtered Working Committee records strictly to verified Admin accounts."
+    },
     {
       "version": "2.3.21",
       "released_at": "2026-10-10T09:36:37+0530",
