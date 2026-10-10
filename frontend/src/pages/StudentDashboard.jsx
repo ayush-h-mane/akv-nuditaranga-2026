@@ -47,9 +47,14 @@ export const StudentDashboard = ({ onNavigateHome }) => {
   const [teamName, setTeamName] = useState("");
   const [teamMembers, setTeamMembers] = useState([]);
 
+  // Solo Event Rules & Confirmation Modal State
+  const [soloConfirmEvent, setSoloConfirmEvent] = useState(null);
+  const [soloRulesAccepted, setSoloRulesAccepted] = useState(false);
+
   // Bind modals to browser back button history
   useHistoryModal(Boolean(viewingPassReg), () => setViewingPassReg(null));
   useHistoryModal(Boolean(teamModalEvent), () => setTeamModalEvent(null));
+  useHistoryModal(Boolean(soloConfirmEvent), () => setSoloConfirmEvent(null));
 
   // Change Password State
   const [pwForm, setPwForm] = useState({
@@ -100,7 +105,7 @@ export const StudentDashboard = ({ onNavigateHome }) => {
     loadData();
   }, []);
 
-  // 1-Click Event Registration
+  // Event Registration Flow: Show Rules & Confirmation First
   const handleQuickRegister = async (event) => {
     if (event.is_team || event.format === "team") {
       // Open team modal
@@ -110,19 +115,27 @@ export const StudentDashboard = ({ onNavigateHome }) => {
       return;
     }
 
-    setRegisteringEventId(event.id);
+    // Open rules confirmation modal before registering solo
+    setSoloConfirmEvent(event);
+    setSoloRulesAccepted(false);
+  };
+
+  const handleConfirmSoloRegister = async () => {
+    if (!soloConfirmEvent) return;
+    setRegisteringEventId(soloConfirmEvent.id);
     setActionMessage({ type: "", text: "" });
 
     try {
       const res = await api.studentRegisterEvent({
-        event_id: event.id,
+        event_id: soloConfirmEvent.id,
         is_team: false
       });
 
       confetti({ particleCount: 70, spread: 60, origin: { y: 0.7 } });
-      const successMsg = res.message || `Successfully registered for ${event.title_en}!`;
+      const successMsg = res.message || `Successfully registered for ${soloConfirmEvent.title_en}!`;
       setActionMessage({ type: "success", text: successMsg });
       showSuccess(successMsg, "Registration Confirmed");
+      setSoloConfirmEvent(null);
       await loadData();
     } catch (err) {
       const errorMsg = err.message || "Registration failed.";
@@ -918,6 +931,117 @@ export const StudentDashboard = ({ onNavigateHome }) => {
 
       </div>
 
+      {/* Solo Event Rules & Confirmation Modal */}
+      {soloConfirmEvent && (
+        <div 
+          role="dialog" 
+          aria-modal="true" 
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-sm animate-fade-in overflow-y-auto"
+          onClick={() => setSoloConfirmEvent(null)}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-lg w-[92%] sm:w-full p-4 sm:p-6 border border-stone-200 shadow-2xl my-auto max-h-[85dvh] sm:max-h-[90vh] flex flex-col text-left"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between border-b border-stone-100 pb-3 mb-4 shrink-0">
+              <div>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 mb-1">
+                  {soloConfirmEvent.category?.toUpperCase()}
+                </span>
+                <h3 className="font-extrabold text-base text-stone-900">
+                  {soloConfirmEvent.title_en}
+                </h3>
+                {soloConfirmEvent.title_kn && (
+                  <p className="text-xs text-amber-900 font-bold font-kannada">{soloConfirmEvent.title_kn}</p>
+                )}
+              </div>
+              <button 
+                onClick={() => setSoloConfirmEvent(null)}
+                className="p-1 rounded-lg hover:bg-stone-100 text-stone-500 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 overflow-y-auto flex-1 pr-1 text-xs">
+              {/* Event Timing & Venue */}
+              <div className="grid grid-cols-2 gap-2 p-3 bg-amber-50/60 rounded-2xl border border-amber-200 text-xs">
+                <div>
+                  <span className="text-stone-500 block font-medium">Date & Time:</span>
+                  <span className="font-bold text-stone-900">{soloConfirmEvent.event_date} ({soloConfirmEvent.event_time})</span>
+                </div>
+                <div>
+                  <span className="text-stone-500 block font-medium">Venue:</span>
+                  <span className="font-bold text-stone-900">{soloConfirmEvent.venue}</span>
+                </div>
+                {soloConfirmEvent.reporting_time && (
+                  <div className="col-span-2 pt-1 border-t border-amber-200/60">
+                    <span className="text-stone-500 font-medium">Reporting Time: </span>
+                    <span className="font-bold text-amber-900">{soloConfirmEvent.reporting_time}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Rules & Regulations */}
+              <div className="p-3.5 bg-stone-50 rounded-2xl border border-stone-200 space-y-2">
+                <div className="flex items-center gap-1.5 font-bold text-stone-900 text-xs">
+                  <AlertCircle className="w-4 h-4 text-kar-red" />
+                  <span>Rules & Guidelines / ನಿಯಮಾವಳಿಗಳು</span>
+                </div>
+                <div className="max-h-44 overflow-y-auto space-y-1.5 pr-1 text-[11px] font-kannada text-stone-700">
+                  {(soloConfirmEvent.rules_kn || soloConfirmEvent.rules_en || "Standard festival event guidelines apply.")
+                    .split("\n")
+                    .filter(r => r.trim().length > 0)
+                    .map((rule, idx) => (
+                      <div key={idx} className="flex items-start gap-2 bg-white p-2 rounded-xl border border-stone-100">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                        <span className="leading-relaxed">{rule.trim()}</span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+
+              {/* Agreement Checkbox */}
+              <label className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50 border border-amber-300 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={soloRulesAccepted}
+                  onChange={(e) => setSoloRulesAccepted(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 text-kar-red rounded border-amber-400 focus:ring-kar-red cursor-pointer"
+                />
+                <span className="text-xs font-bold text-stone-800 leading-snug font-kannada">
+                  ನಾನು ಈ ಸ್ಪರ್ಧೆಯ ಎಲ್ಲಾ ನಿಯಮಾವಳಿಗಳನ್ನು ಓದಿದ್ದೇನೆ ಮತ್ತು ಪಾಲಿಸಲು ಒಪ್ಪಿಕೊಳ್ಳುತ್ತೇನೆ (I agree to abide by the event rules).
+                </span>
+              </label>
+
+              {/* Actions */}
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setSoloConfirmEvent(null)}
+                  className="flex-1 py-2.5 rounded-xl border border-stone-300 text-xs font-bold text-stone-700 hover:bg-stone-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmSoloRegister}
+                  disabled={!soloRulesAccepted || registeringEventId === soloConfirmEvent.id}
+                  className={`flex-1 py-2.5 rounded-xl text-white text-xs font-extrabold shadow-sm transition-all ${
+                    soloRulesAccepted && registeringEventId !== soloConfirmEvent.id
+                      ? "bg-gradient-to-r from-kar-red to-red-600 hover:shadow-md cursor-pointer"
+                      : "bg-stone-300 cursor-not-allowed opacity-60"
+                  }`}
+                >
+                  {registeringEventId === soloConfirmEvent.id ? "Registering..." : "Confirm Registration"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Team Registration Modal */}
       {teamModalEvent && (
         <div 
@@ -968,7 +1092,7 @@ export const StudentDashboard = ({ onNavigateHome }) => {
                   <button
                     type="button"
                     onClick={handleAddMember}
-                    className="text-xs font-bold text-kar-red flex items-center gap-1 hover:underline"
+                    className="text-xs font-bold text-kar-red flex items-center gap-1 hover:underline cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>Add Member</span>
@@ -999,7 +1123,7 @@ export const StudentDashboard = ({ onNavigateHome }) => {
                         <button
                           type="button"
                           onClick={() => handleRemoveMember(idx)}
-                          className="p-1.5 text-stone-400 hover:text-red-600"
+                          className="p-1.5 text-stone-400 hover:text-red-600 cursor-pointer"
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -1007,6 +1131,32 @@ export const StudentDashboard = ({ onNavigateHome }) => {
                     ))}
                   </div>
                 )}
+              </div>
+
+              {/* Event Rules & Guidelines Card */}
+              <div className="p-3 bg-amber-50/70 rounded-2xl border border-amber-200 text-xs text-stone-700 space-y-1.5">
+                <div className="flex items-center justify-between pb-1 border-b border-amber-200">
+                  <div className="flex items-center gap-1.5 font-bold text-stone-900 text-xs">
+                    <AlertCircle className="w-3.5 h-3.5 text-kar-red" />
+                    <span>Event Rules & Guidelines</span>
+                  </div>
+                  {teamModalEvent.reporting_time && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200 text-amber-900">
+                      Reporting: {teamModalEvent.reporting_time}
+                    </span>
+                  )}
+                </div>
+                <div className="max-h-28 overflow-y-auto space-y-1 pr-1 text-[11px] font-kannada">
+                  {(teamModalEvent.rules_kn || teamModalEvent.rules_en || "Standard festival event guidelines apply.")
+                    .split("\n")
+                    .filter(r => r.trim().length > 0)
+                    .map((rule, idx) => (
+                      <div key={idx} className="flex items-start gap-1.5 bg-white/70 p-1.5 rounded-lg border border-amber-100">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0 mt-0.5" />
+                        <span className="leading-snug">{rule.trim()}</span>
+                      </div>
+                    ))}
+                </div>
               </div>
 
               <div className="p-3 bg-amber-50 rounded-xl text-[11px] text-amber-900 border border-amber-200">
@@ -1017,14 +1167,14 @@ export const StudentDashboard = ({ onNavigateHome }) => {
                 <button
                   type="button"
                   onClick={() => setTeamModalEvent(null)}
-                  className="flex-1 py-2.5 rounded-xl border border-stone-300 text-xs font-bold text-stone-700"
+                  className="flex-1 py-2.5 rounded-xl border border-stone-300 text-xs font-bold text-stone-700 cursor-pointer hover:bg-stone-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={registeringEventId === teamModalEvent.id}
-                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-kar-red to-red-600 text-white text-xs font-extrabold shadow-sm"
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-kar-red to-red-600 text-white text-xs font-extrabold shadow-sm cursor-pointer"
                 >
                   {registeringEventId === teamModalEvent.id ? "Registering..." : "Confirm Team Registration"}
                 </button>

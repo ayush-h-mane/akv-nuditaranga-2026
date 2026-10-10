@@ -2581,7 +2581,14 @@ export const api = {
           const data = await res.json();
           if (Array.isArray(data)) {
             saveLocalEvents(data);
-            return this.getCachedEvents(category, activeOnly);
+            let result = [...data];
+            if (activeOnly) {
+              result = result.filter(e => e.is_active !== false);
+            }
+            if (category && category !== "all") {
+              result = result.filter(e => e.category === category);
+            }
+            return result;
           }
         }
       } catch (err) {
@@ -2683,6 +2690,7 @@ export const api = {
       list.push(finalEvent);
     }
     saveLocalEvents(list);
+    memCache.delete("events");
     inflightRequests.delete("events_all");
     for (const k of inflightRequests.keys()) {
       if (k.startsWith("events_")) inflightRequests.delete(k);
