@@ -26,6 +26,8 @@ const API_BASE_URL = (() => {
 // High-speed In-Memory & LocalStorage Cache with Stale-While-Revalidate
 const memCache = new Map();
 const inflightRequests = new Map();
+let lastPrefetchTime = 0;
+let prefetchPromise = null;
 
 function getFromMemCache(key, maxAgeMs = 60000) {
   if (!memCache.has(key)) return null;
@@ -3299,27 +3301,34 @@ export const api = {
 
   prefetchAll(user = null) {
     try {
+      const now = Date.now();
+      // Enforce 60-second debounce and deduplication so rapid mounts don't hammer the database
+      if (now - lastPrefetchTime < 60000 && prefetchPromise) {
+        return prefetchPromise;
+      }
+      lastPrefetchTime = now;
+
       const tasks = [
         this.getEvents("all", false).catch(() => {}),
         this.getFestivalSchedule().catch(() => {}),
         this.getActivities("all", false).catch(() => {}),
         this.getGallery("all").catch(() => {}),
-        this.getReels("all").catch(() => {}),
-        this.getAttendanceConfigDates().catch(() => {})
+        this.getReels("all").catch(() => {})
       ];
+      if (user && (user.role === "ADMIN" || user.role === "SUPERADMIN")) {
+        tasks.push(
+          this.getAttendanceConfigDates().catch(() => {})
+        );
+      }
       if (user && user.role === "SUPERADMIN") {
         tasks.push(
-          this.getSuperAdminStats().catch(() => {}),
-          this.listAdmins().catch(() => {}),
-          this.listAllVolunteers().catch(() => {}),
-          this.listStudents({ limit: 100 }).catch(() => {}),
-          this.getSuperAdminIdCards().catch(() => {}),
-          this.listRegistrations().catch(() => {})
+          this.getSuperAdminStats().catch(() => {})
         );
       } else if (user && user.role !== "ADMIN") {
         tasks.push(this.getStudentDashboard().catch(() => {}));
       }
-      Promise.allSettled(tasks);
+      prefetchPromise = Promise.allSettled(tasks);
+      return prefetchPromise;
     } catch (e) {
       console.warn("Prefetch warning:", e);
     }
@@ -3420,14 +3429,4 @@ export const api = {
   }
 };
 
-// Eager non-blocking background prefetch right upon script evaluation
-if (typeof window !== "undefined") {
-  setTimeout(() => {
-    try {
-      const rawUser = localStorage.getItem("akv_user");
-      const user = rawUser ? JSON.parse(rawUser) : null;
-      api.prefetchAll(user);
-    } catch {}
-  }, 20);
-}
 

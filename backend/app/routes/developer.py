@@ -11,6 +11,7 @@ from ..models import (
     AttendanceRecord, WorkingCommitteeAttendance, AuditLog
 )
 from ..auth_deps import require_developer, get_password_hash
+from ..cache import fast_cache
 
 router = APIRouter(prefix="/developer", tags=["Developer Console"])
 
@@ -348,6 +349,7 @@ def get_system_health(
 def flush_developer_cache(
     current_user: User = Depends(require_developer)
 ):
+    fast_cache.clear()
     return {
         "success": True,
         "message": "In-memory cache invalidated across all application nodes.",

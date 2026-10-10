@@ -51,7 +51,10 @@ if db_url.startswith("sqlite"):
         finally:
             cursor.close()
 else:
-    connect_args = {"connect_timeout": 10}
+    connect_args = {
+        "connect_timeout": 5,
+        "options": "-c statement_timeout=15000"
+    }
 
     # In serverless environments or pooled PostgreSQL (Supabase port 6543 / Neon PgBouncer in transaction mode),
     # psycopg 3's automatic prepared statement caching causes:
@@ -64,20 +67,36 @@ else:
         except ImportError:
             pass
 
-    # Optimized PostgreSQL settings: NullPool prevents connection leaks in serverless/PgBouncer,
-    # and pre-ping ensures healthy connections before executing queries.
-    engine = create_engine(
-        db_url,
-        poolclass=NullPool,
-        pool_pre_ping=True,
-        connect_args=connect_args
-    )
+    # Connection pooling strategy:
+    # On Vercel serverless, NullPool prevents idle connection accumulation across frozen containers.
+    # On persistent servers (Uvicorn / Docker / VPS), QueuePool maintains and reuses active connections.
+    if os.environ.get("VERCEL"):
+        from sqlalchemy.pool import NullPool
+        engine = create_engine(
+            db_url,
+            poolclass=NullPool,
+            pool_pre_ping=True,
+            connect_args=connect_args
+        )
+    else:
+        from sqlalchemy.pool import QueuePool
+        engine = create_engine(
+            db_url,
+            poolclass=QueuePool,
+            pool_size=10,
+            max_overflow=20,
+            pool_recycle=300,
+            pool_pre_ping=True,
+            pool_timeout=15,
+            connect_args=connect_args
+        )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, expire_on_commit=False, bind=engine)
 
 Base = declarative_base()
 
 _MIGRATIONS_DONE = False
+CURRENT_SCHEMA_VERSION = 3
 
 def ensure_schema_migrations(target_engine=None):
     global _MIGRATIONS_DONE
@@ -85,6 +104,23 @@ def ensure_schema_migrations(target_engine=None):
         return
     eng = target_engine or engine
     try:
+        # Fast-path check: if target migration version has already been applied, skip all DDL immediately!
+        try:
+            with eng.connect() as check_conn:
+                check_conn.exec_driver_sql(
+                    "CREATE TABLE IF NOT EXISTS _schema_migration_version ("
+                    "id INTEGER PRIMARY KEY, version INTEGER NOT NULL, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+                    ")"
+                )
+                if eng.dialect.name == "postgresql":
+                    check_conn.commit()
+                row = check_conn.exec_driver_sql("SELECT version FROM _schema_migration_version WHERE id = 1").fetchone()
+                if row and row[0] >= CURRENT_SCHEMA_VERSION:
+                    _MIGRATIONS_DONE = True
+                    return
+        except Exception as ver_check_err:
+            logger.debug(f"[SCHEMA VERSION CHECK NOTICE] {ver_check_err}")
+
         if eng.dialect.name == "sqlite":
             with eng.connect() as conn:
                 # 1. registrations table
@@ -146,8 +182,11 @@ def ensure_schema_migrations(target_engine=None):
                 # High performance indexes for SQLite
                 perf_indexes = [
                     "CREATE INDEX IF NOT EXISTS ix_attendance_date_user ON attendance_records(attendance_date, user_id)",
+                    "CREATE INDEX IF NOT EXISTS ix_att_rec_date_status ON attendance_records(attendance_date, status)",
                     "CREATE INDEX IF NOT EXISTS ix_wc_attendance_date_user ON working_committee_attendance(attendance_date, working_committee_member_id)",
+                    "CREATE INDEX IF NOT EXISTS ix_wc_rec_date_status ON working_committee_attendance(attendance_date, status)",
                     "CREATE INDEX IF NOT EXISTS ix_registrations_user_id ON registrations(user_id)",
+                    "CREATE INDEX IF NOT EXISTS ix_registrations_user_created ON registrations(user_id, created_at)",
                     "CREATE INDEX IF NOT EXISTS ix_registrations_event_id ON registrations(event_id)",
                     "CREATE INDEX IF NOT EXISTS ix_users_role_status ON users(role, account_status)",
                     "CREATE INDEX IF NOT EXISTS ix_vol_att_date_user ON volunteer_attendance(date, user_id)",
@@ -253,8 +292,11 @@ def ensure_schema_migrations(target_engine=None):
                 # High performance composite and search indexes for PostgreSQL
                 for pg_idx_sql in [
                     "CREATE INDEX IF NOT EXISTS ix_attendance_date_user ON attendance_records(attendance_date, user_id)",
+                    "CREATE INDEX IF NOT EXISTS ix_att_rec_date_status ON attendance_records(attendance_date, status)",
                     "CREATE INDEX IF NOT EXISTS ix_wc_attendance_date_user ON working_committee_attendance(attendance_date, working_committee_member_id)",
+                    "CREATE INDEX IF NOT EXISTS ix_wc_rec_date_status ON working_committee_attendance(attendance_date, status)",
                     "CREATE INDEX IF NOT EXISTS ix_registrations_user_id ON registrations(user_id)",
+                    "CREATE INDEX IF NOT EXISTS ix_registrations_user_created ON registrations(user_id, created_at)",
                     "CREATE INDEX IF NOT EXISTS ix_registrations_event_id ON registrations(event_id)",
                     "CREATE INDEX IF NOT EXISTS ix_users_role_status ON users(role, account_status)",
                     "CREATE INDEX IF NOT EXISTS ix_vol_att_date_user ON volunteer_attendance(date, user_id)",
@@ -311,12 +353,32 @@ def ensure_schema_migrations(target_engine=None):
         except Exception as cleanup_err:
             print(f"[CLEANUP NOTICE] {cleanup_err}")
 
+        # Record migration version completion so future boots are instantaneous
+        try:
+            with eng.connect() as conn:
+                if eng.dialect.name == "postgresql":
+                    conn.exec_driver_sql(
+                        "INSERT INTO _schema_migration_version (id, version, updated_at) "
+                        "VALUES (1, :v, CURRENT_TIMESTAMP) "
+                        "ON CONFLICT (id) DO UPDATE SET version = :v, updated_at = CURRENT_TIMESTAMP",
+                        {"v": CURRENT_SCHEMA_VERSION}
+                    )
+                    conn.commit()
+                else:
+                    conn.exec_driver_sql(
+                        "INSERT OR REPLACE INTO _schema_migration_version (id, version, updated_at) "
+                        "VALUES (1, ?, CURRENT_TIMESTAMP)",
+                        (CURRENT_SCHEMA_VERSION,)
+                    )
+                    conn.commit()
+        except Exception as ver_write_err:
+            print(f"[SCHEMA VERSION WRITE NOTICE] {ver_write_err}")
+
         _MIGRATIONS_DONE = True
     except Exception as e:
         print(f"[MIGRATION NOTICE] {e}")
 
-# Run schema migrations automatically on engine initialization
-ensure_schema_migrations()
+# Migrations are safely executed during FastAPI on_startup, not at module import time.
 
 def get_db():
     db = SessionLocal()

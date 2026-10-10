@@ -7,8 +7,11 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import KarunadaScheduleDay
 from ..auth_deps import require_superadmin
+from ..cache import fast_cache
 
 router = APIRouter(prefix="/festival-schedule", tags=["Festival Schedule"])
+
+_SCHEDULE_INITIALIZED = False
 
 DEFAULT_SCHEDULE = [
     {
@@ -108,8 +111,12 @@ def _serialize_day(row: KarunadaScheduleDay) -> dict:
 
 
 def ensure_default_schedule(db: Session):
-    count = db.query(KarunadaScheduleDay).count()
-    if count > 0:
+    global _SCHEDULE_INITIALIZED
+    if _SCHEDULE_INITIALIZED:
+        return
+    has_rows = db.query(KarunadaScheduleDay.id).first() is not None
+    if has_rows:
+        _SCHEDULE_INITIALIZED = True
         return
     for item in DEFAULT_SCHEDULE:
         db.add(KarunadaScheduleDay(
@@ -132,6 +139,7 @@ def ensure_default_schedule(db: Session):
             is_active=True,
         ))
     db.commit()
+    _SCHEDULE_INITIALIZED = True
 
 
 class ScheduleDayUpdate(BaseModel):
@@ -162,6 +170,11 @@ class ScheduleBulkUpdate(BaseModel):
 @router.get("")
 def get_festival_schedule(response: Response, db: Session = Depends(get_db)):
     response.headers["Cache-Control"] = "public, max-age=60, s-maxage=300, stale-while-revalidate=600"
+    
+    cached = fast_cache.get("festival_schedule")
+    if cached is not None:
+        return cached
+
     ensure_default_schedule(db)
     rows = (
         db.query(KarunadaScheduleDay)
@@ -169,7 +182,9 @@ def get_festival_schedule(response: Response, db: Session = Depends(get_db)):
         .order_by(KarunadaScheduleDay.sort_order.asc())
         .all()
     )
-    return {"success": True, "schedule": [_serialize_day(r) for r in rows]}
+    result = {"success": True, "schedule": [_serialize_day(r) for r in rows]}
+    fast_cache.set("festival_schedule", result, ttl_seconds=300)
+    return result
 
 
 @router.put("")
@@ -216,14 +231,17 @@ def update_festival_schedule(
             stale.is_active = False
 
     db.commit()
+    fast_cache.delete("festival_schedule")
     rows = (
         db.query(KarunadaScheduleDay)
         .filter(KarunadaScheduleDay.is_active == True)
         .order_by(KarunadaScheduleDay.sort_order.asc())
         .all()
     )
-    return {
+    result = {
         "success": True,
         "message": "Karunada Vaibhava schedule updated successfully.",
         "schedule": [_serialize_day(r) for r in rows],
     }
+    fast_cache.set("festival_schedule", result, ttl_seconds=300)
+    return result

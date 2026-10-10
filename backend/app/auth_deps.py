@@ -438,11 +438,17 @@ def ensure_developer_account(db: Session):
         db.rollback()
         print(f"[DEVELOPER ACCOUNT SEED ERROR] {e}")
 
+_SUPERADMIN_INIT_DONE = False
+
 def init_superadmin():
+    global _SUPERADMIN_INIT_DONE
+    if _SUPERADMIN_INIT_DONE:
+        return
     db = SessionLocal()
     try:
         ensure_authorized_superadmins(db)
         ensure_developer_account(db)
+        _SUPERADMIN_INIT_DONE = True
     except Exception as e:
         print(f"[SUPERADMIN AUTO-SEED NOTICE] {e}")
     finally:

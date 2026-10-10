@@ -17,6 +17,7 @@ from ..schemas import RegistrationCreate, RegistrationOut, SuperAdminRegistratio
 from ..routes.registrations import generate_unique_reg_id
 from ..services.email_service import send_admin_approval_email, send_profile_edit_reopened_email
 from ..services.id_card_service import generate_candidate_id_card_pdf
+from ..cache import fast_cache
 
 router = APIRouter(prefix="/superadmin", tags=["Super Admin"])
 
@@ -51,6 +52,9 @@ def get_superadmin_stats(
     current_user: User = Depends(require_superadmin),
     db: Session = Depends(get_db)
 ):
+    cached_stats = fast_cache.get("superadmin_stats")
+    if cached_stats is not None:
+        return cached_stats
     role_counts = dict(
         db.query(User.role, func.count(User.id))
         .filter(User.role.in_(["STUDENT", "VOLUNTEER", "PARTICIPANT"]))
@@ -89,7 +93,7 @@ def get_superadmin_stats(
         today_present = max(today_present, official_today_present)
         today_absent = max(0, total_volunteers - today_present)
 
-    return {
+    result = {
         "success": True,
         "metrics": {
             "total_students": total_students,
@@ -107,6 +111,8 @@ def get_superadmin_stats(
             }
         }
     }
+    fast_cache.set("superadmin_stats", result, ttl_seconds=15)
+    return result
 
 # ==========================================
 # 2. STUDENT MANAGEMENT (CRUD)
