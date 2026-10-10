@@ -1019,7 +1019,15 @@ def export_attendance_xlsx(
     wc_query = db.query(WorkingCommitteeAttendance).options(joinedload(WorkingCommitteeAttendance.user))
     if date and date != "all":
         wc_query = wc_query.filter(WorkingCommitteeAttendance.attendance_date == date)
-    wc_records = wc_query.order_by(WorkingCommitteeAttendance.attendance_date.desc()).all()
+    raw_wc_records = wc_query.order_by(WorkingCommitteeAttendance.attendance_date.desc()).all()
+    admin_uids = [r[0] for r in db.query(Admin.user_id).filter(Admin.user_id.isnot(None)).all()]
+    wc_records = [
+        r for r in raw_wc_records
+        if r.user and (
+            r.user.role in ("ADMIN", "SUPERADMIN", "WORKING_COMMITTEE") or
+            r.user.id in admin_uids
+        ) and r.user.role != "DEVELOPER" and r.user.auid != "DEV-NANU" and r.user.account_status != "DISABLED"
+    ]
     wc_records.sort(key=lambda x: (x.user.name if x.user else ""))
     wc_records.sort(key=lambda x: x.attendance_date or "", reverse=True)
 

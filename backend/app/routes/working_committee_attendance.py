@@ -100,31 +100,18 @@ class UpdateWCMemberRequest(BaseModel):
 # Helper to query all Working Committee member users
 def get_wc_members_query(db: Session):
     """
-    Returns query for users who are recognized as Working Committee members:
-    - User.is_working_committee is True
-    - OR User.role == 'WORKING_COMMITTEE'
-    - OR User.admin_type == 'WORKING_COMMITTEE'
-    - OR User.admin_type contains 'working committee'
-    - OR User.volunteer_domain contains 'working committee'
-    - OR User.working_committee_role is not None and != ''
-    - OR User is registered in Admin table with admin_type == 'WORKING_COMMITTEE'
-    - OR User has attendance marked in WorkingCommitteeAttendance
+    Returns query for users who are recognized as Working Committee members.
+    STRICT REQUIREMENT: Only administrators are included in Working Committee attendance:
+    - User.role in ('ADMIN', 'SUPERADMIN', 'WORKING_COMMITTEE')
+    - OR User is registered in Admin table (Admin.user_id)
+    - OR (User.is_working_committee is True and role not in ('PARTICIPANT', 'STUDENT', 'VOLUNTEER'))
 
     Strictly excludes:
     - Developer account ('nanu' / 'DEV-NANU' / User.role == 'DEVELOPER')
     - Disabled accounts
+    - Non-admin participants, general students, volunteers
     """
-    wc_admin_ids = [r[0] for r in db.query(Admin.user_id).filter(
-        Admin.admin_type.isnot(None),
-        or_(
-            Admin.admin_type == "WORKING_COMMITTEE",
-            func.lower(Admin.admin_type).like("%working%committee%"),
-            func.lower(Admin.admin_type).like("%committee%"),
-            and_(Admin.admin_type != "FACULTY_COORDINATOR", Admin.admin_type != "SUPERADMIN")
-        )
-    ).all()]
-
-    wc_attended_ids = [r[0] for r in db.query(WorkingCommitteeAttendance.working_committee_member_id).distinct().all()]
+    admin_uids = [r[0] for r in db.query(Admin.user_id).filter(Admin.user_id.isnot(None)).all()]
 
     return db.query(User).options(
         defer(User.photo_url),
@@ -134,21 +121,15 @@ def get_wc_members_query(db: Session):
         User.auid != "DEV-NANU",
         User.account_status != "DISABLED",
         or_(
-            User.is_working_committee == True,
-            User.role == "WORKING_COMMITTEE",
-            User.admin_type == "WORKING_COMMITTEE",
-            func.lower(User.admin_type).like("%working%committee%"),
-            func.lower(User.admin_type).like("%committee%"),
-            func.lower(User.volunteer_domain).like("%working%committee%"),
-            func.lower(User.volunteer_domain).like("%committee%"),
-            func.lower(User.department).like("%working%committee%"),
-            func.lower(User.department).like("%committee%"),
-            and_(User.working_committee_role.isnot(None), User.working_committee_role != ""),
-            and_(User.role == "ADMIN", or_(User.admin_type == None, User.admin_type != "FACULTY_COORDINATOR")),
-            User.id.in_(wc_admin_ids) if wc_admin_ids else False,
-            User.id.in_(wc_attended_ids) if wc_attended_ids else False
+            User.role.in_(["ADMIN", "SUPERADMIN", "WORKING_COMMITTEE"]),
+            User.id.in_(admin_uids) if admin_uids else False,
+            and_(
+                User.is_working_committee == True,
+                User.role.notin_(["PARTICIPANT", "STUDENT", "VOLUNTEER"])
+            )
         )
     )
+
 
 ATTENDANCE_DEADLINE_END_DATE = "2026-11-05"  # Active till 5/11/2026, then disabled
 
@@ -219,12 +200,13 @@ def get_working_committee_attendance(
     members = member_query.order_by(User.name.asc()).all()
     member_ids = {m.id for m in members}
 
-    # Ensure any member who already has an attendance record for this date is also included
+    # Ensure any admin member who already has an attendance record for this date is also included
     date_attended_uids = [r[0] for r in db.query(WorkingCommitteeAttendance.working_committee_member_id).filter(
         WorkingCommitteeAttendance.attendance_date == target_date
     ).distinct().all()]
     missing_roster_uids = [uid for uid in date_attended_uids if uid not in member_ids]
     if missing_roster_uids:
+        admin_uids = [r[0] for r in db.query(Admin.user_id).filter(Admin.user_id.isnot(None)).all()]
         extra_roster = db.query(User).options(
             defer(User.photo_url),
             defer(User.password_hash)
@@ -232,11 +214,16 @@ def get_working_committee_attendance(
             User.id.in_(missing_roster_uids),
             User.role != "DEVELOPER",
             User.auid != "DEV-NANU",
-            User.account_status != "DISABLED"
+            User.account_status != "DISABLED",
+            or_(
+                User.role.in_(["ADMIN", "SUPERADMIN", "WORKING_COMMITTEE"]),
+                User.id.in_(admin_uids) if admin_uids else False
+            )
         ).all()
-        members.extend(extra_roster)
-        members.sort(key=lambda x: (x.name or "").lower())
-        member_ids = {m.id for m in members}
+        if extra_roster:
+            members.extend(extra_roster)
+            members.sort(key=lambda x: (x.name or "").lower())
+            member_ids = {m.id for m in members}
 
     # 3. Query existing Working Committee attendance records for this date
     records = db.query(WorkingCommitteeAttendance).filter(
@@ -299,7 +286,7 @@ def get_working_committee_attendance(
             "auid": m.auid,
             "institute": m.institute,
             "department": m.department,
-            "role": m.working_committee_role or "Coordinator",
+            "role": m.working_committee_role or (m.admin_type if m.admin_type else ("Super Admin" if m.role == "SUPERADMIN" else "Admin")) or "Coordinator",
             "contact": m.phone,
             "managed_by": m.managed_by or "Super Admin",
             "photo_url": m.photo_url,
@@ -378,6 +365,10 @@ def mark_wc_attendance(
     user = db.query(User).filter(User.id == target_uid).first()
     if not user:
         raise HTTPException(status_code=404, detail="Working Committee member not found")
+
+    admin_uids = [r[0] for r in db.query(Admin.user_id).filter(Admin.user_id.isnot(None)).all()]
+    if not (user.role in ["ADMIN", "SUPERADMIN", "WORKING_COMMITTEE"] or user.id in admin_uids or user.is_working_committee):
+        raise HTTPException(status_code=400, detail="Only Admins are eligible for Working Committee attendance marking.")
 
     now_utc = get_current_utc_datetime()
 
@@ -463,6 +454,10 @@ def mark_wc_check_in(
     user = db.query(User).filter(User.id == target_uid).first()
     if not user:
         raise HTTPException(status_code=404, detail="Working Committee member not found")
+
+    admin_uids = [r[0] for r in db.query(Admin.user_id).filter(Admin.user_id.isnot(None)).all()]
+    if not (user.role in ["ADMIN", "SUPERADMIN", "WORKING_COMMITTEE"] or user.id in admin_uids or user.is_working_committee):
+        raise HTTPException(status_code=400, detail="Only Admins are eligible for Working Committee check-in.")
 
     now_utc = get_current_utc_datetime()
 
@@ -550,6 +545,10 @@ def mark_wc_check_out(
     user = db.query(User).filter(User.id == target_uid).first()
     if not user:
         raise HTTPException(status_code=404, detail="Working Committee member not found")
+
+    admin_uids = [r[0] for r in db.query(Admin.user_id).filter(Admin.user_id.isnot(None)).all()]
+    if not (user.role in ["ADMIN", "SUPERADMIN", "WORKING_COMMITTEE"] or user.id in admin_uids or user.is_working_committee):
+        raise HTTPException(status_code=400, detail="Only Admins are eligible for Working Committee check-out.")
 
     now_utc = get_current_utc_datetime()
 
@@ -1003,6 +1002,9 @@ def add_or_assign_wc_member(
     if target_user:
         target_user.is_working_committee = True
         target_user.working_committee_role = payload.working_committee_role.strip() or "Coordinator"
+        if target_user.role in ["PARTICIPANT", "STUDENT", "VOLUNTEER"]:
+            target_user.role = "ADMIN"
+            target_user.admin_type = "WORKING_COMMITTEE"
         if payload.registration_id:
             target_user.registration_id = payload.registration_id.strip()
         if payload.name and not target_user.name:
@@ -1013,6 +1015,16 @@ def add_or_assign_wc_member(
             target_user.department = payload.department.strip()
         if payload.institute and not target_user.institute:
             target_user.institute = payload.institute.strip()
+
+        existing_admin = db.query(Admin).filter(Admin.user_id == target_user.id).first()
+        if not existing_admin:
+            db.add(Admin(
+                user_id=target_user.id,
+                username=target_user.auid or f"wc_admin_{target_user.id}",
+                admin_type="WORKING_COMMITTEE",
+                approval_status="APPROVED",
+                approved_by=current_user.name
+            ))
         db.commit()
         return {
             "success": True,
@@ -1052,6 +1064,15 @@ def add_or_assign_wc_member(
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+
+    db.add(Admin(
+        user_id=new_user.id,
+        username=new_user.auid or f"wc_admin_{new_user.id}",
+        admin_type="WORKING_COMMITTEE",
+        approval_status="APPROVED",
+        approved_by=current_user.name
+    ))
+    db.commit()
 
     return {
         "success": True,
@@ -1212,14 +1233,15 @@ def export_working_committee_excel(
     if not all_dates:
         all_dates = ["2026-09-28", "2026-09-29", "2026-09-30", "2026-10-01", "2026-10-02"]
 
-    # 2. Members: All members returned by get_wc_members_query PLUS any user with a marked record in WorkingCommitteeAttendance
+    # 2. Members: Strictly all admin members returned by get_wc_members_query
     wc_members_list = get_wc_members_query(db).all()
     known_member_ids = {m.id for m in wc_members_list}
 
-    # Safeguard: Also include ANY user who has attendance marked in WorkingCommitteeAttendance
+    # Safeguard: Only include any additional users with marked records IF they are recognized admins
     attended_user_ids = [r[0] for r in db.query(WorkingCommitteeAttendance.working_committee_member_id).distinct().all()]
     missing_ids = [uid for uid in attended_user_ids if uid not in known_member_ids]
     if missing_ids:
+        admin_uids = [r[0] for r in db.query(Admin.user_id).filter(Admin.user_id.isnot(None)).all()]
         extra_users = db.query(User).options(
             defer(User.photo_url),
             defer(User.password_hash)
@@ -1227,9 +1249,14 @@ def export_working_committee_excel(
             User.id.in_(missing_ids),
             User.role != "DEVELOPER",
             User.auid != "DEV-NANU",
-            User.account_status != "DISABLED"
+            User.account_status != "DISABLED",
+            or_(
+                User.role.in_(["ADMIN", "SUPERADMIN", "WORKING_COMMITTEE"]),
+                User.id.in_(admin_uids) if admin_uids else False
+            )
         ).all()
-        wc_members_list.extend(extra_users)
+        if extra_users:
+            wc_members_list.extend(extra_users)
 
     members = sorted(wc_members_list, key=lambda x: (x.name or "").lower())
     member_ids = [m.id for m in members]
@@ -1342,7 +1369,7 @@ def export_working_committee_excel(
         managed_by_str = ", ".join(list(managed_by_set)) if managed_by_set else (m.managed_by or current_user.name or "AKV Superadmin")
 
         registered_auid = (m.auid or "").strip().upper() or (m.faculty_id or "").strip().upper() or "--"
-        akv_domain_val = m.volunteer_domain or m.department or m.working_committee_role or "--"
+        akv_domain_val = m.working_committee_role or (m.admin_type if m.admin_type else ("Super Admin" if m.role == "SUPERADMIN" else "Admin")) or "Working Committee"
 
         row_values = [
             m.registration_id or f"WC{m.id:03d}",
