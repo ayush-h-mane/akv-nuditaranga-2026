@@ -3426,6 +3426,57 @@ export const api = {
     const data = await readApiResponse(res);
     if (!res.ok) throw new Error(data.detail || "Failed to flush cache");
     return data;
+  },
+
+  // ==========================================
+  // GOOGLE SHEETS LIVE ATTENDANCE & VOLUNTEER SYNC
+  // ==========================================
+  async getGoogleSheetsConfig() {
+    const res = await fetch(`${API_BASE_URL}/google-sheets/config`, {
+      headers: { ...getAuthHeaders() }
+    });
+    const data = await readApiResponse(res);
+    if (!res.ok) throw new Error(data.detail || "Failed to fetch Google Sheets configuration");
+    return data;
+  },
+
+  async updateGoogleSheetsConfig(payload) {
+    const res = await fetch(`${API_BASE_URL}/google-sheets/config`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+      body: JSON.stringify(payload)
+    });
+    const data = await readApiResponse(res);
+    if (!res.ok) throw new Error(data.detail || "Failed to update Google Sheets configuration");
+    return data;
+  },
+
+  async syncGoogleSheets() {
+    const res = await fetch(`${API_BASE_URL}/google-sheets/sync`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getAuthHeaders() }
+    });
+    const data = await readApiResponse(res);
+    if (!res.ok) throw new Error(data.detail || "Failed to sync to Google Spreadsheet");
+    return data;
+  },
+
+  async getGoogleSheetsScript() {
+    const res = await fetch(`${API_BASE_URL}/google-sheets/script`, {
+      headers: { ...getAuthHeaders() }
+    });
+    const data = await readApiResponse(res);
+    if (!res.ok) throw new Error(data.detail || "Failed to fetch Google Apps Script source");
+    return data;
+  },
+
+  async getGoogleSheetsPayload() {
+    const res = await fetch(`${API_BASE_URL}/google-sheets/payload`, {
+      headers: { ...getAuthHeaders() }
+    });
+    const data = await readApiResponse(res);
+    if (!res.ok) throw new Error(data.detail || "Failed to fetch sync payload preview");
+    return data;
   }
 };
 

@@ -61,6 +61,7 @@ import { RoleUpdatesBanner } from "../components/RoleUpdatesBanner";
 import { AKV_DOMAINS } from "../config/institutesData";
 import { DeveloperSuperAdminManager } from "../components/DeveloperSuperAdminManager";
 import { DeveloperDiagnostics } from "../components/DeveloperDiagnostics";
+import { DeveloperGoogleSheetsSync } from "../components/DeveloperGoogleSheetsSync";
 import { AttendanceScanResultModal } from "../components/AttendanceScanResultModal";
 
 export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false }) => {
@@ -72,7 +73,7 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
     user?.username?.toLowerCase() === "nanu"
   );
   const [activeSection, setActiveSection] = useState(isDev ? "superadmin-manager" : "overview");
-  // Sections: overview, admins, students, volunteers, attendance, exports, events, audit-logs, superadmin-manager, developer-health
+  // Sections: overview, admins, students, volunteers, attendance, exports, events, audit-logs, superadmin-manager, developer-health, google-sheets
 
   // 6 Authorized Superadmin Usernames lockdown
   const AUTHORIZED_SUPERADMINS = ["akvsadayt", "akvsapriya", "akvsaarjun", "akvsaculturals", "akvsatejas", "akvsarakshi"];
@@ -298,6 +299,17 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
   const [attendanceMarkingIds, setAttendanceMarkingIds] = useState([]);
   const [officialExportLoading, setOfficialExportLoading] = useState(false);
   const [csvExportLoading, setCsvExportLoading] = useState(false);
+
+  // Google Sheets Live Sync State (v2.3.26)
+  const [googleSheetsConfig, setGoogleSheetsConfig] = useState(null);
+  const [googleSheetsLoading, setGoogleSheetsLoading] = useState(false);
+  const [googleSheetsSyncing, setGoogleSheetsSyncing] = useState(false);
+  const [googleSheetsWebhookInput, setGoogleSheetsWebhookInput] = useState("");
+  const [showAppsScriptModal, setShowAppsScriptModal] = useState(false);
+  const [appsScriptCode, setAppsScriptCode] = useState("");
+  const [appsScriptLoading, setAppsScriptLoading] = useState(false);
+  const [showPayloadModal, setShowPayloadModal] = useState(false);
+  const [syncPayloadData, setSyncPayloadData] = useState(null);
   const [superAdminScanResultData, setSuperAdminScanResultData] = useState(null);
   const [showSuperAdminScanResultModal, setShowSuperAdminScanResultModal] = useState(false);
   const [superAdminScanProcessing, setSuperAdminScanProcessing] = useState(false);
@@ -935,7 +947,7 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
       else if (activeSection === "volunteers") await loadVolunteers(forceFresh);
       else if (activeSection === "attendance") await loadAttendance(null, forceFresh);
       else if (activeSection === "working-committee") await loadWcAttendance(null, forceFresh);
-      else if (activeSection === "events" || activeSection === "exports") await loadEvents(forceFresh);
+      else if (activeSection === "events" || activeSection === "exports" || activeSection === "google-sheets") await Promise.all([loadEvents(forceFresh), loadGoogleSheetsConfig()]);
       else if (activeSection === "id-cards") await loadIdCards(idCardSearch, forceFresh);
       else if (activeSection === "festival-schedule") await loadFestivalSchedule(forceFresh);
       else if (activeSection === "audit-logs") await loadAuditLogs(forceFresh);
@@ -1315,6 +1327,76 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
     }
   };
 
+  // Google Sheets Live Sync Handlers (v2.3.26)
+  const loadGoogleSheetsConfig = async () => {
+    try {
+      setGoogleSheetsLoading(true);
+      const cfg = await api.getGoogleSheetsConfig();
+      setGoogleSheetsConfig(cfg);
+      if (cfg?.webhook_url) {
+        setGoogleSheetsWebhookInput(cfg.webhook_url);
+      }
+    } catch (err) {
+      console.warn("Could not load Google Sheets config:", err);
+    } finally {
+      setGoogleSheetsLoading(false);
+    }
+  };
+
+  const handleSaveGoogleSheetsConfig = async (e) => {
+    if (e) e.preventDefault();
+    try {
+      setGoogleSheetsLoading(true);
+      const res = await api.updateGoogleSheetsConfig({
+        webhook_url: googleSheetsWebhookInput.trim()
+      });
+      notify("success", "Google Sheets Webhook URL saved successfully!");
+      setGoogleSheetsConfig(res.config);
+    } catch (err) {
+      notify("error", err.message || "Failed to save Google Sheets configuration.");
+    } finally {
+      setGoogleSheetsLoading(false);
+    }
+  };
+
+  const handleSyncToGoogleSheets = async () => {
+    try {
+      setGoogleSheetsSyncing(true);
+      const res = await api.syncGoogleSheets();
+      notify("success", res.message || "Volunteer roster & attendance synced to Google Spreadsheet!");
+      await loadGoogleSheetsConfig();
+    } catch (err) {
+      notify("error", err.message || "Google Sheets synchronization failed. Ensure Webhook URL is deployed.");
+    } finally {
+      setGoogleSheetsSyncing(false);
+    }
+  };
+
+  const handleOpenAppsScriptModal = async () => {
+    setShowAppsScriptModal(true);
+    if (!appsScriptCode) {
+      try {
+        setAppsScriptLoading(true);
+        const res = await api.getGoogleSheetsScript();
+        setAppsScriptCode(res.script || "");
+      } catch (err) {
+        notify("error", "Could not load Apps Script source.");
+      } finally {
+        setAppsScriptLoading(false);
+      }
+    }
+  };
+
+  const handlePreviewSyncPayload = async () => {
+    try {
+      const payload = await api.getGoogleSheetsPayload();
+      setSyncPayloadData(payload);
+      setShowPayloadModal(true);
+    } catch (err) {
+      notify("error", "Failed to generate sync payload preview.");
+    }
+  };
+
   const [wcMarkingIds, setWcMarkingIds] = useState([]);
 
   // Working Committee Attendance Handlers (PRESENT / ABSENT marking)
@@ -1673,6 +1755,7 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
           {(isDev ? [
             { id: "superadmin-manager", label: "Superadmin Profiles Manager", icon: KeyRound, isDev: true },
             { id: "developer-health", label: "Developer Diagnostics & Health", icon: Cpu, isDev: true },
+            { id: "google-sheets", label: "Google Sheets Live Sync", icon: FileSpreadsheet, isDev: true },
             { id: "overview", label: "Dashboard Overview", icon: BarChart3 },
             { id: "admins", label: `Admins & Faculty Directory ${metrics?.pending_admins ? `(${metrics.pending_admins})` : ""}`, icon: ShieldCheck, alert: metrics?.pending_admins > 0 },
             { id: "volunteers", label: "Volunteers Directory", icon: UserCheck },
@@ -1762,6 +1845,16 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
           {/* ==================================================== */}
           {isDev && activeSection === "developer-health" && (
             <DeveloperDiagnostics
+              showError={showError}
+              showSuccess={showSuccess}
+            />
+          )}
+
+          {/* ==================================================== */}
+          {/* DEVELOPER SECTION 3: GOOGLE SHEETS LIVE SYNC         */}
+          {/* ==================================================== */}
+          {isDev && activeSection === "google-sheets" && (
+            <DeveloperGoogleSheetsSync
               showError={showError}
               showSuccess={showSuccess}
             />
@@ -5079,6 +5172,138 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                 </p>
               </div>
 
+              {/* GOOGLE SPREADSHEET LIVE ATTENDANCE & VOLUNTEER SYNC HERO SUITE */}
+              <div className="p-6 sm:p-7 rounded-3xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-50/80 via-white to-teal-50/60 shadow-sm space-y-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex items-start gap-4">
+                    <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-emerald-700 to-teal-600 text-white flex items-center justify-center shadow-lg shadow-emerald-700/20 shrink-0">
+                      <FileSpreadsheet className="w-7 h-7" />
+                    </div>
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="font-black text-lg text-stone-900 tracking-tight">Google Spreadsheet Live Attendance & Volunteer Sync</h4>
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-[10px] tracking-wider uppercase border border-emerald-200">
+                          Live Sync
+                        </span>
+                      </div>
+                      <p className="text-xs text-stone-600 mt-1 max-w-2xl leading-relaxed">
+                        Direct synchronization into Google Spreadsheet with 17 structured sheets: Volunteer Master Directory, 14 individual department attendance sheets, Working Committee roster, and Consolidated attendance with live photo previews (<code className="font-mono bg-emerald-100/70 text-emerald-900 px-1 py-0.5 rounded text-[11px]">=IMAGE()</code>) and direct URLs.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <a
+                      href="https://docs.google.com/spreadsheets/d/1jDIzvpZSWe_PBFMzYAsR4wMaMcSvK4VO95URw7jsYAc/edit?usp=sharing"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2.5 rounded-xl bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold text-xs shadow-xs flex items-center gap-2 transition-all cursor-pointer"
+                    >
+                      <ExternalLink className="w-4 h-4 text-emerald-600" />
+                      <span>Open Google Sheet</span>
+                    </a>
+                    <button
+                      type="button"
+                      onClick={handleOpenAppsScriptModal}
+                      className="px-4 py-2.5 rounded-xl bg-emerald-100/80 hover:bg-emerald-200 text-emerald-900 border border-emerald-300 font-bold text-xs shadow-xs flex items-center gap-2 transition-all cursor-pointer"
+                    >
+                      <Copy className="w-4 h-4 text-emerald-700" />
+                      <span>Apps Script Code</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Status & Metrics Strip */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                  <div className="p-3.5 rounded-2xl bg-white border border-emerald-200/80 shadow-2xs">
+                    <div className="text-[10px] font-bold uppercase text-stone-500 tracking-wider">Spreadsheet ID</div>
+                    <div className="font-mono font-bold text-stone-800 mt-0.5 truncate text-[11px]" title="1jDIzvpZSWe_PBFMzYAsR4wMaMcSvK4VO95URw7jsYAc">
+                      1jDIzvpZSWe_PBF...
+                    </div>
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-white border border-emerald-200/80 shadow-2xs">
+                    <div className="text-[10px] font-bold uppercase text-stone-500 tracking-wider">Sheets Generated</div>
+                    <div className="font-extrabold text-stone-900 mt-0.5">
+                      17 Worksheets
+                    </div>
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-white border border-emerald-200/80 shadow-2xs">
+                    <div className="text-[10px] font-bold uppercase text-stone-500 tracking-wider">Live Photo Links</div>
+                    <div className="font-extrabold text-emerald-700 mt-0.5 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>=IMAGE() & Direct</span>
+                    </div>
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-white border border-emerald-200/80 shadow-2xs">
+                    <div className="text-[10px] font-bold uppercase text-stone-500 tracking-wider">Last Sync Status</div>
+                    <div className="font-bold text-stone-800 mt-0.5 truncate text-[11px]">
+                      {googleSheetsConfig?.last_synced_at ? (
+                        <span className="text-emerald-700 font-extrabold">
+                          {googleSheetsConfig.last_sync_status} • {new Date(googleSheetsConfig.last_synced_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      ) : (
+                        <span className="text-amber-700 font-medium">Ready for Initial Sync</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Webhook Configuration & Sync Action Row */}
+                <div className="p-4.5 rounded-2xl bg-emerald-900/5 border border-emerald-200/70 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  <div className="flex-1 space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black text-stone-800 uppercase tracking-wider">Google Apps Script Webhook URL</span>
+                      <span className="text-[11px] text-stone-500 font-medium">(Deploy &gt; Web app &gt; Anyone)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="url"
+                        placeholder="https://script.google.com/macros/s/AKfycb.../exec"
+                        value={googleSheetsWebhookInput}
+                        onChange={(e) => setGoogleSheetsWebhookInput(e.target.value)}
+                        className="flex-1 px-3.5 py-2 rounded-xl bg-white border border-emerald-300 text-stone-900 text-xs font-mono outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleSaveGoogleSheetsConfig}
+                        disabled={googleSheetsLoading}
+                        className="px-4 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-extrabold text-xs shadow-xs transition-colors cursor-pointer disabled:opacity-50 shrink-0"
+                      >
+                        {googleSheetsLoading ? "Saving..." : "Save Webhook"}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0 pt-2 lg:pt-0">
+                    <button
+                      type="button"
+                      onClick={handlePreviewSyncPayload}
+                      className="px-3.5 py-2.5 rounded-xl bg-white hover:bg-stone-50 text-stone-700 border border-stone-300 font-extrabold text-xs shadow-2xs transition-colors cursor-pointer"
+                    >
+                      Preview Payload
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSyncToGoogleSheets}
+                      disabled={googleSheetsSyncing}
+                      className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs shadow-md shadow-emerald-700/20 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      {googleSheetsSyncing ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span>Syncing to Google Sheet...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4 text-emerald-200" />
+                          <span>Sync to Google Sheets Now</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-4 gap-6">
                 {/* Excel XLSX Export Card */}
                 <div className="p-6 rounded-3xl border-2 border-emerald-200 bg-emerald-50/40 space-y-4 flex flex-col justify-between">
@@ -7268,6 +7493,163 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================== */}
+      {/* GOOGLE APPS SCRIPT CODE & DEPLOYMENT INSTRUCTIONS MODAL */}
+      {/* ==================================================== */}
+      {showAppsScriptModal && (
+        <div className="fixed inset-0 z-[9999] bg-stone-900/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="p-6 bg-gradient-to-r from-emerald-800 via-teal-800 to-emerald-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+                  <FileSpreadsheet className="w-6 h-6 text-emerald-300" />
+                </div>
+                <div>
+                  <h3 className="font-black text-lg">Google Apps Script Synchronization Code</h3>
+                  <p className="text-xs text-emerald-200">
+                    Deploy once inside your Google Spreadsheet to enable multi-sheet attendance and volunteer sync.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAppsScriptModal(false)}
+                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Quick 4-Step Instructions Banner */}
+            <div className="p-5 bg-emerald-50 border-b border-emerald-200/80 grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+              <div className="p-3 bg-white rounded-xl border border-emerald-200 shadow-2xs">
+                <span className="font-extrabold text-emerald-800 block text-[11px]">Step 1: Open Sheet</span>
+                <span className="text-[11px] text-stone-600 mt-0.5 block leading-tight">Open your Google Spreadsheet, then click <b>Extensions &gt; Apps Script</b>.</span>
+              </div>
+              <div className="p-3 bg-white rounded-xl border border-emerald-200 shadow-2xs">
+                <span className="font-extrabold text-emerald-800 block text-[11px]">Step 2: Paste Code</span>
+                <span className="text-[11px] text-stone-600 mt-0.5 block leading-tight">Replace everything in <code>Code.gs</code> with this code and click Save (💾).</span>
+              </div>
+              <div className="p-3 bg-white rounded-xl border border-emerald-200 shadow-2xs">
+                <span className="font-extrabold text-emerald-800 block text-[11px]">Step 3: Deploy Web App</span>
+                <span className="text-[11px] text-stone-600 mt-0.5 block leading-tight">Click <b>Deploy &gt; New deployment &gt; Web app</b>. Set <b>Who has access: Anyone</b>.</span>
+              </div>
+              <div className="p-3 bg-white rounded-xl border border-emerald-200 shadow-2xs">
+                <span className="font-extrabold text-emerald-800 block text-[11px]">Step 4: Save Webhook</span>
+                <span className="text-[11px] text-stone-600 mt-0.5 block leading-tight">Copy the Web App URL and paste it in the Webhook input on this dashboard!</span>
+              </div>
+            </div>
+
+            {/* Code Box */}
+            <div className="p-5 flex-1 overflow-y-auto space-y-3">
+              <div className="flex items-center justify-between text-xs font-semibold text-stone-600">
+                <span>Code.gs (Google Apps Script Engine)</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (appsScriptCode) {
+                      navigator.clipboard.writeText(appsScriptCode);
+                      notify("success", "Google Apps Script code copied to clipboard!");
+                    }
+                  }}
+                  className="px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Copy Entire Code</span>
+                </button>
+              </div>
+
+              {appsScriptLoading ? (
+                <div className="py-20 text-center text-stone-400 flex flex-col items-center justify-center gap-3">
+                  <RefreshCw className="w-6 h-6 animate-spin text-emerald-600" />
+                  <span>Loading Apps Script source...</span>
+                </div>
+              ) : (
+                <pre className="p-4 bg-stone-900 text-emerald-300 rounded-2xl text-[11px] font-mono leading-relaxed overflow-x-auto max-h-[46vh] border border-stone-800 select-all">
+                  {appsScriptCode || "// Loading code..."}
+                </pre>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-stone-50 border-t border-stone-200 flex items-center justify-between">
+              <a
+                href="https://docs.google.com/spreadsheets/d/1jDIzvpZSWe_PBFMzYAsR4wMaMcSvK4VO95URw7jsYAc/edit?usp=sharing"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-emerald-700 hover:text-emerald-900 font-extrabold text-xs flex items-center gap-1.5"
+              >
+                <ExternalLink className="w-4 h-4" />
+                <span>Open Google Spreadsheet</span>
+              </a>
+              <button
+                type="button"
+                onClick={() => setShowAppsScriptModal(false)}
+                className="px-5 py-2 rounded-xl bg-stone-800 hover:bg-black text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
+              >
+                Close Window
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================== */}
+      {/* SYNC PAYLOAD PREVIEW MODAL                           */}
+      {/* ==================================================== */}
+      {showPayloadModal && (
+        <div className="fixed inset-0 z-[9999] bg-stone-900/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-3xl rounded-3xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col max-h-[88vh] animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-5 bg-stone-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <Sparkles className="w-5 h-5 text-amber-400" />
+                <h3 className="font-extrabold text-sm">Google Sheets Payload Inspection Preview</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPayloadModal(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 flex-1 overflow-y-auto space-y-3">
+              <div className="text-xs text-stone-600">
+                This exact JSON payload is transmitted to your Google Apps Script Webhook. It includes all volunteer profiles with live photo URLs (<code className="font-mono bg-stone-100 px-1 py-0.5 rounded text-[11px]">=IMAGE()</code>) and daily IST attendance mappings.
+              </div>
+              <pre className="p-4 bg-stone-950 text-emerald-400 rounded-2xl text-[11px] font-mono leading-relaxed overflow-x-auto max-h-[50vh] border border-stone-800 select-all">
+                {JSON.stringify(syncPayloadData, null, 2)}
+              </pre>
+            </div>
+
+            <div className="p-4 bg-stone-50 border-t border-stone-200 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => {
+                  if (syncPayloadData) {
+                    navigator.clipboard.writeText(JSON.stringify(syncPayloadData, null, 2));
+                    notify("success", "Payload JSON copied to clipboard!");
+                  }
+                }}
+                className="px-4 py-2 rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-800 font-extrabold text-xs shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                <span>Copy Payload JSON</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowPayloadModal(false)}
+                className="px-5 py-2 rounded-xl bg-stone-900 hover:bg-black text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

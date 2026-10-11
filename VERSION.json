@@ -1,10 +1,15 @@
 {
-  "production_version": "2.3.25",
-  "staged_version": "2.3.26",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.3.26",
+  "staged_version": "2.3.27",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.26",
+      "released_at": "2026-10-11T23:24:03+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.26: Google Spreadsheet Live Multi-Sheet Attendance & Volunteer Sync: Connected Google Spreadsheet (ID: 1jDIzvpZSWe_PBFMzYAsR4wMaMcSvK4VO95URw7jsYAc) with automated multi-sheet synchronization across 17 structured worksheets (Volunteer Master Directory, 14 department domain attendance sheets, Working Committee roster, and Consolidated Attendance).; Public Volunteer Photo Serving Endpoint: Added public GET /api/users/{identifier}/photo supporting binary decoding of base64 photos, remote image redirects, and branded SVG avatar fallbacks, enabling live formula-based =IMAGE() rendering and direct clickable links in Google Sheets.; Google Apps Script Turnkey Engine: Created scripts/google_apps_script/Code.gs providing automated sheet creation, header styling with Karnataka crimson (#8B0000) and gold accents, frozen header panes, auto-fitted columns, IST timestamp conversions, and custom UI menu in Google Sheets.; SuperAdmin Dashboard Google Sheets Integration Suite: Added dedicated Google Spreadsheet Live Attendance & Volunteer Sync hero module in the Exports section with direct spreadsheet access, Webhook URL configuration, 1-click sync trigger, Apps Script code copier modal, and JSON payload previewer.; Developer Portal Google Sheets Live Sync Suite: Mounted dedicated DeveloperGoogleSheetsSync console into the Developer Portal (/developer) with real-time terminal activity stream, webhook configuration, direct spreadsheet launch, JSON payload inspection, Apps Script code copier, and public photo stream live preview tester.; Standalone Python Sync CLI: Developed scripts/sync_google_sheets.py supporting dry runs, payload dumping, and command-line execution for background automated synchronization."
+    },
     {
       "version": "2.3.25",
       "released_at": "2026-10-11T00:15:20+0530",
