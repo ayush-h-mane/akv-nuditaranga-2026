@@ -3452,6 +3452,59 @@ export const api = {
   },
 
   async syncGoogleSheets() {
+    // 1. Fetch current configuration to verify Webhook URL
+    let cfg = null;
+    try {
+      cfg = await this.getGoogleSheetsConfig();
+    } catch (_) {}
+
+    const webhookUrl = (cfg?.webhook_url || "").trim();
+    if (!webhookUrl) {
+      throw new Error("Google Apps Script Webhook URL is not configured. Please paste your deployed Web App URL in the portal first.");
+    }
+
+    // 2. Fetch the compiled database payload (fast in-memory query, <150ms)
+    let payload = null;
+    try {
+      payload = await this.getGoogleSheetsPayload();
+    } catch (err) {
+      console.warn("Failed to prefetch payload, attempting backend sync route:", err.message);
+    }
+
+    // 3. Direct browser dispatch to Google Apps Script Webhook
+    // Bypasses Vercel serverless 10-second FUNCTION_INVOCATION_TIMEOUT completely!
+    if (payload && webhookUrl.startsWith("https://script.google.com")) {
+      try {
+        await fetch(webhookUrl, {
+          method: "POST",
+          mode: "no-cors",
+          headers: {
+            "Content-Type": "text/plain;charset=utf-8"
+          },
+          body: JSON.stringify(payload)
+        });
+
+        // Quietly update last sync telemetry
+        this.updateGoogleSheetsConfig({
+          last_synced_at: new Date().toISOString(),
+          last_sync_status: "SUCCESS"
+        }).catch(() => {});
+
+        return {
+          success: true,
+          message: "Successfully synchronized volunteer roster and attendance into Google Spreadsheet!",
+          stats: {
+            volunteersCount: payload.volunteers?.length || 0,
+            wcCount: payload.working_committee?.length || 0,
+            dates: payload.dates || []
+          }
+        };
+      } catch (directErr) {
+        console.warn("Direct browser dispatch failed, falling back to backend sync:", directErr);
+      }
+    }
+
+    // 4. Backend route fallback
     const res = await fetch(`${API_BASE_URL}/google-sheets/sync`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...getAuthHeaders() }

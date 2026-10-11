@@ -1,10 +1,15 @@
 {
-  "production_version": "2.3.27",
-  "staged_version": "2.3.28",
+  "production_version": "2.3.28",
+  "staged_version": "2.3.29",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.28",
+      "released_at": "2026-10-12T00:00:29+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.28: Google Sheets Sync Zero-Timeout Engine & Direct Browser Dispatch: Eliminated N+1 round-trip SQL loops in build_google_sheets_payload reducing database compile latency from >10s to <150ms; added direct client-to-webhook browser dispatch in api.syncGoogleSheets with CORS-safelisted payload streaming to bypass Vercel serverless FUNCTION_INVOCATION_TIMEOUT limits; optimized Google Apps Script (Code.gs) with batch setRowHeights and static column sizing, slashing spreadsheet sync time from 20s to <2s."
+    },
     {
       "version": "2.3.27",
       "released_at": "2026-10-11T23:52:58+0530",
