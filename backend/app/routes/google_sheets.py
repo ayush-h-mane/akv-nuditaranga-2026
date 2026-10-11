@@ -104,10 +104,11 @@ def get_user_photo(identifier: str, db: Session = Depends(get_db)):
 
 @router.get("/google-sheets/config")
 def get_sheets_configuration(
-    current_user: User = Depends(require_superadmin)
+    current_user: User = Depends(require_superadmin),
+    db: Session = Depends(get_db)
 ):
     """Returns current Google Sheets sync configuration."""
-    cfg = get_google_sheets_config()
+    cfg = get_google_sheets_config(db=db)
     return {
         "spreadsheet_id": cfg.get("spreadsheet_id", DEFAULT_SPREADSHEET_ID),
         "spreadsheet_url": cfg.get("spreadsheet_url", DEFAULT_SPREADSHEET_URL),
@@ -122,13 +123,14 @@ def get_sheets_configuration(
 @router.post("/google-sheets/config")
 def update_sheets_configuration(
     payload: GoogleSheetsConfigRequest,
-    current_user: User = Depends(require_superadmin)
+    current_user: User = Depends(require_superadmin),
+    db: Session = Depends(get_db)
 ):
     """Updates Google Sheets webhook URL and sync preferences."""
     updated = save_google_sheets_config({
         "webhook_url": (payload.webhook_url or "").strip(),
         "auto_sync_on_attendance": payload.auto_sync_on_attendance
-    })
+    }, db=db)
     return {
         "success": True,
         "message": "Google Sheets sync configuration updated successfully.",

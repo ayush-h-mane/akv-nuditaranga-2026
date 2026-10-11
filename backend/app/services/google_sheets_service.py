@@ -27,7 +27,7 @@ CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets",
 DEFAULT_SPREADSHEET_ID = "1jDIzvpZSWe_PBFMzYAsR4wMaMcSvK4VO95URw7jsYAc"
 DEFAULT_SPREADSHEET_URL = f"https://docs.google.com/spreadsheets/d/{DEFAULT_SPREADSHEET_ID}/edit?usp=sharing"
 
-def get_google_sheets_config() -> Dict[str, Any]:
+def get_google_sheets_config(db: Optional[Session] = None) -> Dict[str, Any]:
     """Retrieve persisted Google Sheets configuration."""
     default_config = {
         "spreadsheet_id": DEFAULT_SPREADSHEET_ID,
@@ -40,27 +40,65 @@ def get_google_sheets_config() -> Dict[str, Any]:
         "last_synced_stats": {}
     }
     
-    if os.path.exists(CONFIG_PATH):
+    # 1. Check database AuditLog first (persists across Vercel serverless cold-starts & container restarts)
+    if db is not None:
         try:
-            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                default_config.update(data)
+            from ..models import AuditLog
+            log_entry = db.query(AuditLog).filter(AuditLog.action == "GOOGLE_SHEETS_CONFIG").order_by(AuditLog.id.desc()).first()
+            if log_entry and log_entry.details:
+                db_data = json.loads(log_entry.details)
+                if isinstance(db_data, dict):
+                    default_config.update(db_data)
         except Exception:
             pass
+
+    # 2. Check local file or /tmp cache fallback
+    tmp_path = "/tmp/google_sheets_config.json"
+    for path in [CONFIG_PATH, tmp_path]:
+        if os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, dict):
+                        default_config.update(data)
+                break
+            except Exception:
+                pass
             
     return default_config
 
-def save_google_sheets_config(config_data: Dict[str, Any]) -> Dict[str, Any]:
+def save_google_sheets_config(config_data: Dict[str, Any], db: Optional[Session] = None) -> Dict[str, Any]:
     """Save updated Google Sheets configuration to persistent storage."""
-    cur = get_google_sheets_config()
+    cur = get_google_sheets_config(db=db)
     cur.update(config_data)
     
-    os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
-    try:
-        with open(CONFIG_PATH, "w", encoding="utf-8") as f:
-            json.dump(cur, f, indent=2)
-    except Exception as e:
-        print(f"[GOOGLE_SHEETS_CONFIG] Error saving config: {e}")
+    # 1. Persist to database AuditLog (critical for serverless Vercel environments)
+    if db is not None:
+        try:
+            from ..models import AuditLog
+            new_log = AuditLog(
+                action="GOOGLE_SHEETS_CONFIG",
+                details=json.dumps(cur),
+                user_id=None
+            )
+            db.add(new_log)
+            db.commit()
+        except Exception as dbe:
+            print(f"[GOOGLE_SHEETS_CONFIG] Error saving to db: {dbe}")
+            try:
+                db.rollback()
+            except Exception:
+                pass
+
+    # 2. Persist to filesystem and /tmp as local cache
+    tmp_path = "/tmp/google_sheets_config.json"
+    for path in [CONFIG_PATH, tmp_path]:
+        try:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(cur, f, indent=2)
+        except Exception as e:
+            pass
         
     return cur
 
@@ -232,7 +270,7 @@ def sync_to_google_sheets(
     """
     Synchronizes volunteer data and attendance to the Google Spreadsheet via the Google Apps Script Webhook.
     """
-    config = get_google_sheets_config()
+    config = get_google_sheets_config(db=db)
     target_url = (webhook_url or config.get("webhook_url") or "").strip()
 
     if not target_url:
@@ -275,7 +313,7 @@ def sync_to_google_sheets(
                     "wcCount": len(payload["working_committee"]),
                     "dates": payload["dates"]
                 })
-            })
+            }, db=db)
 
             return {
                 "success": True,
@@ -294,7 +332,7 @@ def sync_to_google_sheets(
             "last_synced_at": now_ist,
             "last_sync_status": "ERROR",
             "last_sync_message": err_msg
-        })
+        }, db=db)
         return {"success": False, "error": err_msg}
 
     except urllib.error.URLError as ue:
@@ -303,7 +341,7 @@ def sync_to_google_sheets(
             "last_synced_at": now_ist,
             "last_sync_status": "ERROR",
             "last_sync_message": err_msg
-        })
+        }, db=db)
         return {"success": False, "error": err_msg}
 
     except Exception as e:
@@ -312,5 +350,5 @@ def sync_to_google_sheets(
             "last_synced_at": now_ist,
             "last_sync_status": "ERROR",
             "last_sync_message": err_msg
-        })
+        }, db=db)
         return {"success": False, "error": err_msg}

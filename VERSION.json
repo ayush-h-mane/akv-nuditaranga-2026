@@ -1,10 +1,15 @@
 {
-  "production_version": "2.3.26",
-  "staged_version": "2.3.27",
+  "production_version": "2.3.27",
+  "staged_version": "2.3.28",
   "status": "DEPLOYED_TO_PRODUCTION",
   "active_branch": "develop",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.27",
+      "released_at": "2026-10-11T23:52:58+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.27: Google Sheets Sync Database Persistence & Serverless Resilience: Enhanced get_google_sheets_config and save_google_sheets_config to persist configuration in database AuditLog and /tmp, guaranteeing persistent Webhook URLs across Vercel serverless cold starts."
+    },
     {
       "version": "2.3.26",
       "released_at": "2026-10-11T23:24:03+0530",
