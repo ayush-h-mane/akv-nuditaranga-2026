@@ -195,10 +195,10 @@ def build_google_sheets_payload(db: Session, base_url: Optional[str] = None) -> 
     # Lookup keys:
     # `${auid}_${date}` and `${id}_${date}`
     attendance_lookup = {}
+    user_auids = {u.id: (u.auid.strip().upper() if u.auid else "") for u in db.query(User.id, User.auid).all()}
 
     for rec in dept_records:
-        u = db.query(User).filter(User.id == rec.user_id).first()
-        auid_key = (u.auid.strip().upper() if u and u.auid else "")
+        auid_key = user_auids.get(rec.user_id, "")
         id_key = str(rec.user_id)
         d = rec.attendance_date
 
@@ -221,8 +221,7 @@ def build_google_sheets_payload(db: Session, base_url: Optional[str] = None) -> 
         attendance_lookup[f"{id_key}_{d}"] = val
 
     for rec in wc_records:
-        u = db.query(User).filter(User.id == rec.working_committee_member_id).first()
-        auid_key = (u.auid.strip().upper() if u and u.auid else "")
+        auid_key = user_auids.get(rec.working_committee_member_id, "")
         id_key = str(rec.working_committee_member_id)
         d = rec.attendance_date
 

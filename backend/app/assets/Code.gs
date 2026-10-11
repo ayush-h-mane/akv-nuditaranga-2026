@@ -248,10 +248,8 @@ function syncVolunteerDirectory(ss, volunteers, baseUrl) {
     // Insert photo formulas in columns 12 & 13
     sheet.getRange(5, 12, formulas.length, 2).setFormulas(formulas);
     
-    // Set row height for photo previews
-    for (var r = 5; r < 5 + rows.length; r++) {
-      sheet.setRowHeight(r, 48);
-    }
+    // Batch set row heights for photo previews in single RPC call
+    sheet.setRowHeights(5, rows.length, 48);
   }
 
   formatDataRows(sheet, 5, rows.length, headers.length);
@@ -661,12 +659,15 @@ function formatDataRows(sheet, startRow, rowCount, colCount) {
   sheet.getRange(startRow, 3, rowCount, 1).setHorizontalAlignment("left"); // Name
   sheet.getRange(startRow, 5, rowCount, 1).setHorizontalAlignment("left"); // Department
 
-  // Auto-fit column widths
-  for (var c = 1; c <= colCount; c++) {
-    sheet.autoResizeColumn(c);
-    var curWidth = sheet.getColumnWidth(c);
-    if (curWidth < 80) sheet.setColumnWidth(c, 80);
-    if (curWidth > 260) sheet.setColumnWidth(c, 260);
+  // Fast column width defaults (avoids slow autoResizeColumn RPC round-trips)
+  if (colCount >= 3) {
+    sheet.setColumnWidth(1, 55);   // Sl. No
+    sheet.setColumnWidth(2, 100);  // Reg ID
+    sheet.setColumnWidth(3, 180);  // Full Name
+  }
+  if (colCount >= 5) {
+    sheet.setColumnWidth(4, 130);  // AUID
+    sheet.setColumnWidth(5, 140);  // Department
   }
 }
 
