@@ -24,6 +24,7 @@ from .routes import (
     festival_schedule,
     contact,
     developer,
+    google_sheets,
 )
 
 app = FastAPI(
@@ -108,6 +109,7 @@ app.include_router(working_committee_attendance.router, prefix=settings.API_PREF
 app.include_router(festival_schedule.router, prefix=settings.API_PREFIX)
 app.include_router(contact.router, prefix=settings.API_PREFIX)
 app.include_router(developer.router, prefix=settings.API_PREFIX)
+app.include_router(google_sheets.router, prefix=settings.API_PREFIX)
 
 @app.get("/api/health")
 def health_check():
