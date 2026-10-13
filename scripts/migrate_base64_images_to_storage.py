@@ -185,26 +185,62 @@ def main():
     parser.add_argument("--table", choices=["activities", "gallery", "reels", "all"], default="all", help="Target table.")
     parser.add_argument("--batch-size", type=int, default=10, help="Batch commit size for live migration (default: 10).")
     parser.add_argument("--max-records", type=int, default=None, help="Maximum number of records to process in this run (e.g. 5 for test batch).")
+    parser.add_argument("--db-url", "--database-url", type=str, default=None, help="Database connection URL (defaults to DATABASE_URL in .env).")
+    parser.add_argument("--supabase-url", type=str, default=None, help="Supabase project URL (defaults to SUPABASE_URL in .env).")
+    parser.add_argument("--supabase-key", "--service-role-key", type=str, default=None, help="Supabase service role secret (defaults to SUPABASE_SERVICE_ROLE_KEY in .env).")
+    parser.add_argument("--bucket", type=str, default=None, help="Supabase Storage bucket name (default: akv-media).")
     args = parser.parse_args()
 
-    db = SessionLocal()
+    # Apply command-line overrides for credentials
+    if args.supabase_url:
+        settings.SUPABASE_URL = args.supabase_url.strip().rstrip("/")
+    if args.supabase_key:
+        settings.SUPABASE_SERVICE_ROLE_KEY = args.supabase_key.strip()
+    if args.bucket:
+        settings.SUPABASE_STORAGE_BUCKET = args.bucket.strip()
+
+    # Determine database connection
+    db_target_url = args.db_url or settings.DATABASE_URL
+    is_sqlite = db_target_url.startswith("sqlite")
+    masked_db = "SQLite (Local: akv_fest.db)" if is_sqlite else (db_target_url.split("@")[-1] if "@" in db_target_url else "Remote PostgreSQL")
+
+    if args.db_url:
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
+        engine = create_engine(args.db_url, pool_pre_ping=True)
+        CustomSession = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+        db = CustomSession()
+    else:
+        db = SessionLocal()
+
     try:
+        is_dry_run = not args.live or args.dry_run
+
+        print("=" * 65)
+        print("AKV Nuditaranga 2026 - Supabase Image Migration CLI")
+        print(f"Mode                       : {'DRY RUN (Preview Only)' if is_dry_run else 'LIVE MIGRATION'}")
+        print(f"Database Target            : {masked_db}")
+        print(f"Supabase Storage Configured: {is_supabase_storage_configured()}")
+        print(f"Target Bucket              : {settings.SUPABASE_STORAGE_BUCKET}")
+        print("=" * 65)
+
+        if is_sqlite and not args.db_url:
+            print("\n[NOTE] You are currently connected to local SQLite (akv_fest.db).")
+            print("To target your production Supabase database, either:")
+            print("  1. Pass --db-url \"postgresql://...\" on the command line, OR")
+            print("  2. Set DATABASE_URL in your .env file.\n")
+
         if args.rank:
             audit_top_images(db, limit=args.limit)
             return
 
-        is_dry_run = not args.live or args.dry_run
-
-        print("=" * 65)
-        print(f"AKV Nuditaranga 2026 - Supabase Image Migration CLI")
-        print(f"Mode: {'DRY RUN (Preview Only)' if is_dry_run else 'LIVE MIGRATION'}")
-        print(f"Supabase Storage Configured: {is_supabase_storage_configured()}")
-        print(f"Target Bucket: {settings.SUPABASE_STORAGE_BUCKET}")
-        print("=" * 65)
-
         if not is_dry_run and not is_supabase_storage_configured():
             print("\nERROR: Cannot run live migration because SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are not configured.")
-            print("Please configure them in your environment (.env or Vercel Environment Variables).")
+            print("Please configure them via:")
+            print("  - Command line flags: --supabase-url <URL> --supabase-key <SECRET>")
+            print("  - Or add them to your .env file:")
+            print("      SUPABASE_URL=https://your-project.supabase.co")
+            print("      SUPABASE_SERVICE_ROLE_KEY=your-service-role-key")
             sys.exit(1)
 
         all_records = get_base64_records(db)
