@@ -96,7 +96,10 @@ def audit_top_images(db, limit=50):
 
     print("-" * 75)
 
-def migrate_records(db, records, batch_size=10, dry_run=True):
+def migrate_records(db, records, batch_size=10, dry_run=True, max_records=None):
+    if max_records and max_records > 0:
+        records = records[:max_records]
+
     total_count = len(records)
     if total_count == 0:
         print("✓ No Base64 images to migrate.")
@@ -105,34 +108,71 @@ def migrate_records(db, records, batch_size=10, dry_run=True):
     print(f"\nStarting {'DRY RUN' if dry_run else 'LIVE MIGRATION'} of {total_count} records (Batch size: {batch_size})...")
     migrated_count = 0
     total_bytes_saved = 0
+    orphaned_objects = []
+
+    model_map = {
+        "activities": Activity,
+        "gallery_items": GalleryItem,
+        "social_posts": SocialPost,
+    }
 
     for idx, item in enumerate(records, start=1):
         raw_val = getattr(item["record"], item["column"]) or ""
         val_size = item["size"]
         total_bytes_saved += val_size
+        stable_path = f"legacy/{item['table']}/{item['id']}.webp"
 
         if dry_run:
-            print(f"  [DRY-RUN {idx}/{total_count}] {item['table']} #{item['id']}: {format_bytes(val_size)} -> {item['folder']}/")
+            print(f"  [DRY-RUN {idx}/{total_count}] {item['table']} #{item['id']}: {format_bytes(val_size)} -> {stable_path}")
         else:
-            try:
-                public_url = upload_base64_image_to_storage(
-                    data_url=raw_val,
-                    folder=item["folder"],
-                    filename_prefix=f"{item['table']}_{item['id']}"
-                )
-                setattr(item["record"], item["column"], public_url)
-                
-                # Commit in batches or individual transactions
-                if idx % batch_size == 0 or idx == total_count:
-                    db.commit()
-                migrated_count += 1
-                print(f"  [MIGRATED {idx}/{total_count}] {item['table']} #{item['id']}: -> {public_url}")
-            except Exception as e:
-                db.rollback()
-                print(f"  [ERROR {idx}/{total_count}] {item['table']} #{item['id']} failed: {e}")
+            # Step 34: Conditional update - confirm record still has Base64 value
+            model_cls = model_map.get(item["table"])
+            if not model_cls:
+                print(f"  [SKIP {idx}/{total_count}] Unknown table {item['table']}")
+                continue
 
-    if not dry_run and migrated_count > 0:
-        db.commit()
+            current_rec = db.query(model_cls).filter(model_cls.id == item["id"]).first()
+            if not current_rec:
+                print(f"  [SKIP {idx}/{total_count}] Record {item['table']} #{item['id']} not found.")
+                continue
+
+            current_db_val = getattr(current_rec, item["column"], "") or ""
+            if not current_db_val.startswith("data:image/"):
+                print(f"  [SKIP {idx}/{total_count}] {item['table']} #{item['id']} no longer has Base64 value.")
+                continue
+
+            try:
+                # Step 34 & 39: Convert to WebP, resize max 1600px, upload to stable path
+                public_url = upload_base64_image_to_storage(
+                    data_url=current_db_val,
+                    folder=item["folder"],
+                    filename_prefix=f"{item['table']}_{item['id']}",
+                    optimize=True,
+                    custom_path=stable_path
+                )
+
+                # Update database record
+                setattr(current_rec, item["column"], public_url)
+
+                try:
+                    db.commit()
+                    migrated_count += 1
+                    print(f"  [MIGRATED {idx}/{total_count}] {item['table']} #{item['id']}: -> {public_url}")
+                except Exception as commit_err:
+                    db.rollback()
+                    orphaned_objects.append((item['table'], item['id'], public_url))
+                    print(f"  [ORPHAN ALERT {idx}/{total_count}] {item['table']} #{item['id']} DB update failed: {commit_err}. Storage object: {public_url}")
+
+            except Exception as upload_err:
+                db.rollback()
+                print(f"  [UPLOAD ERROR {idx}/{total_count}] {item['table']} #{item['id']} upload failed: {upload_err}. Database remains untouched.")
+
+    if orphaned_objects:
+        print("\n" + "!" * 75)
+        print("ATTENTION: The following Storage objects were uploaded but their database updates failed:")
+        for t, rid, url in orphaned_objects:
+            print(f"  - Table: {t}, ID: {rid}, Object URL: {url}")
+        print("!" * 75)
 
     return migrated_count, total_bytes_saved
 
@@ -144,6 +184,7 @@ def main():
     parser.add_argument("--dry-run", action="store_true", default=False, help="Dry run only (no changes).")
     parser.add_argument("--table", choices=["activities", "gallery", "reels", "all"], default="all", help="Target table.")
     parser.add_argument("--batch-size", type=int, default=10, help="Batch commit size for live migration (default: 10).")
+    parser.add_argument("--max-records", type=int, default=None, help="Maximum number of records to process in this run (e.g. 5 for test batch).")
     args = parser.parse_args()
 
     db = SessionLocal()
@@ -171,14 +212,22 @@ def main():
             table_map = {"activities": "activities", "gallery": "gallery_items", "reels": "social_posts"}
             all_records = [r for r in all_records if r["table"] == table_map.get(args.table)]
 
-        migrated, b_saved = migrate_records(db, all_records, batch_size=args.batch_size, dry_run=is_dry_run)
+        migrated, b_saved = migrate_records(
+            db,
+            all_records,
+            batch_size=args.batch_size,
+            dry_run=is_dry_run,
+            max_records=args.max_records
+        )
 
         print("\n" + "=" * 65)
         print(f"Summary: {len(all_records)} Base64 records scanned. Total payload: {format_bytes(b_saved)}.")
         if is_dry_run:
             print("To rank the largest Base64 images, run:")
             print("    python scripts/migrate_base64_images_to_storage.py --rank --limit 50")
-            print("\nTo execute live migration in batches, run:")
+            print("\nTo execute a tiny 5-image test batch on live database (Step 35):")
+            print("    python scripts/migrate_base64_images_to_storage.py --live --max-records 5")
+            print("\nTo execute live migration in batches of 10-20 (Step 36):")
             print("    python scripts/migrate_base64_images_to_storage.py --live --table all --batch-size 10")
         else:
             print(f"Live migration completed: {migrated} records successfully updated!")

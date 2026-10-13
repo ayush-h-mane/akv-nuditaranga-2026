@@ -80,6 +80,11 @@ async def upload_image(
         else:
             processed_img = img.convert("RGB")
 
+        # Step 39: Limit maximum dimension to 1600 pixels while preserving aspect ratio
+        MAX_DIMENSION = 1600
+        if processed_img.width > MAX_DIMENSION or processed_img.height > MAX_DIMENSION:
+            processed_img.thumbnail((MAX_DIMENSION, MAX_DIMENSION), Image.Resampling.LANCZOS)
+
         processed_img.save(output, format="WEBP", quality=80, method=6)
         webp_bytes = output.getvalue()
     except Exception as e:
@@ -122,6 +127,6 @@ async def upload_image(
         "content_type": "image/webp",
         "size_bytes": len(webp_bytes),
         "original_size_bytes": len(raw_bytes),
-        "width": width,
-        "height": height,
+        "width": processed_img.width,
+        "height": processed_img.height,
     }

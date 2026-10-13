@@ -215,6 +215,26 @@ class StatsOut(BaseModel):
 
 
 
+def validate_no_base64_image(value: Optional[str], field_name: str = "image") -> Optional[str]:
+    """
+    Step 37: Enforce that new public image uploads store approved hosted URLs
+    and reject new data:image/... Base64 payloads from entering the database.
+    """
+    if value is None:
+        return value
+    val = str(value).strip()
+    if not val:
+        return ""
+    if val.startswith("data:image/"):
+        raise ValueError(
+            f"Base64 image payloads are not allowed for '{field_name}'. "
+            "Please upload the image via the media storage API (/api/media/image) "
+            "and provide the returned HTTPS URL."
+        )
+    if not (val.startswith("http://") or val.startswith("https://") or val.startswith("/")):
+        raise ValueError(f"'{field_name}' must be a valid HTTP/HTTPS URL or hosted asset path.")
+    return val
+
 class ActivityBase(BaseModel):
     category: Optional[str] = "Major Activity"
     title_en: str
@@ -243,6 +263,11 @@ class ActivityCreate(BaseModel):
     tag_kn: Optional[str] = ""
     icon: Optional[str] = ""
     is_active: bool = True
+
+    @field_validator("image", "image_url", mode="before")
+    @classmethod
+    def check_no_base64(cls, v: Any) -> Any:
+        return validate_no_base64_image(v, "image")
 
     @model_validator(mode="before")
     @classmethod
@@ -277,6 +302,11 @@ class ActivityUpdate(BaseModel):
     tag_kn: Optional[str] = None
     icon: Optional[str] = None
     is_active: Optional[bool] = None
+
+    @field_validator("image", "image_url", mode="before")
+    @classmethod
+    def check_no_base64(cls, v: Any) -> Any:
+        return validate_no_base64_image(v, "image")
 
     @model_validator(mode="before")
     @classmethod
@@ -334,6 +364,11 @@ class GalleryItemCreate(BaseModel):
     event_date: Optional[str] = ""
     category: Optional[str] = "Cultural"
 
+    @field_validator("image", "image_url", mode="before")
+    @classmethod
+    def check_no_base64(cls, v: Any) -> Any:
+        return validate_no_base64_image(v, "image")
+
     @model_validator(mode="before")
     @classmethod
     def normalize_fields(cls, data: Any) -> Any:
@@ -363,6 +398,11 @@ class GalleryItemUpdate(BaseModel):
     image: Optional[str] = None
     image_url: Optional[str] = None
     event_date: Optional[str] = None
+
+    @field_validator("image", "image_url", mode="before")
+    @classmethod
+    def check_no_base64(cls, v: Any) -> Any:
+        return validate_no_base64_image(v, "image")
 
     @model_validator(mode="before")
     @classmethod
@@ -415,6 +455,11 @@ class SocialPostCreate(SocialPostBase):
     views: Optional[Any] = "0"
     comments: Optional[Any] = "0"
 
+    @field_validator("cover_image", mode="before")
+    @classmethod
+    def check_no_base64(cls, v: Any) -> Any:
+        return validate_no_base64_image(v, "cover_image")
+
     @model_validator(mode="before")
     @classmethod
     def normalize_post(cls, data: Any) -> Any:
@@ -438,6 +483,11 @@ class SocialPostUpdate(BaseModel):
     views: Optional[Any] = None
     comments: Optional[Any] = None
     is_active: Optional[bool] = None
+
+    @field_validator("cover_image", mode="before")
+    @classmethod
+    def check_no_base64(cls, v: Any) -> Any:
+        return validate_no_base64_image(v, "cover_image")
 
     @model_validator(mode="before")
     @classmethod

@@ -3,7 +3,12 @@
   "staged_version": "2.3.30",
   "status": "STAGED_DEVELOPMENT",
   "active_branch": "develop",
-  "pending_changes": [],
+  "pending_changes": [
+    "Step 37 Base64 Ingestion Blocker: Enforced strict validation across ActivityCreate, ActivityUpdate, GalleryItemCreate, GalleryItemUpdate, SocialPostCreate, and SocialPostUpdate schemas in backend/app/schemas.py, immediately rejecting any incoming data:image/... Base64 payloads with HTTP 422 while accepting valid HTTP/HTTPS and asset URLs.",
+    "Step 39 & 34 Media Dimension Normalization & Pillow WebP Processing: Configured automatic downscaling for uploaded and migrated images exceeding 1,600px maximum dimension using Pillow Lanczos resampling, converted photographic formats to WebP (quality 80) in backend/app/routes/media.py and backend/app/supabase_storage.py.",
+    "Step 34-36 Standalone Base64 Migration Engine & Safe Retries: Enhanced scripts/migrate_base64_images_to_storage.py with stable storage paths (`legacy/{table}/{id}.webp`), conditional updates (updating DB only if the column still contains Base64), batch limit support (`--max-records 5` for Step 35 tiny batch verification), and automatic orphan storage object tracking.",
+    "Step 44 Public Catalog Pagination & Prefix Cache Purging: Added optional limit (1-200) and offset query parameters to GET /api/activities, GET /api/gallery, and GET /api/reels while maintaining backward-compatible complete array responses for unpaginated callers and wiring fast_cache.delete_prefix() invalidation on create, edit, and delete mutations."
+  ],
   "history": [
     {
       "version": "2.3.29",
