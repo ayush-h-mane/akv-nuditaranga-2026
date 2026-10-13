@@ -15,12 +15,13 @@ def get_events(
     active_only: bool = True,
     db: Session = Depends(get_db)
 ):
+    norm_cat = "all" if not category or category == "all" else category
     if not active_only:
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         response.headers["Pragma"] = "no-cache"
     else:
         response.headers["Cache-Control"] = "public, max-age=15, s-maxage=60, stale-while-revalidate=120"
-        cache_key = f"events_{category}_{active_only}"
+        cache_key = f"events_{norm_cat}_{active_only}"
         cached = fast_cache.get(cache_key)
         if cached is not None:
             return cached
@@ -28,11 +29,11 @@ def get_events(
     query = db.query(Event)
     if active_only:
         query = query.filter(Event.is_active == True)
-    if category and category != "all":
-        query = query.filter(Event.category == category)
+    if norm_cat != "all":
+        query = query.filter(Event.category == norm_cat)
     results = query.all()
     if active_only:
-        fast_cache.set(f"events_{category}_{active_only}", results, ttl_seconds=60)
+        fast_cache.set(f"events_{norm_cat}_{active_only}", results, ttl_seconds=60)
     return results
 
 @router.get("/{event_id}", response_model=EventOut)

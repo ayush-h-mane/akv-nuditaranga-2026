@@ -46,6 +46,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = (newUser, newToken) => {
+    api.invalidateMemCache();
     setUser(newUser);
     setToken(newToken);
     setRole(newUser.role);
@@ -55,6 +56,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    api.invalidateMemCache();
     setUser(null);
     setToken(null);
     setRole(null);
@@ -65,7 +67,7 @@ export const AuthProvider = ({ children }) => {
 
   const refreshUser = async () => {
     try {
-      const res = await api.getCurrentUser();
+      const res = await api.getCurrentUser(true);
       if (res && res.user) {
         setUser(res.user);
         setRole(res.user.role);

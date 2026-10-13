@@ -313,6 +313,10 @@ def get_system_health(
     current_user: User = Depends(require_developer),
     db: Session = Depends(get_db)
 ):
+    cached_health = fast_cache.get("dev_system_health")
+    if cached_health is not None:
+        return cached_health
+
     users_total = db.query(func.count(User.id)).scalar() or 0
     students_total = db.query(func.count(User.id)).filter(User.role == "PARTICIPANT").scalar() or 0
     volunteers_total = db.query(func.count(User.id)).filter(User.role == "VOLUNTEER").scalar() or 0
@@ -326,7 +330,7 @@ def get_system_health(
 
     dialect_name = engine.dialect.name
 
-    return {
+    result = {
         "success": True,
         "metrics": {
             "users_total": users_total,
@@ -344,6 +348,8 @@ def get_system_health(
             "timestamp": datetime.datetime.utcnow().isoformat()
         }
     }
+    fast_cache.set("dev_system_health", result, ttl_seconds=10)
+    return result
 
 @router.post("/cache/flush")
 def flush_developer_cache(

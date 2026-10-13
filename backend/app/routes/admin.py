@@ -13,6 +13,8 @@ from ..schemas import StatsOut
 from ..config import settings
 from ..auth_deps import require_admin, create_access_token
 
+from ..cache import fast_cache
+
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
 class MarkAttendancePayload(BaseModel):
@@ -31,6 +33,15 @@ def get_admin_overview(
     today_str = datetime.date.today().strftime("%Y-%m-%d")
 
     is_domain_admin = bool(current_user.role == "ADMIN" and current_user.volunteer_domain)
+    cache_key = (
+        f"admin_overview_domain_{current_user.volunteer_domain}_{today_str}"
+        if is_domain_admin
+        else f"admin_overview_global_{today_str}"
+    )
+    cached_overview = fast_cache.get(cache_key)
+    if cached_overview is not None:
+        return cached_overview
+
     if is_domain_admin:
         admin_aliases = get_domain_aliases(current_user.volunteer_domain)
         domain_filters = [func.lower(User.volunteer_domain).like(f"%{a}%") for a in admin_aliases]
@@ -62,7 +73,7 @@ def get_admin_overview(
     total_events = db.query(func.count(Event.id)).scalar() or 0
     total_registrations = db.query(func.count(Registration.id)).scalar() or 0
 
-    return {
+    result = {
         "success": True,
         "total_students": total_students,
         "total_volunteers": total_volunteers,
@@ -77,6 +88,8 @@ def get_admin_overview(
             "total_volunteers": total_volunteers
         }
     }
+    fast_cache.set(cache_key, result, ttl_seconds=15)
+    return result
 
 # ==========================================
 # 2. VOLUNTEER LIST & DAILY ATTENDANCE
@@ -91,7 +104,14 @@ def get_today_volunteers(
     """
     Returns the volunteer list automatically populated from student registrations 
     where role == 'VOLUNTEER'. Admin cannot manually create the list.
+    Eliminates N+1 queries by batch-loading today's attendance records.
     """
+    today_str = datetime.date.today().strftime("%Y-%m-%d")
+    cache_key = f"admin_volunteers_today_{current_user.id}_{department}_{search}_{today_str}"
+    cached_volunteers = fast_cache.get(cache_key)
+    if cached_volunteers is not None:
+        return cached_volunteers
+
     query = db.query(User).filter(User.role == "VOLUNTEER")
 
     # In admin portal while marking attendance of the volunteer, Display only the admin's AKV_DOMAIN's volunteers, dont display all.
@@ -114,16 +134,21 @@ def get_today_volunteers(
         )
 
     volunteers = query.order_by(User.name.asc()).all()
-    today_str = datetime.date.today().strftime("%Y-%m-%d")
+
+    # BATCH QUERY TO ELIMINATE N+1 QUERY BOTTLENECK
+    vol_ids = [v.id for v in volunteers]
+    today_atts = {}
+    if vol_ids:
+        att_records = db.query(VolunteerAttendance).filter(
+            VolunteerAttendance.user_id.in_(vol_ids),
+            VolunteerAttendance.date == today_str
+        ).all()
+        for rec in att_records:
+            today_atts[rec.user_id] = rec
 
     results = []
     for v in volunteers:
-        # Check today's attendance record
-        att = db.query(VolunteerAttendance).filter(
-            VolunteerAttendance.user_id == v.id,
-            VolunteerAttendance.date == today_str
-        ).first()
-
+        att = today_atts.get(v.id)
         results.append({
             "user_id": v.id,
             "name": v.name,
@@ -138,11 +163,13 @@ def get_today_volunteers(
             "date": today_str
         })
 
-    return {
+    response_data = {
         "date": today_str,
         "total_volunteers": len(volunteers),
         "volunteers": results
     }
+    fast_cache.set(cache_key, response_data, ttl_seconds=15)
+    return response_data
 
 @router.post("/volunteers/attendance")
 def mark_volunteer_attendance(
@@ -207,6 +234,10 @@ def mark_volunteer_attendance(
     )
     db.add(log)
     db.commit()
+
+    fast_cache.delete_prefix("admin_volunteers_today_")
+    fast_cache.delete_prefix("admin_overview_")
+    fast_cache.delete("superadmin_stats")
 
     return {
         "success": True,

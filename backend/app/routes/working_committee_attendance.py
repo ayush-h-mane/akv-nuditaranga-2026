@@ -20,6 +20,7 @@ from ..models import (
     WorkingCommitteeAuditLog
 )
 from ..auth_deps import require_wc_superadmin
+from ..cache import fast_cache
 from ..utils.timezone import (
     IST,
     get_current_ist_datetime,
@@ -417,6 +418,7 @@ def mark_wc_attendance(
     )
     db.add(audit)
     db.commit()
+    fast_cache.delete_prefix("wc_stats_")
 
     return {
         "success": True,
@@ -509,6 +511,7 @@ def mark_wc_check_in(
     )
     db.add(audit)
     db.commit()
+    fast_cache.delete_prefix("wc_stats_")
 
     return {
         "success": True,
@@ -596,6 +599,7 @@ def mark_wc_check_out(
     )
     db.add(audit)
     db.commit()
+    fast_cache.delete_prefix("wc_stats_")
 
     return {
         "success": True,
@@ -663,6 +667,7 @@ def submit_working_committee_attendance(
     )
     db.add(audit)
     db.commit()
+    fast_cache.delete_prefix("wc_stats_")
 
     return {
         "success": True,
@@ -963,9 +968,15 @@ def list_wc_members(
     """
     SUPERADMIN ONLY: Retrieve list of all Working Committee members.
     """
+    clean_search = search.strip() if search else ""
+    if not clean_search:
+        cached = fast_cache.get("wc_members_list")
+        if cached is not None:
+            return cached
+
     query = get_wc_members_query(db)
-    if search:
-        s = f"%{search.strip().lower()}%"
+    if clean_search:
+        s = f"%{clean_search.lower()}%"
         query = query.filter(
             or_(
                 func.lower(User.name).like(s),
@@ -993,7 +1004,10 @@ def list_wc_members(
             "admin_type": m.admin_type,
             "role": m.role
         })
-    return {"success": True, "members": results}
+    response_data = {"success": True, "members": results}
+    if not clean_search:
+        fast_cache.set("wc_members_list", response_data, ttl_seconds=30)
+    return response_data
 
 
 @router.post("/members")
@@ -1043,6 +1057,7 @@ def add_or_assign_wc_member(
                 approved_by=current_user.name
             ))
         db.commit()
+        fast_cache.delete_prefix("wc_")
         return {
             "success": True,
             "message": f"{target_user.name} designated as Working Committee ({target_user.working_committee_role}).",
@@ -1091,6 +1106,7 @@ def add_or_assign_wc_member(
     ))
     db.commit()
 
+    fast_cache.delete_prefix("wc_")
     return {
         "success": True,
         "message": f"Working Committee member '{new_user.name}' created with ID {new_user.registration_id}.",
@@ -1126,6 +1142,7 @@ def update_wc_member(
         user.managed_by = payload.managed_by.strip()
 
     db.commit()
+    fast_cache.delete_prefix("wc_")
     return {"success": True, "message": f"Working Committee member {user.name} updated."}
 
 
@@ -1146,6 +1163,7 @@ def remove_wc_member(
     if user.volunteer_domain == "Working Committee":
         user.volunteer_domain = None
     db.commit()
+    fast_cache.delete_prefix("wc_")
     return {"success": True, "message": f"{user.name} removed from Working Committee."}
 
 
@@ -1165,13 +1183,19 @@ def get_combined_attendance_stats(
     Department Members, Working Committee Members, Total Members, Checked-In, Completed, Not Marked.
     """
     target_date = date.strip() if (date and isinstance(date, str)) else get_current_ist_date_str()
+    cache_key = f"wc_stats_{target_date}"
+    cached = fast_cache.get(cache_key)
+    if cached is not None:
+        return cached
 
-    # 1. Working Committee stats
-    all_wc_users = get_wc_members_query(db).all()
+    # 1. Working Committee stats (Load only IDs for minimal memory usage)
+    all_wc_users = get_wc_members_query(db).options(load_only(User.id)).all()
     wc_total = len(all_wc_users)
     wc_user_ids = [u.id for u in all_wc_users]
 
-    wc_records = db.query(WorkingCommitteeAttendance).filter(
+    wc_records = db.query(WorkingCommitteeAttendance).options(
+        load_only(WorkingCommitteeAttendance.status)
+    ).filter(
         WorkingCommitteeAttendance.attendance_date == target_date,
         WorkingCommitteeAttendance.working_committee_member_id.in_(wc_user_ids) if wc_user_ids else False
     ).all()
@@ -1180,20 +1204,24 @@ def get_combined_attendance_stats(
     wc_completed = sum(1 for r in wc_records if r.status == "COMPLETED")
     wc_not_marked = max(0, wc_total - (wc_checked_in + wc_completed))
 
-    wc_session = db.query(WorkingCommitteeDaySession).filter(
+    wc_session = db.query(WorkingCommitteeDaySession).options(
+        load_only(WorkingCommitteeDaySession.is_submitted)
+    ).filter(
         WorkingCommitteeDaySession.attendance_date == target_date
     ).first()
     wc_submitted = bool(wc_session and wc_session.is_submitted)
 
     # 2. Normal Department Members stats (excluding users who are Working Committee to prevent double counting)
-    dept_users = db.query(User).filter(
+    dept_users = db.query(User).options(load_only(User.id)).filter(
         User.role.in_(["PARTICIPANT", "VOLUNTEER", "STUDENT"]),
         User.id.notin_(wc_user_ids) if wc_user_ids else True
     ).all()
     dept_total = len(dept_users)
     dept_user_ids = [u.id for u in dept_users]
 
-    dept_records = db.query(AttendanceRecord).filter(
+    dept_records = db.query(AttendanceRecord).options(
+        load_only(AttendanceRecord.status)
+    ).filter(
         AttendanceRecord.attendance_date == target_date,
         AttendanceRecord.user_id.in_(dept_user_ids) if dept_user_ids else False
     ).all()
@@ -1202,7 +1230,7 @@ def get_combined_attendance_stats(
     dept_completed = sum(1 for r in dept_records if r.status == "COMPLETED")
     dept_not_marked = max(0, dept_total - (dept_checked_in + dept_completed))
 
-    return {
+    result = {
         "success": True,
         "date": target_date,
         "working_committee": {
@@ -1226,6 +1254,8 @@ def get_combined_attendance_stats(
             "not_marked": dept_not_marked + wc_not_marked
         }
     }
+    fast_cache.set(cache_key, result, ttl_seconds=15)
+    return result
 
 
 # ==============================================================================

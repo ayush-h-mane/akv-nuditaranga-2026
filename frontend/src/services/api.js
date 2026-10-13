@@ -796,22 +796,35 @@ export const api = {
     return data;
   },
 
-  async getCurrentUser() {
-    try {
-      const res = await fetch(`${API_BASE_URL}/auth/me`, {
-        headers: { ...getAuthHeaders() }
-      });
-      if (!res.ok) throw new Error("Session expired or invalid");
-      return await res.json();
-    } catch (err) {
-      const rawUser = localStorage.getItem("akv_user");
-      if (rawUser) {
-        try {
-          return { success: true, user: JSON.parse(rawUser) };
-        } catch (e) {}
-      }
-      throw new Error("Session expired or invalid");
+  async getCurrentUser(forceFresh = false) {
+    const cacheKey = "auth_me";
+    if (!forceFresh) {
+      const cached = getFromMemCache(cacheKey, 5000);
+      if (cached) return cached;
     }
+    return fetchWithDeduplication(cacheKey, async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/auth/me`, {
+          cache: forceFresh ? "no-store" : "default",
+          headers: {
+            ...getAuthHeaders(),
+            ...(forceFresh ? { "Cache-Control": "no-cache", "Pragma": "no-cache" } : {})
+          }
+        });
+        if (!res.ok) throw new Error("Session expired or invalid");
+        const data = await res.json();
+        setInMemCache(cacheKey, data);
+        return data;
+      } catch (err) {
+        const rawUser = localStorage.getItem("akv_user");
+        if (rawUser) {
+          try {
+            return { success: true, user: JSON.parse(rawUser) };
+          } catch (e) {}
+        }
+        throw new Error("Session expired or invalid");
+      }
+    });
   },
 
   async updateProfileOneTime(payload) {
@@ -830,6 +843,7 @@ export const api = {
         : `Profile update failed (${res.status}).`;
       throw new Error(errMsg);
     }
+    memCache.delete("auth_me");
     if (data.user) {
       try {
         localStorage.setItem("akv_user", JSON.stringify(data.user));
@@ -1099,20 +1113,34 @@ export const api = {
     }
   },
 
-  async getMyRegistrations() {
-    try {
-      const res = await fetch(`${API_BASE_URL}/student/my-registrations`, {
-        headers: { ...getAuthHeaders() }
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Failed to fetch registrations");
-      return data;
-    } catch (err) {
-      if (isNetworkError(err)) {
-        return getLocalRegistrations();
-      }
-      throw err;
+  async getMyRegistrations(forceFresh = false) {
+    const auid = getStoredUserAuid() || "current";
+    const cacheKey = `my_regs_${auid}`;
+    if (!forceFresh) {
+      const cached = getFromMemCache(cacheKey, 15000);
+      if (cached) return cached;
     }
+    return fetchWithDeduplication(cacheKey, async () => {
+      try {
+        const url = `${API_BASE_URL}/student/my-registrations${forceFresh ? `?_t=${Date.now()}` : ""}`;
+        const res = await fetch(url, {
+          cache: forceFresh ? "no-store" : "default",
+          headers: {
+            ...getAuthHeaders(),
+            ...(forceFresh ? { "Cache-Control": "no-cache", "Pragma": "no-cache" } : {})
+          }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Failed to fetch registrations");
+        setInMemCache(cacheKey, data);
+        return data;
+      } catch (err) {
+        if (isNetworkError(err)) {
+          return getLocalRegistrations();
+        }
+        throw err;
+      }
+    });
   },
 
   async downloadEventPass(registrationId) {
@@ -1165,6 +1193,7 @@ export const api = {
 
       invalidateCurrentStudentDashboardFreshness();
       invalidateStudentDashboardCache();
+      invalidateMemCache("my_regs_");
       invalidateMemCache("events_api_");
       return data;
     } catch (err) {
@@ -1239,70 +1268,95 @@ export const api = {
   // APPROVED ADMIN APIs
   // ==========================================
   async getAdminOverview(forceFresh = false) {
-    try {
-      const url = `${API_BASE_URL}/admin/overview${forceFresh ? `?_t=${Date.now()}` : ""}`;
-      const res = await fetch(url, {
-        cache: forceFresh ? "no-store" : "default",
-        headers: {
-          ...getAuthHeaders(),
-          ...(forceFresh ? { "Cache-Control": "no-cache", "Pragma": "no-cache" } : {})
-        }
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Failed to fetch admin overview");
-      return data;
-    } catch (err) {
-      if (isNetworkError(err)) {
-        const users = getLocalUsers();
-        const volunteers = users.filter(u => u.role === "VOLUNTEER");
-        return {
-          today_date: new Date().toISOString().split("T")[0],
-          volunteers_count: volunteers.length,
-          events_count: getLocalEvents().length,
-          total_registrations: getLocalRegistrations().length
-        };
-      }
-      throw err;
+    const cacheKey = "admin_overview";
+    if (!forceFresh) {
+      const cached = getFromMemCache(cacheKey, 15000);
+      if (cached) return cached;
     }
+    return fetchWithDeduplication(cacheKey, async () => {
+      try {
+        const url = `${API_BASE_URL}/admin/overview${forceFresh ? `?_t=${Date.now()}` : ""}`;
+        const res = await fetch(url, {
+          cache: forceFresh ? "no-store" : "default",
+          headers: {
+            ...getAuthHeaders(),
+            ...(forceFresh ? { "Cache-Control": "no-cache", "Pragma": "no-cache" } : {})
+          }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Failed to fetch admin overview");
+        setInMemCache(cacheKey, data);
+        return data;
+      } catch (err) {
+        if (isNetworkError(err)) {
+          const cached = getFromMemCache(cacheKey, 300000);
+          if (cached) return cached;
+          const users = getLocalUsers();
+          const volunteers = users.filter(u => u.role === "VOLUNTEER");
+          return {
+            today_date: new Date().toISOString().split("T")[0],
+            volunteers_count: volunteers.length,
+            events_count: getLocalEvents().length,
+            total_registrations: getLocalRegistrations().length
+          };
+        }
+        throw err;
+      }
+    });
   },
 
-  async getTodayVolunteers(params = {}) {
-    try {
-      const query = new URLSearchParams(params).toString();
-      const res = await fetch(`${API_BASE_URL}/admin/volunteers/today${query ? `?${query}` : ""}`, {
-        headers: { ...getAuthHeaders() }
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Failed to fetch volunteer list");
-      return data;
-    } catch (err) {
-      if (isNetworkError(err)) {
-        const users = getLocalUsers();
-        const attendance = getLocalAttendance();
-        const todayStr = new Date().toISOString().split("T")[0];
-        const volunteers = users
-          .filter(u => u.role === "VOLUNTEER")
-          .map(v => {
-            const att = attendance.find(a => a.volunteer_user_id === v.id && a.date === todayStr);
-            return {
-              user_id: v.id,
-              name: v.name,
-              auid: v.auid,
-              email: v.email,
-              phone: v.phone,
-              department: v.department,
-              attendance_status: att ? att.status : "NOT_MARKED",
-              check_in_time: att ? att.check_in_time : null
-            };
-          });
-
-        return {
-          date: todayStr,
-          volunteers
-        };
-      }
-      throw err;
+  async getTodayVolunteers(params = {}, forceFresh = false) {
+    const query = new URLSearchParams(params).toString();
+    const cacheKey = `admin_volunteers_today_${query}`;
+    if (!forceFresh) {
+      const cached = getFromMemCache(cacheKey, 15000);
+      if (cached) return cached;
     }
+    return fetchWithDeduplication(cacheKey, async () => {
+      try {
+        const finalQuery = forceFresh ? `${query ? query + "&" : ""}_t=${Date.now()}` : query;
+        const res = await fetch(`${API_BASE_URL}/admin/volunteers/today${finalQuery ? `?${finalQuery}` : ""}`, {
+          cache: forceFresh ? "no-store" : "default",
+          headers: {
+            ...getAuthHeaders(),
+            ...(forceFresh ? { "Cache-Control": "no-cache", "Pragma": "no-cache" } : {})
+          }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Failed to fetch volunteer list");
+        setInMemCache(cacheKey, data);
+        return data;
+      } catch (err) {
+        if (isNetworkError(err)) {
+          const cached = getFromMemCache(cacheKey, 300000);
+          if (cached) return cached;
+          const users = getLocalUsers();
+          const attendance = getLocalAttendance();
+          const todayStr = new Date().toISOString().split("T")[0];
+          const volunteers = users
+            .filter(u => u.role === "VOLUNTEER")
+            .map(v => {
+              const att = attendance.find(a => a.volunteer_user_id === v.id && a.date === todayStr);
+              return {
+                user_id: v.id,
+                name: v.name,
+                auid: v.auid,
+                email: v.email,
+                phone: v.phone,
+                department: v.department,
+                attendance_status: att ? att.status : "NOT_MARKED",
+                check_in_time: att ? att.check_in_time : null
+              };
+            });
+
+          return {
+            date: todayStr,
+            volunteers
+          };
+        }
+        throw err;
+      }
+    });
   },
 
   async markVolunteerAttendance(volunteerUserId, status) {
@@ -1320,6 +1374,9 @@ export const api = {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Failed to mark attendance");
+      invalidateMemCache("admin_overview");
+      invalidateMemCache("admin_volunteers_today_");
+      invalidateMemCache("sa_stats");
       return data;
     } catch (err) {
       if (isNetworkError(err)) {
@@ -1339,6 +1396,9 @@ export const api = {
           });
         }
         saveLocalAttendance(att);
+        invalidateMemCache("admin_overview");
+        invalidateMemCache("admin_volunteers_today_");
+        invalidateMemCache("sa_stats");
         return { success: true, status };
       }
       throw err;
@@ -2444,6 +2504,7 @@ export const api = {
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || `Working Committee mark ${status} failed`);
     invalidateMemCache("wc_att");
+    invalidateMemCache("wc_stats");
     return data;
   },
 
@@ -2467,6 +2528,7 @@ export const api = {
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Working Committee Check-In failed");
     invalidateMemCache("wc_att");
+    invalidateMemCache("wc_stats");
     return data;
   },
 
@@ -2482,6 +2544,7 @@ export const api = {
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Working Committee Check-Out failed");
     invalidateMemCache("wc_att");
+    invalidateMemCache("wc_stats");
     return data;
   },
 
@@ -2497,6 +2560,7 @@ export const api = {
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Failed to submit Working Committee attendance");
     invalidateMemCache("wc_att");
+    invalidateMemCache("wc_stats");
     return data;
   },
 
@@ -2597,30 +2661,49 @@ export const api = {
   },
 
   async getWorkingCommitteeStats(date = null, forceFresh = false) {
-    const qParams = new URLSearchParams();
-    if (date) qParams.set("date", date);
-    if (forceFresh) qParams.set("_t", String(Date.now()));
-    const query = qParams.toString() ? `?${qParams.toString()}` : "";
-    const res = await fetch(`${API_BASE_URL}/working-committee-attendance/stats${query}`, {
-      cache: forceFresh ? "no-store" : "default",
-      headers: {
-        ...getAuthHeaders(),
-        ...(forceFresh ? { "Cache-Control": "no-cache", "Pragma": "no-cache" } : {})
-      }
+    const targetDate = date || "today";
+    const cacheKey = `wc_stats_${targetDate}`;
+    if (!forceFresh) {
+      const cached = getFromMemCache(cacheKey, 15000);
+      if (cached) return cached;
+    }
+    return fetchWithDeduplication(cacheKey, async () => {
+      const qParams = new URLSearchParams();
+      if (date) qParams.set("date", date);
+      if (forceFresh) qParams.set("_t", String(Date.now()));
+      const query = qParams.toString() ? `?${qParams.toString()}` : "";
+      const res = await fetch(`${API_BASE_URL}/working-committee-attendance/stats${query}`, {
+        cache: forceFresh ? "no-store" : "default",
+        headers: {
+          ...getAuthHeaders(),
+          ...(forceFresh ? { "Cache-Control": "no-cache", "Pragma": "no-cache" } : {})
+        }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Failed to fetch Working Committee stats");
+      setInMemCache(cacheKey, data);
+      return data;
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Failed to fetch Working Committee stats");
-    return data;
   },
 
-  async getWorkingCommitteeMembers(search = "") {
-    const query = search ? `?search=${encodeURIComponent(search)}` : "";
-    const res = await fetch(`${API_BASE_URL}/working-committee-attendance/members${query}`, {
-      headers: { ...getAuthHeaders() }
+  async getWorkingCommitteeMembers(search = "", forceFresh = false) {
+    const cleanSearch = (search || "").trim();
+    const cacheKey = `wc_members_${cleanSearch}`;
+    if (!forceFresh) {
+      const cached = getFromMemCache(cacheKey, 30000);
+      if (cached) return cached;
+    }
+    return fetchWithDeduplication(cacheKey, async () => {
+      const query = cleanSearch ? `?search=${encodeURIComponent(cleanSearch)}` : "";
+      const res = await fetch(`${API_BASE_URL}/working-committee-attendance/members${query}`, {
+        cache: forceFresh ? "no-store" : "default",
+        headers: { ...getAuthHeaders() }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Failed to fetch Working Committee members");
+      setInMemCache(cacheKey, data);
+      return data;
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Failed to fetch Working Committee members");
-    return data;
   },
 
   async addWorkingCommitteeMember(payload) {
@@ -2634,6 +2717,7 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Failed to add Working Committee member");
+    invalidateMemCache("wc_");
     return data;
   },
 
@@ -2648,6 +2732,7 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Failed to update Working Committee member");
+    invalidateMemCache("wc_");
     return data;
   },
 
@@ -2660,7 +2745,7 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Failed to remove Working Committee member");
-    invalidateMemCache("wc_att");
+    invalidateMemCache("wc_");
     return data;
   },
 
@@ -2684,13 +2769,23 @@ export const api = {
     const normalizedCategory = category || "all";
     const cacheKey = `events_${normalizedCategory}_${activeOnly}`;
     const reqKey = cacheKey;
-    const responseCacheKey = `events_api_${category}_${activeOnly}`;
+    const responseCacheKey = `events_api_${normalizedCategory}_${activeOnly}`;
 
     if (!forceFresh) {
       const cachedEvents = getFromMemCache(responseCacheKey, 15_000);
 
       if (cachedEvents !== null) {
         return cachedEvents;
+      }
+
+      // Instant in-memory filter: If the complete dataset is already cached, filter locally
+      if (normalizedCategory !== "all") {
+        const fullCached = getFromMemCache(`events_api_all_${activeOnly}`, 15_000);
+        if (fullCached !== null && Array.isArray(fullCached)) {
+          const filtered = fullCached.filter(e => e.category === normalizedCategory);
+          setInMemCache(responseCacheKey, filtered);
+          return filtered;
+        }
       }
     }
 
@@ -3137,6 +3232,16 @@ export const api = {
 
       if (cachedActivities !== null) {
         return cachedActivities;
+      }
+
+      // Instant in-memory filter if all activities are already in memCache
+      if (category && category !== "all") {
+        const fullCached = getFromMemCache(`activities_api_all_${activeOnly}`, 30_000);
+        if (fullCached !== null && Array.isArray(fullCached)) {
+          const filtered = fullCached.filter(a => a.category === category);
+          setInMemCache(responseCacheKey, filtered);
+          return filtered;
+        }
       }
     }
 
@@ -3761,13 +3866,22 @@ export const api = {
   // ==========================================
   // DEVELOPER PORTAL APIs
   // ==========================================
-  async getDeveloperSuperAdmins() {
-    const res = await fetch(`${API_BASE_URL}/developer/superadmins`, {
-      headers: { ...getAuthHeaders() }
+  async getDeveloperSuperAdmins(forceFresh = false) {
+    const cacheKey = "dev_superadmins";
+    if (!forceFresh) {
+      const cached = getFromMemCache(cacheKey, 15000);
+      if (cached) return cached;
+    }
+    return fetchWithDeduplication(cacheKey, async () => {
+      const res = await fetch(`${API_BASE_URL}/developer/superadmins`, {
+        cache: forceFresh ? "no-store" : "default",
+        headers: { ...getAuthHeaders() }
+      });
+      const data = await readApiResponse(res);
+      if (!res.ok) throw new Error(data.detail || "Failed to load superadmins");
+      setInMemCache(cacheKey, data);
+      return data;
     });
-    const data = await readApiResponse(res);
-    if (!res.ok) throw new Error(data.detail || "Failed to load superadmins");
-    return data;
   },
 
   async createDeveloperSuperAdmin(payload) {
@@ -3778,6 +3892,7 @@ export const api = {
     });
     const data = await readApiResponse(res);
     if (!res.ok) throw new Error(data.detail || "Failed to create superadmin profile");
+    invalidateMemCache("dev_");
     return data;
   },
 
@@ -3789,6 +3904,7 @@ export const api = {
     });
     const data = await readApiResponse(res);
     if (!res.ok) throw new Error(data.detail || "Failed to update superadmin profile");
+    invalidateMemCache("dev_");
     return data;
   },
 
@@ -3799,16 +3915,26 @@ export const api = {
     });
     const data = await readApiResponse(res);
     if (!res.ok) throw new Error(data.detail || "Failed to delete superadmin profile");
+    invalidateMemCache("dev_");
     return data;
   },
 
-  async getDeveloperSystemHealth() {
-    const res = await fetch(`${API_BASE_URL}/developer/system-health`, {
-      headers: { ...getAuthHeaders() }
+  async getDeveloperSystemHealth(forceFresh = false) {
+    const cacheKey = "dev_system_health";
+    if (!forceFresh) {
+      const cached = getFromMemCache(cacheKey, 10000);
+      if (cached) return cached;
+    }
+    return fetchWithDeduplication(cacheKey, async () => {
+      const res = await fetch(`${API_BASE_URL}/developer/system-health`, {
+        cache: forceFresh ? "no-store" : "default",
+        headers: { ...getAuthHeaders() }
+      });
+      const data = await readApiResponse(res);
+      if (!res.ok) throw new Error(data.detail || "Failed to fetch system diagnostics");
+      setInMemCache(cacheKey, data);
+      return data;
     });
-    const data = await readApiResponse(res);
-    if (!res.ok) throw new Error(data.detail || "Failed to fetch system diagnostics");
-    return data;
   },
 
   async flushDeveloperCache() {
@@ -3923,6 +4049,10 @@ export const api = {
     const data = await readApiResponse(res);
     if (!res.ok) throw new Error(data.detail || "Failed to fetch sync payload preview");
     return data;
+  },
+
+  invalidateMemCache(prefix = "") {
+    invalidateMemCache(prefix);
   }
 };
 
