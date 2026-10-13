@@ -6,12 +6,14 @@ Used by backend endpoints and background migration utilities without exposing se
 
 import base64
 import hashlib
+from io import BytesIO
 import mimetypes
 import os
 import time
 import urllib.request
 import urllib.error
 from typing import Optional, Tuple
+from PIL import Image, UnidentifiedImageError
 from backend.app.config import settings
 
 def is_supabase_storage_configured() -> bool:
@@ -52,6 +54,38 @@ def parse_data_url(data_url: str) -> Tuple[bytes, str, str]:
     ext = ext_map.get(mime_type, mimetypes.guess_extension(mime_type) or ".jpg")
     data_bytes = base64.b64decode(encoded)
     return data_bytes, mime_type, ext
+
+
+def optimize_image_bytes(
+    raw_bytes: bytes,
+    max_dimension: int = 1600,
+    quality: int = 80
+) -> Tuple[bytes, str, str]:
+    """
+    Step 39: Validates image bytes, resizes if larger than max_dimension,
+    and converts photographic formats to WebP.
+    """
+    try:
+        img = Image.open(BytesIO(raw_bytes))
+        img.verify()
+        img = Image.open(BytesIO(raw_bytes))
+
+        # Preserve transparency for RGBA / LA modes
+        if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
+            processed = img.convert("RGBA")
+        else:
+            processed = img.convert("RGB")
+
+        # Downscale if exceeding max_dimension
+        if processed.width > max_dimension or processed.height > max_dimension:
+            processed.thumbnail((max_dimension, max_dimension), Image.Resampling.LANCZOS)
+
+        out = BytesIO()
+        processed.save(out, format="WEBP", quality=quality, method=6)
+        return out.getvalue(), "image/webp", ".webp"
+    except Exception:
+        # Fallback to original bytes if not a standard raster image
+        return raw_bytes, "image/jpeg", ".jpg"
 
 
 def upload_bytes_to_storage(
@@ -102,11 +136,13 @@ def upload_base64_image_to_storage(
     data_url: str,
     folder: str = "uploads",
     filename_prefix: str = "img",
-    bucket: Optional[str] = None
+    bucket: Optional[str] = None,
+    optimize: bool = True,
+    custom_path: Optional[str] = None
 ) -> str:
     """
-    Takes a data URL (or returns existing HTTP URL untouched), decodes it, uploads it
-    to Supabase Storage with a content-hash-based filename, and returns the public CDN URL.
+    Takes a data URL (or returns existing HTTP URL untouched), decodes it, optimizes it to WebP
+    with max dimension 1600px, uploads to Supabase Storage, and returns the public CDN URL.
     """
     # If already a hosted URL (http/https), no need to upload
     if isinstance(data_url, str) and (data_url.startswith("http://") or data_url.startswith("https://")):
@@ -116,13 +152,19 @@ def upload_base64_image_to_storage(
         return data_url
 
     data_bytes, mime_type, ext = parse_data_url(data_url)
-    
-    # Generate content-hash-based filename for deduplication & cache efficiency
-    content_hash = hashlib.sha256(data_bytes).hexdigest()[:16]
-    timestamp = int(time.time())
-    filename = f"{filename_prefix}_{timestamp}_{content_hash}{ext}"
-    clean_folder = folder.strip("/")
-    file_path = f"{clean_folder}/{filename}" if clean_folder else filename
+
+    if optimize:
+        data_bytes, mime_type, ext = optimize_image_bytes(data_bytes, max_dimension=1600, quality=80)
+
+    if custom_path:
+        file_path = custom_path.lstrip("/")
+    else:
+        # Generate content-hash-based filename for deduplication & cache efficiency
+        content_hash = hashlib.sha256(data_bytes).hexdigest()[:16]
+        timestamp = int(time.time())
+        filename = f"{filename_prefix}_{timestamp}_{content_hash}{ext}"
+        clean_folder = folder.strip("/")
+        file_path = f"{clean_folder}/{filename}" if clean_folder else filename
 
     return upload_bytes_to_storage(
         data=data_bytes,

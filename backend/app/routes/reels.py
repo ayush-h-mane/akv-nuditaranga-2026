@@ -13,6 +13,8 @@ def get_reels(
     response: Response,
     post_type: Optional[str] = None,
     active_only: bool = True,
+    limit: Optional[int] = Query(None, ge=1, le=200),
+    offset: Optional[int] = Query(0, ge=0),
     db: Session = Depends(get_db)
 ):
     response.headers["Cache-Control"] = (
@@ -21,7 +23,7 @@ def get_reels(
         else "no-store"
     )
     
-    cache_key = f"reels_{post_type}_{active_only}"
+    cache_key = f"reels_{post_type}_{active_only}_{limit}_{offset}"
     cached = fast_cache.get(cache_key)
     if cached is not None:
         return cached
@@ -31,7 +33,13 @@ def get_reels(
         query = query.filter(SocialPost.is_active == True)
     if post_type and post_type != "all":
         query = query.filter(SocialPost.type == post_type)
-    results = query.order_by(SocialPost.id.desc()).all()
+    query = query.order_by(SocialPost.id.desc())
+    if offset:
+        query = query.offset(offset)
+    if limit is not None:
+        query = query.limit(limit)
+
+    results = query.all()
     fast_cache.set(cache_key, results, ttl_seconds=120)
     return results
 

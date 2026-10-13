@@ -1,5 +1,5 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import GalleryItem
@@ -9,16 +9,28 @@ from ..cache import fast_cache
 router = APIRouter(prefix="/gallery", tags=["Gallery"])
 
 @router.get("", response_model=List[GalleryItemOut])
-def get_gallery_items(response: Response, db: Session = Depends(get_db)):
+def get_gallery_items(
+    response: Response,
+    limit: Optional[int] = Query(None, ge=1, le=200),
+    offset: Optional[int] = Query(0, ge=0),
+    db: Session = Depends(get_db)
+):
     response.headers["Cache-Control"] = (
         "public, max-age=15, s-maxage=60, stale-while-revalidate=120"
     )
-    cached = fast_cache.get("gallery_items")
+    cache_key = f"gallery_items_{limit}_{offset}"
+    cached = fast_cache.get(cache_key)
     if cached is not None:
         return cached
 
-    results = db.query(GalleryItem).order_by(GalleryItem.id.desc()).all()
-    fast_cache.set("gallery_items", results, ttl_seconds=120)
+    query = db.query(GalleryItem).order_by(GalleryItem.id.desc())
+    if offset:
+        query = query.offset(offset)
+    if limit is not None:
+        query = query.limit(limit)
+
+    results = query.all()
+    fast_cache.set(cache_key, results, ttl_seconds=120)
     return results
 
 @router.get("/{item_id}", response_model=GalleryItemOut)
@@ -43,7 +55,7 @@ def create_gallery_item(item_in: GalleryItemCreate, db: Session = Depends(get_db
     db.add(new_item)
     db.commit()
     db.refresh(new_item)
-    fast_cache.delete("gallery_items")
+    fast_cache.delete_prefix("gallery_items")
     return new_item
 
 @router.put("/{item_id}", response_model=GalleryItemOut)
@@ -67,7 +79,7 @@ def update_gallery_item(item_id: int, item_update: GalleryItemUpdate, db: Sessio
     
     db.commit()
     db.refresh(item)
-    fast_cache.delete("gallery_items")
+    fast_cache.delete_prefix("gallery_items")
     return item
 
 @router.delete("/{item_id}")
@@ -79,5 +91,5 @@ def delete_gallery_item(item_id: int, db: Session = Depends(get_db)):
     title = item.title_en
     db.delete(item)
     db.commit()
-    fast_cache.delete("gallery_items")
+    fast_cache.delete_prefix("gallery_items")
     return {"success": True, "message": f"Gallery item '{title}' deleted successfully"}
