@@ -11,14 +11,22 @@ import { App as CapApp } from "@capacitor/app";
 import { StatusBar, Style } from "@capacitor/status-bar";
 import { SplashScreen } from "@capacitor/splash-screen";
 
-// Authentication & Core Dashboards
-import { AuthPortal } from "./pages/AuthPortal";
-import { StudentDashboard } from "./pages/StudentDashboard";
-
-// Public Pages & Events
+// Public Landing Page (Synchronous for instantaneous LCP on root "/")
 import { HomePage } from "./pages/HomePage";
-import { EventsPage } from "./pages/EventsPage";
-import { RegisterPage } from "./pages/RegisterPage";
+
+// Code-Split Dynamic Pages (Loaded on-demand to minimize initial bundle size)
+const AuthPortal = React.lazy(() =>
+  import("./pages/AuthPortal").then((m) => ({ default: m.AuthPortal }))
+);
+const StudentDashboard = React.lazy(() =>
+  import("./pages/StudentDashboard").then((m) => ({ default: m.StudentDashboard }))
+);
+const EventsPage = React.lazy(() =>
+  import("./pages/EventsPage").then((m) => ({ default: m.EventsPage }))
+);
+const RegisterPage = React.lazy(() =>
+  import("./pages/RegisterPage").then((m) => ({ default: m.RegisterPage }))
+);
 
 // Code-Split Dynamic Pages (Admin Suites, QR Scanner & Ancillary Views)
 const SuperAdminDashboard = React.lazy(() =>
@@ -375,16 +383,18 @@ export function AppContent() {
   if (route.portal === "student") {
     if (!user) {
       return (
-        <AuthPortal
-          portalType="student"
-          initialSubMode={route.subMode}
-          onExplorePublic={() => navigatePath("/")}
-          onAuthSuccess={handleAuthSuccess}
-          onOpenResetView={(tok) => {
-            setResetToken(tok);
-            setRoute({ path: "/reset-password", portal: null, subMode: "login" });
-          }}
-        />
+        <React.Suspense fallback={<PortalLoadingFallback message="ಲೋಡ್ ಆಗುತ್ತಿದೆ... Loading Portal..." />}>
+          <AuthPortal
+            portalType="student"
+            initialSubMode={route.subMode}
+            onExplorePublic={() => navigatePath("/")}
+            onAuthSuccess={handleAuthSuccess}
+            onOpenResetView={(tok) => {
+              setResetToken(tok);
+              setRoute({ path: "/reset-password", portal: null, subMode: "login" });
+            }}
+          />
+        </React.Suspense>
       );
     }
 
@@ -413,9 +423,11 @@ export function AppContent() {
           onOpenAuthTab={() => navigatePath("/student")}
         />
         <main className="flex-1">
-          <StudentDashboard
-            onNavigateHome={() => navigatePath("/")}
-          />
+          <React.Suspense fallback={<PortalLoadingFallback message="ಲೋಡ್ ಆಗುತ್ತಿದೆ... Loading Student Workspace..." />}>
+            <StudentDashboard
+              onNavigateHome={() => navigatePath("/")}
+            />
+          </React.Suspense>
         </main>
         <Footer setCurrentView={navigatePath} />
       </div>
@@ -428,16 +440,18 @@ export function AppContent() {
   if (route.portal === "admin") {
     if (!user) {
       return (
-        <AuthPortal
-          portalType="admin"
-          initialSubMode={route.subMode}
-          onExplorePublic={() => navigatePath("/")}
-          onAuthSuccess={handleAuthSuccess}
-          onOpenResetView={(tok) => {
-            setResetToken(tok);
-            setRoute({ path: "/reset-password", portal: null, subMode: "login" });
-          }}
-        />
+        <React.Suspense fallback={<PortalLoadingFallback message="ಲೋಡ್ ಆಗುತ್ತಿದೆ... Loading Admin Portal..." />}>
+          <AuthPortal
+            portalType="admin"
+            initialSubMode={route.subMode}
+            onExplorePublic={() => navigatePath("/")}
+            onAuthSuccess={handleAuthSuccess}
+            onOpenResetView={(tok) => {
+              setResetToken(tok);
+              setRoute({ path: "/reset-password", portal: null, subMode: "login" });
+            }}
+          />
+        </React.Suspense>
       );
     }
 
@@ -484,16 +498,18 @@ export function AppContent() {
   if (route.portal === "faculty") {
     if (!user) {
       return (
-        <AuthPortal
-          portalType="faculty"
-          initialSubMode={route.subMode}
-          onExplorePublic={() => navigatePath("/")}
-          onAuthSuccess={handleAuthSuccess}
-          onOpenResetView={(tok) => {
-            setResetToken(tok);
-            setRoute({ path: "/reset-password", portal: null, subMode: "login" });
-          }}
-        />
+        <React.Suspense fallback={<PortalLoadingFallback message="ಲೋಡ್ ಆಗುತ್ತಿದೆ... Loading Faculty Portal..." />}>
+          <AuthPortal
+            portalType="faculty"
+            initialSubMode={route.subMode}
+            onExplorePublic={() => navigatePath("/")}
+            onAuthSuccess={handleAuthSuccess}
+            onOpenResetView={(tok) => {
+              setResetToken(tok);
+              setRoute({ path: "/reset-password", portal: null, subMode: "login" });
+            }}
+          />
+        </React.Suspense>
       );
     }
 
@@ -540,16 +556,18 @@ export function AppContent() {
   if (route.portal === "superadmin") {
     if (!user) {
       return (
-        <AuthPortal
-          portalType="superadmin"
-          initialSubMode="login"
-          onExplorePublic={() => navigatePath("/")}
-          onAuthSuccess={handleAuthSuccess}
-          onOpenResetView={(tok) => {
-            setResetToken(tok);
-            setRoute({ path: "/reset-password", portal: null, subMode: "login" });
-          }}
-        />
+        <React.Suspense fallback={<PortalLoadingFallback message="ಲೋಡ್ ಆಗುತ್ತಿದೆ... Loading Superadmin Portal..." />}>
+          <AuthPortal
+            portalType="superadmin"
+            initialSubMode="login"
+            onExplorePublic={() => navigatePath("/")}
+            onAuthSuccess={handleAuthSuccess}
+            onOpenResetView={(tok) => {
+              setResetToken(tok);
+              setRoute({ path: "/reset-password", portal: null, subMode: "login" });
+            }}
+          />
+        </React.Suspense>
       );
     }
 
@@ -673,10 +691,12 @@ export function AppContent() {
           )}
 
           {route.path === "/events" && (
-            <EventsPage
-              setCurrentView={navigatePath}
-              setSelectedEventId={setSelectedEventId}
-            />
+            <React.Suspense fallback={<PortalLoadingFallback message="ಲೋಡ್ ಆಗುತ್ತಿದೆ... Loading Festival Events..." />}>
+              <EventsPage
+                setCurrentView={navigatePath}
+                setSelectedEventId={setSelectedEventId}
+              />
+            </React.Suspense>
           )}
 
           {route.path === "/gallery" && (
@@ -704,12 +724,14 @@ export function AppContent() {
           )}
 
           {route.path === "/register" && (
-            <RegisterPage
-              selectedEventId={selectedEventId}
-              setSelectedEventId={setSelectedEventId}
-              setCurrentView={navigatePath}
-              setConfirmedRegistration={setConfirmedRegistration}
-            />
+            <React.Suspense fallback={<PortalLoadingFallback message="ಲೋಡ್ ಆಗುತ್ತಿದೆ... Loading Event Registration..." />}>
+              <RegisterPage
+                selectedEventId={selectedEventId}
+                setSelectedEventId={setSelectedEventId}
+                setCurrentView={navigatePath}
+                setConfirmedRegistration={setConfirmedRegistration}
+              />
+            </React.Suspense>
           )}
 
           {route.path === "/confirmation" && (

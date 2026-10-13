@@ -90,17 +90,27 @@ export const Navbar = ({ currentView, setCurrentView, onOpenAuthTab }) => {
           className="flex items-center gap-2 sm:gap-3 cursor-pointer group shrink-0 active:scale-98 transition-transform duration-150"
         >
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            <img
-              src="/images/acharya-logo.png?v=2026"
-              alt="Acharya Institutes"
-              className="h-8 sm:h-10 w-auto object-contain transition-transform group-hover:scale-105 shrink-0"
-            />
+            <picture>
+              <source srcSet="/images/acharya-logo.webp" type="image/webp" />
+              <img
+                src="/images/acharya-logo.png?v=2026"
+                alt="Acharya Institutes"
+                loading="eager"
+                decoding="async"
+                className="h-8 sm:h-10 w-auto object-contain transition-transform group-hover:scale-105 shrink-0"
+              />
+            </picture>
             <div className="h-6 w-px bg-stone-300 shrink-0 hidden sm:block" />
-            <img
-              src="/images/akv-logo.png"
-              alt="Acharya Kannada Vedike"
-              className="h-9 sm:h-11 w-auto object-contain transition-transform group-hover:scale-105 drop-shadow-sm shrink-0"
-            />
+            <picture>
+              <source srcSet="/images/akv-logo.webp" type="image/webp" />
+              <img
+                src="/images/akv-logo.png"
+                alt="Acharya Kannada Vedike"
+                loading="eager"
+                decoding="async"
+                className="h-9 sm:h-11 w-auto object-contain transition-transform group-hover:scale-105 drop-shadow-sm shrink-0"
+              />
+            </picture>
           </div>
 
           <div className="shrink-0 flex flex-col justify-center">
