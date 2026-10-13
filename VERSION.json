@@ -3,7 +3,9 @@
   "staged_version": "2.3.31",
   "status": "STAGED_DEVELOPMENT",
   "active_branch": "develop",
-  "pending_changes": [],
+  "pending_changes": [
+    "Production Base64 Image Migration Completed (Steps 34-36): Migrated all 10 legacy Base64 images from PostgreSQL across activities, gallery_items, and social_posts into optimized WebP objects in the public Supabase Storage bucket 'akv-media' via PostgREST HTTPS API, reducing database payload size by ~1.90 MB and achieving 0 remaining Base64 records in the database."
+  ],
   "history": [
     {
       "version": "2.3.30",
