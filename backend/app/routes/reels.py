@@ -15,7 +15,11 @@ def get_reels(
     active_only: bool = True,
     db: Session = Depends(get_db)
 ):
-    response.headers["Cache-Control"] = "public, max-age=60, s-maxage=300, stale-while-revalidate=600"
+    response.headers["Cache-Control"] = (
+        "public, max-age=15, s-maxage=60, stale-while-revalidate=120"
+        if active_only
+        else "no-store"
+    )
     
     cache_key = f"reels_{post_type}_{active_only}"
     cached = fast_cache.get(cache_key)

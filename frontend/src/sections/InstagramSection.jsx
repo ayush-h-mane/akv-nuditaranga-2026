@@ -169,6 +169,7 @@ export const InstagramSection = () => {
                     alt={cleanBrandAbbreviation(post.captionEn)}
                     className="w-full h-full object-cover"
                     loading="lazy"
+                    decoding="async"
                   />
 
                   {/* Reels Badge */}
@@ -270,6 +271,7 @@ export const InstagramSection = () => {
                   alt={cleanBrandAbbreviation(post.captionEn)}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-95 group-hover:opacity-100"
                   loading="lazy"
+                  decoding="async"
                 />
 
                 {/* Reels Badge */}

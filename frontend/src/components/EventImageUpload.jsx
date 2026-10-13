@@ -1,58 +1,60 @@
 import React, { useRef, useState } from "react";
-import { Image as ImageIcon, Upload, X, Link as LinkIcon } from "lucide-react";
+import { Image as ImageIcon, Upload, X, Link as LinkIcon, Loader2 } from "lucide-react";
+import { api } from "../services/api";
 
 export const EventImageUpload = ({ imageUrl, onImageChange, label = "Event / Activity Image", required = false }) => {
   const fileInputRef = useRef(null);
   const [useUrlMode, setUseUrlMode] = useState(false);
   const [urlInput, setUrlInput] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
 
-  const handleFileSelect = (e) => {
-    const file = e.target.files?.[0];
+  const handleFileSelect = async (e) => {
+    const input = e.currentTarget;
+    const file = input.files?.[0];
+
     if (!file) return;
 
-    if (file.size > 10 * 1024 * 1024) {
-      alert("Please select an image smaller than 10MB.");
+    setUploadError("");
+
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp"
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      setUploadError("Please select a JPEG, PNG, or WebP image.");
+      input.value = "";
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const maxDim = 1200; // high quality for gallery/activity display
-        let width = img.width;
-        let height = img.height;
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadError("Please select an image smaller than 10MB.");
+      input.value = "";
+      return;
+    }
 
-        if (width > height) {
-          if (width > maxDim) {
-            height = Math.round((height * maxDim) / width);
-            width = maxDim;
-          }
-        } else {
-          if (height > maxDim) {
-            width = Math.round((width * maxDim) / height);
-            height = maxDim;
-          }
-        }
+    setUploading(true);
 
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, width, height);
+    try {
+      const uploadedUrl = await api.uploadImage(file);
 
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
-        onImageChange(dataUrl);
-      };
-      img.src = event.target?.result;
-    };
-    reader.readAsDataURL(file);
+      // Store the URL, not the Base64 image data.
+      onImageChange(uploadedUrl);
+    } catch (err) {
+      setUploadError(err.message || "Image upload failed.");
+    } finally {
+      setUploading(false);
+      input.value = "";
+    }
   };
 
   const handleApplyUrl = (e) => {
     e.preventDefault();
     if (urlInput.trim()) {
       onImageChange(urlInput.trim());
+      setUploadError("");
     }
   };
 
@@ -60,6 +62,7 @@ export const EventImageUpload = ({ imageUrl, onImageChange, label = "Event / Act
     e.stopPropagation();
     onImageChange("");
     setUrlInput("");
+    setUploadError("");
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -71,7 +74,10 @@ export const EventImageUpload = ({ imageUrl, onImageChange, label = "Event / Act
         </label>
         <button
           type="button"
-          onClick={() => setUseUrlMode(!useUrlMode)}
+          onClick={() => {
+            setUseUrlMode(!useUrlMode);
+            setUploadError("");
+          }}
           className="text-[11px] font-bold text-amber-800 hover:text-kar-red underline cursor-pointer"
         >
           {useUrlMode ? "Upload File instead" : "Paste Image URL instead"}
@@ -89,7 +95,7 @@ export const EventImageUpload = ({ imageUrl, onImageChange, label = "Event / Act
             <button
               type="button"
               onClick={handleRemove}
-              className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm"
+              className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
             >
               <X className="w-4 h-4" />
               <span>Remove Image</span>
@@ -115,26 +121,47 @@ export const EventImageUpload = ({ imageUrl, onImageChange, label = "Event / Act
         </div>
       ) : (
         <div
-          onClick={() => fileInputRef.current?.click()}
-          className="w-full h-36 rounded-2xl border-2 border-dashed border-stone-300 hover:border-kar-red bg-stone-50 hover:bg-amber-50/40 transition-all cursor-pointer flex flex-col items-center justify-center gap-2 group text-stone-500 hover:text-kar-red p-4"
+          onClick={() => {
+            if (!uploading) {
+              fileInputRef.current?.click();
+            }
+          }}
+          className={`w-full h-36 rounded-2xl border-2 border-dashed transition-all cursor-pointer flex flex-col items-center justify-center gap-2 group p-4 ${
+            uploading
+              ? "border-amber-400 bg-amber-50/70 cursor-wait"
+              : "border-stone-300 hover:border-kar-red bg-stone-50 hover:bg-amber-50/40 text-stone-500 hover:text-kar-red"
+          }`}
         >
           <div className="w-10 h-10 rounded-full bg-white shadow-xs border border-stone-200 flex items-center justify-center group-hover:scale-105 transition-transform">
-            <Upload className="w-5 h-5 text-kar-red" />
+            {uploading ? (
+              <Loader2 className="w-5 h-5 text-kar-red animate-spin" />
+            ) : (
+              <Upload className="w-5 h-5 text-kar-red" />
+            )}
           </div>
           <div className="text-center">
             <span className="text-xs font-bold block text-stone-700 group-hover:text-kar-red">
-              Click to select or drag & drop photo
+              {uploading
+                ? "Uploading and optimizing image..."
+                : "Click to select or drag & drop photo"}
             </span>
             <span className="text-[11px] text-stone-400">JPG, PNG, WebP up to 10MB</span>
           </div>
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp"
             className="hidden"
+            disabled={uploading}
             onChange={handleFileSelect}
           />
         </div>
+      )}
+
+      {uploadError && (
+        <p className="text-xs text-red-600 font-medium" role="alert">
+          {uploadError}
+        </p>
       )}
     </div>
   );

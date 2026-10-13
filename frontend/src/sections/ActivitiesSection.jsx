@@ -4,6 +4,7 @@ import { useLanguage } from "../context/LanguageContext";
 import { api } from "../services/api";
 import { useHistoryModal } from "../utils/useHistoryModal";
 import { ArrowUpRight, Sparkles, Calendar, X } from "lucide-react";
+import { optimizePublicSupabaseImageUrl } from "../utils/imageUrl";
 
 export const ActivitiesSection = () => {
   const { lang, t } = useLanguage();
@@ -77,10 +78,11 @@ export const ActivitiesSection = () => {
                   >
                     <div className="relative w-20 h-20 rounded-xl overflow-hidden bg-stone-100 shrink-0">
                       <img
-                        src={act.image || act.image_url || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80"}
+                        src={optimizePublicSupabaseImageUrl(act.image || act.image_url || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80", 900, 75)}
                         alt={title}
                         className="w-full h-full object-cover"
                         loading="lazy"
+                        decoding="async"
                       />
                     </div>
 
@@ -126,10 +128,11 @@ export const ActivitiesSection = () => {
                     {/* Image Container */}
                     <div className="relative h-48 sm:h-52 w-full overflow-hidden bg-stone-100">
                       <img
-                        src={act.image || act.image_url || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80"}
+                        src={optimizePublicSupabaseImageUrl(act.image || act.image_url || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80", 900, 75)}
                         alt={title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         loading="lazy"
+                        decoding="async"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
                       {act.activity_date && (
@@ -201,6 +204,7 @@ export const ActivitiesSection = () => {
                 src={selectedActivity.image || selectedActivity.image_url || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80"}
                 alt={getActivityTitle(selectedActivity)}
                 className="w-full h-full object-cover"
+                decoding="async"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30" />
               <button

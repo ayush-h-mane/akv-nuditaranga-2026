@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     APP_NAME: str = "Acharya Kannada Vedike (AKV) API"
-    APP_VERSION: str = "2.3.28"
+    APP_VERSION: str = "2.3.29"
     API_PREFIX: str = "/api"
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "production" if os.environ.get("VERCEL") else "development")
     DATABASE_URL: str = os.getenv("DATABASE_URL", "" if os.environ.get("VERCEL") else "sqlite:///./akv_fest.db")
@@ -60,6 +60,15 @@ class Settings(BaseSettings):
     
     # Frontend URL
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "https://akv.acharyahabba.com" if os.environ.get("VERCEL") else "http://localhost:5173")
+
+    # Supabase Storage Configuration (Backend only - server-side upload and migration)
+    SUPABASE_URL: str = (os.getenv("SUPABASE_URL") or "").strip().strip("\"'").rstrip("/")
+    SUPABASE_SERVICE_ROLE_KEY: str = (
+        os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+        or os.getenv("SUPABASE_SERVICE_KEY")
+        or ""
+    ).strip().strip("\"'")
+    SUPABASE_STORAGE_BUCKET: str = (os.getenv("SUPABASE_STORAGE_BUCKET") or "akv-media").strip().strip("\"'")
 
     FEST_NAME: str = "Nuditaranga 2026"
     FEST_DATE: str = "2026-11-01T09:00:00"

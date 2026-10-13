@@ -46,6 +46,7 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
   
   const [activeTab, setActiveTab] = useState("attendance"); // "overview", "attendance", "checkin"
   const [overview, setOverview] = useState(null);
+  const overviewLoadedRef = useRef(false);
   const [myAccountData, setMyAccountData] = useState(null);
   const [myAccountLoading, setMyAccountLoading] = useState(false);
   const [myAccountError, setMyAccountError] = useState("");
@@ -205,11 +206,21 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
   const loadAdminData = async (forceFresh = false) => {
     try {
       const activeDate = await loadAttendanceDates(forceFresh);
+
+      const shouldLoadOverview =
+        forceFresh || !overviewLoadedRef.current;
+
       const [overviewData] = await Promise.all([
-        api.getAdminOverview(forceFresh).catch(() => null),
+        shouldLoadOverview
+          ? api.getAdminOverview(forceFresh).catch(() => null)
+          : Promise.resolve(null),
         loadAttendanceRoster(activeDate, forceFresh)
       ]);
-      if (overviewData) setOverview(overviewData);
+
+      if (overviewData) {
+        setOverview(overviewData);
+        overviewLoadedRef.current = true;
+      }
     } catch (err) {
       console.error("Admin data loading error:", err);
     }
@@ -242,6 +253,7 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
     setMarkingUserIds(prev => [...prev, participantUserId]);
     try {
       const res = await api.markAttendanceCheckIn(participantUserId, selectedDate);
+      overviewLoadedRef.current = false;
       notify("success", res.message || "Check-In recorded successfully!");
       // Update local state smoothly
       setAttendanceRoster(prev => prev.map(p => {
@@ -272,6 +284,7 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
     setMarkingUserIds(prev => [...prev, participantUserId]);
     try {
       const res = await api.markAttendanceCheckOut(participantUserId, selectedDate);
+      overviewLoadedRef.current = false;
       notify("success", res.message || "Check-Out recorded successfully!");
       // Update local state smoothly
       setAttendanceRoster(prev => prev.map(p => {
@@ -303,6 +316,7 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
     setScanCheckOutLoading(true);
     try {
       const res = await api.markAttendanceCheckOut(participantUserId, selectedDate);
+      overviewLoadedRef.current = false;
       setAttendanceRoster(prev => prev.map(p => {
         if (p.user_id === participantUserId) {
           return {
@@ -362,6 +376,7 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
 
     try {
       const res = await api.scanAttendanceQR(decodedText, selectedDate);
+      overviewLoadedRef.current = false;
       setScanResultModalData(res);
       setShowScanResultModal(true);
 
@@ -481,6 +496,7 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
 
     try {
       const res = await api.checkIn(targetId, user?.name || "Fest Admin");
+      overviewLoadedRef.current = false;
       setCheckinResult(res);
       notify("success", `Participant ${res.full_name || targetId} checked in!`);
       setCheckinId("");
@@ -1409,6 +1425,8 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
                           <img
                             src={item.image_url}
                             alt={item.title}
+                            loading="lazy"
+                            decoding="async"
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                           />
                           {item.event_date && (

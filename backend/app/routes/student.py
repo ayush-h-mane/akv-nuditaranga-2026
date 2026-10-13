@@ -3,7 +3,7 @@ import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, load_only
 from sqlalchemy import func, or_
 
 from ..database import get_db
@@ -39,9 +39,32 @@ def get_student_dashboard(
     if current_user.email:
         conds.append(Registration.email == current_user.email)
 
-    registrations = db.query(Registration).options(joinedload(Registration.event)).filter(
-        or_(*conds)
-    ).order_by(Registration.created_at.desc()).all()
+    registrations = (
+        db.query(Registration)
+        .options(
+            load_only(
+                Registration.registration_id,
+                Registration.event_id,
+                Registration.is_team,
+                Registration.team_name,
+                Registration.status,
+                Registration.created_at,
+                Registration.checkin_time,
+            ),
+            joinedload(Registration.event).load_only(
+                Event.id,
+                Event.title_en,
+                Event.title_kn,
+                Event.category,
+                Event.venue,
+                Event.event_date,
+                Event.event_time,
+            ),
+        )
+        .filter(or_(*conds))
+        .order_by(Registration.created_at.desc())
+        .all()
+    )
 
     registered_events = []
     registered_event_ids = set()
@@ -72,12 +95,25 @@ def get_student_dashboard(
     today_status = None
     if current_user.role == "VOLUNTEER":
         today_str = datetime.date.today().strftime("%Y-%m-%d")
-        records = db.query(VolunteerAttendance).filter(
-            or_(
-                VolunteerAttendance.user_id == current_user.id,
-                VolunteerAttendance.auid == current_user.auid
+        records = (
+            db.query(VolunteerAttendance)
+            .options(
+                load_only(
+                    VolunteerAttendance.date,
+                    VolunteerAttendance.status,
+                    VolunteerAttendance.check_in_time,
+                    VolunteerAttendance.marked_by,
+                )
             )
-        ).order_by(VolunteerAttendance.date.desc()).all()
+            .filter(
+                or_(
+                    VolunteerAttendance.user_id == current_user.id,
+                    VolunteerAttendance.auid == current_user.auid,
+                )
+            )
+            .order_by(VolunteerAttendance.date.desc())
+            .all()
+        )
 
         for rec in records:
             if rec.date == today_str:
@@ -91,9 +127,26 @@ def get_student_dashboard(
 
     working_committee_attendance_records = []
     if current_user.is_working_committee or current_user.role in ("WORKING_COMMITTEE", "ADMIN", "SUPERADMIN"):
-        wc_records = db.query(WorkingCommitteeAttendance).filter(
-            WorkingCommitteeAttendance.working_committee_member_id == current_user.id
-        ).order_by(WorkingCommitteeAttendance.attendance_date.desc()).all()
+        wc_records = (
+            db.query(WorkingCommitteeAttendance)
+            .options(
+                load_only(
+                    WorkingCommitteeAttendance.attendance_date,
+                    WorkingCommitteeAttendance.status,
+                    WorkingCommitteeAttendance.check_in_at,
+                    WorkingCommitteeAttendance.check_out_at,
+                    WorkingCommitteeAttendance.submitted,
+                )
+            )
+            .filter(
+                WorkingCommitteeAttendance.working_committee_member_id
+                == current_user.id
+            )
+            .order_by(
+                WorkingCommitteeAttendance.attendance_date.desc()
+            )
+            .all()
+        )
         for rec in wc_records:
             working_committee_attendance_records.append({
                 "date": rec.attendance_date,
@@ -106,9 +159,21 @@ def get_student_dashboard(
 
     # Official event attendance records (Check-In & Check-Out)
     attendance_records = []
-    official_records = db.query(AttendanceRecord).filter(
-        AttendanceRecord.user_id == current_user.id
-    ).order_by(AttendanceRecord.attendance_date.desc()).all()
+    official_records = (
+        db.query(AttendanceRecord)
+        .options(
+            load_only(
+                AttendanceRecord.attendance_date,
+                AttendanceRecord.status,
+                AttendanceRecord.check_in_at,
+                AttendanceRecord.check_out_at,
+                AttendanceRecord.submitted,
+            )
+        )
+        .filter(AttendanceRecord.user_id == current_user.id)
+        .order_by(AttendanceRecord.attendance_date.desc())
+        .all()
+    )
 
     today_ist = get_current_ist_date_str()
     today_official_record = None
@@ -176,12 +241,41 @@ def get_my_registrations(
     current_user: User = Depends(require_student),
     db: Session = Depends(get_db)
 ):
-    regs = db.query(Registration).filter(
-        or_(
-            Registration.user_id == current_user.id,
-            func.upper(Registration.auid) == current_user.auid.upper()
+    regs = (
+        db.query(Registration)
+        .options(
+            load_only(
+                Registration.registration_id,
+                Registration.event_id,
+                Registration.is_team,
+                Registration.team_name,
+                Registration.team_members,
+                Registration.status,
+                Registration.created_at,
+                Registration.checkin_time,
+                Registration.checked_in_by,
+            ),
+            joinedload(Registration.event).load_only(
+                Event.id,
+                Event.title_en,
+                Event.title_kn,
+                Event.category,
+                Event.venue,
+                Event.venue_kn,
+                Event.event_date,
+                Event.event_time,
+                Event.reporting_time,
+            ),
         )
-    ).order_by(Registration.created_at.desc()).all()
+        .filter(
+            or_(
+                Registration.user_id == current_user.id,
+                func.upper(Registration.auid) == current_user.auid.upper(),
+            )
+        )
+        .order_by(Registration.created_at.desc())
+        .all()
+    )
 
     output = []
     for r in regs:

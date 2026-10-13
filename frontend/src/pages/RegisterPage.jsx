@@ -41,6 +41,7 @@ export const RegisterPage = ({
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [participationMode, setParticipationMode] = useState("solo"); // "solo" or "group"
+  const [rulesAccepted, setRulesAccepted] = useState(false);
 
   // Form Fields
   const [formData, setFormData] = useState({
@@ -75,6 +76,35 @@ export const RegisterPage = ({
       }));
     }
   }, [user]);
+
+  useEffect(() => {
+    const loadEvents = async () => {
+      const cached = api.getCachedEvents();
+      if (cached && cached.length > 0) {
+        setEvents(cached);
+        setLoadingEvents(false);
+      }
+      try {
+        const data = await api.getEvents();
+        setEvents(data);
+        if (selectedEventId) {
+          setFormData(prev => ({ ...prev, eventId: selectedEventId }));
+          const pre = data.find(e => e.id === selectedEventId);
+          if (pre?.format === "team") {
+            setParticipationMode("group");
+          } else {
+            setParticipationMode("solo");
+          }
+          setCurrentStep(2); // If already clicked an event from previous page, jump to step 2
+        }
+      } catch (e) {
+        console.error("Error loading events in registration:", e);
+      } finally {
+        setLoadingEvents(false);
+      }
+    };
+    loadEvents();
+  }, [selectedEventId]);
 
   // Requirement 11: In the web, don't give option to register to event without registering to the portal.
   if (!user) {
@@ -116,35 +146,6 @@ export const RegisterPage = ({
       </div>
     );
   }
-
-  useEffect(() => {
-    const loadEvents = async () => {
-      const cached = api.getCachedEvents();
-      if (cached && cached.length > 0) {
-        setEvents(cached);
-        setLoadingEvents(false);
-      }
-      try {
-        const data = await api.getEvents();
-        setEvents(data);
-        if (selectedEventId) {
-          setFormData(prev => ({ ...prev, eventId: selectedEventId }));
-          const pre = data.find(e => e.id === selectedEventId);
-          if (pre?.format === "team") {
-            setParticipationMode("group");
-          } else {
-            setParticipationMode("solo");
-          }
-          setCurrentStep(2); // If already clicked an event from previous page, jump to step 2
-        }
-      } catch (e) {
-        console.error("Error loading events in registration:", e);
-      } finally {
-        setLoadingEvents(false);
-      }
-    };
-    loadEvents();
-  }, [selectedEventId]);
 
   const selectedEvent = events.find(e => e.id === formData.eventId);
 
@@ -281,8 +282,6 @@ export const RegisterPage = ({
     setCurrentStep(prev => Math.max(1, prev - 1));
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
-
-  const [rulesAccepted, setRulesAccepted] = useState(false);
 
   // Final Registration Submission
   const handleSubmit = async () => {
