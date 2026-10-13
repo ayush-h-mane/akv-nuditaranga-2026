@@ -5,7 +5,7 @@ import datetime
 from typing import List, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session, defer, joinedload
+from sqlalchemy.orm import Session, defer, joinedload, load_only
 from sqlalchemy import func, or_, and_, distinct
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -1360,11 +1360,23 @@ def get_audit_logs(
     current_user: User = Depends(require_superadmin),
     db: Session = Depends(get_db)
 ):
-    query = db.query(AuditLog)
+    safe_limit = min(max(1, limit), 200)
+    query = db.query(AuditLog).options(
+        load_only(
+            AuditLog.id,
+            AuditLog.actor_name,
+            AuditLog.action,
+            AuditLog.target_type,
+            AuditLog.target_id,
+            AuditLog.previous_value,
+            AuditLog.new_value,
+            AuditLog.created_at
+        )
+    )
     if action and action != "all":
         query = query.filter(AuditLog.action == action)
     
-    logs = query.order_by(AuditLog.created_at.desc()).offset(offset).limit(limit).all()
+    logs = query.order_by(AuditLog.created_at.desc()).offset(max(0, offset)).limit(safe_limit).all()
     
     results = []
     for l in logs:

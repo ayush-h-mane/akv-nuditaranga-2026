@@ -214,8 +214,21 @@ def ensure_schema_migrations(target_engine=None):
                     "CREATE INDEX IF NOT EXISTS ix_wc_att_date_status ON working_committee_attendance(attendance_date, status)",
                     "CREATE INDEX IF NOT EXISTS ix_checkin_logs_auid ON checkin_logs(auid)",
                     "CREATE INDEX IF NOT EXISTS ix_checkin_logs_reg_id ON checkin_logs(registration_id)",
+                    "CREATE INDEX IF NOT EXISTS ix_checkin_logs_reg_time ON checkin_logs(registration_id, timestamp DESC)",
+                    "CREATE INDEX IF NOT EXISTS ix_checkin_logs_timestamp ON checkin_logs(timestamp DESC)",
                     "CREATE INDEX IF NOT EXISTS ix_att_audit_user_date ON attendance_audit_logs(attendance_date, user_id)",
-                    "CREATE INDEX IF NOT EXISTS ix_wc_audit_member_date ON working_committee_audit_logs(attendance_date, working_committee_member_id)"
+                    "CREATE INDEX IF NOT EXISTS ix_att_audit_date_modified ON attendance_audit_logs(attendance_date, modified_at DESC)",
+                    "CREATE INDEX IF NOT EXISTS ix_att_audit_user_modified ON attendance_audit_logs(user_id, modified_at DESC)",
+                    "CREATE INDEX IF NOT EXISTS ix_att_audit_modified_at ON attendance_audit_logs(modified_at DESC)",
+                    "CREATE INDEX IF NOT EXISTS ix_wc_audit_member_date ON working_committee_audit_logs(attendance_date, working_committee_member_id)",
+                    "CREATE INDEX IF NOT EXISTS ix_wc_audit_date_modified ON working_committee_audit_logs(attendance_date, modified_at DESC)",
+                    "CREATE INDEX IF NOT EXISTS ix_wc_audit_member_modified ON working_committee_audit_logs(working_committee_member_id, modified_at DESC)",
+                    "CREATE INDEX IF NOT EXISTS ix_wc_audit_modified_at ON working_committee_audit_logs(modified_at DESC)",
+                    "CREATE INDEX IF NOT EXISTS ix_audit_logs_action_created ON audit_logs(action, created_at DESC)",
+                    "CREATE INDEX IF NOT EXISTS ix_audit_logs_action_id ON audit_logs(action, id DESC)",
+                    "CREATE INDEX IF NOT EXISTS ix_audit_logs_created_at ON audit_logs(created_at DESC)",
+                    "CREATE INDEX IF NOT EXISTS ix_audit_logs_target ON audit_logs(target_type, target_id)",
+                    "CREATE INDEX IF NOT EXISTS ix_audit_logs_user_id ON audit_logs(user_id)"
                 ]
                 for idx_sql in perf_indexes:
                     try:
@@ -322,10 +335,22 @@ def ensure_schema_migrations(target_engine=None):
                     "CREATE INDEX IF NOT EXISTS ix_events_type ON events(event_type)",
                     "CREATE INDEX IF NOT EXISTS ix_vol_att_date_status ON volunteer_attendance(date, status)",
                     "CREATE INDEX IF NOT EXISTS ix_wc_att_date_status ON working_committee_attendance(attendance_date, status)",
-                    "CREATE INDEX IF NOT EXISTS ix_checkin_logs_auid ON checkin_logs(auid)",
                     "CREATE INDEX IF NOT EXISTS ix_checkin_logs_reg_id ON checkin_logs(registration_id)",
+                    "CREATE INDEX IF NOT EXISTS ix_checkin_logs_reg_time ON checkin_logs(registration_id, timestamp DESC)",
+                    "CREATE INDEX IF NOT EXISTS ix_checkin_logs_timestamp ON checkin_logs(timestamp DESC)",
                     "CREATE INDEX IF NOT EXISTS ix_att_audit_user_date ON attendance_audit_logs(attendance_date, user_id)",
-                    "CREATE INDEX IF NOT EXISTS ix_wc_audit_member_date ON working_committee_audit_logs(attendance_date, working_committee_member_id)"
+                    "CREATE INDEX IF NOT EXISTS ix_att_audit_date_modified ON attendance_audit_logs(attendance_date, modified_at DESC)",
+                    "CREATE INDEX IF NOT EXISTS ix_att_audit_user_modified ON attendance_audit_logs(user_id, modified_at DESC)",
+                    "CREATE INDEX IF NOT EXISTS ix_att_audit_modified_at ON attendance_audit_logs(modified_at DESC)",
+                    "CREATE INDEX IF NOT EXISTS ix_wc_audit_member_date ON working_committee_audit_logs(attendance_date, working_committee_member_id)",
+                    "CREATE INDEX IF NOT EXISTS ix_wc_audit_date_modified ON working_committee_audit_logs(attendance_date, modified_at DESC)",
+                    "CREATE INDEX IF NOT EXISTS ix_wc_audit_member_modified ON working_committee_audit_logs(working_committee_member_id, modified_at DESC)",
+                    "CREATE INDEX IF NOT EXISTS ix_wc_audit_modified_at ON working_committee_audit_logs(modified_at DESC)",
+                    "CREATE INDEX IF NOT EXISTS ix_audit_logs_action_created ON audit_logs(action, created_at DESC)",
+                    "CREATE INDEX IF NOT EXISTS ix_audit_logs_action_id ON audit_logs(action, id DESC)",
+                    "CREATE INDEX IF NOT EXISTS ix_audit_logs_created_at ON audit_logs(created_at DESC)",
+                    "CREATE INDEX IF NOT EXISTS ix_audit_logs_target ON audit_logs(target_type, target_id)",
+                    "CREATE INDEX IF NOT EXISTS ix_audit_logs_user_id ON audit_logs(user_id)"
                 ]:
                     try:
                         conn.exec_driver_sql(pg_idx_sql)

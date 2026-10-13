@@ -2,8 +2,10 @@
   "production_version": "2.3.31",
   "staged_version": "2.3.32",
   "status": "STAGED_DEVELOPMENT",
-  "active_branch": "develop",
-  "pending_changes": [],
+  "pending_changes": [
+    "Database Log Query Performance Optimization: Added high-performance compound B-Tree indexes for audit_logs (action + created_at DESC, action + id DESC, created_at DESC, target_type + target_id, user_id), attendance_audit_logs (date + modified_at DESC, user_id + modified_at DESC, modified_at DESC), working_committee_audit_logs (date + modified_at DESC, member_id + modified_at DESC, modified_at DESC), and checkin_logs (registration_id + timestamp DESC, timestamp DESC), eliminating sequential scans and in-memory sort stalls on Supabase PostgreSQL.",
+    "Backend Audit Query Safety & Projection: Applied load_only column projection and safe-limit bounds (max 200) across /superadmin/audit-logs, /attendance/audit, and /working-committee-attendance/audit; resolved Google Sheets config audit log schema persistence."
+  ],
   "history": [
     {
       "version": "2.3.31",

@@ -113,14 +113,14 @@ class AuditLog(Base):
     __tablename__ = "audit_logs"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, nullable=True)
+    user_id = Column(Integer, nullable=True, index=True)
     actor_name = Column(String, nullable=False)
-    action = Column(String, nullable=False)  # e.g., ATTENDANCE_MARKED, ADMIN_APPROVED, ROLE_CHANGED
+    action = Column(String, nullable=False, index=True)  # e.g., ATTENDANCE_MARKED, ADMIN_APPROVED, ROLE_CHANGED
     target_type = Column(String, nullable=False)  # ATTENDANCE, ADMIN, STUDENT, EVENT
     target_id = Column(String, nullable=False)
     previous_value = Column(Text, nullable=True)
     new_value = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, index=True)
 
 
 class Event(Base):
@@ -193,7 +193,7 @@ class CheckInLog(Base):
     action = Column(String, nullable=False)
     agent = Column(String, nullable=True)
     notes = Column(Text, nullable=True)
-    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    timestamp = Column(DateTime, default=datetime.datetime.utcnow, index=True)
 
 
 class Activity(Base):

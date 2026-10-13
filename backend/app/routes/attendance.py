@@ -5,7 +5,7 @@ import re
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session, defer
+from sqlalchemy.orm import Session, defer, load_only
 from sqlalchemy import func, or_, and_
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -1236,13 +1236,30 @@ def get_attendance_audit_logs(
     """
     SUPERADMIN ONLY: Retrieve immutable attendance audit logs.
     """
-    query = db.query(AttendanceAuditLog)
+    safe_limit = min(max(1, limit), 200)
+    query = db.query(AttendanceAuditLog).options(
+        load_only(
+            AttendanceAuditLog.id,
+            AttendanceAuditLog.attendance_id,
+            AttendanceAuditLog.user_id,
+            AttendanceAuditLog.participant_name,
+            AttendanceAuditLog.attendance_date,
+            AttendanceAuditLog.old_check_in,
+            AttendanceAuditLog.new_check_in,
+            AttendanceAuditLog.old_check_out,
+            AttendanceAuditLog.new_check_out,
+            AttendanceAuditLog.action,
+            AttendanceAuditLog.modified_by,
+            AttendanceAuditLog.modified_at,
+            AttendanceAuditLog.reason
+        )
+    )
     if date and date != "all":
         query = query.filter(AttendanceAuditLog.attendance_date == date)
     if user_id:
         query = query.filter(AttendanceAuditLog.user_id == user_id)
 
-    logs = query.order_by(AttendanceAuditLog.modified_at.desc()).offset(offset).limit(limit).all()
+    logs = query.order_by(AttendanceAuditLog.modified_at.desc()).offset(max(0, offset)).limit(safe_limit).all()
 
     # Bulk fetch associated users to eliminate N+1 queries
     user_ids = {l.user_id for l in logs if l.user_id}

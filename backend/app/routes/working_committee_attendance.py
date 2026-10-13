@@ -3,7 +3,7 @@ import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session, defer
+from sqlalchemy.orm import Session, defer, load_only
 from sqlalchemy import func, or_, and_
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -893,13 +893,30 @@ def get_wc_audit_logs(
     """
     SUPERADMIN ONLY: Retrieve immutable Working Committee audit trail.
     """
-    query = db.query(WorkingCommitteeAuditLog)
+    safe_limit = min(max(1, limit), 200)
+    query = db.query(WorkingCommitteeAuditLog).options(
+        load_only(
+            WorkingCommitteeAuditLog.id,
+            WorkingCommitteeAuditLog.attendance_id,
+            WorkingCommitteeAuditLog.working_committee_member_id,
+            WorkingCommitteeAuditLog.member_name,
+            WorkingCommitteeAuditLog.attendance_date,
+            WorkingCommitteeAuditLog.old_check_in,
+            WorkingCommitteeAuditLog.new_check_in,
+            WorkingCommitteeAuditLog.old_check_out,
+            WorkingCommitteeAuditLog.new_check_out,
+            WorkingCommitteeAuditLog.action,
+            WorkingCommitteeAuditLog.modified_by,
+            WorkingCommitteeAuditLog.modified_at,
+            WorkingCommitteeAuditLog.reason
+        )
+    )
     if date and date != "all":
         query = query.filter(WorkingCommitteeAuditLog.attendance_date == date)
     if member_id:
         query = query.filter(WorkingCommitteeAuditLog.working_committee_member_id == member_id)
 
-    logs = query.order_by(WorkingCommitteeAuditLog.modified_at.desc()).offset(offset).limit(limit).all()
+    logs = query.order_by(WorkingCommitteeAuditLog.modified_at.desc()).offset(max(0, offset)).limit(safe_limit).all()
 
     # Bulk fetch associated members to eliminate N+1 queries
     member_ids = {l.working_committee_member_id for l in logs if l.working_committee_member_id}
