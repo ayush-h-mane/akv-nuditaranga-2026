@@ -27,7 +27,17 @@ const API_BASE_URL = (() => {
 const memCache = new Map();
 const inflightRequests = new Map();
 let lastPrefetchTime = 0;
+let lastPrefetchKey = "";
 let prefetchPromise = null;
+
+const ATTENDANCE_CONFIG_DATES_TTL_MS = 30_000;
+let attendanceConfigDatesCachedAt = 0;
+
+const STUDENT_DASHBOARD_TTL_MS = 15_000;
+const studentDashboardFetchedAt = new Map();
+
+const FESTIVAL_SCHEDULE_TTL_MS = 60_000;
+let festivalScheduleFetchedAt = 0;
 
 function getFromMemCache(key, maxAgeMs = 60000) {
   if (!memCache.has(key)) return null;
@@ -44,6 +54,7 @@ function setInMemCache(key, data) {
 function invalidateMemCache(prefix = "") {
   if (!prefix) {
     memCache.clear();
+    attendanceConfigDatesCachedAt = 0;
     return;
   }
   for (const k of memCache.keys()) {
@@ -51,6 +62,60 @@ function invalidateMemCache(prefix = "") {
       memCache.delete(k);
     }
   }
+}
+
+function invalidateGalleryCache() {
+  invalidateMemCache("gallery_");
+  memCache.delete("gallery");
+
+  for (const key of inflightRequests.keys()) {
+    if (key.startsWith("gallery_")) {
+      inflightRequests.delete(key);
+    }
+  }
+}
+
+function invalidateReelsCache() {
+  invalidateMemCache("reels_");
+  memCache.delete("reels");
+
+  for (const key of inflightRequests.keys()) {
+    if (key.startsWith("reels_")) {
+      inflightRequests.delete(key);
+    }
+  }
+}
+
+function getStoredUserAuid() {
+  try {
+    const user = JSON.parse(localStorage.getItem("akv_user") || "null");
+    return user?.auid?.trim().toUpperCase() || null;
+  } catch {
+    return null;
+  }
+}
+
+function invalidateCurrentStudentDashboardFreshness() {
+  try {
+    const user = JSON.parse(localStorage.getItem("akv_user") || "{}");
+    const auid = String(user.auid || "").trim().toUpperCase();
+
+    if (auid) {
+      studentDashboardFetchedAt.delete(`dash_${auid}`);
+    }
+  } catch {
+    // Leave the normal fetch path available if local user data is invalid.
+  }
+}
+
+function invalidateStudentDashboardCache(auid = getStoredUserAuid()) {
+  if (!auid) return;
+
+  const normalizedAuid = auid.trim().toUpperCase();
+
+  studentDashboardFetchedAt.delete(`dash_${normalizedAuid}`);
+  studentDashboardFetchedAt.delete(normalizedAuid);
+  memCache.delete(`dash_${normalizedAuid}`);
 }
 
 async function fetchWithDeduplication(reqKey, fetchFn) {
@@ -910,11 +975,36 @@ export const api = {
   },
 
   async getStudentDashboard(forceFresh = false) {
-    const key = "student_dashboard";
+    let auid = "";
+
+    try {
+      const user = JSON.parse(localStorage.getItem("akv_user") || "{}");
+      auid = String(user.auid || "").trim().toUpperCase();
+    } catch {
+      auid = "";
+    }
+
+    const cacheKey = auid ? `dash_${auid}` : null;
+    const requestKey = auid
+      ? `student_dashboard_${auid}`
+      : "student_dashboard_current";
+
+    if (!forceFresh && cacheKey) {
+      const fetchedAt = studentDashboardFetchedAt.get(cacheKey);
+
+      if (
+        fetchedAt &&
+        Date.now() - fetchedAt < STUDENT_DASHBOARD_TTL_MS
+      ) {
+        const cached = this.getCachedStudentDashboard(auid);
+        if (cached) return cached;
+      }
+    }
+
     if (forceFresh) {
-      inflightRequests.delete(key);
-    } else if (inflightRequests.has(key)) {
-      return await inflightRequests.get(key);
+      inflightRequests.delete(requestKey);
+    } else if (inflightRequests.has(requestKey)) {
+      return await inflightRequests.get(requestKey);
     }
 
     const fetchPromise = (async () => {
@@ -931,9 +1021,15 @@ export const api = {
         if (!res.ok) throw new Error(data.detail || "Failed to fetch student dashboard");
 
         if (data && data.profile && data.profile.auid) {
-          const auid = data.profile.auid.toUpperCase();
-          memCache.set("dash_" + auid, data);
-          writeLocalJson(STORAGE_STUDENT_DASH_PREFIX + auid, data);
+          const dashboardAuid = data.profile.auid.trim().toUpperCase();
+
+          memCache.set(`dash_${dashboardAuid}`, data);
+          studentDashboardFetchedAt.set(`dash_${dashboardAuid}`, Date.now());
+
+          writeLocalJson(
+            STORAGE_STUDENT_DASH_PREFIX + dashboardAuid,
+            data
+          );
         }
         return data;
       } catch (err) {
@@ -993,11 +1089,13 @@ export const api = {
       }
     })();
 
-    inflightRequests.set(key, fetchPromise);
+    inflightRequests.set(requestKey, fetchPromise);
     try {
       return await fetchPromise;
     } finally {
-      inflightRequests.delete(key);
+      if (inflightRequests.get(requestKey) === fetchPromise) {
+        inflightRequests.delete(requestKey);
+      }
     }
   },
 
@@ -1064,9 +1162,15 @@ export const api = {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Event registration failed");
+
+      invalidateCurrentStudentDashboardFreshness();
+      invalidateStudentDashboardCache();
+      invalidateMemCache("events_api_");
       return data;
     } catch (err) {
       if (isNetworkError(err)) {
+        const rawUser = localStorage.getItem("akv_user");
+        const currentUser = rawUser ? JSON.parse(rawUser) : {};
         const nextNum = getLocalRegistrations().length + 1;
         const regRecord = {
           registration_id: `AKVNT${String(nextNum).padStart(4, "0")}`,
@@ -1078,6 +1182,9 @@ export const api = {
           created_at: new Date().toISOString()
         };
         saveLocalRegistration(regRecord);
+        invalidateCurrentStudentDashboardFreshness();
+        invalidateStudentDashboardCache();
+        invalidateMemCache("events_api_");
         return {
           success: true,
           registration_id: regRecord.registration_id,
@@ -2000,10 +2107,25 @@ export const api = {
 
   async getAttendanceConfigDates(forceFresh = false) {
     const key = "attendance_config_dates";
+
     if (forceFresh) {
       inflightRequests.delete(key);
-    } else if (inflightRequests.has(key)) {
-      return await inflightRequests.get(key);
+      attendanceConfigDatesCachedAt = 0;
+    } else {
+      const cached = memCache.get(key);
+
+      if (
+        cached &&
+        attendanceConfigDatesCachedAt > 0 &&
+        Date.now() - attendanceConfigDatesCachedAt <
+          ATTENDANCE_CONFIG_DATES_TTL_MS
+      ) {
+        return cached;
+      }
+
+      if (inflightRequests.has(key)) {
+        return await inflightRequests.get(key);
+      }
     }
 
     const fetchPromise = (async () => {
@@ -2021,6 +2143,8 @@ export const api = {
           if (data && Array.isArray(data.dates) && data.dates.length > 0) {
             const normalized = normalizeAttendanceDates(data);
             memCache.set(key, normalized);
+            attendanceConfigDatesCachedAt = Date.now();
+
             writeLocalJson(STORAGE_ATTENDANCE_KEY + "_dates", normalized);
             return normalized;
           }
@@ -2557,49 +2681,101 @@ export const api = {
   },
 
   async getEvents(category = "all", activeOnly = true, forceFresh = false) {
-    const cacheKey = `events_${category}_${activeOnly}`;
-    const reqKey = category === "all" ? "events_all" : cacheKey;
+    const normalizedCategory = category || "all";
+    const cacheKey = `events_${normalizedCategory}_${activeOnly}`;
+    const reqKey = cacheKey;
+    const responseCacheKey = `events_api_${category}_${activeOnly}`;
+
+    if (!forceFresh) {
+      const cachedEvents = getFromMemCache(responseCacheKey, 15_000);
+
+      if (cachedEvents !== null) {
+        return cachedEvents;
+      }
+    }
+
     if (forceFresh) {
-      inflightRequests.delete("events_all");
-      inflightRequests.delete(reqKey);
-    } else if (inflightRequests.has("events_all")) {
-      await inflightRequests.get("events_all").catch(() => {});
-      return this.getCachedEvents(category, activeOnly);
+      invalidateMemCache("events_");
+
+      for (const key of inflightRequests.keys()) {
+        if (key.startsWith("events_")) {
+          inflightRequests.delete(key);
+        }
+      }
+    } else {
+      if (inflightRequests.has(reqKey)) {
+        return await inflightRequests.get(reqKey);
+      }
     }
 
     const fetchPromise = (async () => {
       try {
         const params = new URLSearchParams();
-        if (category && category !== "all") params.append("category", category);
-        if (!activeOnly) params.append("active_only", "false");
-        if (forceFresh) params.append("_t", String(Date.now()));
-        const queryString = params.toString() ? `?${params.toString()}` : "";
-        
-        const res = await fetch(`${API_BASE_URL}/events${queryString}`, {
-          cache: forceFresh ? "no-store" : "default",
-          headers: forceFresh ? { "Cache-Control": "no-cache", "Pragma": "no-cache" } : {}
-        });
+
+        if (normalizedCategory !== "all") {
+          params.append("category", normalizedCategory);
+        }
+
+        if (!activeOnly) {
+          params.append("active_only", "false");
+        }
+
+        if (forceFresh) {
+          params.append("_t", String(Date.now()));
+        }
+
+        const queryString = params.toString()
+          ? `?${params.toString()}`
+          : "";
+
+        const res = await fetch(
+          `${API_BASE_URL}/events${queryString}`,
+          {
+            cache: forceFresh ? "no-store" : "default",
+            headers: forceFresh
+              ? {
+                  "Cache-Control": "no-cache",
+                  "Pragma": "no-cache"
+                }
+              : {}
+          }
+        );
+
         if (res.ok) {
           const data = await res.json();
+
           if (Array.isArray(data)) {
-            saveLocalEvents(data);
+            // Only a full-list response replaces the local events dataset.
+            if (normalizedCategory === "all") {
+              saveLocalEvents(data);
+            }
+
             let result = [...data];
+
             if (activeOnly) {
               result = result.filter(e => e.is_active !== false);
             }
+
             if (category && category !== "all") {
               result = result.filter(e => e.category === category);
             }
+
+            setInMemCache(responseCacheKey, result);
             return result;
           }
         }
       } catch (err) {
-        console.warn("Backend unavailable, using client dataset for events:", err.message);
+        console.warn(
+          "Backend unavailable, using client dataset for events:",
+          err.message
+        );
       }
-      return this.getCachedEvents(category, activeOnly);
+
+      return this.getCachedEvents(normalizedCategory, activeOnly);
     })();
 
     inflightRequests.set(reqKey, fetchPromise);
+
     try {
       return await fetchPromise;
     } finally {
@@ -2653,6 +2829,8 @@ export const api = {
     };
     list.push(newEvent);
     saveLocalEvents(list);
+    invalidateMemCache("events_api_");
+    invalidateMemCache("events_");
     inflightRequests.delete("events_all");
     for (const k of inflightRequests.keys()) {
       if (k.startsWith("events_")) inflightRequests.delete(k);
@@ -2692,7 +2870,8 @@ export const api = {
       list.push(finalEvent);
     }
     saveLocalEvents(list);
-    memCache.delete("events");
+    invalidateMemCache("events_api_");
+    invalidateMemCache("events_");
     inflightRequests.delete("events_all");
     for (const k of inflightRequests.keys()) {
       if (k.startsWith("events_")) inflightRequests.delete(k);
@@ -2719,6 +2898,8 @@ export const api = {
     let list = getLocalEvents();
     list = list.filter(e => e.id !== id);
     saveLocalEvents(list);
+    invalidateMemCache("events_api_");
+    invalidateMemCache("events_");
     inflightRequests.delete("events_all");
     for (const k of inflightRequests.keys()) {
       if (k.startsWith("events_")) inflightRequests.delete(k);
@@ -2944,12 +3125,29 @@ export const api = {
   },
 
   async getActivities(category = "all", activeOnly = true, forceFresh = false) {
-    const key = "activities";
+    const key = `activities_${category}_${activeOnly}`;
+    const responseCacheKey =
+      `activities_api_${category}_${activeOnly}`;
+
+    if (!forceFresh) {
+      const cachedActivities = getFromMemCache(
+        responseCacheKey,
+        30_000
+      );
+
+      if (cachedActivities !== null) {
+        return cachedActivities;
+      }
+    }
+
     if (forceFresh) {
       inflightRequests.delete(key);
-    } else if (inflightRequests.has(key)) {
-      await inflightRequests.get(key).catch(() => {});
-      return this.getCachedActivities(category, activeOnly);
+      invalidateMemCache("activities_");
+      invalidateMemCache("activities_api_");
+    } else {
+      if (inflightRequests.has(key)) {
+        return await inflightRequests.get(key);
+      }
     }
 
     const fetchPromise = (async () => {
@@ -2968,7 +3166,15 @@ export const api = {
           if (Array.isArray(data)) {
             memCache.set("activities", data);
             writeLocalJson(STORAGE_ACTIVITIES_KEY, data);
-            return this.getCachedActivities(category, activeOnly);
+
+            const result = this.getCachedActivities(
+              category,
+              activeOnly
+            );
+
+            setInMemCache(responseCacheKey, result);
+
+            return result;
           }
         }
       } catch (err) {
@@ -2998,6 +3204,8 @@ export const api = {
       list = [...list, data];
       memCache.set("activities", list);
       writeLocalJson(STORAGE_ACTIVITIES_KEY, list);
+      invalidateMemCache("activities_api_");
+      invalidateMemCache("activities_");
       return data;
     } catch (err) {
       if (!err.message?.includes("Failed to fetch") && !err.message?.includes("NetworkError") && err.message !== "Failed to create activity") {
@@ -3021,6 +3229,8 @@ export const api = {
       list = [...list, newAct];
       memCache.set("activities", list);
       writeLocalJson(STORAGE_ACTIVITIES_KEY, list);
+      invalidateMemCache("activities_api_");
+      invalidateMemCache("activities_");
       return newAct;
     }
   },
@@ -3038,6 +3248,8 @@ export const api = {
       list = list.map(a => a.id === id ? { ...a, ...data } : a);
       memCache.set("activities", list);
       writeLocalJson(STORAGE_ACTIVITIES_KEY, list);
+      invalidateMemCache("activities_api_");
+      invalidateMemCache("activities_");
       return data;
     } catch (err) {
       if (!err.message?.includes("Failed to fetch") && !err.message?.includes("NetworkError") && err.message !== "Failed to update activity") {
@@ -3057,6 +3269,8 @@ export const api = {
       } : a);
       memCache.set("activities", list);
       writeLocalJson(STORAGE_ACTIVITIES_KEY, list);
+      invalidateMemCache("activities_api_");
+      invalidateMemCache("activities_");
       return list.find(a => a.id === id);
     }
   },
@@ -3072,6 +3286,8 @@ export const api = {
       list = list.filter(a => a.id !== id);
       memCache.set("activities", list);
       writeLocalJson(STORAGE_ACTIVITIES_KEY, list);
+      invalidateMemCache("activities_api_");
+      invalidateMemCache("activities_");
       return data;
     } catch (err) {
       if (!err.message?.includes("Failed to fetch") && !err.message?.includes("NetworkError") && err.message !== "Failed to delete activity") {
@@ -3081,6 +3297,8 @@ export const api = {
       list = list.filter(a => a.id !== id);
       memCache.set("activities", list);
       writeLocalJson(STORAGE_ACTIVITIES_KEY, list);
+      invalidateMemCache("activities_api_");
+      invalidateMemCache("activities_");
       return { success: true };
     }
   },
@@ -3098,45 +3316,119 @@ export const api = {
   },
 
   async getGallery(category = "all", forceFresh = false) {
-    const key = "gallery";
+    const key = `gallery_${category || "all"}`;
+
     if (forceFresh) {
-      inflightRequests.delete(key);
-    } else if (inflightRequests.has(key)) {
-      await inflightRequests.get(key).catch(() => {});
-      return this.getCachedGallery(category);
+      invalidateGalleryCache();
+    } else {
+      const cached = getFromMemCache(key, 30_000);
+
+      if (cached !== null) {
+        return cached;
+      }
+
+      if (inflightRequests.has(key)) {
+        return await inflightRequests.get(key);
+      }
     }
 
     const fetchPromise = (async () => {
       try {
         const params = new URLSearchParams();
-        if (category && category !== "all") params.set("category", category);
-        if (forceFresh) params.set("_t", String(Date.now()));
-        const queryString = params.toString() ? `?${params.toString()}` : "";
-        const url = `${API_BASE_URL}/gallery${queryString}`;
-        const res = await fetch(url, {
-          cache: forceFresh ? "no-store" : "default",
-          headers: forceFresh ? { "Cache-Control": "no-cache", "Pragma": "no-cache" } : {}
-        });
+
+        if (category && category !== "all") {
+          params.set("category", category);
+        }
+
+        if (forceFresh) {
+          params.set("_t", String(Date.now()));
+        }
+
+        const queryString = params.toString()
+          ? `?${params.toString()}`
+          : "";
+
+        const res = await fetch(
+          `${API_BASE_URL}/gallery${queryString}`,
+          {
+            cache: forceFresh ? "no-store" : "default",
+            headers: forceFresh
+              ? {
+                  "Cache-Control": "no-cache",
+                  "Pragma": "no-cache"
+                }
+              : {}
+          }
+        );
+
         if (res.ok) {
           const data = await res.json();
-          if (Array.isArray(data) && data.length > 0) {
-            memCache.set("gallery", data);
-            writeLocalJson(STORAGE_GALLERY_KEY, data);
-            return this.getCachedGallery(category);
+
+          if (Array.isArray(data)) {
+            if (data.length > 0) {
+              let result = data;
+
+              // Only an unfiltered response updates the full gallery cache.
+              if (!category || category === "all") {
+                memCache.set("gallery", data);
+                writeLocalJson(STORAGE_GALLERY_KEY, data);
+                result = this.getCachedGallery("all");
+              }
+
+              setInMemCache(key, result);
+              return result;
+            }
+
+            // Preserve the current fallback behavior for an empty response.
+            const fallback = this.getCachedGallery(category);
+            setInMemCache(key, fallback);
+            return fallback;
           }
         }
       } catch (err) {
-        console.warn("Backend unavailable, using cached gallery list:", err.message);
+        console.warn(
+          "Backend unavailable, using cached gallery list:",
+          err.message
+        );
       }
+
       return this.getCachedGallery(category);
     })();
 
     inflightRequests.set(key, fetchPromise);
+
     try {
       return await fetchPromise;
     } finally {
       inflightRequests.delete(key);
     }
+  },
+
+  async uploadImage(file) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await fetch(`${API_BASE_URL}/media/image`, {
+      method: "POST",
+      headers: {
+        ...getAuthHeaders()
+      },
+      body: formData
+    });
+
+    const data = await readApiResponse(res);
+
+    if (!res.ok) {
+      throw new Error(
+        data.detail || `Image upload failed (${res.status})`
+      );
+    }
+
+    if (!data.url) {
+      throw new Error("No image URL was returned.");
+    }
+
+    return data.url;
   },
 
   async createGalleryItem(itemData) {
@@ -3147,6 +3439,7 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Failed to add gallery item");
+    invalidateGalleryCache();
     return data;
   },
 
@@ -3158,6 +3451,7 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Failed to update gallery item");
+    invalidateGalleryCache();
     return data;
   },
 
@@ -3167,6 +3461,7 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Failed to delete gallery item");
+    invalidateGalleryCache();
     return data;
   },
 
@@ -3184,39 +3479,78 @@ export const api = {
   },
 
   async getReels(postType = "all", forceFresh = false) {
-    const key = "reels";
+    const type = postType || "all";
+    const key = `reels_${type}`;
+
     if (forceFresh) {
-      inflightRequests.delete(key);
-    } else if (inflightRequests.has(key)) {
-      return await inflightRequests.get(key);
+      invalidateReelsCache();
+    } else {
+      const cached = getFromMemCache(key, 30_000);
+
+      if (cached !== null) {
+        return cached;
+      }
+
+      if (inflightRequests.has(key)) {
+        return await inflightRequests.get(key);
+      }
     }
 
     const fetchPromise = (async () => {
       try {
         const params = new URLSearchParams();
-        if (postType && postType !== "all") params.set("post_type", postType);
-        if (forceFresh) params.set("_t", String(Date.now()));
-        const queryString = params.toString() ? `?${params.toString()}` : "";
-        const url = `${API_BASE_URL}/reels${queryString}`;
-        const res = await fetch(url, {
-          cache: forceFresh ? "no-store" : "default",
-          headers: forceFresh ? { "Cache-Control": "no-cache", "Pragma": "no-cache" } : {}
-        });
+
+        if (type !== "all") {
+          params.set("post_type", type);
+        }
+
+        if (forceFresh) {
+          params.set("_t", String(Date.now()));
+        }
+
+        const queryString = params.toString()
+          ? `?${params.toString()}`
+          : "";
+
+        const res = await fetch(
+          `${API_BASE_URL}/reels${queryString}`,
+          {
+            cache: forceFresh ? "no-store" : "default",
+            headers: forceFresh
+              ? {
+                  "Cache-Control": "no-cache",
+                  "Pragma": "no-cache"
+                }
+              : {}
+          }
+        );
+
         if (res.ok) {
           const data = await res.json();
+
           if (Array.isArray(data) && data.length > 0) {
-            memCache.set("reels", data);
-            writeLocalJson(STORAGE_REELS_KEY, data);
+            // Only the full-list response updates the shared reels dataset.
+            if (type === "all") {
+              memCache.set("reels", data);
+              writeLocalJson(STORAGE_REELS_KEY, data);
+            }
+
+            setInMemCache(key, data);
             return data;
           }
         }
       } catch (err) {
-        console.warn("Backend unavailable, using fallback reels:", err.message);
+        console.warn(
+          "Backend unavailable, using fallback reels:",
+          err.message
+        );
       }
-      return this.getCachedReels(postType);
+
+      return this.getCachedReels(type);
     })();
 
     inflightRequests.set(key, fetchPromise);
+
     try {
       return await fetchPromise;
     } finally {
@@ -3232,6 +3566,7 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Failed to create reel/post");
+    invalidateReelsCache();
     return data;
   },
 
@@ -3243,6 +3578,7 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Failed to update reel/post");
+    invalidateReelsCache();
     return data;
   },
 
@@ -3252,6 +3588,7 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Failed to delete reel/post");
+    invalidateReelsCache();
     return data;
   },
 
@@ -3266,10 +3603,37 @@ export const api = {
 
   async getFestivalSchedule(forceFresh = false) {
     const key = "festival_schedule";
+    const responseCacheKey = "festival_schedule_api";
+
+    if (!forceFresh) {
+      const cachedSchedule = getFromMemCache(
+        responseCacheKey,
+        60_000
+      );
+
+      if (cachedSchedule !== null) {
+        return cachedSchedule;
+      }
+    }
+
     if (forceFresh) {
       inflightRequests.delete(key);
-    } else if (inflightRequests.has(key)) {
-      return await inflightRequests.get(key);
+      festivalScheduleFetchedAt = 0;
+    } else {
+      const cached = memCache.get(key);
+
+      if (
+        cached &&
+        festivalScheduleFetchedAt > 0 &&
+        Date.now() - festivalScheduleFetchedAt <
+          FESTIVAL_SCHEDULE_TTL_MS
+      ) {
+        return cached;
+      }
+
+      if (inflightRequests.has(key)) {
+        return await inflightRequests.get(key);
+      }
     }
 
     const fetchPromise = (async () => {
@@ -3281,8 +3645,11 @@ export const api = {
         });
         if (res.ok) {
           const data = await res.json();
+
+          setInMemCache("festival_schedule_api", data);
           memCache.set("festival_schedule", data);
           writeLocalJson(STORAGE_SCHEDULE_KEY, data);
+
           return data;
         }
       } catch (err) {
@@ -3302,35 +3669,49 @@ export const api = {
   prefetchAll(user = null) {
     try {
       const now = Date.now();
-      // Enforce 60-second debounce and deduplication so rapid mounts don't hammer the database
-      if (now - lastPrefetchTime < 60000 && prefetchPromise) {
+      const role = user?.role || "PUBLIC";
+      const identity = String(
+        user?.auid || user?.id || user?.email || "anonymous"
+      ).trim().toUpperCase();
+
+      const prefetchKey = `${role}:${identity}`;
+
+      // Debounce only for the same account and role.
+      if (
+        prefetchKey === lastPrefetchKey &&
+        now - lastPrefetchTime < 60000 &&
+        prefetchPromise
+      ) {
         return prefetchPromise;
       }
+
+      lastPrefetchKey = prefetchKey;
       lastPrefetchTime = now;
 
+      // Fetch active catalog records for initial page loading.
+      // Management pages can request inactive records when opened.
       const tasks = [
-        this.getEvents("all", false).catch(() => {}),
+        this.getEvents("all", true).catch(() => {}),
         this.getFestivalSchedule().catch(() => {}),
-        this.getActivities("all", false).catch(() => {}),
-        this.getGallery("all").catch(() => {}),
-        this.getReels("all").catch(() => {})
+        this.getActivities("all", true).catch(() => {}),
       ];
-      if (user && (user.role === "ADMIN" || user.role === "SUPERADMIN")) {
+
+      if (role === "ADMIN" || role === "SUPERADMIN") {
         tasks.push(
           this.getAttendanceConfigDates().catch(() => {})
         );
       }
-      if (user && user.role === "SUPERADMIN") {
-        tasks.push(
-          this.getSuperAdminStats().catch(() => {})
-        );
-      } else if (user && user.role !== "ADMIN") {
+
+      if (role === "SUPERADMIN") {
+        tasks.push(this.getSuperAdminStats().catch(() => {}));
+      } else if (user && role !== "ADMIN") {
         tasks.push(this.getStudentDashboard().catch(() => {}));
       }
+
       prefetchPromise = Promise.allSettled(tasks);
       return prefetchPromise;
-    } catch (e) {
-      console.warn("Prefetch warning:", e);
+    } catch (err) {
+      console.warn("Prefetch warning:", err);
     }
   },
 
@@ -3361,7 +3742,19 @@ export const api = {
       body: JSON.stringify({ days: normalizedDays })
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Failed to update festival schedule");
+    if (!res.ok) {
+      throw new Error(
+        data.detail || "Failed to update festival schedule"
+      );
+    }
+
+    inflightRequests.delete("festival_schedule");
+    festivalScheduleFetchedAt = Date.now();
+
+    setInMemCache("festival_schedule_api", data);
+    memCache.set("festival_schedule", data);
+    writeLocalJson(STORAGE_SCHEDULE_KEY, data);
+
     return data;
   },
 

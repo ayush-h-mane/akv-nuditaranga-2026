@@ -32,13 +32,14 @@ export const HeroSection = ({ onExploreNuditaranga, onKnowAbout, onOpenAuthTab, 
         {/* Dual Brand Crest: Acharya Institutes & Acharya Kannada Vedike with Karnataka flags */}
         <div className="flex items-center justify-center gap-4 sm:gap-6 mb-5 animate-fade-in">
           <div className="p-2 sm:p-3 rounded-2xl bg-white/90 shadow-md border border-amber-200/80">
-            <img src="/images/acharya-logo.png?v=2026" alt="Acharya" className="h-12 sm:h-16 w-auto object-contain" />
+            <img src="/images/acharya-logo.png?v=2026" alt="Acharya" loading="eager" className="h-12 sm:h-16 w-auto object-contain" />
           </div>
           <div className="h-10 w-[2px] bg-gradient-to-b from-kar-red to-kar-yellow rounded-full hidden sm:block" />
           <div className="p-1 sm:p-2 rounded-2xl bg-white/90 shadow-md border border-amber-200/80 hover:shadow-lg transition-all transform hover:-translate-y-0.5">
             <img
               src="/images/akv-logo.png"
               alt="Acharya Kannada Vedike"
+              loading="eager"
               className="h-14 sm:h-20 w-auto object-contain drop-shadow"
             />
           </div>
@@ -87,6 +88,7 @@ export const HeroSection = ({ onExploreNuditaranga, onKnowAbout, onOpenAuthTab, 
             <img
               src="/images/nograj.png?v=2026"
               alt={lang === "kn" ? "ಕರ್ನಾಟಕ ಧ್ವಜ ಹಿಡಿದಿರುವ ನೋಗ್ರಾಜ್" : "NOGRAJ holding the Karnataka flag"}
+              loading="eager"
               className="block h-auto w-full drop-shadow-[0_10px_15px_rgba(75,12,0,0.42)] transition-transform duration-300 hover:-translate-y-1"
             />
           </button>

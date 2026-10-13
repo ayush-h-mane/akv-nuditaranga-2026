@@ -10,7 +10,9 @@ router = APIRouter(prefix="/gallery", tags=["Gallery"])
 
 @router.get("", response_model=List[GalleryItemOut])
 def get_gallery_items(response: Response, db: Session = Depends(get_db)):
-    response.headers["Cache-Control"] = "public, max-age=60, s-maxage=300, stale-while-revalidate=600"
+    response.headers["Cache-Control"] = (
+        "public, max-age=15, s-maxage=60, stale-while-revalidate=120"
+    )
     cached = fast_cache.get("gallery_items")
     if cached is not None:
         return cached

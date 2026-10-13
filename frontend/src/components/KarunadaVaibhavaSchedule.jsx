@@ -473,6 +473,8 @@ export const KarunadaVaibhavaSchedule = ({ onRegisterClick }) => {
                 src="/images/rajyotsava-draft-poster.jpg"
                 alt="Nuditaranga 2026 Karunada Vaibhava Plan"
                 className="max-h-[75vh] w-auto rounded-xl shadow-lg border border-stone-800"
+                loading="lazy"
+                decoding="async"
               />
             </div>
 

@@ -4,6 +4,7 @@ import { useLanguage } from "../context/LanguageContext";
 import { api } from "../services/api";
 import { useHistoryModal } from "../utils/useHistoryModal";
 import { X, ZoomIn, Image as ImageIcon } from "lucide-react";
+import { optimizePublicSupabaseImageUrl } from "../utils/imageUrl";
 
 export const GallerySection = () => {
   const { lang, t } = useLanguage();
@@ -62,10 +63,11 @@ export const GallerySection = () => {
                       className="group relative w-60 h-40 shrink-0 snap-center rounded-2xl overflow-hidden shadow-md cursor-pointer border border-stone-200/90 bg-stone-900 active:scale-[0.98] transition-transform"
                     >
                       <img
-                        src={photo.image}
+                        src={optimizePublicSupabaseImageUrl(photo.image || photo.image_url, 900, 75)}
                         alt={title}
                         className="w-full h-full object-cover"
                         loading="lazy"
+                        decoding="async"
                       />
 
                       {/* Gradient overlay */}
@@ -109,10 +111,11 @@ export const GallerySection = () => {
                     className="group relative h-64 rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-300 cursor-pointer border border-stone-200/80 bg-stone-900"
                   >
                     <img
-                      src={photo.image}
+                      src={optimizePublicSupabaseImageUrl(photo.image || photo.image_url, 900, 75)}
                       alt={title}
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-90 group-hover:opacity-100"
                       loading="lazy"
+                      decoding="async"
                     />
 
                     {/* Gradient overlay */}
@@ -180,6 +183,7 @@ export const GallerySection = () => {
                 src={selectedImage.image}
                 alt={lang === "kn" ? (selectedImage.title_kn || selectedImage.titleKn) : (selectedImage.title_en || selectedImage.titleEn)}
                 className="w-full max-h-[38dvh] sm:max-h-[60vh] object-contain"
+                decoding="async"
               />
             </div>
 

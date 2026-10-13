@@ -2742,6 +2742,8 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                           <img
                             src={act.image || act.image_url || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80"}
                             alt={act.title || act.title_en}
+                            loading="lazy"
+                            decoding="async"
                             className="w-full h-full object-cover"
                           />
                           {act.activity_date && (
@@ -2888,6 +2890,8 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                             <img
                               src={post.cover_image}
                               alt="Reel Cover"
+                              loading="lazy"
+                              decoding="async"
                               className="w-full h-full object-cover"
                             />
                           ) : (
