@@ -1,9 +1,14 @@
 {
-  "production_version": "2.3.33",
-  "staged_version": "2.3.34",
+  "production_version": "2.3.34",
+  "staged_version": "2.3.35",
   "status": "DEPLOYED_TO_PRODUCTION",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.34",
+      "released_at": "2026-10-14T11:34:19+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.34: Developer Portal Briefcase Icon Reference Error Fix: Added missing Briefcase import from lucide-react in DeveloperSuperAdminManager.jsx, resolving runtime ReferenceError: Briefcase is not defined when opening the Developer Portal (/developer).; Build Verification: Verified clean production build using npm run build with 0 warnings or errors."
+    },
     {
       "version": "2.3.33",
       "released_at": "2026-10-14T11:25:34+0530",
