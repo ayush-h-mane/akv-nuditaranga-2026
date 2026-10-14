@@ -63,6 +63,8 @@ import { DeveloperSuperAdminManager } from "../components/DeveloperSuperAdminMan
 import { DeveloperDiagnostics } from "../components/DeveloperDiagnostics";
 import { DeveloperGoogleSheetsSync } from "../components/DeveloperGoogleSheetsSync";
 import { AttendanceScanResultModal } from "../components/AttendanceScanResultModal";
+import { EditAdminModal } from "../components/EditAdminModal";
+import { EditVolunteerModal } from "../components/EditVolunteerModal";
 
 export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false }) => {
   const { user, logout, refreshUser } = useAuth();
@@ -73,6 +75,8 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
     user?.username?.toLowerCase() === "nanu"
   );
   const [activeSection, setActiveSection] = useState(isDev ? "superadmin-manager" : "overview");
+  const [editingAdmin, setEditingAdmin] = useState(null);
+  const [editingVolunteer, setEditingVolunteer] = useState(null);
   // Sections: overview, admins, students, volunteers, attendance, exports, events, audit-logs, superadmin-manager, developer-health, google-sheets
 
   // 6 Authorized Superadmin Usernames lockdown
@@ -2311,6 +2315,20 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                                     <span className="text-white">View Details</span>
                                   </button>
 
+                                  {/* Edit Profile Button */}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingAdmin(adm);
+                                    }}
+                                    className="px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-[11px] font-bold flex items-center gap-1 shadow-2xs transition-all cursor-pointer active:scale-95"
+                                    title="Edit Administrator Profile"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5 text-amber-700" />
+                                    <span>Edit</span>
+                                  </button>
+
                                   {adm.approval_status === "PENDING_APPROVAL" && (
                                     <>
                                       <button
@@ -2659,7 +2677,15 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                       </div>
 
                       {/* Modal Footer */}
-                      <div className="p-4 bg-stone-50 border-t border-stone-200 flex items-center justify-end">
+                      <div className="p-4 bg-stone-50 border-t border-stone-200 flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setEditingAdmin(selectedAdmin)}
+                          className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer transition-all active:scale-95"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                          <span>Edit Profile</span>
+                        </button>
                         <button
                           type="button"
                           onClick={() => setSelectedAdmin(null)}
@@ -2670,6 +2696,35 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                       </div>
                     </div>
                   </div>
+                )}
+
+                {/* Edit Admin Modal */}
+                {editingAdmin && (
+                  <EditAdminModal
+                    admin={editingAdmin}
+                    isOpen={Boolean(editingAdmin)}
+                    onClose={() => setEditingAdmin(null)}
+                    onSuccess={(updated) => {
+                      setAdminsList((prev) =>
+                        prev.map((a) =>
+                          a.id === updated.id || a.user_id === updated.user_id
+                            ? { ...a, ...updated }
+                            : a
+                        )
+                      );
+                      if (
+                        selectedAdmin &&
+                        (selectedAdmin.id === updated.id ||
+                          selectedAdmin.user_id === updated.user_id)
+                      ) {
+                        setSelectedAdmin((prev) => ({ ...prev, ...updated }));
+                      }
+                      loadAdmins(true);
+                    }}
+                    isDeveloperMode={isDev}
+                    showError={showError}
+                    showSuccess={showSuccess}
+                  />
                 )}
               </div>
             );
@@ -3622,19 +3677,33 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                           {vol.total_days_present} days
                         </td>
                         <td className="py-3 px-3 text-right">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedVolunteer(vol);
-                              setShowVolunteerPassword(false);
-                              setCopiedVolunteerPassword(false);
-                            }}
-                            className="px-2.5 py-1 rounded-xl text-[11px] font-black bg-stone-900 hover:bg-stone-800 text-white inline-flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer active:scale-95"
-                          >
-                            <Eye className="w-3.5 h-3.5 text-amber-400" />
-                            <span>View Details</span>
-                          </button>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedVolunteer(vol);
+                                setShowVolunteerPassword(false);
+                                setCopiedVolunteerPassword(false);
+                              }}
+                              className="px-2.5 py-1 rounded-xl text-[11px] font-black bg-stone-900 hover:bg-stone-800 text-white inline-flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer active:scale-95"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-amber-400" />
+                              <span>View Details</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingVolunteer(vol);
+                              }}
+                              className="px-2.5 py-1 rounded-xl text-[11px] font-black bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 inline-flex items-center gap-1 shadow-2xs transition-all cursor-pointer active:scale-95"
+                              title="Edit Volunteer Profile"
+                            >
+                              <Pencil className="w-3.5 h-3.5 text-amber-700" />
+                              <span>Edit</span>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -3881,7 +3950,15 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                     </div>
 
                     {/* Modal Footer */}
-                    <div className="bg-stone-50 p-3 sm:p-4 border-t border-stone-200 flex justify-end">
+                    <div className="bg-stone-50 p-3 sm:p-4 border-t border-stone-200 flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditingVolunteer(selectedVolunteer)}
+                        className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer transition-all active:scale-95"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                        <span>Edit Profile</span>
+                      </button>
                       <button
                         type="button"
                         onClick={() => setSelectedVolunteer(null)}
@@ -3892,6 +3969,35 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                     </div>
                   </div>
                 </div>
+              )}
+
+              {/* Edit Volunteer Modal */}
+              {editingVolunteer && (
+                <EditVolunteerModal
+                  volunteer={editingVolunteer}
+                  isOpen={Boolean(editingVolunteer)}
+                  onClose={() => setEditingVolunteer(null)}
+                  onSuccess={(updated) => {
+                    setVolunteersList((prev) =>
+                      prev.map((v) =>
+                        v.id === updated.id || v.user_id === updated.user_id
+                          ? { ...v, ...updated }
+                          : v
+                      )
+                    );
+                    if (
+                      selectedVolunteer &&
+                      (selectedVolunteer.id === updated.id ||
+                        selectedVolunteer.user_id === updated.user_id)
+                    ) {
+                      setSelectedVolunteer((prev) => ({ ...prev, ...updated }));
+                    }
+                    loadVolunteers(true);
+                  }}
+                  isDeveloperMode={isDev}
+                  showError={showError}
+                  showSuccess={showSuccess}
+                />
               )}
             </div>
           )}

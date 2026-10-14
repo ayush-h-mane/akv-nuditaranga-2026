@@ -306,6 +306,29 @@ def delete_developer_superadmin(
     }
 
 # ==========================================
+# 1.1 DEVELOPER ADMIN & VOLUNTEER EDIT SUITE
+# ==========================================
+from .superadmin import AdminUpdateRequest, VolunteerUpdateRequest, update_admin, update_volunteer
+
+@router.put("/admins/{admin_id}")
+def update_developer_admin(
+    admin_id: int,
+    payload: AdminUpdateRequest,
+    current_user: User = Depends(require_developer),
+    db: Session = Depends(get_db)
+):
+    return update_admin(admin_id=admin_id, payload=payload, current_user=current_user, db=db)
+
+@router.put("/volunteers/{user_id}")
+def update_developer_volunteer(
+    user_id: int,
+    payload: VolunteerUpdateRequest,
+    current_user: User = Depends(require_developer),
+    db: Session = Depends(get_db)
+):
+    return update_volunteer(user_id=user_id, payload=payload, current_user=current_user, db=db)
+
+# ==========================================
 # 2. SYSTEM DIAGNOSTICS & DEVELOPER TOOLS
 # ==========================================
 @router.get("/system-health")

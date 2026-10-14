@@ -25,6 +25,41 @@ router = APIRouter(prefix="/superadmin", tags=["Super Admin"])
 class SuperAdminSetUserPasswordRequest(BaseModel):
     new_password: str = Field(..., min_length=4, max_length=100)
 
+class AdminUpdateRequest(BaseModel):
+    full_name: Optional[str] = None
+    name: Optional[str] = None
+    username: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    auid: Optional[str] = None
+    faculty_id: Optional[str] = None
+    department: Optional[str] = None
+    institute: Optional[str] = None
+    admin_type: Optional[str] = None
+    volunteer_domain: Optional[str] = None
+    akv_domain: Optional[str] = None
+    approval_status: Optional[str] = None
+    account_status: Optional[str] = None
+    password: Optional[str] = None
+    photo_url: Optional[str] = None
+
+class VolunteerUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    full_name: Optional[str] = None
+    auid: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    institute: Optional[str] = None
+    department: Optional[str] = None
+    semester: Optional[int] = None
+    section: Optional[str] = None
+    gender: Optional[str] = None
+    volunteer_domain: Optional[str] = None
+    role: Optional[str] = None
+    account_status: Optional[str] = None
+    password: Optional[str] = None
+    photo_url: Optional[str] = None
+
 class StudentUpdateRequest(BaseModel):
     name: Optional[str] = None
     email: Optional[str] = None
@@ -501,6 +536,154 @@ def toggle_admin_status(
 
     return {"success": True, "message": f"Admin status updated to {new_status}"}
 
+@router.put("/admins/{admin_id}")
+def update_admin(
+    admin_id: int,
+    payload: AdminUpdateRequest,
+    current_user: User = Depends(require_superadmin),
+    db: Session = Depends(get_db)
+):
+    admin = db.query(Admin).filter(Admin.id == admin_id).first()
+    if not admin:
+        admin = db.query(Admin).filter(Admin.user_id == admin_id).first()
+    if not admin:
+        raise HTTPException(status_code=404, detail="Admin record not found")
+
+    user = admin.user
+    if not user:
+        user = db.query(User).filter(User.id == admin.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Associated user account not found")
+
+    if user.auid == "DEV-NANU" or (admin.username and admin.username.lower() == "nanu"):
+        raise HTTPException(status_code=403, detail="Developer root account cannot be modified via admin updater.")
+
+    old_details = f"Name: {user.name}, Username: {admin.username}, Email: {user.email}, Role: {admin.admin_type}, Status: {admin.approval_status}"
+
+    effective_name = payload.full_name or payload.name
+    if effective_name and effective_name.strip():
+        user.name = effective_name.strip()
+
+    if payload.username and payload.username.strip():
+        clean_uname = payload.username.strip().lower()
+        if clean_uname != (admin.username or "").lower():
+            if clean_uname == "nanu":
+                raise HTTPException(status_code=400, detail="Username 'nanu' is reserved for Developer Terminal.")
+            conflict = db.query(Admin).filter(func.lower(Admin.username) == clean_uname, Admin.id != admin.id).first()
+            if conflict:
+                raise HTTPException(status_code=400, detail=f"Username '{clean_uname}' is already in use by another admin.")
+            admin.username = clean_uname
+
+    if payload.email and payload.email.strip():
+        clean_email = payload.email.strip().lower()
+        if clean_email != (user.email or "").lower():
+            conflict = db.query(User).filter(func.lower(User.email) == clean_email, User.id != user.id).first()
+            if conflict:
+                raise HTTPException(status_code=400, detail=f"Email '{clean_email}' is already in use by another account.")
+            user.email = clean_email
+
+    if payload.phone and payload.phone.strip():
+        user.phone = payload.phone.strip()
+
+    effective_auid = payload.auid or payload.faculty_id
+    if effective_auid and effective_auid.strip():
+        clean_auid = effective_auid.strip().upper()
+        if clean_auid != (user.auid or "").upper():
+            conflict = db.query(User).filter(func.upper(User.auid) == clean_auid, User.id != user.id).first()
+            if conflict:
+                raise HTTPException(status_code=400, detail=f"AUID / Faculty ID '{clean_auid}' is already registered to another account.")
+            user.auid = clean_auid
+        user.faculty_id = clean_auid
+        admin.faculty_id = clean_auid
+
+    if payload.department and payload.department.strip():
+        user.department = payload.department.strip()
+    if payload.institute and payload.institute.strip():
+        user.institute = payload.institute.strip()
+
+    if payload.admin_type and payload.admin_type.strip():
+        clean_type = payload.admin_type.strip().upper()
+        admin.admin_type = clean_type
+        user.admin_type = clean_type
+        if clean_type == "WORKING_COMMITTEE":
+            user.is_working_committee = True
+            if not user.working_committee_role:
+                user.working_committee_role = "Coordinator"
+
+    effective_domain = payload.volunteer_domain or payload.akv_domain
+    if effective_domain is not None:
+        user.volunteer_domain = effective_domain.strip() if effective_domain else None
+        if user.is_working_committee:
+            user.working_committee_role = user.volunteer_domain or "Coordinator"
+
+    if payload.approval_status and payload.approval_status.strip():
+        clean_appr = payload.approval_status.strip().upper()
+        if clean_appr in ["APPROVED", "PENDING_APPROVAL", "REJECTED"]:
+            admin.approval_status = clean_appr
+            if clean_appr == "APPROVED" and not admin.approved_at:
+                admin.approved_by = current_user.name or "Super Administrator"
+                admin.approved_at = datetime.datetime.utcnow()
+
+    if payload.account_status and payload.account_status.strip():
+        clean_acc = payload.account_status.strip().upper()
+        if clean_acc in ["ACTIVE", "DISABLED"]:
+            user.account_status = clean_acc
+
+    if payload.photo_url is not None:
+        user.photo_url = payload.photo_url.strip() if payload.photo_url else None
+
+    if payload.password and len(payload.password.strip()) >= 4:
+        clean_pw = payload.password.strip()
+        user.password_hash = get_password_hash(clean_pw)
+        user.plain_password = clean_pw
+
+    user.updated_at = datetime.datetime.utcnow()
+    new_details = f"Name: {user.name}, Username: {admin.username}, Email: {user.email}, Role: {admin.admin_type}, Status: {admin.approval_status}"
+
+    log = AuditLog(
+        user_id=current_user.id,
+        actor_name=current_user.name or "Super Administrator",
+        action="ADMIN_PROFILE_UPDATED",
+        target_type="ADMIN",
+        target_id=str(admin.id),
+        previous_value=old_details,
+        new_value=new_details
+    )
+    db.add(log)
+    db.commit()
+    db.refresh(admin)
+    db.refresh(user)
+
+    fast_cache.delete_prefix("admin_")
+    fast_cache.delete_prefix("wc_")
+    fast_cache.delete_prefix("dev_")
+
+    return {
+        "success": True,
+        "message": f"Administrator profile for '{user.name}' updated successfully.",
+        "admin": {
+            "id": admin.id,
+            "user_id": user.id,
+            "username": admin.username,
+            "auid": user.auid,
+            "full_name": user.name,
+            "email": user.email,
+            "phone": user.phone,
+            "institute": user.institute,
+            "department": user.department,
+            "admin_type": admin.admin_type,
+            "faculty_id": admin.faculty_id or user.faculty_id,
+            "volunteer_domain": user.volunteer_domain,
+            "akv_domain": user.volunteer_domain,
+            "photo_url": user.photo_url,
+            "role": user.role,
+            "plain_password": getattr(user, "plain_password", None) or "",
+            "approval_status": admin.approval_status,
+            "approved_by": admin.approved_by,
+            "account_status": user.account_status
+        }
+    }
+
 @router.delete("/admins/{admin_id}")
 def delete_admin(
     admin_id: int,
@@ -689,6 +872,129 @@ def list_all_volunteers(
         })
 
     return results
+
+@router.put("/volunteers/{user_id}")
+def update_volunteer(
+    user_id: int,
+    payload: VolunteerUpdateRequest,
+    current_user: User = Depends(require_superadmin),
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Volunteer user record not found")
+
+    if user.auid == "DEV-NANU":
+        raise HTTPException(status_code=403, detail="Developer root account cannot be modified via volunteer updater.")
+
+    old_details = f"Name: {user.name}, AUID: {user.auid}, Domain: {user.volunteer_domain}, Role: {user.role}, Status: {user.account_status}"
+
+    effective_name = payload.name or payload.full_name
+    if effective_name and effective_name.strip():
+        user.name = effective_name.strip()
+
+    if payload.auid and payload.auid.strip():
+        clean_auid = payload.auid.strip().upper()
+        if clean_auid != (user.auid or "").upper():
+            conflict = db.query(User).filter(func.upper(User.auid) == clean_auid, User.id != user.id).first()
+            if conflict:
+                raise HTTPException(status_code=400, detail=f"AUID '{clean_auid}' is already registered to another user.")
+            user.auid = clean_auid
+
+    if payload.email and payload.email.strip():
+        clean_email = payload.email.strip().lower()
+        if clean_email != (user.email or "").lower():
+            conflict = db.query(User).filter(func.lower(User.email) == clean_email, User.id != user.id).first()
+            if conflict:
+                raise HTTPException(status_code=400, detail=f"Email '{clean_email}' is already in use by another account.")
+            user.email = clean_email
+
+    if payload.phone and payload.phone.strip():
+        user.phone = payload.phone.strip()
+
+    if payload.institute and payload.institute.strip():
+        user.institute = payload.institute.strip()
+    if payload.department and payload.department.strip():
+        user.department = payload.department.strip()
+
+    if payload.semester is not None:
+        try:
+            sem_int = int(payload.semester)
+            if 1 <= sem_int <= 12:
+                user.semester = sem_int
+        except (ValueError, TypeError):
+            pass
+    if payload.section and payload.section.strip():
+        user.section = payload.section.strip().upper()
+
+    if payload.gender and payload.gender.strip():
+        user.gender = payload.gender.strip()
+
+    if payload.volunteer_domain is not None:
+        user.volunteer_domain = payload.volunteer_domain.strip() if payload.volunteer_domain else None
+
+    if payload.role and payload.role.strip():
+        clean_role = payload.role.strip().upper()
+        if clean_role in ["VOLUNTEER", "PARTICIPANT", "STUDENT", "WORKING_COMMITTEE"]:
+            user.role = clean_role
+
+    if payload.account_status and payload.account_status.strip():
+        clean_acc = payload.account_status.strip().upper()
+        if clean_acc in ["ACTIVE", "DISABLED"]:
+            user.account_status = clean_acc
+
+    if payload.photo_url is not None:
+        user.photo_url = payload.photo_url.strip() if payload.photo_url else None
+
+    if payload.password and len(payload.password.strip()) >= 4:
+        clean_pw = payload.password.strip()
+        user.password_hash = get_password_hash(clean_pw)
+        user.plain_password = clean_pw
+
+    user.updated_at = datetime.datetime.utcnow()
+    new_details = f"Name: {user.name}, AUID: {user.auid}, Domain: {user.volunteer_domain}, Role: {user.role}, Status: {user.account_status}"
+
+    log = AuditLog(
+        user_id=current_user.id,
+        actor_name=current_user.name or "Super Administrator",
+        action="VOLUNTEER_PROFILE_UPDATED",
+        target_type="VOLUNTEER",
+        target_id=str(user.id),
+        previous_value=old_details,
+        new_value=new_details
+    )
+    db.add(log)
+    db.commit()
+    db.refresh(user)
+
+    fast_cache.delete_prefix("vol_")
+    fast_cache.delete_prefix("admin_")
+    fast_cache.delete_prefix("att_")
+    fast_cache.delete_prefix("dev_")
+
+    return {
+        "success": True,
+        "message": f"Volunteer profile for '{user.name}' updated successfully.",
+        "volunteer": {
+            "id": user.id,
+            "user_id": user.id,
+            "name": user.name,
+            "auid": user.auid,
+            "department": user.department,
+            "institute": user.institute,
+            "phone": user.phone,
+            "email": user.email,
+            "semester": user.semester,
+            "section": user.section,
+            "gender": user.gender,
+            "role": user.role,
+            "volunteer_domain": user.volunteer_domain,
+            "photo_url": user.photo_url,
+            "plain_password": getattr(user, "plain_password", None) or "",
+            "account_status": user.account_status,
+            "registration_id": user.registration_id
+        }
+    }
 
 # ==========================================
 # 5. SUPER ADMIN ATTENDANCE (FULL OVERSIGHT)
