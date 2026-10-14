@@ -43,10 +43,18 @@ def get_google_sheets_config(db: Optional[Session] = None) -> Dict[str, Any]:
     # 1. Check database AuditLog first (persists across Vercel serverless cold-starts & container restarts)
     if db is not None:
         try:
+            from sqlalchemy.orm import load_only
             from ..models import AuditLog
-            log_entry = db.query(AuditLog).filter(AuditLog.action == "GOOGLE_SHEETS_CONFIG").order_by(AuditLog.id.desc()).first()
-            if log_entry and log_entry.details:
-                db_data = json.loads(log_entry.details)
+            log_entry = (
+                db.query(AuditLog)
+                .options(load_only(AuditLog.new_value))
+                .filter(AuditLog.action == "GOOGLE_SHEETS_CONFIG")
+                .order_by(AuditLog.id.desc())
+                .first()
+            )
+            raw_val = (log_entry.new_value if log_entry else None) or getattr(log_entry, "details", None)
+            if raw_val:
+                db_data = json.loads(raw_val)
                 if isinstance(db_data, dict):
                     default_config.update(db_data)
         except Exception:
@@ -77,8 +85,11 @@ def save_google_sheets_config(config_data: Dict[str, Any], db: Optional[Session]
         try:
             from ..models import AuditLog
             new_log = AuditLog(
+                actor_name="SYSTEM",
                 action="GOOGLE_SHEETS_CONFIG",
-                details=json.dumps(cur),
+                target_type="CONFIG",
+                target_id="GOOGLE_SHEETS",
+                new_value=json.dumps(cur),
                 user_id=None
             )
             db.add(new_log)
