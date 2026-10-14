@@ -1,9 +1,14 @@
 {
-  "production_version": "2.3.32",
-  "staged_version": "2.3.33",
+  "production_version": "2.3.33",
+  "staged_version": "2.3.34",
   "status": "DEPLOYED_TO_PRODUCTION",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.33",
+      "released_at": "2026-10-14T11:25:34+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.33: Developer Portal Volunteer & Admin Profile Edit Suite: Integrated comprehensive profile editing options across the Developer Portal (/developer) and Superadmin Dashboard for all registered Volunteers and Administrators (Faculty Coordinators, Working Committee Heads, and General Admins).; Unified Developer Profiles & Accounts Manager: Expanded DeveloperSuperAdminManager into a multi-directory console with instant sub-tab navigation between Superadmin Profiles, Admins & Faculty Profiles, and Volunteer Profiles featuring real-time plaintext password visibility, copy controls, and 1-click 'Edit Profile' actions.; Dedicated Modal Components (EditAdminModal & EditVolunteerModal): Created reusable, responsive modal dialogs supporting full modifications of Core Identity (Full Name, Username, Email, Phone, AUID / Faculty ID), Academic Details (Institute, Department, Semester, Section, Gender), Assigned Vedike Domains, System Roles (Volunteer vs Participant, Admin designations), Approval & Account Statuses (Approved, Pending, Rejected, Active, Disabled), and optional password resets.; Backend REST API Endpoints & Audit Logging: Implemented PUT /api/superadmin/admins/{admin_id}, PUT /api/superadmin/volunteers/{user_id}, PUT /api/developer/admins/{admin_id}, and PUT /api/developer/volunteers/{user_id} with unique constraint enforcement, developer root account protection, password hashing, in-memory cache invalidation (FastCache), and persistent AuditLog tracking."
+    },
     {
       "version": "2.3.32",
       "released_at": "2026-10-14T07:29:04+0530",

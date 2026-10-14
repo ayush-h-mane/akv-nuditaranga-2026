@@ -1664,6 +1664,69 @@ export const api = {
     }
   },
 
+  async updateAdminProfile(adminId, payload) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/superadmin/admins/${adminId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await readApiResponse(res);
+      if (!res.ok) throw new Error(data.detail || "Failed to update administrator profile");
+      invalidateMemCache("sa_admins");
+      invalidateMemCache("sa_stats");
+      invalidateMemCache("dev_");
+      return data;
+    } catch (err) {
+      if (isNetworkError(err)) {
+        const admins = getLocalAdmins();
+        const idx = admins.findIndex(a => a.id === adminId || a.user_id === adminId);
+        if (idx !== -1) {
+          admins[idx] = { ...admins[idx], ...payload };
+          saveLocalAdmins(admins);
+          invalidateMemCache("sa_admins");
+          return { success: true, message: "Admin profile updated locally", admin: admins[idx] };
+        }
+      }
+      throw err;
+    }
+  },
+
+  async updateVolunteerProfile(userId, payload) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/superadmin/volunteers/${userId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await readApiResponse(res);
+      if (!res.ok) throw new Error(data.detail || "Failed to update volunteer profile");
+      invalidateMemCache("sa_volunteers");
+      invalidateMemCache("sa_students");
+      invalidateMemCache("sa_stats");
+      invalidateMemCache("dev_");
+      return data;
+    } catch (err) {
+      if (isNetworkError(err)) {
+        const users = getLocalUsers();
+        const idx = users.findIndex(u => u.id === userId);
+        if (idx !== -1) {
+          users[idx] = { ...users[idx], ...payload };
+          saveLocalUsers(users);
+          invalidateMemCache("sa_volunteers");
+          return { success: true, message: "Volunteer profile updated locally", volunteer: users[idx] };
+        }
+      }
+      throw err;
+    }
+  },
+
   async deleteAdmin(adminId) {
     try {
       const res = await fetch(`${API_BASE_URL}/superadmin/admins/${adminId}`, {
@@ -3915,6 +3978,35 @@ export const api = {
     });
     const data = await readApiResponse(res);
     if (!res.ok) throw new Error(data.detail || "Failed to delete superadmin profile");
+    invalidateMemCache("dev_");
+    return data;
+  },
+
+  async updateDeveloperAdminProfile(adminId, payload) {
+    const res = await fetch(`${API_BASE_URL}/developer/admins/${adminId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+      body: JSON.stringify(payload)
+    });
+    const data = await readApiResponse(res);
+    if (!res.ok) throw new Error(data.detail || "Failed to update administrator profile");
+    invalidateMemCache("sa_admins");
+    invalidateMemCache("sa_stats");
+    invalidateMemCache("dev_");
+    return data;
+  },
+
+  async updateDeveloperVolunteerProfile(userId, payload) {
+    const res = await fetch(`${API_BASE_URL}/developer/volunteers/${userId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+      body: JSON.stringify(payload)
+    });
+    const data = await readApiResponse(res);
+    if (!res.ok) throw new Error(data.detail || "Failed to update volunteer profile");
+    invalidateMemCache("sa_volunteers");
+    invalidateMemCache("sa_students");
+    invalidateMemCache("sa_stats");
     invalidateMemCache("dev_");
     return data;
   },
