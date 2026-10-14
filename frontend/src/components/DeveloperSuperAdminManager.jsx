@@ -20,6 +20,7 @@ import {
   Mail,
   Phone,
   Building,
+  Briefcase,
   KeyRound,
   ShieldCheck,
   UserCheck,
