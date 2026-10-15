@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     APP_NAME: str = "Acharya Kannada Vedike (AKV) API"
-    APP_VERSION: str = "2.3.34"
+    APP_VERSION: str = "2.3.35"
     API_PREFIX: str = "/api"
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "production" if os.environ.get("VERCEL") else "development")
     DATABASE_URL: str = os.getenv("DATABASE_URL", "" if os.environ.get("VERCEL") else "sqlite:///./akv_fest.db")
@@ -72,6 +72,8 @@ class Settings(BaseSettings):
 
     FEST_NAME: str = "Nuditaranga 2026"
     FEST_DATE: str = "2026-11-01T09:00:00"
+    MAINTENANCE_MODE: bool = True
+    MAINTENANCE_UNTIL: str = "2026-10-16T10:00:00+05:30"
 
     class Config:
         env_file = ".env"
