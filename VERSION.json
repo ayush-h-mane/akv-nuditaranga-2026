@@ -1,14 +1,14 @@
 {
-  "production_version": "2.3.34",
-  "staged_version": "2.3.35",
-  "status": "STAGED_DEVELOPMENT",
-  "pending_changes": [
-    "Scheduled Maintenance Mode Activation (till 10:00 AM, 16th October 2026): Configured non-destructive maintenance mode across frontend and backend, displaying a dedicated bilingual Maintenance Notice on all visitor and portal routes.",
-    "Bilingual Maintenance Notice Screen (MaintenancePage.jsx): Implemented a premium dark-themed notice featuring a live countdown clock to 10:00 AM 16th October 2026 IST, official AKV branding, and support contacts.",
-    "Zero-Harm Database & Data Safety Guarantee: Completely preserved all database tables, student profiles, event registrations, and attendance records 100% intact and undamaged.",
-    "Automatic Resumption & Staff Bypass: Integrated auto-expiry at 10:00 AM 16th October 2026 to automatically restore access, along with an authorized coordinator/developer passcode bypass (`akv2026dev`) and /developer access."
-  ],
+  "production_version": "2.3.35",
+  "staged_version": "2.3.36",
+  "status": "DEPLOYED_TO_PRODUCTION",
+  "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.35",
+      "released_at": "2026-10-15T22:50:38+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.35: Scheduled Maintenance Mode Activation (till 10:00 AM, 16th October 2026): Configured non-destructive maintenance mode across frontend and backend, displaying a dedicated bilingual Maintenance Notice on all visitor and portal routes.; Bilingual Maintenance Notice Screen (MaintenancePage.jsx): Implemented a premium dark-themed notice featuring a live countdown clock to 10:00 AM 16th October 2026 IST, official AKV branding, and support contacts.; Zero-Harm Database & Data Safety Guarantee: Completely preserved all database tables, student profiles, event registrations, and attendance records 100% intact and undamaged.; Automatic Resumption & Staff Bypass: Integrated auto-expiry at 10:00 AM 16th October 2026 to automatically restore access, along with an authorized coordinator/developer passcode bypass (`akv2026dev`) and /developer access."
+    },
     {
       "version": "2.3.34",
       "released_at": "2026-10-14T11:34:19+0530",
