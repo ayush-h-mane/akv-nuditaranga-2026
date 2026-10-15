@@ -56,32 +56,7 @@ export const MaintenancePage = ({ onBypass, onNavigateDeveloper }) => {
         />
       </div>
 
-      {/* Header Bar */}
-      <header className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 py-6 flex items-center justify-between border-b border-white/5">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 to-amber-500 p-0.5 shadow-lg shadow-red-950/50">
-            <div className="w-full h-full bg-stone-950 rounded-[10px] flex items-center justify-center">
-              <span className="text-sm font-black tracking-tighter text-amber-400">ಅಕವೇ</span>
-            </div>
-          </div>
-          <div>
-            <h1 className="text-xs sm:text-sm font-black tracking-tight text-white uppercase">
-              Acharya Kannada Vedike
-            </h1>
-            <p className="text-[10px] sm:text-xs text-amber-400/90 font-medium">
-              ನುಡಿತರಂಗ ೨೦೨೬ • Nuditaranga 2026
-            </p>
-          </div>
-        </div>
 
-        {/* Live Status Badge */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 backdrop-blur-md">
-          <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-          <span className="text-[11px] font-black uppercase tracking-wider text-amber-300">
-            Maintenance Active
-          </span>
-        </div>
-      </header>
 
       {/* Main Hero Card Container */}
       <main className="relative z-10 flex-1 flex items-center justify-center px-4 sm:px-6 py-8">
