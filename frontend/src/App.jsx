@@ -61,6 +61,8 @@ import { ContactSection } from "./sections/ContactSection";
 import { api } from "./services/api";
 
 import { ShieldAlert } from "lucide-react";
+import { MaintenancePage } from "./components/MaintenancePage";
+import { isMaintenanceModeActive } from "./config/maintenanceConfig";
 
 /**
  * Branded suspense fallback for lazy-loaded route segments
@@ -195,6 +197,12 @@ export function AppContent() {
   const [resetToken, setResetToken] = useState("");
   const [selectedEventId, setSelectedEventId] = useState(null);
   const [confirmedRegistration, setConfirmedRegistration] = useState(null);
+  const [maintenanceBypassed, setMaintenanceBypassed] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("akv_maintenance_bypass") === "granted";
+    }
+    return false;
+  });
 
   // Background prefetch all catalog and schedule data
   useEffect(() => {
@@ -356,6 +364,21 @@ export function AppContent() {
       navigatePath("/student", { subMode: "register" });
     }
   };
+
+  // ====================================================
+  // 0. SCHEDULED MAINTENANCE MODE OVERLAY
+  // Displays notice until 10:00 AM 16th October 2026.
+  // Preserves website, routes, and database completely unharmed.
+  // Authorized developers can bypass via passcode or /developer.
+  // ====================================================
+  if (isMaintenanceModeActive() && !maintenanceBypassed && route.path !== "/developer") {
+    return (
+      <MaintenancePage
+        onBypass={() => setMaintenanceBypassed(true)}
+        onNavigateDeveloper={() => navigatePath("/developer")}
+      />
+    );
+  }
 
   // ====================================================
   // 1. DEDICATED PASSWORD RESET VIEW

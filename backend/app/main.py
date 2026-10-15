@@ -117,6 +117,9 @@ app.include_router(media.router, prefix=settings.API_PREFIX)
 def health_check():
     return {
         "status": "healthy",
+        "maintenance": settings.MAINTENANCE_MODE,
+        "maintenance_until": settings.MAINTENANCE_UNTIL,
+        "message": "Scheduled maintenance in progress until 16th October 2026, 10:00 AM IST" if settings.MAINTENANCE_MODE else "Operational",
         "app": settings.APP_NAME,
         "fest": settings.FEST_NAME,
         "version": settings.APP_VERSION

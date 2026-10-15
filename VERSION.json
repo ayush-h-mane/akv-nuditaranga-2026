@@ -2,7 +2,12 @@
   "production_version": "2.3.34",
   "staged_version": "2.3.35",
   "status": "STAGED_DEVELOPMENT",
-  "pending_changes": [],
+  "pending_changes": [
+    "Scheduled Maintenance Mode Activation (till 10:00 AM, 16th October 2026): Configured non-destructive maintenance mode across frontend and backend, displaying a dedicated bilingual Maintenance Notice on all visitor and portal routes.",
+    "Bilingual Maintenance Notice Screen (MaintenancePage.jsx): Implemented a premium dark-themed notice featuring a live countdown clock to 10:00 AM 16th October 2026 IST, official AKV branding, and support contacts.",
+    "Zero-Harm Database & Data Safety Guarantee: Completely preserved all database tables, student profiles, event registrations, and attendance records 100% intact and undamaged.",
+    "Automatic Resumption & Staff Bypass: Integrated auto-expiry at 10:00 AM 16th October 2026 to automatically restore access, along with an authorized coordinator/developer passcode bypass (`akv2026dev`) and /developer access."
+  ],
   "history": [
     {
       "version": "2.3.34",

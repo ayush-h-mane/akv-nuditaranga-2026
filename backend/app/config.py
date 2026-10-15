@@ -72,6 +72,8 @@ class Settings(BaseSettings):
 
     FEST_NAME: str = "Nuditaranga 2026"
     FEST_DATE: str = "2026-11-01T09:00:00"
+    MAINTENANCE_MODE: bool = True
+    MAINTENANCE_UNTIL: str = "2026-10-16T10:00:00+05:30"
 
     class Config:
         env_file = ".env"
