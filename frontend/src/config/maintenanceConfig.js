@@ -32,8 +32,8 @@ export const MAINTENANCE_CONFIG = {
 
   // Official contact information for urgent queries
   supportEmail: "akv@acharya.ac.in",
-  emergencyPhone: "+91 94498 90035",
-  officerName: "Mr. Tejas K (Cultural Officer)"
+  emergencyPhone: "+91 9535174767",
+  officerName: "Ayush H Mane (Developer)"
 };
 
 /**

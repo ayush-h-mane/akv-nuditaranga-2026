@@ -132,9 +132,10 @@ export const MaintenancePage = ({ onBypass, onNavigateDeveloper }) => {
               <a
                 href={`tel:${MAINTENANCE_CONFIG.emergencyPhone}`}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-stone-900/80 hover:bg-stone-800 border border-stone-800 text-stone-300 font-bold text-xs transition-all"
+                title={MAINTENANCE_CONFIG.officerName}
               >
                 <Phone className="w-3.5 h-3.5 text-emerald-400" />
-                <span>{MAINTENANCE_CONFIG.emergencyPhone}</span>
+                <span>{MAINTENANCE_CONFIG.emergencyPhone} ({MAINTENANCE_CONFIG.officerName})</span>
               </a>
             </div>
           </div>
