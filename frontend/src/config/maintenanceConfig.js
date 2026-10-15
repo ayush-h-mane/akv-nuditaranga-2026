@@ -23,10 +23,6 @@ export const MAINTENANCE_CONFIG = {
   messageKn: "ಆಚಾರ್ಯ ಕನ್ನಡ ವೇದಿಕೆ ನುಡಿತರಂಗ ೨೦೨೬ ರ ವೆಬ್‌ಸೈಟ್ ಹಾಗೂ ಪೋರ್ಟಲ್ ಸರ್ವರ್‌ಗಳನ್ನು ಸುಧಾರಿತ ನಿರ್ವಹಣಾ ಕಾರ್ಯಗಳಿಗಾಗಿ ಕೆಲವೇ ಗಂಟೆಗಳ ಕಾಲ ತಾತ್ಕಾಲಿಕವಾಗಿ ಸ್ಥಗಿತಗೊಳಿಸಲಾಗಿದೆ. ದಯವಿಟ್ಟು ನಾಳೆ ಬೆಳಿಗ್ಗೆ ೧೦:೦೦ AM (೧೬ ಅಕ್ಟೋಬರ್ ೨೦೨೬) ನಂತರ ಭೇಟಿ ನೀಡಿ.",
   messageEn: "The AKV Nuditaranga 2026 website and portal servers are currently down for scheduled maintenance and system optimization. Please check back after 10:00 AM tomorrow morning (16th October 2026).",
 
-  // Formatted resume display
-  expectedResumeKn: "೧೬ ಅಕ್ಟೋಬರ್ ೨೦೨೬, ಬೆಳಿಗ್ಗೆ ೧೦:೦೦ ಗಂಟೆಗೆ (10:00 AM)",
-  expectedResumeEn: "16th October 2026 at 10:00 AM IST",
-
   // Safety assurance
   safetyNoteKn: "ನಿಮ್ಮ ವಿದ್ಯಾರ್ಥಿ ಖಾತೆಗಳು, ನೋಂದಣಿಗಳು, ಹಾಜರಾತಿ ಹಾಗೂ ಎಲ್ಲಾ ಡೇಟಾಗಳು ಡೇಟಾಬೇಸ್‌ನಲ್ಲಿ ಸಂಪೂರ್ಣ ಸುರಕ್ಷಿತವಾಗಿವೆ.",
   safetyNoteEn: "Your student accounts, event registrations, attendance records, and festival data remain completely safe and securely preserved in our database.",
