@@ -64,8 +64,15 @@ KANNADA_FONT, KANNADA_BOLD_FONT, ENGLISH_FONT, ENGLISH_BOLD_FONT = _register_pdf
 
 
 def _asset_path(filename: str) -> Optional[Path]:
-    path = Path(__file__).resolve().parents[3] / "frontend" / "public" / "images" / filename
-    return path if path.exists() else None
+    candidates = [
+        Path(__file__).resolve().parents[3] / "frontend" / "public" / "images" / filename,
+        Path(__file__).resolve().parents[3] / filename,
+        Path(__file__).resolve().parents[1] / "assets" / "images" / filename,
+    ]
+    for path in candidates:
+        if path.exists():
+            return path
+    return None
 
 
 def _draw_image_contain(pdf: canvas.Canvas, image_path: Path, x: float, y: float, width: float, height: float) -> None:
@@ -144,95 +151,47 @@ def get_photo_bytes_for_pdf(photo_url: Optional[str]) -> Optional[bytes]:
         return None
 
 def _generate_volunteer_id_card_pdf(data: Dict[str, Any]) -> bytes:
-    """Generate official 2-page Front and Back ID Card PDF for AKV Nuditaranga 2026 Volunteers."""
+    """Generate official 2-page Front and Back ID Card PDF for AKV Nuditaranga 2026 Volunteers using Auid.png layout."""
     buffer = io.BytesIO()
     width = 360
-    height = 580
+    height = 540
     c = canvas.Canvas(buffer, pagesize=(width, height))
 
     name = str(data.get("name") or data.get("full_name") or "Volunteer Name").strip()
     auid = str(data.get("auid") or data.get("usn") or "AKV2026").strip().upper()
     reg_id = str(data.get("registration_id") or "AKVNT0046").strip().upper()
     role = "VOLUNTEER"
+    institute = str(data.get("institute") or data.get("college") or "Acharya Institute of Technology").strip()
     department = str(data.get("department") or "Civil Engineering").strip()
     team = str(data.get("volunteer_domain") or data.get("team") or "Developer").strip()
     phone = str(data.get("phone") or data.get("contact") or "9900887766").strip()
     photo_url = data.get("photo_url")
 
     # =========================================================================
-    # PAGE 1: FRONT SIDE
+    # PAGE 1: FRONT SIDE (Auid.png Layout Design)
     # =========================================================================
-    # 1. Warm cream background
-    c.setFillColor(colors.HexColor("#FFFDF7"))
-    c.rect(0, 0, width, height, fill=1, stroke=0)
+    auid_template = _asset_path("auid-clean.png") or _asset_path("auid-template.png") or _asset_path("Auid.png")
+    if auid_template:
+        c.drawImage(ImageReader(str(auid_template)), 0, 0, width=width, height=height)
+    else:
+        # Fallback warm cream background and header if template asset is missing
+        c.setFillColor(colors.HexColor("#FFFDF7"))
+        c.rect(0, 0, width, height, fill=1, stroke=0)
+        c.setFillColor(colors.HexColor("#991B1B"))
+        c.setFont(KANNADA_BOLD_FONT, 12)
+        c.drawCentredString(width / 2.0, height - 40, "ಆಚಾರ್ಯ ಕನ್ನಡ ವೇದಿಕೆ")
 
-    # 2. Top Badge Clip Slot
-    c.setFillColor(colors.HexColor("#E5E7EB"))
-    c.setStrokeColor(colors.HexColor("#9CA3AF"))
-    c.setLineWidth(1)
-    c.roundRect(157, height - 16, 46, 7, 3.5, fill=1, stroke=1)
+    # 1. Volunteer Photo Frame & Clipping
+    photo_x = width * (305 / 853.0)
+    photo_w = width * (232 / 853.0)
+    photo_top = height * (370 / 1280.0)
+    photo_h = height * (246 / 1280.0)
+    photo_y = height - photo_top - photo_h
 
-    # 3. Top Brush Waves (Gold & Crimson)
-    p_gold = c.beginPath()
-    p_gold.moveTo(100, height)
-    p_gold.lineTo(width, height)
-    p_gold.lineTo(width, height - 65)
-    p_gold.curveTo(width - 80, height - 85, width - 180, height - 15, 100, height)
-    p_gold.close()
-    c.setFillColor(colors.HexColor("#F59E0B"))
-    c.drawPath(p_gold, fill=1, stroke=0)
-
-    p_red = c.beginPath()
-    p_red.moveTo(170, height)
-    p_red.lineTo(width, height)
-    p_red.lineTo(width, height - 45)
-    p_red.curveTo(width - 60, height - 65, width - 120, height - 10, 170, height)
-    p_red.close()
-    c.setFillColor(colors.HexColor("#B91C1C"))
-    c.drawPath(p_red, fill=1, stroke=0)
-
-    # 4. Header Logos & Branding
-    acharya_logo = _asset_path("acharya-logo.png")
-    if acharya_logo:
-        _draw_image_contain(c, acharya_logo, 24, height - 60, 36, 36)
-
-    c.setFillColor(colors.HexColor("#991B1B"))
-    c.setFont(KANNADA_BOLD_FONT, 11)
-    c.drawString(66, height - 42, "ಆಚಾರ್ಯ ಕನ್ನಡ ವೇದಿಕೆ")
-    c.setFillColor(colors.HexColor("#44403C"))
-    c.setFont(ENGLISH_BOLD_FONT, 7.5)
-    c.drawString(66, height - 54, "ACHARYA KANNADA VEDIKE")
-
-    # 5. Festival Branding
-    c.setFillColor(colors.HexColor("#D97706"))
-    c.setFont(ENGLISH_BOLD_FONT, 12)
-    c.drawCentredString(width / 2.0, height - 76, "❦")
-
-    c.setFillColor(colors.HexColor("#991B1B"))
-    c.setFont(ENGLISH_BOLD_FONT, 21)
-    c.drawCentredString(width / 2.0, height - 98, "NUDITARANGA")
-
-    c.setStrokeColor(colors.HexColor("#B91C1C"))
-    c.setLineWidth(1)
-    c.line(115, height - 108, 155, height - 108)
-    c.setFont(ENGLISH_BOLD_FONT, 10.5)
-    c.drawCentredString(width / 2.0, height - 112, "2026")
-    c.line(205, height - 108, 245, height - 108)
-
-    c.setFillColor(colors.HexColor("#44403C"))
-    c.setFont(KANNADA_FONT, 8.5)
-    c.drawCentredString(width / 2.0, height - 127, "“ಕನ್ನಡದ ಸಂಭ್ರಮ, ನಮ್ಮ ಹೆಮ್ಮೆ”")
-
-    # 6. Volunteer Photo Frame
-    photo_w = 114
-    photo_h = 138
-    photo_x = (width - photo_w) / 2.0
-    photo_y = height - 280
-
-    c.setFillColor(colors.HexColor("#7F1D1D"))
-    c.roundRect(photo_x - 3, photo_y - 3, photo_w + 6, photo_h + 6, 12, fill=1, stroke=0)
-    c.setFillColor(colors.white)
-    c.roundRect(photo_x, photo_y, photo_w, photo_h, 9, fill=1, stroke=0)
+    c.saveState()
+    clip_p = c.beginPath()
+    clip_p.roundRect(photo_x, photo_y, photo_w, photo_h, 12)
+    c.clipPath(clip_p, stroke=0, fill=0)
 
     photo_rendered = False
     img_bytes = get_photo_bytes_for_pdf(photo_url)
@@ -247,97 +206,44 @@ def _generate_volunteer_id_card_pdf(data: Dict[str, Any]) -> bytes:
         nograj_path = _asset_path("nograj.png")
         if nograj_path and ("nograj" in name.lower() or not photo_url):
             try:
-                _draw_image_contain(c, nograj_path, photo_x, photo_y, photo_w, photo_h)
+                _draw_image_cover(c, open(nograj_path, "rb").read(), photo_x, photo_y, photo_w, photo_h)
                 photo_rendered = True
             except Exception:
                 photo_rendered = False
 
     if not photo_rendered:
         c.setFillColor(colors.HexColor("#FEE2E2"))
-        c.roundRect(photo_x, photo_y, photo_w, photo_h, 9, fill=1, stroke=0)
+        c.roundRect(photo_x, photo_y, photo_w, photo_h, 12, fill=1, stroke=0)
         c.setFillColor(colors.HexColor("#991B1B"))
         c.setFont(ENGLISH_BOLD_FONT, 24)
         initials = "".join([part[0] for part in name.split()[:2]]).upper() or "AKV"
         c.drawCentredString(photo_x + photo_w / 2.0, photo_y + photo_h / 2.0 - 8, initials)
+    c.restoreState()
 
-    # 7. Name & AUID
-    name_y = photo_y - 20
-    c.setFillColor(colors.HexColor("#111827"))
-    c.setFont(ENGLISH_BOLD_FONT, 17)
+    # 2. Volunteer Name
+    name_y = height - (height * (670 / 1280.0))
+    c.setFont(ENGLISH_BOLD_FONT, 15)
+    c.setFillColor(colors.HexColor("#5A1212"))
     c.drawCentredString(width / 2.0, name_y, name)
 
-    auid_y = name_y - 15
-    c.setFillColor(colors.HexColor("#4B5563"))
-    c.setFont(ENGLISH_BOLD_FONT, 10)
-    c.drawCentredString(width / 2.0, auid_y, auid)
+    # 3. Details Box Values (Aligned inside template fields)
+    val_x = width * (260 / 853.0)
 
-    # 8. Department & Team
-    dept_y = auid_y - 17
-    c.setFillColor(colors.HexColor("#374151"))
-    c.setFont(ENGLISH_BOLD_FONT, 9)
-    c.drawCentredString(width / 2.0, dept_y, f"🏛  {department}")
-
-    team_y = dept_y - 15
-    c.setFillColor(colors.HexColor("#111827"))
+    # Row 1: AUID
+    auid_y = height - (height * (824 / 1280.0))
     c.setFont(ENGLISH_BOLD_FONT, 9.5)
-    c.drawCentredString(width / 2.0, team_y, f"</>  {team}")
+    c.setFillColor(colors.HexColor("#111827"))
+    c.drawString(val_x, auid_y, auid)
 
-    # 9. VOLUNTEER Red Pill Badge
-    pill_w = 136
-    pill_h = 24
-    pill_x = (width - pill_w) / 2.0
-    pill_y = team_y - 30
-    c.setFillColor(colors.HexColor("#B91C1C"))
-    c.roundRect(pill_x, pill_y, pill_w, pill_h, 12, fill=1, stroke=0)
-    c.setFillColor(colors.white)
-    c.setFont(ENGLISH_BOLD_FONT, 10)
-    c.drawCentredString(width / 2.0, pill_y + 7.5, "👥  VOLUNTEER")
+    # Row 2: Institute
+    inst_y = height - (height * (880 / 1280.0))
+    c.setFont(ENGLISH_BOLD_FONT, 8.5)
+    c.drawString(val_x, inst_y, institute)
 
-    # 10. Bottom Sweeping Waves & Content
-    p_bot_gold = c.beginPath()
-    p_bot_gold.moveTo(0, 0)
-    p_bot_gold.lineTo(width, 0)
-    p_bot_gold.lineTo(width, 70)
-    p_bot_gold.curveTo(width - 80, 110, 120, 25, 0, 80)
-    p_bot_gold.close()
-    c.setFillColor(colors.HexColor("#F59E0B"))
-    c.drawPath(p_bot_gold, fill=1, stroke=0)
-
-    p_bot_red = c.beginPath()
-    p_bot_red.moveTo(0, 0)
-    p_bot_red.lineTo(width, 0)
-    p_bot_red.lineTo(width, 50)
-    p_bot_red.curveTo(220, 20, 130, 95, 0, 45)
-    p_bot_red.close()
-    c.setFillColor(colors.HexColor("#991B1B"))
-    c.drawPath(p_bot_red, fill=1, stroke=0)
-
-    p_bot_deep = c.beginPath()
-    p_bot_deep.moveTo(0, 0)
-    p_bot_deep.lineTo(width, 0)
-    p_bot_deep.lineTo(width, 32)
-    p_bot_deep.curveTo(200, 12, 100, 60, 0, 22)
-    p_bot_deep.close()
-    c.setFillColor(colors.HexColor("#7F1D1D"))
-    c.drawPath(p_bot_deep, fill=1, stroke=0)
-
-    # Kannada Poetic Verse inside Bottom Wave
-    c.setFillColor(colors.HexColor("#FEF3C7"))
-    c.setFont(KANNADA_BOLD_FONT, 9.5)
-    c.drawString(22, 62, "“ಕನ್ನಡ ಕಲಿಗೆ")
-    c.drawString(22, 47, "ಕೈ ಜೋಡಿಸುವ,")
-    c.drawString(22, 32, "ಸಂಸ್ಕೃತಿಗೆ ಸೇವಿಸುವೆ”")
-
-    # Karnataka Map Silhouette with Chariot on Right
-    c.setFillColor(colors.HexColor("#FEF08A"))
-    map_p = c.beginPath()
-    map_p.moveTo(290, 85)
-    map_p.curveTo(305, 90, 320, 80, 330, 65)
-    map_p.curveTo(335, 50, 320, 35, 310, 25)
-    map_p.curveTo(300, 22, 290, 35, 285, 45)
-    map_p.curveTo(280, 60, 280, 75, 290, 85)
-    map_p.close()
-    c.drawPath(map_p, fill=1, stroke=0)
+    # Row 3: Domain
+    dom_y = height - (height * (934 / 1280.0))
+    c.setFont(ENGLISH_BOLD_FONT, 9.5)
+    c.drawString(val_x, dom_y, team)
 
     # =========================================================================
     # PAGE 2: BACK SIDE
@@ -348,42 +254,37 @@ def _generate_volunteer_id_card_pdf(data: Dict[str, Any]) -> bytes:
     c.setFillColor(colors.HexColor("#FFFDF7"))
     c.rect(0, 0, width, height, fill=1, stroke=0)
 
-    # 2. Top Badge Clip Slot
-    c.setFillColor(colors.HexColor("#E5E7EB"))
-    c.setStrokeColor(colors.HexColor("#9CA3AF"))
-    c.setLineWidth(1)
-    c.roundRect(157, height - 16, 46, 7, 3.5, fill=1, stroke=1)
-
-    # 3. Top Branding
+    # 2. Top Branding
+    acharya_logo = _asset_path("acharya-logo.png")
     if acharya_logo:
-        _draw_image_contain(c, acharya_logo, (width - 30) / 2.0, height - 52, 30, 30)
+        _draw_image_contain(c, acharya_logo, (width - 30) / 2.0, height - 50, 30, 30)
 
     c.setFillColor(colors.HexColor("#991B1B"))
     c.setFont(KANNADA_BOLD_FONT, 10.5)
-    c.drawCentredString(width / 2.0, height - 66, "ಆಚಾರ್ಯ ಕನ್ನಡ ವೇದಿಕೆ")
+    c.drawCentredString(width / 2.0, height - 64, "ಆಚಾರ್ಯ ಕನ್ನಡ ವೇದಿಕೆ")
     c.setFillColor(colors.HexColor("#44403C"))
     c.setFont(ENGLISH_BOLD_FONT, 7.5)
-    c.drawCentredString(width / 2.0, height - 77, "ACHARYA KANNADA VEDIKE")
+    c.drawCentredString(width / 2.0, height - 75, "ACHARYA KANNADA VEDIKE")
 
     c.setFillColor(colors.HexColor("#991B1B"))
-    c.setFont(ENGLISH_BOLD_FONT, 18)
-    c.drawCentredString(width / 2.0, height - 98, "NUDITARANGA")
+    c.setFont(ENGLISH_BOLD_FONT, 17)
+    c.drawCentredString(width / 2.0, height - 94, "NUDITARANGA")
 
     c.setStrokeColor(colors.HexColor("#B91C1C"))
     c.setLineWidth(1)
-    c.line(125, height - 108, 160, height - 108)
-    c.setFont(ENGLISH_BOLD_FONT, 10)
-    c.drawCentredString(width / 2.0, height - 111, "2026")
-    c.line(200, height - 108, 235, height - 108)
+    c.line(125, height - 104, 160, height - 104)
+    c.setFont(ENGLISH_BOLD_FONT, 9.5)
+    c.drawCentredString(width / 2.0, height - 107, "2026")
+    c.line(200, height - 104, 235, height - 104)
 
-    # 4. QR Code & Info Table Row
+    # 3. QR Code & Verification
     qr_payload = json.dumps({
         "type": "AKV_VOLUNTEER_ID",
         "reg_id": reg_id,
         "auid": auid,
         "name": name,
-        "dept": department,
-        "team": team,
+        "institute": institute,
+        "domain": team,
         "role": role,
         "contact": phone,
         "verified_by": "Acharya Kannada Vedike Nuditaranga 2026"
@@ -396,9 +297,9 @@ def _generate_volunteer_id_card_pdf(data: Dict[str, Any]) -> bytes:
     qr_img.save(qr_buf, format="PNG")
     qr_buf.seek(0)
 
-    qr_size = 105
+    qr_size = 100
     qr_x = 24
-    qr_y = height - 245
+    qr_y = height - 228
 
     c.setFillColor(colors.white)
     c.roundRect(qr_x - 3, qr_y - 3, qr_size + 6, qr_size + 6, 8, fill=1, stroke=0)
@@ -409,41 +310,41 @@ def _generate_volunteer_id_card_pdf(data: Dict[str, Any]) -> bytes:
 
     # Registration ID pill below QR
     c.setFillColor(colors.HexColor("#F3F4F6"))
-    c.roundRect(qr_x + 8, qr_y - 20, qr_size - 16, 16, 4, fill=1, stroke=0)
+    c.roundRect(qr_x + 6, qr_y - 18, qr_size - 12, 15, 3.5, fill=1, stroke=0)
     c.setStrokeColor(colors.HexColor("#D1D5DB"))
-    c.roundRect(qr_x + 8, qr_y - 20, qr_size - 16, 16, 4, fill=0, stroke=1)
+    c.roundRect(qr_x + 6, qr_y - 18, qr_size - 12, 15, 3.5, fill=0, stroke=1)
     c.setFillColor(colors.HexColor("#111827"))
-    c.setFont(ENGLISH_BOLD_FONT, 8.5)
-    c.drawCentredString(qr_x + qr_size / 2.0, qr_y - 16, reg_id)
+    c.setFont(ENGLISH_BOLD_FONT, 8)
+    c.drawCentredString(qr_x + qr_size / 2.0, qr_y - 14.5, reg_id)
 
-    # Structured Info Table on Right
-    info_x = 146
-    start_y = height - 150
+    # 4. Structured Info Table on Right
+    info_x = 142
+    start_y = height - 138
     fields = [
         ("Name", name),
         ("AUID", auid),
-        ("Department", department),
-        ("Team", team),
-        ("Role", "Volunteer"),
+        ("Institute", institute),
+        ("Domain", team),
+        ("Role", "ಸ್ವಯಂಸೇವಕ (Volunteer)"),
         ("Contact", phone),
     ]
 
     row_y = start_y
     for label, val in fields:
         c.setFillColor(colors.HexColor("#4B5563"))
-        c.setFont(ENGLISH_BOLD_FONT, 8.5)
-        c.drawString(info_x, row_y, f"{label:11}:")
+        c.setFont(ENGLISH_BOLD_FONT, 8)
+        c.drawString(info_x, row_y, f"{label:10}:")
 
-        c.setFillColor(colors.HexColor("#991B1B") if label == "Role" else colors.HexColor("#111827"))
-        c.setFont(ENGLISH_BOLD_FONT if label in ("Name", "Role", "Team") else ENGLISH_FONT, 8.5)
-        c.drawString(info_x + 60, row_y, str(val))
-        row_y -= 18
+        c.setFillColor(colors.HexColor("#991B1B") if "Role" in label else colors.HexColor("#111827"))
+        c.setFont(KANNADA_BOLD_FONT if "Role" in label else (ENGLISH_BOLD_FONT if label in ("Name", "Domain") else ENGLISH_FONT), 8)
+        c.drawString(info_x + 56, row_y, str(val))
+        row_y -= 16
 
     # 5. Important Information Callout Box
     box_x = 22
     box_w = width - 44
-    box_h = 104
-    box_y = 110
+    box_h = 96
+    box_y = 100
 
     c.setFillColor(colors.HexColor("#FFFBEB"))
     c.roundRect(box_x, box_y, box_w, box_h, 12, fill=1, stroke=0)
@@ -452,8 +353,8 @@ def _generate_volunteer_id_card_pdf(data: Dict[str, Any]) -> bytes:
     c.roundRect(box_x, box_y, box_w, box_h, 12, fill=0, stroke=1)
 
     c.setFillColor(colors.HexColor("#B91C1C"))
-    c.setFont(ENGLISH_BOLD_FONT, 9.5)
-    c.drawString(box_x + 14, box_y + box_h - 18, "Important Information")
+    c.setFont(ENGLISH_BOLD_FONT, 9)
+    c.drawString(box_x + 14, box_y + box_h - 16, "Important Information")
 
     rules = [
         "• This ID card is non-transferable.",
@@ -461,29 +362,28 @@ def _generate_volunteer_id_card_pdf(data: Dict[str, Any]) -> bytes:
         "• Use QR code for quick verification.",
         "• In case of emergency, contact the given number."
     ]
-    rule_y = box_y + box_h - 34
-    c.setFont(ENGLISH_FONT, 8)
+    rule_y = box_y + box_h - 32
+    c.setFont(ENGLISH_FONT, 7.5)
     c.setFillColor(colors.HexColor("#374151"))
     for rule in rules:
         c.drawString(box_x + 14, rule_y, rule)
-        rule_y -= 16
+        rule_y -= 15
 
     # 6. Temple Silhouette Skyline & Motto Ribbon
-    sky_y = 28
+    sky_y = 26
     c.setFillColor(colors.HexColor("#991B1B"))
     sky_p = c.beginPath()
     sky_p.moveTo(0, sky_y)
     for x_step in range(0, width, 24):
-        sky_p.lineTo(x_step, sky_y + 12)
-        sky_p.lineTo(x_step + 6, sky_y + 24)
-        sky_p.lineTo(x_step + 12, sky_y + 40)
-        sky_p.lineTo(x_step + 18, sky_y + 24)
-        sky_p.lineTo(x_step + 24, sky_y + 12)
+        sky_p.lineTo(x_step, sky_y + 10)
+        sky_p.lineTo(x_step + 6, sky_y + 20)
+        sky_p.lineTo(x_step + 12, sky_y + 35)
+        sky_p.lineTo(x_step + 18, sky_y + 20)
+        sky_p.lineTo(x_step + 24, sky_y + 10)
     sky_p.lineTo(width, sky_y)
     sky_p.close()
     c.drawPath(sky_p, fill=1, stroke=0)
 
-    # Bottom Motto Ribbon
     c.setFillColor(colors.HexColor("#7F1D1D"))
     c.rect(0, 0, width, sky_y, fill=1, stroke=0)
     c.setStrokeColor(colors.HexColor("#F59E0B"))
@@ -491,8 +391,8 @@ def _generate_volunteer_id_card_pdf(data: Dict[str, Any]) -> bytes:
     c.line(0, sky_y, width, sky_y)
 
     c.setFillColor(colors.HexColor("#FFFDF7"))
-    c.setFont(KANNADA_BOLD_FONT, 9.5)
-    c.drawCentredString(width / 2.0, 9, "ನಮ್ಮ ನಾಡು  |  ನಮ್ಮ ಭಾಷೆ  |  ನಮ್ಮ ಹೆಮ್ಮೆ")
+    c.setFont(KANNADA_BOLD_FONT, 9)
+    c.drawCentredString(width / 2.0, 8, "ನಮ್ಮ ನಾಡು  |  ನಮ್ಮ ಭಾಷೆ  |  ನಮ್ಮ ಹೆಮ್ಮೆ")
 
     c.save()
     buffer.seek(0)

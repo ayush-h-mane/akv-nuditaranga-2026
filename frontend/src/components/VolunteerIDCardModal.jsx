@@ -25,11 +25,12 @@ export const VolunteerIDCardModal = ({ volunteer, isOpen, onClose, isPreview = f
   if (!isOpen || !volunteer) return null;
 
   const name = volunteer.name || volunteer.full_name || "Nograj";
-  const auid = (volunteer.auid || volunteer.usn || "DEMO23STU000").toUpperCase();
+  const auid = (volunteer.auid || volunteer.usn || "AIT23BEAI129").toUpperCase();
   const regId = (volunteer.registration_id || volunteer.reg_id || `AKVNT${String(volunteer.id || "0046").padStart(4, "0")}`).toUpperCase();
-  const department = volunteer.department || "Civil Engineering";
+  const institute = volunteer.institute || "Acharya Institute of Technology";
+  const department = volunteer.department || "Artificial Intelligence & Machine Learning";
   const team = volunteer.volunteer_domain || volunteer.team || "Developer";
-  const role = "VOLUNTEER";
+  const role = "ಸ್ವಯಂಸೇವಕ (Volunteer)";
   const contact = volunteer.phone || volunteer.contact || "9900887766";
   const photoUrl = volunteer.photo_url || 
     (volunteer.name?.toLowerCase().includes("nograj") || isPreview || !volunteer.photo_url ? "/images/nograj.png" : null);
@@ -39,9 +40,10 @@ export const VolunteerIDCardModal = ({ volunteer, isOpen, onClose, isPreview = f
     reg_id: regId,
     auid: auid,
     name: name,
+    institute: institute,
     dept: department,
-    team: team,
-    role: role,
+    domain: team,
+    role: "ಸ್ವಯಂಸೇವಕ",
     contact: contact,
     verified_by: "Acharya Kannada Vedike Nuditaranga 2026"
   });
@@ -76,7 +78,7 @@ export const VolunteerIDCardModal = ({ volunteer, isOpen, onClose, isPreview = f
     if (navigator.share) {
       navigator.share({
         title: `AKV Nuditaranga 2026 Volunteer ID Card - ${name}`,
-        text: `Official Volunteer ID Card for ${name} (${auid}) - ${team} Team.`,
+        text: `Official Volunteer ID Card for ${name} (${auid}) - ${team} Domain.`,
         url: window.location.href
       }).catch(() => {});
     } else {
@@ -135,7 +137,7 @@ export const VolunteerIDCardModal = ({ volunteer, isOpen, onClose, isPreview = f
                 </span>
               </h3>
               <p className="text-[11px] text-stone-400">
-                Official Festival Access Badge • Acharya Kannada Vedike
+                Official Festival Access Badge • ಆಚಾರ್ಯ ಕನ್ನಡ ವೇದಿಕೆ
               </p>
             </div>
           </div>
@@ -173,7 +175,7 @@ export const VolunteerIDCardModal = ({ volunteer, isOpen, onClose, isPreview = f
                   : "text-stone-400 hover:text-white"
               }`}
             >
-              Front Side
+              Front Side (ಮುಂಭಾಗ)
             </button>
             <button
               onClick={() => setActiveSide("back")}
@@ -183,7 +185,7 @@ export const VolunteerIDCardModal = ({ volunteer, isOpen, onClose, isPreview = f
                   : "text-stone-400 hover:text-white"
               }`}
             >
-              Back Side
+              Back Side (ಹಿಂಭಾಗ)
             </button>
           </div>
 
@@ -228,18 +230,18 @@ export const VolunteerIDCardModal = ({ volunteer, isOpen, onClose, isPreview = f
         </div>
 
         {/* ID Cards Showcase Area */}
-        <div className="p-4 sm:p-8 bg-gradient-to-b from-stone-950 via-stone-900 to-stone-950 flex flex-col items-center justify-center min-h-[640px] overflow-x-auto">
+        <div className="p-4 sm:p-8 bg-gradient-to-b from-stone-950 via-stone-900 to-stone-950 flex flex-col items-center justify-center min-h-[620px] overflow-x-auto">
           <div
             id="akv-printable-volunteer-id-cards"
             className="flex flex-wrap items-start justify-center gap-6 sm:gap-10"
           >
             {/* ========================================================= */}
-            {/* OPTIONAL: OFFICIAL PRINTED LANYARD STRAP (AS SEEN IN PHOTO)*/}
+            {/* OFFICIAL PRINTED LANYARD STRAP                             */}
             {/* ========================================================= */}
             {showLanyard && (activeSide === "front" || activeSide === "both") && (
               <div className="no-print hidden md:flex flex-col items-center shrink-0">
                 {/* Woven Lanyard Ribbon Strap */}
-                <div className="w-14 h-[520px] rounded-2xl bg-gradient-to-b from-red-800 via-amber-400 to-red-800 shadow-2xl border-x-2 border-amber-300/60 relative overflow-hidden flex flex-col justify-between items-center py-4 text-center select-none">
+                <div className="w-14 h-[480px] rounded-2xl bg-gradient-to-b from-red-800 via-amber-400 to-red-800 shadow-2xl border-x-2 border-amber-300/60 relative overflow-hidden flex flex-col justify-between items-center py-4 text-center select-none">
                   {/* Subtle woven texture overlay */}
                   <div className="absolute inset-0 opacity-15 bg-[repeating-linear-gradient(45deg,#000,#000_2px,transparent_2px,transparent_6px)] pointer-events-none" />
 
@@ -274,7 +276,6 @@ export const VolunteerIDCardModal = ({ volunteer, isOpen, onClose, isPreview = f
                     <span className="text-[8px] font-black text-amber-100">
                       2026
                     </span>
-                    {/* Small Temple Silhouette watermark on bottom of lanyard */}
                     <svg className="w-8 h-7 text-amber-200/40 mt-1" viewBox="0 0 100 100" fill="currentColor">
                       <path d="M50 10 L60 35 L80 35 L85 90 L15 90 L20 35 L40 35 Z" />
                     </svg>
@@ -295,252 +296,121 @@ export const VolunteerIDCardModal = ({ volunteer, isOpen, onClose, isPreview = f
             )}
 
             {/* ========================================================= */}
-            {/* CARD 1: FRONT SIDE (Exact replica of provided image)       */}
+            {/* CARD 1: FRONT SIDE (Exact Auid.png Layout Design)         */}
             {/* ========================================================= */}
             {(activeSide === "front" || activeSide === "both") && (
               <div className="flex flex-col items-center">
                 {/* Lanyard Top Attachment Clip */}
                 {showLanyard && (
                   <div className="no-print flex flex-col items-center -mb-3 z-30">
-                    {/* Hanging Metallic Clasp / Clip over Card Slot */}
                     <div className="w-10 h-7 bg-gradient-to-r from-stone-300 via-white to-stone-400 rounded-md shadow-lg border border-stone-400 flex items-center justify-center">
                       <div className="w-5 h-2 bg-stone-700 rounded-xs" />
                     </div>
-                    {/* Chrome Hook entering slot */}
                     <div className="w-3.5 h-3 bg-stone-400 rounded-b-full shadow-inner -mt-0.5" />
                   </div>
                 )}
 
-                {/* Physical Card Container (Front) */}
+                {/* Physical Card Container (Front) - Authentic Auid.png Template */}
                 <div
-                  className="relative w-[340px] sm:w-[360px] h-[550px] sm:h-[580px] bg-[#FFFDF7] rounded-[28px] border-2 border-stone-200 shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col justify-between text-stone-900 select-none"
+                  className="relative w-[340px] sm:w-[360px] h-[510px] sm:h-[540px] rounded-[28px] border-2 border-amber-900/30 shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden select-none"
                   style={{
-                    backgroundImage: `radial-gradient(#fbf0d8 1px, transparent 1px)`,
-                    backgroundSize: "20px 20px"
+                    backgroundImage: `url(/images/auid-clean.png)`,
+                    backgroundSize: "100% 100%",
+                    backgroundRepeat: "no-repeat"
                   }}
                 >
                   {/* Top Badge Slot Cutout (For Lanyard Clip) */}
-                  <div className="w-14 h-2.5 rounded-full bg-stone-300/80 border border-stone-400/60 mx-auto mt-2 -mb-2 shadow-inner relative z-20" />
+                  <div className="w-14 h-2.5 rounded-full bg-stone-300/80 border border-stone-400/60 mx-auto mt-2 shadow-inner relative z-20" />
 
-                  {/* Top Dynamic Ribbon / Brush Waves (Red & Gold) */}
-                  <div className="absolute top-0 right-0 w-full h-24 pointer-events-none overflow-hidden z-0">
-                    <svg
-                      viewBox="0 0 360 90"
-                      fill="none"
-                      className="w-full h-full preserve-3d"
-                      preserveAspectRatio="none"
-                    >
-                      {/* Yellow Under-Wave */}
-                      <path
-                        d="M0 0 L360 0 L360 45 C280 85 160 15 0 60 Z"
-                        fill="#F59E0B"
-                        opacity="0.9"
+                  {/* Candidate Photo Frame Overlay */}
+                  <div
+                    className="absolute rounded-[18px] sm:rounded-[20px] overflow-hidden bg-stone-100 flex items-center justify-center shadow-inner"
+                    style={{
+                      left: "35.5%",
+                      top: "28.9%",
+                      width: "27.5%",
+                      height: "19.3%",
+                    }}
+                  >
+                    {photoUrl ? (
+                      <img
+                        src={photoUrl}
+                        alt={name}
+                        className="w-full h-full object-cover"
                       />
-                      {/* Red Top-Wave */}
-                      <path
-                        d="M0 0 L360 0 L360 30 C270 70 170 0 0 45 Z"
-                        fill="#B91C1C"
-                      />
-                      {/* Golden Highlight Streak */}
-                      <path
-                        d="M120 0 Q220 50 360 25 L360 18 Q230 40 130 0 Z"
-                        fill="#FDE68A"
-                        opacity="0.75"
-                      />
-                    </svg>
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-stone-100 to-stone-200 text-stone-400">
+                        <User className="w-10 h-10 text-stone-400 mb-0.5" />
+                        <span className="text-[8px] font-black uppercase text-stone-500 tracking-wider">
+                          AKV Photo
+                        </span>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Architectural Heritage Watermarks (Stone Elephant on left, Vidhana Soudha on right) */}
-                  <div className="absolute inset-0 pointer-events-none opacity-[0.08] overflow-hidden z-0">
-                    {/* Left: Vijayanagara Temple Stone Elephant illustration */}
-                    <svg
-                      className="absolute top-36 -left-6 w-44 h-48 text-amber-900"
-                      viewBox="0 0 200 200"
-                      fill="currentColor"
-                    >
-                      <path d="M40 140 C50 110, 80 90, 110 90 C140 90, 170 110, 180 140 L180 170 C180 175, 175 180, 170 180 L160 180 L160 150 L140 150 L140 180 L120 180 L120 150 L100 150 L100 180 L80 180 L80 150 L60 150 L60 180 L40 180 Z M90 70 C95 60, 115 60, 120 70 Z" />
-                    </svg>
-                    {/* Right: Vidhana Soudha Dome illustration */}
-                    <svg
-                      className="absolute top-28 -right-6 w-48 h-56 text-amber-900"
-                      viewBox="0 0 200 200"
-                      fill="currentColor"
-                    >
-                      <path d="M100 20 L105 40 L135 40 L135 60 L155 60 L155 180 L45 180 L45 60 L65 60 L65 40 L95 40 Z M100 45 A25 25 0 0 1 125 70 L75 70 A25 25 0 0 1 100 45 Z" />
-                    </svg>
+                  {/* Volunteer Name */}
+                  <div
+                    className="absolute left-0 right-0 text-center"
+                    style={{
+                      top: "50.1%",
+                    }}
+                  >
+                    <h3 className="text-base sm:text-lg font-black text-[#5A1212] tracking-tight font-serif drop-shadow-xs">
+                      {name}
+                    </h3>
                   </div>
 
-                  {/* Header Branding */}
-                  <div className="relative z-10 pt-3 px-6">
-                    {/* Acharya & AKV Logo Row */}
-                    <div className="flex items-center gap-3">
-                      {/* Acharya Institutional Logo */}
-                      <div className="flex items-center gap-1.5">
-                        <img
-                          src="/images/acharya-logo.png?v=2026"
-                          alt="Acharya"
-                          className="h-8 object-contain"
-                          onError={(e) => {
-                            e.currentTarget.style.display = "none";
-                          }}
-                        />
-                      </div>
-
-                      {/* Kannada Vedike Title */}
-                      <div className="leading-tight">
-                        <h4 className="text-sm font-black text-red-800 tracking-tight font-sans">
-                          ಆಚಾರ್ಯ ಕನ್ನಡ ವೇದಿಕೆ
-                        </h4>
-                        <p className="text-[8px] font-black uppercase tracking-widest text-stone-700">
-                          ACHARYA KANNADA VEDIKE
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Festival Title & Tagline */}
-                    <div className="mt-2 text-center">
-                      {/* Floral Kalasha Ornament */}
-                      <div className="flex items-center justify-center gap-1 text-amber-600 mb-0.5">
-                        <span className="text-xs">✤</span>
-                        <span className="text-sm font-bold">❦</span>
-                        <span className="text-xs">✤</span>
-                      </div>
-                      <h2 className="text-2xl sm:text-[26px] font-black tracking-tight text-red-800 leading-none font-serif">
-                        NUDITARANGA
-                      </h2>
-                      <div className="flex items-center justify-center gap-2 mt-0.5 text-stone-700">
-                        <span className="w-8 h-[1.5px] bg-red-800/60" />
-                        <span className="text-xs font-black tracking-wider text-red-800">2026</span>
-                        <span className="w-8 h-[1.5px] bg-red-800/60" />
-                      </div>
-                      <p className="text-[10px] font-bold text-stone-700 mt-1 italic tracking-wide">
-                        “ಕನ್ನಡದ ಸಂಭ್ರಮ, ನಮ್ಮ ಹೆಮ್ಮೆ”
-                      </p>
-                    </div>
+                  {/* Identity Card Values: AUID, Institute, Domain */}
+                  {/* Row 1: AUID */}
+                  <div
+                    className="absolute flex items-center"
+                    style={{
+                      left: "30.5%",
+                      top: "63.2%",
+                    }}
+                  >
+                    <span className="font-mono font-black text-xs sm:text-[13px] text-stone-950 tracking-wider">
+                      {auid}
+                    </span>
                   </div>
 
-                  {/* Central Photo & Identity Card Body */}
-                  <div className="relative z-10 flex flex-col items-center px-6">
-                    {/* Volunteer Photo Frame */}
-                    <div className="relative w-28 sm:w-32 h-36 sm:h-40 rounded-2xl p-1 bg-gradient-to-b from-stone-800 via-red-900 to-amber-700 shadow-xl overflow-hidden mb-3">
-                      <div className="w-full h-full rounded-[14px] overflow-hidden bg-stone-100 flex items-center justify-center relative">
-                        {photoUrl ? (
-                          <img
-                            src={photoUrl}
-                            alt={name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-stone-100 to-stone-200 text-stone-400">
-                            <User className="w-14 h-14 text-stone-400 mb-1" />
-                            <span className="text-[9px] font-black uppercase text-stone-500 tracking-wider">
-                              AKV Photo
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Name & AUID */}
-                    <div className="text-center">
-                      <h3 className="text-lg sm:text-xl font-black text-stone-900 tracking-tight leading-snug">
-                        {name}
-                      </h3>
-                      <p className="text-xs font-mono font-bold text-stone-600 uppercase tracking-wider mt-0.5">
-                        {auid}
-                      </p>
-                    </div>
-
-                    {/* Department & Domain/Team */}
-                    <div className="mt-2 space-y-1 text-center text-xs font-bold text-stone-700">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <Building className="w-3.5 h-3.5 text-red-700 shrink-0" />
-                        <span className="truncate max-w-[240px]">{department}</span>
-                      </div>
-                      <div className="flex items-center justify-center gap-1.5">
-                        <Code2 className="w-3.5 h-3.5 text-red-700 shrink-0" />
-                        <span className="text-stone-900 font-extrabold">{team}</span>
-                      </div>
-                    </div>
-
-                    {/* Volunteer Red Pill Badge */}
-                    <div className="mt-2.5">
-                      <span className="inline-flex items-center gap-1.5 px-6 py-1.5 rounded-full bg-red-700 text-white font-black text-xs uppercase tracking-wider shadow-md shadow-red-950/30">
-                        <Users className="w-3.5 h-3.5" />
-                        <span>{role}</span>
-                      </span>
-                    </div>
+                  {/* Row 2: Institute */}
+                  <div
+                    className="absolute flex items-center"
+                    style={{
+                      left: "30.5%",
+                      top: "67.5%",
+                      right: "5%",
+                    }}
+                  >
+                    <span className="font-bold text-[10.5px] sm:text-xs text-stone-900 truncate" title={institute}>
+                      {institute}
+                    </span>
                   </div>
 
-                  {/* Bottom Fluid Waves & Kannada Poetic Ribbon */}
-                  <div className="relative z-10 w-full h-28 overflow-hidden mt-2">
-                    <svg
-                      viewBox="0 0 360 110"
-                      fill="none"
-                      className="absolute inset-0 w-full h-full"
-                      preserveAspectRatio="none"
-                    >
-                      {/* Golden Wave */}
-                      <path
-                        d="M0 45 C100 10 240 70 360 30 L360 110 L0 110 Z"
-                        fill="#F59E0B"
-                      />
-                      {/* Red Front Wave */}
-                      <path
-                        d="M0 25 C120 75 220 15 360 55 L360 110 L0 110 Z"
-                        fill="#991B1B"
-                      />
-                      {/* Deep Crimson Accent */}
-                      <path
-                        d="M0 60 C80 95 180 40 360 85 L360 110 L0 110 Z"
-                        fill="#7F1D1D"
-                        opacity="0.6"
-                      />
-                    </svg>
-
-                    {/* Content inside bottom waves */}
-                    <div className="absolute inset-0 z-10 px-6 py-3 flex items-center justify-between text-white">
-                      {/* Left: Kannada Poetic Verse */}
-                      <div className="max-w-[190px] leading-tight">
-                        <p className="text-[11px] font-bold text-amber-100 italic font-sans drop-shadow-sm">
-                          “ಕನ್ನಡ ಕಲಿಗೆ
-                          <br />
-                          ಕೈ ಜೋಡಿಸುವ,
-                          <br />
-                          ಸಂಸ್ಕೃತಿಗೆ ಸೇವಿಸುವೆ”
-                        </p>
-                      </div>
-
-                      {/* Right: Karnataka Map Silhouette with Hampi Temple Chariot */}
-                      <div className="relative w-14 h-16 flex items-center justify-center shrink-0">
-                        <svg
-                          viewBox="0 0 100 120"
-                          className="w-full h-full text-amber-300 drop-shadow-md"
-                          fill="currentColor"
-                        >
-                          <path
-                            d="M30 10 C45 8, 60 15, 75 12 C85 25, 90 40, 80 60 C75 75, 65 95, 50 115 C35 110, 20 85, 25 65 C18 50, 20 30, 30 10 Z"
-                            fill="#F59E0B"
-                            opacity="0.85"
-                          />
-                          <path
-                            d="M40 45 L60 45 L65 70 L35 70 Z M50 25 L55 45 L45 45 Z M42 75 A6 6 0 1 1 42 76 M58 75 A6 6 0 1 1 58 76"
-                            fill="#7F1D1D"
-                          />
-                        </svg>
-                      </div>
-                    </div>
+                  {/* Row 3: Domain */}
+                  <div
+                    className="absolute flex items-center"
+                    style={{
+                      left: "30.5%",
+                      top: "71.9%",
+                      right: "5%",
+                    }}
+                  >
+                    <span className="font-extrabold text-xs sm:text-[13px] text-stone-950 truncate">
+                      {team}
+                    </span>
                   </div>
                 </div>
 
                 <span className="no-print text-xs font-bold text-stone-400 mt-2">
-                  Front Side (ಮುಂಭಾಗ)
+                  Front Side (ಮುಂಭಾಗ - Auid Layout)
                 </span>
               </div>
             )}
 
             {/* ========================================================= */}
-            {/* CARD 2: BACK SIDE (Exact replica of provided image)        */}
+            {/* CARD 2: BACK SIDE (QR Verification, Rules, Guidelines)    */}
             {/* ========================================================= */}
             {(activeSide === "back" || activeSide === "both") && (
               <div className="flex flex-col items-center">
@@ -556,7 +426,7 @@ export const VolunteerIDCardModal = ({ volunteer, isOpen, onClose, isPreview = f
 
                 {/* Physical Card Container (Back) */}
                 <div
-                  className="relative w-[340px] sm:w-[360px] h-[550px] sm:h-[580px] bg-[#FFFDF7] rounded-[28px] border-2 border-stone-200 shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col justify-between text-stone-900 select-none"
+                  className="relative w-[340px] sm:w-[360px] h-[510px] sm:h-[540px] bg-[#FFFDF7] rounded-[28px] border-2 border-stone-200 shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col justify-between text-stone-900 select-none"
                   style={{
                     backgroundImage: `radial-gradient(#fbf0d8 1px, transparent 1px)`,
                     backgroundSize: "20px 20px"
@@ -574,7 +444,7 @@ export const VolunteerIDCardModal = ({ volunteer, isOpen, onClose, isPreview = f
 
                   {/* Top Branding Section */}
                   <div className="relative z-10 pt-3 px-6 text-center">
-                    <div className="flex items-center justify-center gap-2 mb-1">
+                    <div className="flex items-center justify-center gap-2 mb-0.5">
                       <img
                         src="/images/acharya-logo.png?v=2026"
                         alt="Acharya"
@@ -591,12 +461,12 @@ export const VolunteerIDCardModal = ({ volunteer, isOpen, onClose, isPreview = f
                       ACHARYA KANNADA VEDIKE
                     </p>
 
-                    <h3 className="text-xl font-black text-red-800 tracking-tight font-serif mt-1">
+                    <h3 className="text-lg font-black text-red-800 tracking-tight font-serif mt-0.5">
                       NUDITARANGA
                     </h3>
-                    <div className="flex items-center justify-center gap-2 text-red-800">
+                    <div className="flex items-center justify-center gap-2 text-red-800 -mt-0.5">
                       <span className="w-6 h-[1.5px] bg-red-800/60" />
-                      <span className="text-[11px] font-black">2026</span>
+                      <span className="text-[10px] font-black">2026</span>
                       <span className="w-6 h-[1.5px] bg-red-800/60" />
                     </div>
                   </div>
@@ -608,7 +478,7 @@ export const VolunteerIDCardModal = ({ volunteer, isOpen, onClose, isPreview = f
                       <div className="p-2 bg-white rounded-2xl border-2 border-stone-800 shadow-md">
                         <QRCodeSVG
                           value={qrPayload}
-                          size={110}
+                          size={105}
                           level="H"
                           includeMargin={false}
                         />
@@ -619,7 +489,7 @@ export const VolunteerIDCardModal = ({ volunteer, isOpen, onClose, isPreview = f
                     </div>
 
                     {/* Right: Structured Volunteer Info */}
-                    <div className="col-span-7 space-y-1.5 text-xs">
+                    <div className="col-span-7 space-y-1 text-xs">
                       <div className="flex items-center gap-1.5 text-stone-900">
                         <User className="w-3.5 h-3.5 text-red-700 shrink-0" />
                         <span className="font-bold text-stone-600 w-16">Name:</span>
@@ -634,22 +504,22 @@ export const VolunteerIDCardModal = ({ volunteer, isOpen, onClose, isPreview = f
 
                       <div className="flex items-start gap-1.5 text-stone-900">
                         <Building className="w-3.5 h-3.5 text-red-700 shrink-0 mt-0.5" />
-                        <span className="font-bold text-stone-600 w-16">Department:</span>
-                        <span className="font-bold text-stone-800 text-[11px] leading-tight flex-1 line-clamp-2">
-                          {department}
+                        <span className="font-bold text-stone-600 w-16">Institute:</span>
+                        <span className="font-bold text-stone-800 text-[10.5px] leading-tight flex-1 line-clamp-2">
+                          {institute}
                         </span>
                       </div>
 
                       <div className="flex items-center gap-1.5 text-stone-900">
                         <Code2 className="w-3.5 h-3.5 text-red-700 shrink-0" />
-                        <span className="font-bold text-stone-600 w-16">Team:</span>
+                        <span className="font-bold text-stone-600 w-16">Domain:</span>
                         <span className="font-extrabold text-stone-950 flex-1 truncate">{team}</span>
                       </div>
 
                       <div className="flex items-center gap-1.5 text-stone-900">
                         <Users className="w-3.5 h-3.5 text-red-700 shrink-0" />
                         <span className="font-bold text-stone-600 w-16">Role:</span>
-                        <span className="font-black text-red-700 flex-1">{role}</span>
+                        <span className="font-black text-red-700 flex-1 text-[11px]">{role}</span>
                       </div>
 
                       <div className="flex items-center gap-1.5 text-stone-900">
@@ -661,11 +531,11 @@ export const VolunteerIDCardModal = ({ volunteer, isOpen, onClose, isPreview = f
                   </div>
 
                   {/* Important Information Callout Box */}
-                  <div className="relative z-10 mx-5 p-3 rounded-2xl bg-amber-50/80 border border-amber-200/90 text-stone-800 shadow-xs">
-                    <h5 className="text-[11px] font-black text-red-700 uppercase tracking-wider mb-1 flex items-center gap-1">
+                  <div className="relative z-10 mx-5 p-2.5 rounded-2xl bg-amber-50/80 border border-amber-200/90 text-stone-800 shadow-xs">
+                    <h5 className="text-[10.5px] font-black text-red-700 uppercase tracking-wider mb-1 flex items-center gap-1">
                       <span>Important Information</span>
                     </h5>
-                    <ul className="text-[10px] space-y-0.5 text-stone-700 leading-tight">
+                    <ul className="text-[9.5px] space-y-0.5 text-stone-700 leading-tight">
                       <li className="flex items-start gap-1.5">
                         <span className="text-red-700 font-bold">•</span>
                         <span>This ID card is <strong>non-transferable</strong>.</span>
@@ -676,7 +546,7 @@ export const VolunteerIDCardModal = ({ volunteer, isOpen, onClose, isPreview = f
                       </li>
                       <li className="flex items-start gap-1.5">
                         <span className="text-red-700 font-bold">•</span>
-                        <span>Use QR code for quick verification.</span>
+                        <span>Use QR code for quick verification & daily attendance.</span>
                       </li>
                       <li className="flex items-start gap-1.5">
                         <span className="text-red-700 font-bold">•</span>
@@ -688,7 +558,7 @@ export const VolunteerIDCardModal = ({ volunteer, isOpen, onClose, isPreview = f
                   {/* Bottom Karnataka Monument Silhouette & Motto */}
                   <div className="relative z-10 w-full">
                     {/* Silhouette of Hampi & Karnataka Temples */}
-                    <div className="w-full h-12 overflow-hidden -mb-1">
+                    <div className="w-full h-10 overflow-hidden -mb-1">
                       <svg
                         viewBox="0 0 360 50"
                         fill="currentColor"
@@ -700,8 +570,8 @@ export const VolunteerIDCardModal = ({ volunteer, isOpen, onClose, isPreview = f
                     </div>
 
                     {/* Bottom Golden Ribbon with Kannada Motto */}
-                    <div className="w-full bg-gradient-to-r from-red-800 via-amber-600 to-red-800 py-2 text-center text-white border-t border-amber-400/40">
-                      <p className="text-[10px] font-black tracking-wider font-sans">
+                    <div className="w-full bg-gradient-to-r from-red-800 via-amber-600 to-red-800 py-1.5 text-center text-white border-t border-amber-400/40">
+                      <p className="text-[9.5px] font-black tracking-wider font-sans">
                         ನಮ್ಮ ನಾಡು &nbsp;|&nbsp; ನಮ್ಮ ಭಾಷೆ &nbsp;|&nbsp; ನಮ್ಮ ಹೆಮ್ಮೆ
                       </p>
                     </div>
