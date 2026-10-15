@@ -460,6 +460,33 @@ def download_event_pass(
         headers={"Content-Disposition": f'attachment; filename="{filename}"'}
     )
 
+@router.get("/my-id-card/download")
+def download_my_id_card(
+    current_user: User = Depends(require_student),
+):
+    """Download official branded ID Card PDF for current student or volunteer."""
+    card_data = {
+        "name": current_user.name,
+        "auid": current_user.auid,
+        "registration_id": current_user.registration_id or f"AKVNT{current_user.id:04d}",
+        "role": current_user.role,
+        "institute": current_user.institute,
+        "department": current_user.department,
+        "semester": current_user.semester,
+        "section": current_user.section,
+        "email": current_user.email,
+        "phone": current_user.phone,
+        "volunteer_domain": current_user.volunteer_domain,
+        "photo_url": current_user.photo_url,
+    }
+    filename_id = current_user.registration_id or current_user.auid or current_user.id
+    pdf_bytes = generate_candidate_id_card_pdf(card_data)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="AKV_ID_Card_{filename_id}.pdf"'}
+    )
+
 @router.post("/change-password")
 def change_password(
     payload: ChangePasswordRequest,

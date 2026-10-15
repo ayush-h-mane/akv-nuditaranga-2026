@@ -1858,6 +1858,10 @@ def list_superadmin_id_cards(
             "auid": person.auid, "registration_id": person.registration_id,
             "role": role or person.role, "email": person.email,
             "department": person.department, "event": "",
+            "phone": person.phone,
+            "volunteer_domain": person.volunteer_domain,
+            "photo_url": person.photo_url,
+            "institute": person.institute
         })
 
     registration_query = db.query(Registration, Event.title_en).options(
@@ -1879,6 +1883,9 @@ def list_superadmin_id_cards(
             "registration_id": registration.registration_id, "role": "PARTICIPANT",
             "email": registration.email, "department": registration.department,
             "event": event_title or registration.event_id,
+            "phone": registration.phone,
+            "photo_url": getattr(registration, "photo_url", None),
+            "institute": registration.institute
         })
 
     cards.sort(key=lambda card: (card["name"] or "").casefold())

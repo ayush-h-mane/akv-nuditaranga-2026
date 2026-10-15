@@ -14,8 +14,10 @@ import {
   Building,
   GraduationCap,
   Sparkles,
-  ShieldCheck
+  ShieldCheck,
+  CreditCard
 } from "lucide-react";
+import { VolunteerIDCardModal } from "./VolunteerIDCardModal";
 import {
   ACHARYA_INSTITUTES,
   STANDARD_DEPARTMENTS,
@@ -51,6 +53,7 @@ export const EditVolunteerModal = ({
   });
 
   const [showPassword, setShowPassword] = useState(false);
+  const [showIdPreview, setShowIdPreview] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -480,14 +483,25 @@ export const EditVolunteerModal = ({
 
         {/* Footer */}
         <div className="p-4 sm:p-5 bg-stone-50 border-t border-stone-200 flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={submitting}
-            className="px-4 py-2 rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold text-xs transition-colors cursor-pointer"
-          >
-            Cancel
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              className="px-4 py-2 rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold text-xs transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowIdPreview(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-amber-50 text-stone-800 font-bold text-xs border border-stone-300 hover:border-amber-400 transition-all cursor-pointer shadow-2xs"
+              title="Preview Updated Official ID Card"
+            >
+              <CreditCard className="w-3.5 h-3.5 text-kar-red" />
+              <span>Preview ID Card</span>
+            </button>
+          </div>
           <button
             type="button"
             onClick={handleSubmit}
@@ -499,6 +513,23 @@ export const EditVolunteerModal = ({
           </button>
         </div>
       </div>
+
+      {/* Volunteer ID Card Preview Modal */}
+      <VolunteerIDCardModal
+        volunteer={{
+          ...volunteer,
+          ...form,
+          name: form.name || volunteer.name,
+          auid: form.auid || volunteer.auid,
+          department: form.department || volunteer.department,
+          volunteer_domain: form.volunteer_domain || volunteer.volunteer_domain,
+          phone: form.phone || volunteer.phone,
+          photo_url: form.photo_url || volunteer.photo_url
+        }}
+        isOpen={showIdPreview}
+        onClose={() => setShowIdPreview(false)}
+        isPreview={true}
+      />
     </div>
   );
 };

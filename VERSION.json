@@ -2,7 +2,13 @@
   "production_version": "2.3.35",
   "staged_version": "2.3.36",
   "status": "STAGED_DEVELOPMENT",
-  "pending_changes": [],
+  "pending_changes": [
+    "Official Volunteer ID Card Redesign (Reference Design Implementation): Redesigned the volunteer ID card front and back following the official Acharya Kannada Vedike Nuditaranga 2026 design specifications with authentic lanyard strap, top clip slot, dynamic brush strokes, Kalasha ornament, heritage watermarks (Vijayanagara stone elephant & Vidhana Soudha), centered photo frame, Kannada quotes, and Karnataka map silhouette with Hampi chariot.",
+    "Bilingual Kannada Verses & Typography: Embedded official festival mottos on Front: 'ಕನ್ನಡದ ಸಂಭ್ರಮ, ನಮ್ಮ ಹೆಮ್ಮೆ', bottom left: '“ಕನ್ನಡ ಕಲಿಗೆ ಕೈ ಜೋಡಿಸುವ, ಸಂಸ್ಕೃತಿಗೆ ಸೇವಿಸುವೆ”', and Back ribbon: 'ನಮ್ಮ ನಾಡು | ನಮ್ಮ ಭಾಷೆ | ನಮ್ಮ ಹೆಮ್ಮೆ'.",
+    "Back Card Specifications & QR Verification: Rendered high-density scannable QR verification code with formatted volunteer ID (AKVNT0046), structured volunteer details (Name, AUID, Department, Team/Domain, Role, Contact), and peach Important Information callout box with 4 bullet guidelines over Karnataka temple skyline silhouette.",
+    "Dual-Engine PDF Generator (id_card_service.py): Upgraded backend ReportLab PDF generator into a 2-page print-ready document for volunteers matching frontend cards 1:1, integrated fallback to Nograj photo or custom avatar, and provided download endpoints in superadmin and student portals.",
+    "Multi-Portal Integration: Added interactive ID card modals and preview controls across MyProfileAttendance (Volunteer Attendance Pass), StudentDashboard (Hero Action Bar), SuperAdminDashboard (ID Cards Directory), and EditVolunteerModal (Live Preview)."
+  ],
   "history": [
     {
       "version": "2.3.35",

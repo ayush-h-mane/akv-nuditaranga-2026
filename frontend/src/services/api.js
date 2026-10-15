@@ -2157,6 +2157,26 @@ export const api = {
     return true;
   },
 
+  async downloadMyIdCard() {
+    const res = await fetch(`${API_BASE_URL}/student/my-id-card/download`, {
+      headers: { ...getAuthHeaders() }
+    });
+    if (!res.ok) {
+      const data = await readApiResponse(res);
+      throw new Error(data.detail || "Failed to generate your ID card.");
+    }
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `AKV_Volunteer_ID_Card.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+    return true;
+  },
+
   getCachedAuditLogs(params = {}) {
     const cacheKey = `sa_audit_${params.action || ""}`;
     return getFromMemCache(cacheKey, 300000);
