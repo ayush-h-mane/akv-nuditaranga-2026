@@ -33,7 +33,7 @@ export const MAINTENANCE_CONFIG = {
   // Official contact information for urgent queries
   supportEmail: "akv@acharya.ac.in",
   emergencyPhone: "9535174767",
-  officerName: "Ayush H Mane \n (Developer)"
+  officerName: "Ayush H Mane"
 };
 
 /**
