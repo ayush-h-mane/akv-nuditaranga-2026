@@ -186,7 +186,7 @@ export const MaintenancePage = ({ onBypass, onNavigateDeveloper }) => {
                 </label>
                 <input
                   type="password"
-                  value={passcode}
+                  value={ayush}
                   onChange={(e) => {
                     setPasscode(e.target.value);
                     setPasscodeError("");
