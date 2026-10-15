@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Wrench,
-  Clock,
   ShieldCheck,
   RefreshCw,
   Mail,
@@ -17,56 +16,11 @@ import {
 import { MAINTENANCE_CONFIG } from "../config/maintenanceConfig";
 
 export const MaintenancePage = ({ onBypass, onNavigateDeveloper }) => {
-  const [timeLeft, setTimeLeft] = useState({
-    hours: 0,
-    minutes: 0,
-    seconds: 0,
-    isComplete: false
-  });
-
   const [refreshing, setRefreshing] = useState(false);
   const [showBypassModal, setShowBypassModal] = useState(false);
   const [passcode, setPasscode] = useState("");
   const [passcodeError, setPasscodeError] = useState("");
   const [isBypassedLocally, setIsBypassedLocally] = useState(false);
-
-  // Calculate live countdown to 10:00 AM, 16th October 2026
-  useEffect(() => {
-    const calculateCountdown = () => {
-      try {
-        const target = new Date(MAINTENANCE_CONFIG.endTime).getTime();
-        const now = Date.now();
-        const diff = target - now;
-
-        if (diff <= 0) {
-          setTimeLeft({
-            hours: 0,
-            minutes: 0,
-            seconds: 0,
-            isComplete: true
-          });
-          return;
-        }
-
-        const totalHours = Math.floor(diff / (1000 * 60 * 60));
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-        setTimeLeft({
-          hours: totalHours,
-          minutes,
-          seconds,
-          isComplete: false
-        });
-      } catch (e) {
-        console.error("Countdown calculation error:", e);
-      }
-    };
-
-    calculateCountdown();
-    const timer = setInterval(calculateCountdown, 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   const handleManualRefresh = () => {
     setRefreshing(true);
@@ -96,8 +50,8 @@ export const MaintenancePage = ({ onBypass, onNavigateDeveloper }) => {
         <div className="absolute -bottom-40 right-10 w-[500px] h-[500px] bg-red-800/15 rounded-full blur-[130px]" />
         <div className="absolute top-1/3 left-10 w-[400px] h-[400px] bg-amber-600/10 rounded-full blur-[100px]" />
         {/* Subtle grid pattern */}
-        <div 
-          className="absolute inset-0 opacity-[0.03]" 
+        <div
+          className="absolute inset-0 opacity-[0.03]"
           style={{ backgroundImage: `radial-gradient(circle at 1px 1px, white 1px, transparent 0)`, backgroundSize: "32px 32px" }}
         />
       </div>
@@ -162,79 +116,11 @@ export const MaintenancePage = ({ onBypass, onNavigateDeveloper }) => {
                 ಆಚಾರ್ಯ ಕನ್ನಡ ವೇದಿಕೆ ನುಡಿತರಂಗ ೨೦೨೬ ವೆಬ್‌ಸೈಟ್ ಮತ್ತು ಪೋರ್ಟಲ್ ಸರ್ವರ್‌ಗಳ ಸುಧಾರಿತ ನಿರ್ವಹಣಾ ಕಾರ್ಯ ಪ್ರಗತಿಯಲ್ಲಿದೆ.
               </p>
               <p className="text-stone-300">
-                The website & portals are temporarily offline for a few hours for scheduled maintenance.
-              </p>
-              <div className="pt-2 font-black text-amber-400 text-sm sm:text-base tracking-wide">
-                ದಯವಿಟ್ಟು ನಾಳೆ ಬೆಳಿಗ್ಗೆ 10:00 AM ನಂತರ ಪರಿಶೀಲಿಸಿ
-                <span className="block text-xs sm:text-sm font-semibold text-stone-200 mt-0.5">
-                  Please check back tomorrow morning after 10:00 AM (16th October 2026)
-                </span>
-              </div>
-            </div>
-
-            {/* Live Countdown Display Card */}
-            <div className="mt-6 p-5 rounded-2xl bg-stone-950/60 border border-white/5">
-              <div className="flex items-center justify-center gap-2 mb-3">
-                <Clock className="w-4 h-4 text-amber-400" />
-                <span className="text-xs font-bold uppercase tracking-wider text-stone-400">
-                  {timeLeft.isComplete ? "Maintenance Window Ended" : "Estimated Resumption Countdown"}
-                </span>
-              </div>
-
-              {timeLeft.isComplete ? (
-                <div className="py-2 text-center">
-                  <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-black text-sm">
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>ನಿರ್ವಹಣೆ ಮುಕ್ತಾಯಗೊಂಡಿದೆ • Maintenance Completed</span>
-                  </span>
-                  <div className="mt-3">
-                    <button
-                      onClick={handleManualRefresh}
-                      className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 font-black text-xs hover:brightness-110 transition-all cursor-pointer shadow-lg shadow-amber-500/20"
-                    >
-                      Enter Website Now
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-3 gap-3 max-w-sm mx-auto">
-                  {/* Hours */}
-                  <div className="p-3 rounded-xl bg-stone-900 border border-stone-800 text-center">
-                    <span className="block text-2xl sm:text-3xl font-black text-white font-mono">
-                      {String(timeLeft.hours).padStart(2, "0")}
-                    </span>
-                    <span className="text-[10px] uppercase font-bold text-stone-400 tracking-wider">
-                      Hours (ಗಂಟೆಗಳು)
-                    </span>
-                  </div>
-
-                  {/* Minutes */}
-                  <div className="p-3 rounded-xl bg-stone-900 border border-stone-800 text-center">
-                    <span className="block text-2xl sm:text-3xl font-black text-amber-400 font-mono">
-                      {String(timeLeft.minutes).padStart(2, "0")}
-                    </span>
-                    <span className="text-[10px] uppercase font-bold text-stone-400 tracking-wider">
-                      Minutes (ನಿಮಿಷ)
-                    </span>
-                  </div>
-
-                  {/* Seconds */}
-                  <div className="p-3 rounded-xl bg-stone-900 border border-stone-800 text-center">
-                    <span className="block text-2xl sm:text-3xl font-black text-red-400 font-mono">
-                      {String(timeLeft.seconds).padStart(2, "0")}
-                    </span>
-                    <span className="text-[10px] uppercase font-bold text-stone-400 tracking-wider">
-                      Seconds (ಸೆಕೆಂಡು)
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              <p className="text-[11px] text-stone-400 mt-3 font-medium">
-                🎯 Scheduled Resumption:{" "}
-                <span className="text-stone-200 font-bold">16th October 2026 at 10:00 AM IST</span>
+                The website & portals are temporarily offline for scheduled maintenance.
               </p>
             </div>
+
+
 
             {/* Safe Data Preservation Reassurance Badge */}
             <div className="mt-6 flex items-start gap-3 p-3.5 rounded-2xl bg-emerald-950/20 border border-emerald-500/20 text-left">
