@@ -16,7 +16,7 @@ superadmins_def = [
         'username': 'akvsadayt',
         'name': 'Ayush H Mane',
         'password': 'akvsa@ayush',
-        'email': 'ayushhmane@gmail.com',
+        'email': 'ayushh.23.beai@acharya.ac.in',
         'auid': 'ADM-AYUSH',
         'phone': '9535174767',
         'dept': 'Artificial Intelligence and Machine Learning',

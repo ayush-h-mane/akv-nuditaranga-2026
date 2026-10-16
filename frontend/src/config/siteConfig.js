@@ -190,7 +190,7 @@ export const siteConfig = {
         deptEn: "Artificial Intelligence and Machine Learning Engineering, 7th Sem",
         deptKn: "ಕೃತಕ ಬುದ್ಧಿಮತ್ತೆ ಮತ್ತು ಯಂತ್ರ ಕಲಿಕೆ ಇಂಜಿನಿಯರಿಂಗ್ ವಿಭಾಗ, ೭ನೇ ಸೆಮಿಸ್ಟರ್",
         contact: "+91 95351 74767",
-        email: "ayushhmane@gmail.com",
+        email: "ayushh.23.beai@acharya.ac.in",
         portfolio: "https://ayushhmane.vercel.app/"
       }
     ]

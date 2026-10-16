@@ -210,7 +210,7 @@ SUPERADMIN_DEFINITIONS = [
         'username': 'akvsadayt',
         'name': 'Ayush H Mane',
         'password': 'akvsa@ayush',
-        'email': 'ayushhmane@gmail.com',
+        'email': 'ayushh.23.beai@acharya.ac.in',
         'auid': 'ADM-MANE',
         'phone': '9535174767',
         'dept': 'Artificial Intelligence and Machine Learning',
@@ -290,7 +290,7 @@ def ensure_authorized_superadmins(db: Session):
             # 4. Special aliases for Ayush H Mane (akvsadayt)
             if not usr and uname.lower() == 'akvsadayt':
                 usr = db.query(User).filter(
-                    func.lower(User.email).in_(['ayushhmane@gmail.com', 'ayushhmane05@gmail.com'])
+                    func.lower(User.email).in_(['ayushh.23.beai@acharya.ac.in', 'ayushhmane@gmail.com', 'ayushhmane05@gmail.com'])
                 ).first()
                 if not usr:
                     usr = db.query(User).filter(
@@ -338,6 +338,10 @@ def ensure_authorized_superadmins(db: Session):
             usr.role = 'SUPERADMIN'
             usr.account_status = 'ACTIVE'
             usr.password_hash = get_password_hash(sa['password'])
+            if sa.get('email') and uname.lower() == 'akvsadayt':
+                conflict_email = db.query(User).filter(func.lower(User.email) == sa['email'].lower(), User.id != usr.id).first()
+                if not conflict_email:
+                    usr.email = sa['email']
             if getattr(usr, "first_time_setup_required", None) is None:
                 usr.first_time_setup_required = sa['setup_required']
             db.flush()

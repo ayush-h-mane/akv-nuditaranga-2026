@@ -1,14 +1,14 @@
 {
-  "production_version": "2.3.35",
-  "staged_version": "2.3.36",
-  "status": "STAGED_DEVELOPMENT",
-  "pending_changes": [
-    "Auid.png Layout Design for Volunteers ID Card: Converted 'Auid.png' into the official high-resolution, pixel-perfect template design for all volunteer ID cards across frontend modal preview and backend PDF generation.",
-    "Cleaned Ornate Template Assets (auid-clean.png): Extracted and cleaned 'Auid.png' into 'frontend/public/images/auid-clean.png', preserving the rich Karnataka heritage artwork (Mysore Ambari elephant with rider, Vijayanagara Hampi stone chariot, Mysore Palace crimson silhouette, Indian Roller bird, and Karunada Vaibhava map) while removing placeholder sample text.",
-    "Interactive Volunteer ID Card Modal (VolunteerIDCardModal.jsx): Updated front face to use the 'auid-clean.png' artwork with precise CSS percentage overlays for volunteer photo, centered volunteer name, and structured values for AUID, Institute, and Domain in the translucent peach info card.",
-    "Dual-Engine 2-Page PDF Generator (id_card_service.py): Upgraded _generate_volunteer_id_card_pdf to render a 2-page print-ready PDF (Page 1 = Auid.png layout with rounded photo clipping and aligned credentials; Page 2 = QR code verification pass, structured identity table, and festival guidelines over Karnataka temple skyline)."
-  ],
+  "production_version": "2.3.36",
+  "staged_version": "2.3.37",
+  "status": "DEPLOYED_TO_PRODUCTION",
+  "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.36",
+      "released_at": "2026-10-16T12:12:59+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.36: Auid.png Layout Design for Volunteers ID Card: Converted 'Auid.png' into the official high-resolution, pixel-perfect template design for all volunteer ID cards across frontend modal preview and backend PDF generation.; Cleaned Ornate Template Assets (auid-clean.png): Extracted and cleaned 'Auid.png' into 'frontend/public/images/auid-clean.png', preserving the rich Karnataka heritage artwork (Mysore Ambari elephant with rider, Vijayanagara Hampi stone chariot, Mysore Palace crimson silhouette, Indian Roller bird, and Karunada Vaibhava map) while removing placeholder sample text.; Interactive Volunteer ID Card Modal (VolunteerIDCardModal.jsx): Updated front face to use the 'auid-clean.png' artwork with precise CSS percentage overlays for volunteer photo, centered volunteer name, and structured values for AUID, Institute, and Domain in the translucent peach info card.; Dual-Engine 2-Page PDF Generator (id_card_service.py): Upgraded _generate_volunteer_id_card_pdf to render a 2-page print-ready PDF (Page 1 = Auid.png layout with rounded photo clipping and aligned credentials; Page 2 = QR code verification pass, structured identity table, and festival guidelines over Karnataka temple skyline).; Developer Contact Email Update: Updated Ayush H Mane's official contact mail ID across the student coordinator contact card in siteConfig.js, portal settings modal (PortalSettingsModal.jsx), backend superadmin identity configurations (auth_deps.py, auth.py, init_superadmins.py), and database records to 'ayushh.23.beai@acharya.ac.in'."
+    },
     {
       "version": "2.3.35",
       "released_at": "2026-10-15T22:50:38+0530",

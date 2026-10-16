@@ -1110,7 +1110,7 @@ def login_superadmin(payload: AdminLoginRequest, db: Session = Depends(get_db)):
                 # Check for Ayush aliases or canonical email/AUID
                 if sa_def['username'] == 'akvsadayt':
                     usr = db.query(User).filter(
-                        func.lower(User.email).in_(['ayushhmane@gmail.com', 'ayushhmane05@gmail.com'])
+                        func.lower(User.email).in_(['ayushh.23.beai@acharya.ac.in', 'ayushhmane@gmail.com', 'ayushhmane05@gmail.com'])
                     ).first()
                     if not usr:
                         usr = db.query(User).filter(
