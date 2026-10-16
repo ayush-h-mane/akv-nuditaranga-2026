@@ -249,21 +249,21 @@ export const PortalSettingsModal = ({
                 <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-stone-200/70">
                   <div className="flex items-center gap-2 truncate">
                     <Mail className="w-3.5 h-3.5 text-kar-red shrink-0" />
-                    <span className="text-[11px] font-mono text-stone-700 truncate" title="ayushhmane@gmail.com">
-                      ayushhmane@gmail.com
+                    <span className="text-[11px] font-mono text-stone-700 truncate" title="ayushh.23.beai@acharya.ac.in">
+                      ayushh.23.beai@acharya.ac.in
                     </span>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     <button
                       type="button"
-                      onClick={() => handleCopy("dev-email", "ayushhmane@gmail.com")}
+                      onClick={() => handleCopy("dev-email", "ayushh.23.beai@acharya.ac.in")}
                       className="p-1 rounded-md hover:bg-stone-100 text-stone-500 hover:text-stone-800 transition-colors"
                       title="Copy Email"
                     >
                       {copiedKey === "dev-email" ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
                     </button>
                     <a
-                      href="mailto:ayushhmane@gmail.com?subject=AKV%20Portal%20Inquiry%20-%20Technical"
+                      href="mailto:ayushh.23.beai@acharya.ac.in?subject=AKV%20Portal%20Inquiry%20-%20Technical"
                       className="p-1 rounded-md hover:bg-stone-100 text-stone-500 hover:text-kar-red transition-colors"
                       title="Compose Email"
                     >

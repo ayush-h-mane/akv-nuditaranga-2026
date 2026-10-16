@@ -25,8 +25,10 @@ import {
   QrCode,
   X,
   Plus,
-  RefreshCw
+  RefreshCw,
+  CreditCard
 } from "lucide-react";
+import { VolunteerIDCardModal } from "../components/VolunteerIDCardModal";
 
 export const StudentDashboard = ({ onNavigateHome }) => {
   const { user, logout } = useAuth();
@@ -36,6 +38,7 @@ export const StudentDashboard = ({ onNavigateHome }) => {
   const [eventsList, setEventsList] = useState(() => api.getCachedEvents("all", true));
   const [loading, setLoading] = useState(() => !api.hasCachedStudentDashboard(user?.auid));
   const [refreshing, setRefreshing] = useState(false);
+  const [showVolunteerIdModal, setShowVolunteerIdModal] = useState(false);
   const [registeringEventId, setRegisteringEventId] = useState(null);
   const [actionMessage, setActionMessage] = useState({ type: "", text: "" });
   
@@ -367,14 +370,28 @@ export const StudentDashboard = ({ onNavigateHome }) => {
               </div>
 
               {profile?.role === "VOLUNTEER" && (
-                <div className="bg-white/15 backdrop-blur-md rounded-2xl px-4 py-3 border border-white/20 text-center min-w-[90px]">
-                  <span className="block text-xs font-extrabold text-white mt-1">
-                    {volunteerInfo?.today_attendance === "PRESENT" ? "PRESENT ✅" : (volunteerInfo?.today_attendance || "PENDING")}
-                  </span>
-                  <span className="text-[10px] uppercase font-bold text-amber-200 tracking-wider">
-                    Today's Attendance
-                  </span>
-                </div>
+                <>
+                  <div className="bg-white/15 backdrop-blur-md rounded-2xl px-4 py-3 border border-white/20 text-center min-w-[90px]">
+                    <span className="block text-xs font-extrabold text-white mt-1">
+                      {volunteerInfo?.today_attendance === "PRESENT" ? "PRESENT ✅" : (volunteerInfo?.today_attendance || "PENDING")}
+                    </span>
+                    <span className="text-[10px] uppercase font-bold text-amber-200 tracking-wider">
+                      Today's Attendance
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowVolunteerIdModal(true)}
+                    className="bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-2xl px-4 py-3 border border-white/30 text-center transition-all cursor-pointer flex flex-col items-center justify-center hover:scale-[1.02] active:scale-[0.98] shadow-sm"
+                    title="View Official Volunteer ID Card"
+                  >
+                    <CreditCard className="w-5 h-5 text-amber-200 mb-0.5" />
+                    <span className="text-[10px] uppercase font-black text-white tracking-wider">
+                      View ID Card
+                    </span>
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -1211,6 +1228,13 @@ export const StudentDashboard = ({ onNavigateHome }) => {
           </div>
         </div>
       )}
+
+      {/* Official Volunteer ID Card Modal */}
+      <VolunteerIDCardModal
+        volunteer={profile}
+        isOpen={showVolunteerIdModal}
+        onClose={() => setShowVolunteerIdModal(false)}
+      />
 
     </div>
   );

@@ -65,6 +65,7 @@ import { DeveloperGoogleSheetsSync } from "../components/DeveloperGoogleSheetsSy
 import { AttendanceScanResultModal } from "../components/AttendanceScanResultModal";
 import { EditAdminModal } from "../components/EditAdminModal";
 import { EditVolunteerModal } from "../components/EditVolunteerModal";
+import { VolunteerIDCardModal } from "../components/VolunteerIDCardModal";
 
 export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false }) => {
   const { user, logout, refreshUser } = useAuth();
@@ -520,6 +521,7 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
   });
 
   // Modals & Edit States
+  const [volunteerCardPreview, setVolunteerCardPreview] = useState(null);
   const [editStudent, setEditStudent] = useState(null);
   const [editAttendance, setEditAttendance] = useState(null);
   const [markAttendanceModal, setMarkAttendanceModal] = useState(false);
@@ -5244,9 +5246,26 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                           <td className="px-4 py-3 text-stone-600">{card.event || card.department || "—"}</td>
                           <td className="px-4 py-3 text-stone-600">{card.email}</td>
                           <td className="px-4 py-3 text-right">
-                            <button type="button" onClick={() => handleIdCardDownload(card)} disabled={idCardDownloading === key} className="inline-flex items-center gap-1.5 rounded-lg bg-kar-red px-3 py-2 font-bold text-white hover:bg-red-800 disabled:opacity-50">
-                              <Download className="h-3.5 w-3.5" />{idCardDownloading === key ? "Preparing…" : "Download PDF"}
-                            </button>
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setVolunteerCardPreview(card)}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 font-bold text-stone-700 hover:bg-stone-50 hover:text-kar-red cursor-pointer shadow-xs transition-colors"
+                                title="Preview & Print Official ID Card"
+                              >
+                                <Eye className="h-3.5 w-3.5 text-kar-red" />
+                                <span>Preview</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleIdCardDownload(card)}
+                                disabled={idCardDownloading === key}
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-kar-red px-3 py-1.5 font-bold text-white hover:bg-red-800 disabled:opacity-50 cursor-pointer shadow-xs transition-colors"
+                              >
+                                <Download className="h-3.5 w-3.5" />
+                                {idCardDownloading === key ? "Preparing…" : "Download PDF"}
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -7763,6 +7782,13 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
           </div>
         </div>
       )}
+
+      {/* Official Volunteer & Candidate ID Card Modal */}
+      <VolunteerIDCardModal
+        volunteer={volunteerCardPreview}
+        isOpen={Boolean(volunteerCardPreview)}
+        onClose={() => setVolunteerCardPreview(null)}
+      />
 
     </div>
   );
