@@ -522,7 +522,7 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
     try {
       setHighlightsLoading(true);
       const data = await api.getHighlights(forceFresh);
-      setHighlightsList(data.highlights || festivalHighlights);
+      setHighlightsList(data.highlights || []);
     } catch (err) {
       notify("error", err.message || "Unable to load festival highlights.");
     } finally {
@@ -630,12 +630,12 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
   };
 
   const handleResetHighlights = async () => {
-    if (!window.confirm("Reset all festival highlights to official default catalog? Any custom additions or edits will be restored to defaults.")) return;
+    if (!window.confirm("Reset all festival highlights? This will clear all highlights and reset the catalog to empty.")) return;
     try {
       setHighlightsSaving(true);
       const res = await api.resetHighlightsToDefault();
-      setHighlightsList(res.highlights || festivalHighlights);
-      notify("success", "Festival highlights restored to official defaults.");
+      setHighlightsList(res.highlights || []);
+      notify("success", "Festival highlights cleared.");
     } catch (err) {
       notify("error", err.message || "Failed to reset highlights.");
     } finally {
@@ -1548,10 +1548,36 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
 
   const handleSaveGoogleSheetsConfig = async (e) => {
     if (e) e.preventDefault();
+    const cleanUrl = (googleSheetsWebhookInput || "").trim();
+    if (!cleanUrl) {
+      notify("error", "Please enter a Google Apps Script Webhook URL.");
+      return;
+    }
+    if (cleanUrl.includes("docs.google.com/spreadsheets") || cleanUrl.includes("spreadsheets/d/")) {
+      notify(
+        "error",
+        "That is your Google Spreadsheet document link, NOT a Webhook URL! Click 'Apps Script Code' above to copy Code.gs, deploy it via Extensions > Apps Script > Deploy > New deployment > Web app, and paste the resulting Web App URL ending in /exec."
+      );
+      return;
+    }
+    if (cleanUrl.endsWith("/dev")) {
+      notify(
+        "error",
+        "That is a '/dev' test URL. Google Apps Script test URLs require owner Google login and cannot receive automated syncs. Please deploy via Deploy > New deployment > Web app and paste the production '/exec' URL."
+      );
+      return;
+    }
+    if (!cleanUrl.startsWith("https://script.google.com/macros/s/")) {
+      notify(
+        "error",
+        "Invalid URL format. Expected a Google Apps Script Web App URL starting with 'https://script.google.com/macros/s/.../exec'."
+      );
+      return;
+    }
     try {
       setGoogleSheetsLoading(true);
       const res = await api.updateGoogleSheetsConfig({
-        webhook_url: googleSheetsWebhookInput.trim()
+        webhook_url: cleanUrl
       });
       notify("success", "Google Sheets Webhook URL saved successfully!");
       setGoogleSheetsConfig(res.config);
@@ -1563,6 +1589,18 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
   };
 
   const handleSyncToGoogleSheets = async () => {
+    const activeUrl = (googleSheetsConfig?.webhook_url || googleSheetsWebhookInput || "").trim();
+    if (!activeUrl) {
+      notify("error", "Google Apps Script Webhook URL is not configured. Please paste your deployed Web App URL first.");
+      return;
+    }
+    if (activeUrl.includes("docs.google.com/spreadsheets") || activeUrl.includes("spreadsheets/d/")) {
+      notify(
+        "error",
+        "The configured Webhook URL is a Google Spreadsheet document link, NOT a Webhook URL! Click 'Apps Script Code' to deploy Code.gs and paste the Web App /exec URL."
+      );
+      return;
+    }
     try {
       setGoogleSheetsSyncing(true);
       const res = await api.syncGoogleSheets();
@@ -5589,7 +5627,13 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                         placeholder="https://script.google.com/macros/s/AKfycb.../exec"
                         value={googleSheetsWebhookInput}
                         onChange={(e) => setGoogleSheetsWebhookInput(e.target.value)}
-                        className="flex-1 px-3.5 py-2 rounded-xl bg-white border border-emerald-300 text-stone-900 text-xs font-mono outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs"
+                        className={`flex-1 px-3.5 py-2 rounded-xl bg-white border text-stone-900 text-xs font-mono outline-none focus:ring-2 shadow-2xs ${
+                          googleSheetsWebhookInput.includes("docs.google.com")
+                            ? "border-rose-400 focus:ring-rose-500 bg-rose-50/20"
+                            : googleSheetsWebhookInput.endsWith("/dev")
+                            ? "border-amber-400 focus:ring-amber-500 bg-amber-50/20"
+                            : "border-emerald-300 focus:ring-emerald-500"
+                        }`}
                       />
                       <button
                         type="button"
@@ -5600,6 +5644,30 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                         {googleSheetsLoading ? "Saving..." : "Save Webhook"}
                       </button>
                     </div>
+
+                    {/* Live URL Helper Status Badges */}
+                    {googleSheetsWebhookInput.includes("docs.google.com") && (
+                      <div className="flex items-start gap-1.5 text-[11px] text-rose-700 bg-rose-50 border border-rose-200 p-2 rounded-xl">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-600 mt-0.5" />
+                        <span>
+                          <b>Spreadsheet Link Detected:</b> That is your Google Spreadsheet URL. A <b>Google Apps Script Web App URL</b> is required here. Click <b>Apps Script Code</b> above to copy <code>Code.gs</code> and deploy it.
+                        </span>
+                      </div>
+                    )}
+                    {googleSheetsWebhookInput.endsWith("/dev") && (
+                      <div className="flex items-start gap-1.5 text-[11px] text-amber-800 bg-amber-50 border border-amber-200 p-2 rounded-xl">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-600 mt-0.5" />
+                        <span>
+                          <b>Test URL Detected (/dev):</b> Test deployments require Google account authentication and cannot receive automated syncs. Please deploy via <b>Deploy &gt; New deployment &gt; Web app</b> and use the <b>/exec</b> URL.
+                        </span>
+                      </div>
+                    )}
+                    {googleSheetsWebhookInput.startsWith("https://script.google.com/macros/s/") && googleSheetsWebhookInput.includes("/exec") && (
+                      <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 font-bold">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <span>Valid Google Apps Script Web App URL format</span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0 pt-2 lg:pt-0">
@@ -5941,10 +6009,10 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                     onClick={handleResetHighlights}
                     disabled={highlightsSaving}
                     className="px-3 py-2 rounded-xl border border-amber-300 bg-amber-50 text-amber-900 text-xs font-bold hover:bg-amber-100 cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
-                    title="Restore official 6 default attractions"
+                    title="Clear all festival highlights"
                   >
                     <RotateCcw className="w-3.5 h-3.5 text-amber-700" />
-                    <span>Reset Defaults</span>
+                    <span>Clear All</span>
                   </button>
                   <button
                     type="button"
@@ -8496,6 +8564,25 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                 <span className="font-extrabold text-emerald-800 block text-[11px]">Step 4: Save Webhook</span>
                 <span className="text-[11px] text-stone-600 mt-0.5 block leading-tight">Copy the Web App URL and paste it in the Webhook input on this dashboard!</span>
               </div>
+            </div>
+
+            {/* Troubleshooting Alert for HTTP 405 */}
+            <div className="mx-5 my-3 p-4 bg-amber-50 rounded-2xl border border-amber-300/80 text-xs text-amber-900 space-y-1.5">
+              <div className="flex items-center gap-2 font-black text-amber-950">
+                <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
+                <span>Fixing "HTTP error 405: Method Not Allowed"</span>
+              </div>
+              <ul className="list-disc pl-5 space-y-1 text-[11px] leading-relaxed text-amber-900/90 font-medium">
+                <li>
+                  <b>Did you paste your Google Spreadsheet link?</b> Do NOT paste <code>https://docs.google.com/spreadsheets/...</code> into the Webhook field. Only paste the Web App URL (<code>https://script.google.com/macros/s/.../exec</code>) generated after clicking Deploy.
+                </li>
+                <li>
+                  <b>Updating existing script:</b> If you deployed before saving <code>Code.gs</code>, you MUST publish a New Version! In Apps Script, click <b>Deploy &gt; Manage deployments &gt; ✏️ (Edit icon) &gt; Version dropdown: select "New version" &gt; click Deploy</b>.
+                </li>
+                <li>
+                  <b>Permissions:</b> Verify that <b>Who has access</b> is set to <b>Anyone</b> (not "Only myself").
+                </li>
+              </ul>
             </div>
 
             {/* Code Box */}

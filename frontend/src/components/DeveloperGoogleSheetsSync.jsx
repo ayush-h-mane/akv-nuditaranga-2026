@@ -75,6 +75,27 @@ export const DeveloperGoogleSheetsSync = ({ showError, showSuccess }) => {
       if (showError) showError("Please enter a valid Google Apps Script Webhook URL.");
       return;
     }
+    if (cleanUrl.includes("docs.google.com/spreadsheets") || cleanUrl.includes("spreadsheets/d/")) {
+      addLog("VALIDATION_ERROR: Spreadsheet document link entered instead of Apps Script Webhook URL.");
+      if (showError) {
+        showError("That is your Google Spreadsheet document link, NOT a Webhook URL! Click 'Apps Script (Code.gs)' to deploy Code.gs as a Web App and paste the resulting URL ending in /exec.");
+      }
+      return;
+    }
+    if (cleanUrl.endsWith("/dev")) {
+      addLog("VALIDATION_ERROR: Test deployment URL (/dev) entered.");
+      if (showError) {
+        showError("That is a '/dev' test URL. Test deployments require owner login and cannot receive automated syncs. Please deploy via Deploy > New deployment > Web app and use the /exec URL.");
+      }
+      return;
+    }
+    if (!cleanUrl.startsWith("https://script.google.com/macros/s/")) {
+      addLog("VALIDATION_ERROR: Invalid Webhook URL format.");
+      if (showError) {
+        showError("Invalid URL format. Expected a Google Apps Script Web App URL starting with 'https://script.google.com/macros/s/.../exec'.");
+      }
+      return;
+    }
     try {
       setSavingWebhook(true);
       addLog(`SAVING_WEBHOOK: ${cleanUrl.slice(0, 45)}...`);
@@ -93,6 +114,17 @@ export const DeveloperGoogleSheetsSync = ({ showError, showSuccess }) => {
   };
 
   const handleTriggerSync = async () => {
+    const activeUrl = (config?.webhook_url || webhookInput || "").trim();
+    if (!activeUrl) {
+      if (showError) showError("Google Apps Script Webhook URL is not configured. Please paste your deployed Web App URL first.");
+      return;
+    }
+    if (activeUrl.includes("docs.google.com/spreadsheets") || activeUrl.includes("spreadsheets/d/")) {
+      if (showError) {
+        showError("The configured Webhook URL is a Google Spreadsheet document link, NOT a Webhook URL! Click 'Apps Script (Code.gs)' to deploy Code.gs and paste the Web App /exec URL.");
+      }
+      return;
+    }
     try {
       setSyncing(true);
       addLog("SYNC_TRIGGERED: Compiling database records and formatting sheets...");
@@ -244,7 +276,13 @@ export const DeveloperGoogleSheetsSync = ({ showError, showSuccess }) => {
                 placeholder="https://script.google.com/macros/s/AKfycb.../exec"
                 value={webhookInput}
                 onChange={(e) => setWebhookInput(e.target.value)}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-stone-950 border border-stone-800 text-stone-100 text-xs font-mono focus:border-emerald-500 focus:outline-hidden"
+                className={`flex-1 px-4 py-2.5 rounded-xl bg-stone-950 border text-stone-100 text-xs font-mono focus:outline-hidden ${
+                  webhookInput.includes("docs.google.com")
+                    ? "border-red-500/80 focus:border-red-500"
+                    : webhookInput.endsWith("/dev")
+                    ? "border-amber-500/80 focus:border-amber-500"
+                    : "border-stone-800 focus:border-emerald-500"
+                }`}
               />
               <button
                 type="submit"
@@ -254,6 +292,30 @@ export const DeveloperGoogleSheetsSync = ({ showError, showSuccess }) => {
                 {savingWebhook ? "Saving..." : "Save Endpoint"}
               </button>
             </form>
+
+            {/* Live Developer URL Diagnostic Badges */}
+            {webhookInput.includes("docs.google.com") && (
+              <div className="flex items-start gap-2 p-2.5 rounded-xl bg-red-950/40 border border-red-800/80 text-red-300 text-[11px] font-mono">
+                <AlertCircle className="w-4 h-4 shrink-0 text-red-400 mt-0.5" />
+                <span>
+                  <b>SPREADSHEET_LINK_DETECTED:</b> That is the Google Spreadsheet link. Live sync requires the <b>Google Apps Script Web App URL</b>. Click <b>Apps Script (Code.gs)</b> above to copy and deploy the webhook.
+                </span>
+              </div>
+            )}
+            {webhookInput.endsWith("/dev") && (
+              <div className="flex items-start gap-2 p-2.5 rounded-xl bg-amber-950/40 border border-amber-800/80 text-amber-300 text-[11px] font-mono">
+                <AlertCircle className="w-4 h-4 shrink-0 text-amber-400 mt-0.5" />
+                <span>
+                  <b>TEST_URL_DETECTED:</b> The <code>/dev</code> test URL requires developer Google login and cannot be used for external webhooks. Deploy as a Web app and use the <b>/exec</b> URL.
+                </span>
+              </div>
+            )}
+            {webhookInput.startsWith("https://script.google.com/macros/s/") && webhookInput.includes("/exec") && (
+              <div className="flex items-center gap-1.5 text-emerald-400 text-[11px] font-mono font-bold">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span>VALID_WEB_APP_ENDPOINT_FORMAT (/exec)</span>
+              </div>
+            )}
 
             {/* Sync Action Buttons */}
             <div className="pt-3 border-t border-stone-800/80 flex flex-wrap items-center justify-between gap-3">
@@ -456,6 +518,25 @@ export const DeveloperGoogleSheetsSync = ({ showError, showSuccess }) => {
                 <Copy className="w-3.5 h-3.5" />
                 <span>Copy Code</span>
               </button>
+            </div>
+
+            {/* Troubleshooting Diagnostic for 405 */}
+            <div className="mx-5 my-3 p-3.5 bg-amber-950/40 rounded-2xl border border-amber-800/80 text-[11px] font-mono text-amber-300 space-y-1.5">
+              <div className="flex items-center gap-2 font-bold text-amber-200">
+                <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>TROUBLESHOOTING: "HTTP error 405: Method Not Allowed"</span>
+              </div>
+              <ul className="list-disc pl-5 space-y-1 text-amber-300/90 leading-relaxed">
+                <li>
+                  <b>Did you paste your Google Sheet link?</b> Do not paste <code>docs.google.com/spreadsheets/...</code>. Only paste the Web App URL (<code>script.google.com/macros/s/.../exec</code>).
+                </li>
+                <li>
+                  <b>Publishing a New Version:</b> If you deployed before saving <code>Code.gs</code>, Apps Script is serving the old version without <code>doPost</code>. Go to <b>Deploy &gt; Manage deployments &gt; ✏️ Edit &gt; Version: "New version" &gt; Deploy</b>.
+                </li>
+                <li>
+                  <b>Access Setting:</b> Ensure <b>Who has access</b> is set to <b>Anyone</b>.
+                </li>
+              </ul>
             </div>
 
             <div className="p-5 flex-1 overflow-y-auto">

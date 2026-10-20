@@ -289,9 +289,131 @@ def sync_to_google_sheets(
             "error": "Google Apps Script Webhook URL is not configured. Please paste your deployed Web App URL in the Superadmin Portal."
         }
 
-    payload = build_google_sheets_payload(db, base_url=base_url)
-    payload_bytes = json.dumps(payload).encode("utf-8")
+    # 1. Critical Validation: Catch common user error of pasting Google Spreadsheet link instead of Web App URL
+    if "docs.google.com/spreadsheets" in target_url or "spreadsheets/d/" in target_url:
+        err_msg = (
+            "Invalid Webhook URL: You entered a Google Spreadsheet document link (docs.google.com). "
+            "A Google Apps Script Web App URL (ending in /exec) is required. "
+            "Click 'Apps Script Code' above to copy Code.gs, deploy it in Google Sheets via Extensions > Apps Script > Deploy > New deployment > Web app (Who has access: Anyone), and paste the resulting Web App URL."
+        )
+        return {"success": False, "error": err_msg}
 
+    # 2. Validation: Catch /dev test URL
+    if target_url.endswith("/dev"):
+        err_msg = (
+            "Invalid Webhook URL: You provided a '/dev' test URL. "
+            "Google Apps Script test URLs require owner browser login and cannot receive automated external syncs. "
+            "Please deploy via Deploy > New deployment > Web app, and use the production '/exec' URL."
+        )
+        return {"success": False, "error": err_msg}
+
+    # 3. Validation: Catch non-Apps Script URLs
+    if not (target_url.startswith("https://script.google.com/macros/s/") or target_url.startswith("http://localhost")):
+        err_msg = (
+            "Invalid Webhook URL format. Expected a Google Apps Script Web App URL starting with 'https://script.google.com/macros/s/.../exec'."
+        )
+        return {"success": False, "error": err_msg}
+
+    payload = build_google_sheets_payload(db, base_url=base_url)
+    now_ist = get_current_ist_datetime().isoformat()
+
+    # Try requests library first for clean redirect and timeout handling
+    try:
+        import requests
+        resp = requests.post(
+            target_url,
+            json=payload,
+            headers={
+                "Content-Type": "application/json",
+                "User-Agent": "AKV-Nuditaranga-Sync-Service/2.3"
+            },
+            timeout=45,
+            allow_redirects=True
+        )
+
+        if resp.status_code == 405:
+            err_msg = (
+                "Google Apps Script Webhook HTTP error 405 (Method Not Allowed). "
+                "Google rejected the sync because your Apps Script Web App was deployed without the doPost() function or was not updated with a 'New version'. "
+                "Fix in Google Sheets: Extensions > Apps Script > Deploy > Manage deployments > click ✏️ (Edit) > change Version dropdown to 'New version' > click Deploy, ensuring 'Who has access: Anyone'."
+            )
+            save_google_sheets_config({
+                "last_synced_at": now_ist,
+                "last_sync_status": "ERROR",
+                "last_sync_message": err_msg
+            }, db=db)
+            return {"success": False, "error": err_msg}
+
+        if resp.status_code in (401, 403):
+            err_msg = (
+                f"Google Sheets Webhook HTTP error {resp.status_code} ({resp.reason}). "
+                "Access was denied. Please verify that in Google Apps Script under Deploy > Manage deployments, 'Who has access' is set to 'Anyone'."
+            )
+            save_google_sheets_config({
+                "last_synced_at": now_ist,
+                "last_sync_status": "ERROR",
+                "last_sync_message": err_msg
+            }, db=db)
+            return {"success": False, "error": err_msg}
+
+        if not resp.ok:
+            err_msg = f"Google Sheets Webhook HTTP error {resp.status_code}: {resp.reason}"
+            save_google_sheets_config({
+                "last_synced_at": now_ist,
+                "last_sync_status": "ERROR",
+                "last_sync_message": err_msg
+            }, db=db)
+            return {"success": False, "error": err_msg}
+
+        try:
+            res_json = resp.json()
+        except Exception:
+            res_json = {"raw": resp.text}
+
+        save_google_sheets_config({
+            "last_synced_at": now_ist,
+            "last_sync_status": "SUCCESS" if res_json.get("success", True) else "FAILED",
+            "last_sync_message": res_json.get("message", "Sync executed successfully."),
+            "last_synced_stats": res_json.get("stats", {
+                "volunteersCount": len(payload["volunteers"]),
+                "wcCount": len(payload["working_committee"]),
+                "dates": payload["dates"]
+            })
+        }, db=db)
+
+        return {
+            "success": True,
+            "message": res_json.get("message", "Successfully synced to Google Spreadsheet!"),
+            "stats": res_json.get("stats", {
+                "volunteers_count": len(payload["volunteers"]),
+                "wc_count": len(payload["working_committee"]),
+                "dates_count": len(payload["dates"])
+            }),
+            "synced_at": now_ist
+        }
+
+    except ImportError:
+        # Fallback to standard library urllib
+        pass
+    except requests.exceptions.Timeout:
+        err_msg = "Google Sheets Webhook connection timed out after 45 seconds."
+        save_google_sheets_config({
+            "last_synced_at": now_ist,
+            "last_sync_status": "ERROR",
+            "last_sync_message": err_msg
+        }, db=db)
+        return {"success": False, "error": err_msg}
+    except requests.exceptions.RequestException as re:
+        err_msg = f"Network connection to Google Sheets Webhook failed: {str(re)}"
+        save_google_sheets_config({
+            "last_synced_at": now_ist,
+            "last_sync_status": "ERROR",
+            "last_sync_message": err_msg
+        }, db=db)
+        return {"success": False, "error": err_msg}
+
+    # Fallback to urllib.request if requests was not imported
+    payload_bytes = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
         target_url,
         data=payload_bytes,
@@ -302,11 +424,7 @@ def sync_to_google_sheets(
         method="POST"
     )
 
-    now_ist = get_current_ist_datetime().isoformat()
-
     try:
-        # Apps Script Web Apps often return 302 redirects to script.googleusercontent.com,
-        # urllib handles HTTP redirects seamlessly.
         with urllib.request.urlopen(req, timeout=45) as response:
             res_body = response.read().decode("utf-8")
             try:
@@ -337,7 +455,20 @@ def sync_to_google_sheets(
             }
 
     except urllib.error.HTTPError as he:
-        err_msg = f"Google Sheets Webhook HTTP error {he.code}: {he.reason}"
+        if he.code == 405:
+            err_msg = (
+                "Google Apps Script Webhook HTTP error 405 (Method Not Allowed). "
+                "Google rejected the sync because your Apps Script Web App was deployed without the doPost() function or was not updated with a 'New version'. "
+                "Fix in Google Sheets: Extensions > Apps Script > Deploy > Manage deployments > click ✏️ (Edit) > change Version dropdown to 'New version' > click Deploy, ensuring 'Who has access: Anyone'."
+            )
+        elif he.code in (401, 403):
+            err_msg = (
+                f"Google Sheets Webhook HTTP error {he.code}: {he.reason}. "
+                "Access was denied. Please verify that in Google Apps Script under Deploy > Manage deployments, 'Who has access' is set to 'Anyone'."
+            )
+        else:
+            err_msg = f"Google Sheets Webhook HTTP error {he.code}: {he.reason}"
+
         save_google_sheets_config({
             "last_synced_at": now_ist,
             "last_sync_status": "ERROR",

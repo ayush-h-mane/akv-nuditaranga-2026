@@ -17,6 +17,13 @@
  * 6. Click "Deploy", authorize permissions when prompted, and copy the Web App URL.
  * 7. Paste that Web App URL into the Superadmin Portal ("Google Sheets Sync" section)
  *    or run `python scripts/sync_google_sheets.py --webhook <url>`.
+ * 
+ * ⚠️ TROUBLESHOOTING "HTTP error 405: Method Not Allowed":
+ * • If you see 405, NEVER paste the Google Spreadsheet link (docs.google.com/spreadsheets/...)
+ *   into the webhook box. Only paste the Web App URL (script.google.com/macros/s/.../exec).
+ * • If you edited Code.gs after an initial deployment, you MUST create a NEW VERSION:
+ *   Click Deploy > Manage deployments > click ✏️ (Edit) > Version: select "New version" > Deploy.
+ * • Ensure "Who has access" is set to "Anyone" (not "Only myself").
  * ==============================================================================
  */
 
