@@ -1,6 +1,7 @@
 import React from "react";
 import { HeroSection } from "../sections/HeroSection";
 import { KarunadaVaibhavaSchedule } from "../components/KarunadaVaibhavaSchedule";
+import { HighlightsSection } from "../sections/HighlightsSection";
 import { AboutSection } from "../sections/AboutSection";
 import { ActivitiesSection } from "../sections/ActivitiesSection";
 import { NuditarangaHero } from "../sections/NuditarangaHero";
@@ -44,6 +45,14 @@ export const HomePage = ({ setCurrentView, setSelectedEventId, onOpenAuthTab }) 
       />
       <KarunadaVaibhavaSchedule
         onRegisterClick={() => handleRegisterFromHome(null)}
+      />
+      <HighlightsSection
+        onRegister={() => handleRegisterFromHome(null)}
+        onViewEvents={() => {
+          setCurrentView("events");
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+        onExploreSchedule={handleExploreNuditaranga}
       />
       <AboutSection />
       <ActivitiesSection />

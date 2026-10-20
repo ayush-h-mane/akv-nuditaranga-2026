@@ -1,9 +1,14 @@
 {
-  "production_version": "2.3.36",
-  "staged_version": "2.3.37",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.3.37",
+  "staged_version": "2.3.38",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.37",
+      "released_at": "2026-10-20T11:41:32+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.37: Highlights of Nuditaranga 2026 Section: Added a dedicated, bilingual Highlights section (HighlightsSection.jsx) on the homepage and festival portals featuring 6 core flagship experiences (Karnataka Rajyotsava & Flag Hoisting, Kala Ranga Yakshagana & Theatre, Karunada Jatre Carnival, Literary Conclave & Quiz, Musical Nite & Valedictory Gala, and 25+ Inter-College Competitions), dynamic category filters, interactive detail modals, and navigation routes.; Superadmin Festival Highlights Manager: Empowered Superadmins to manage festival highlights directly from SuperAdminDashboard.jsx without backend database changes. Added 'Nuditaranga Highlights' navigation tab, full CRUD interface with photo upload via EventImageUpload, bilingual Kannada/English fields, card glow gradient selectors, reordering controls, defaults reset, JSON import/export, and instant client-side synchronization via localStorage and memory cache."
+    },
     {
       "version": "2.3.36",
       "released_at": "2026-10-16T12:12:59+0530",
