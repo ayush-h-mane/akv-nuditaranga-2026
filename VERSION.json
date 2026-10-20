@@ -1,9 +1,14 @@
 {
-  "production_version": "2.3.37",
-  "staged_version": "2.3.38",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.3.38",
+  "staged_version": "2.3.39",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.38",
+      "released_at": "2026-10-21T00:36:12+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.38: Google Sheets Sync Webhook URL Strict Validation & Document Link Guard: Added robust frontend and backend validation intercepting incorrect Google Spreadsheet document links (docs.google.com/spreadsheets/...) or /dev test URLs before submission, preventing invalid POST dispatch.; Actionable HTTP 405 Method Not Allowed Diagnostics: Enhanced backend google_sheets_service.py and frontend api.js to provide clear, human-readable troubleshooting guidance explaining when Google Apps Script is missing doPost() or requires publishing a 'New version' under Manage deployments.; Real-Time Webhook Format Badges: Integrated live URL validation indicators in SuperAdminDashboard.jsx and DeveloperGoogleSheetsSync.jsx that dynamically alert users when a spreadsheet link or /dev test URL is detected, confirming valid /exec webhook formats.; Turnkey Apps Script Instructions & Troubleshooting Callouts: Added prominent HTTP 405 troubleshooting walkthroughs directly inside SuperAdminDashboard and DeveloperGoogleSheetsSync Apps Script modals, as well as in Code.gs header documentation.; Removal of Preloaded Festival Highlights: Emptied hardcoded festivalHighlights array in highlightsData.js, upgraded storage key to v2, and configured HighlightsSection to gracefully hide when no highlights exist until configured by Superadmins."
+    },
     {
       "version": "2.3.37",
       "released_at": "2026-10-20T11:41:32+0530",

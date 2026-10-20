@@ -171,15 +171,6 @@ export const siteConfig = {
     ],
     students: [
       {
-        nameEn: "Priyanka S Reddy",
-        nameKn: "ಪ್ರಿಯಾಂಕ ಎಸ್. ರೆಡ್ಡಿ",
-        dept: "Electrical and Electronics Engineering,\n 7th Sem",
-        deptEn: "Electrical and Electronics Engineering,\n 7th Sem",
-        deptKn: "ವಿದ್ಯುತ್ ಹಾಗೂ ವಿದ್ಯುನ್ಮಾನ ಇಂಜಿನಿಯರಿಂಗ್ ವಿಭಾಗ, ೭ನೇ ಸೆಮಿಸ್ಟರ್",
-        contact: "+91 95130 93026",
-        email: "priyankas.23.beee@acharya.ac.in"
-      },
-      {
         nameEn: "Ayush H Mane",
         nameKn: "ಆಯುಷ್ ಹೆಚ್. ಮಾನೆ",
         dept: "Artificial Intelligence and Machine Learning Engineering, 7th Sem",
@@ -188,6 +179,15 @@ export const siteConfig = {
         contact: "+91 95351 74767",
         email: "ayushh.23.beai@acharya.ac.in",
         portfolio: "https://ayushhmane.vercel.app/"
+      },
+      {
+        nameEn: "Priyanka S Reddy",
+        nameKn: "ಪ್ರಿಯಾಂಕ ಎಸ್. ರೆಡ್ಡಿ",
+        dept: "Electrical and Electronics Engineering, 7th Sem",
+        deptEn: "Electrical and Electronics Engineering, 7th Sem",
+        deptKn: "ವಿದ್ಯುತ್ ಹಾಗೂ ವಿದ್ಯುನ್ಮಾನ ಇಂಜಿನಿಯರಿಂಗ್ ವಿಭಾಗ, ೭ನೇ ಸೆಮಿಸ್ಟರ್",
+        contact: "+91 95130 93026",
+        email: "priyankas.23.beee@acharya.ac.in"
       }
     ]
   },

@@ -47,7 +47,7 @@ export const HighlightsSection = ({ onRegister, onViewEvents, onExploreSchedule 
     };
 
     const handleStorage = (e) => {
-      if (e.key === "akv_festival_highlights_v1" && e.newValue) {
+      if ((e.key === "akv_festival_highlights_v2" || e.key === "akv_festival_highlights_v1") && e.newValue) {
         try {
           const parsed = JSON.parse(e.newValue);
           if (Array.isArray(parsed)) {
@@ -75,6 +75,11 @@ export const HighlightsSection = ({ onRegister, onViewEvents, onExploreSchedule 
       }
     }
   }, [highlights]);
+
+  // Gracefully hide entire section if no highlights exist in catalog
+  if (!highlights || highlights.length === 0) {
+    return null;
+  }
 
   const filteredHighlights = activeCategory === "all"
     ? highlights

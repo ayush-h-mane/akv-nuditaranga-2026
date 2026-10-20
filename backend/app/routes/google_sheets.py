@@ -127,8 +127,36 @@ def update_sheets_configuration(
     db: Session = Depends(get_db)
 ):
     """Updates Google Sheets webhook URL and sync preferences."""
+    clean_url = (payload.webhook_url or "").strip()
+
+    if clean_url:
+        if "docs.google.com/spreadsheets" in clean_url or "spreadsheets/d/" in clean_url:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "Invalid Webhook URL: You entered a Google Spreadsheet link (docs.google.com). "
+                    "A Google Apps Script Web App URL is required. Click 'Apps Script Code' above, "
+                    "deploy Code.gs via Extensions > Apps Script > Deploy > New deployment > Web app, "
+                    "and paste the resulting Web App URL ending in /exec."
+                )
+            )
+        if clean_url.endswith("/dev"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "Invalid Webhook URL: You provided a '/dev' test URL. "
+                    "Test URLs require owner authentication and cannot receive automated external syncs. "
+                    "Please deploy via Deploy > New deployment > Web app, and use the production '/exec' URL."
+                )
+            )
+        if not (clean_url.startswith("https://script.google.com/macros/s/") or clean_url.startswith("http://localhost")):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid Webhook URL format. Expected a Google Apps Script Web App URL starting with 'https://script.google.com/macros/s/.../exec'."
+            )
+
     updated = save_google_sheets_config({
-        "webhook_url": (payload.webhook_url or "").strip(),
+        "webhook_url": clean_url,
         "auto_sync_on_attendance": payload.auto_sync_on_attendance
     }, db=db)
     return {

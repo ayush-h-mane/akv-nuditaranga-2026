@@ -214,7 +214,7 @@ const STORAGE_ACTIVITIES_KEY = "akv_activities_cache_v2";
 const STORAGE_GALLERY_KEY = "akv_gallery_cache_v2";
 const STORAGE_SCHEDULE_KEY = "akv_schedule_cache_v2";
 const STORAGE_REELS_KEY = "akv_reels_cache_v2";
-const STORAGE_HIGHLIGHTS_KEY = "akv_festival_highlights_v1";
+const STORAGE_HIGHLIGHTS_KEY = "akv_festival_highlights_v2";
 const STORAGE_STUDENT_DASH_PREFIX = "akv_dash_";
 
 function readLocalJson(key, fallback = null) {
@@ -3953,23 +3953,27 @@ export const api = {
   // ==========================================
   getCachedHighlights() {
     let highlights = memCache.get("festival_highlights");
-    if (!highlights) {
+    if (highlights === undefined) {
+      // Clear legacy v1 preloaded storage if present
+      if (typeof window !== "undefined" && window.localStorage) {
+        try { localStorage.removeItem("akv_festival_highlights_v1"); } catch (_) {}
+      }
       highlights = readLocalJson(STORAGE_HIGHLIGHTS_KEY, null);
-      if (highlights) memCache.set("festival_highlights", highlights);
+      if (highlights !== null) memCache.set("festival_highlights", highlights);
     }
-    return highlights;
+    return highlights !== null && highlights !== undefined ? highlights : [];
   },
 
   async getHighlights(forceFresh = false) {
     const key = "festival_highlights";
     if (!forceFresh) {
       const cached = this.getCachedHighlights();
-      if (cached && Array.isArray(cached) && cached.length > 0) {
+      if (cached && Array.isArray(cached)) {
         return { highlights: cached };
       }
     }
     const stored = readLocalJson(STORAGE_HIGHLIGHTS_KEY, null);
-    if (stored && Array.isArray(stored) && stored.length > 0) {
+    if (stored !== null && Array.isArray(stored)) {
       memCache.set(key, stored);
       return { highlights: stored };
     }
@@ -4149,6 +4153,28 @@ export const api = {
       throw new Error("Google Apps Script Webhook URL is not configured. Please paste your deployed Web App URL in the portal first.");
     }
 
+    // Critical Validation: Catch common user error of entering spreadsheet link instead of web app URL
+    if (webhookUrl.includes("docs.google.com/spreadsheets") || webhookUrl.includes("spreadsheets/d/")) {
+      throw new Error(
+        "Invalid Webhook URL: You configured a Google Spreadsheet document link (docs.google.com) instead of a Webhook URL. " +
+        "Click 'Apps Script Code' above to copy Code.gs, deploy it via Extensions > Apps Script > Deploy > New deployment > Web app (Who has access: Anyone), and paste the resulting Web App URL ending in /exec."
+      );
+    }
+
+    if (webhookUrl.endsWith("/dev")) {
+      throw new Error(
+        "Invalid Webhook URL: You configured a '/dev' test URL. " +
+        "Google Apps Script test URLs require owner Google login and cannot receive automated syncs. " +
+        "Please deploy via Deploy > New deployment > Web app and copy the production '/exec' URL."
+      );
+    }
+
+    if (!webhookUrl.startsWith("https://script.google.com/macros/s/") && !webhookUrl.startsWith("http://localhost")) {
+      throw new Error(
+        "Invalid Webhook URL format. Expected a Google Apps Script Web App URL starting with 'https://script.google.com/macros/s/.../exec'."
+      );
+    }
+
     // 2. Fetch the compiled database payload (fast in-memory query, <150ms)
     let payload = null;
     try {
@@ -4196,7 +4222,17 @@ export const api = {
       headers: { "Content-Type": "application/json", ...getAuthHeaders() }
     });
     const data = await readApiResponse(res);
-    if (!res.ok) throw new Error(data.detail || "Failed to sync to Google Spreadsheet");
+    if (!res.ok) {
+      if (res.status === 405 || (data.detail && data.detail.includes("405"))) {
+        throw new Error(
+          data.detail ||
+          "Google Apps Script Webhook HTTP error 405 (Method Not Allowed). " +
+          "Google rejected the sync because your Apps Script Web App was deployed without the doPost() function or was not updated with a 'New version'. " +
+          "To fix: In Google Sheets, click Extensions > Apps Script > Deploy > Manage deployments > click ✏️ Edit > change Version to 'New version' > click Deploy."
+        );
+      }
+      throw new Error(data.detail || "Failed to sync to Google Spreadsheet");
+    }
     return data;
   },
 
