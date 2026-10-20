@@ -7,6 +7,7 @@ import {
   initialReels, 
   initialAttendanceDates 
 } from "../config/catalogData";
+import { festivalHighlights } from "../config/highlightsData";
 
 import { Capacitor } from "@capacitor/core";
 
@@ -213,6 +214,7 @@ const STORAGE_ACTIVITIES_KEY = "akv_activities_cache_v2";
 const STORAGE_GALLERY_KEY = "akv_gallery_cache_v2";
 const STORAGE_SCHEDULE_KEY = "akv_schedule_cache_v2";
 const STORAGE_REELS_KEY = "akv_reels_cache_v2";
+const STORAGE_HIGHLIGHTS_KEY = "akv_festival_highlights_v1";
 const STORAGE_STUDENT_DASH_PREFIX = "akv_dash_";
 
 function readLocalJson(key, fallback = null) {
@@ -3944,6 +3946,59 @@ export const api = {
     writeLocalJson(STORAGE_SCHEDULE_KEY, data);
 
     return data;
+  },
+
+  // ==========================================
+  // FESTIVAL HIGHLIGHTS (SUPERADMIN CLIENT-SIDE MANAGED)
+  // ==========================================
+  getCachedHighlights() {
+    let highlights = memCache.get("festival_highlights");
+    if (!highlights) {
+      highlights = readLocalJson(STORAGE_HIGHLIGHTS_KEY, null);
+      if (highlights) memCache.set("festival_highlights", highlights);
+    }
+    return highlights;
+  },
+
+  async getHighlights(forceFresh = false) {
+    const key = "festival_highlights";
+    if (!forceFresh) {
+      const cached = this.getCachedHighlights();
+      if (cached && Array.isArray(cached) && cached.length > 0) {
+        return { highlights: cached };
+      }
+    }
+    const stored = readLocalJson(STORAGE_HIGHLIGHTS_KEY, null);
+    if (stored && Array.isArray(stored) && stored.length > 0) {
+      memCache.set(key, stored);
+      return { highlights: stored };
+    }
+    const defaults = [...festivalHighlights];
+    memCache.set(key, defaults);
+    writeLocalJson(STORAGE_HIGHLIGHTS_KEY, defaults);
+    return { highlights: defaults };
+  },
+
+  async updateHighlights(highlights) {
+    if (!Array.isArray(highlights)) {
+      throw new Error("Highlights must be an array");
+    }
+    memCache.set("festival_highlights", highlights);
+    writeLocalJson(STORAGE_HIGHLIGHTS_KEY, highlights);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("akv_highlights_updated", { detail: highlights }));
+    }
+    return { success: true, highlights };
+  },
+
+  async resetHighlightsToDefault() {
+    const defaults = [...festivalHighlights];
+    memCache.set("festival_highlights", defaults);
+    writeLocalJson(STORAGE_HIGHLIGHTS_KEY, defaults);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("akv_highlights_updated", { detail: defaults }));
+    }
+    return { success: true, highlights: defaults };
   },
 
   // ==========================================

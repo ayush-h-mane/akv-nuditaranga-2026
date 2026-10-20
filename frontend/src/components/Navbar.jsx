@@ -32,6 +32,7 @@ export const Navbar = ({ currentView, setCurrentView, onOpenAuthTab }) => {
     { id: "about", label: t("nav.about") },
     { id: "activities", label: t("nav.activities") },
     { id: "nuditaranga", label: lang === "kn" ? "ಕರುನಾಡ ವೈಭವ" : "Karunada Vaibhava" },
+    { id: "highlights", label: t("nav.highlights") },
     { id: "events", label: t("nav.events") },
     { id: "rules", label: lang === "kn" ? "ನಿಯಮಗಳು" : "Rules" },
     { id: "gallery", label: t("nav.gallery") },

@@ -54,6 +54,7 @@ const RulesPage = React.lazy(() =>
 // Direct Sections
 import { AboutSection } from "./sections/AboutSection";
 import { ActivitiesSection } from "./sections/ActivitiesSection";
+import { HighlightsSection } from "./sections/HighlightsSection";
 import { NuditarangaHero } from "./sections/NuditarangaHero";
 import { KarunadaVaibhavaSchedule } from "./components/KarunadaVaibhavaSchedule";
 import { GallerySection } from "./sections/GallerySection";
@@ -701,10 +702,28 @@ export function AppContent() {
             </div>
           )}
 
+          {route.path === "/highlights" && (
+            <div className="pt-24 min-h-screen bg-stone-950">
+              <HighlightsSection
+                onRegister={() => handleRegisterNav(null)}
+                onViewEvents={() => navigatePath("/events")}
+                onExploreSchedule={() => navigatePath("/nuditaranga")}
+              />
+            </div>
+          )}
+
           {route.path === "/nuditaranga" && (
             <div className="pt-24 min-h-screen bg-stone-950">
               <KarunadaVaibhavaSchedule
                 onRegisterClick={() => handleRegisterNav(null)}
+              />
+              <HighlightsSection
+                onRegister={() => handleRegisterNav(null)}
+                onViewEvents={() => navigatePath("/events")}
+                onExploreSchedule={() => {
+                  const el = document.getElementById("schedule");
+                  if (el) el.scrollIntoView({ behavior: "smooth" });
+                }}
               />
               <NuditarangaHero
                 onRegister={() => handleRegisterNav(null)}

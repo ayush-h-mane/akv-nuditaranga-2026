@@ -173,10 +173,8 @@ export const siteConfig = {
       {
         nameEn: "Priyanka S Reddy",
         nameKn: "ಪ್ರಿಯಾಂಕ ಎಸ್. ರೆಡ್ಡಿ",
-        roleEn: "Secretary",
-        roleKn: "ಕಾರ್ಯದರ್ಶಿ",
-        dept: "Electrical and Electronics Engineering, 7th Sem",
-        deptEn: "Electrical and Electronics Engineering, 7th Sem",
+        dept: "Electrical and Electronics Engineering,\n 7th Sem",
+        deptEn: "Electrical and Electronics Engineering,\n 7th Sem",
         deptKn: "ವಿದ್ಯುತ್ ಹಾಗೂ ವಿದ್ಯುನ್ಮಾನ ಇಂಜಿನಿಯರಿಂಗ್ ವಿಭಾಗ, ೭ನೇ ಸೆಮಿಸ್ಟರ್",
         contact: "+91 95130 93026",
         email: "priyankas.23.beee@acharya.ac.in"
@@ -184,8 +182,6 @@ export const siteConfig = {
       {
         nameEn: "Ayush H Mane",
         nameKn: "ಆಯುಷ್ ಹೆಚ್. ಮಾನೆ",
-        roleEn: "Developer",
-        roleKn: "ಅಭಿವೃದ್ಧಿಕಾರ",
         dept: "Artificial Intelligence and Machine Learning Engineering, 7th Sem",
         deptEn: "Artificial Intelligence and Machine Learning Engineering, 7th Sem",
         deptKn: "ಕೃತಕ ಬುದ್ಧಿಮತ್ತೆ ಮತ್ತು ಯಂತ್ರ ಕಲಿಕೆ ಇಂಜಿನಿಯರಿಂಗ್ ವಿಭಾಗ, ೭ನೇ ಸೆಮಿಸ್ಟರ್",

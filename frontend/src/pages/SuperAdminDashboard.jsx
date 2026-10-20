@@ -52,8 +52,13 @@ import {
   QrCode,
   KeyRound,
   Cpu,
-  Bell
+  Bell,
+  Flame,
+  ArrowUp,
+  ArrowDown,
+  Upload
 } from "lucide-react";
+import { festivalHighlights } from "../config/highlightsData";
 import { EventImageUpload } from "../components/EventImageUpload";
 import { MyProfileAttendance } from "../components/MyProfileAttendance";
 import { CameraQRScanner } from "../components/CameraQRScanner";
@@ -208,6 +213,37 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
     comments: "",
     is_active: true
   });
+
+  // Nuditaranga 2026 Festival Highlights State (Superadmin Managed)
+  const [highlightsList, setHighlightsList] = useState(() => api.getCachedHighlights() || festivalHighlights);
+  const [highlightsLoading, setHighlightsLoading] = useState(false);
+  const [highlightsSaving, setHighlightsSaving] = useState(false);
+  const [highlightModal, setHighlightModal] = useState(null); // null, "new", "edit"
+  const [currentHighlight, setCurrentHighlight] = useState({
+    id: null,
+    category: "heritage",
+    titleEn: "",
+    titleKn: "",
+    subtitleEn: "",
+    subtitleKn: "",
+    tagEn: "",
+    tagKn: "",
+    dateEn: "",
+    dateKn: "",
+    venueEn: "",
+    venueKn: "",
+    descEn: "",
+    descKn: "",
+    fullDescEn: "",
+    fullDescKn: "",
+    image: "",
+    badgesEn: "",
+    badgesKn: "",
+    scheduleDay: "DAY 01",
+    color: "from-red-600/90 to-amber-600/90"
+  });
+  const [importJsonModal, setImportJsonModal] = useState(false);
+  const [importJsonText, setImportJsonText] = useState("");
 
   // Search & Filters
   const [studentSearch, setStudentSearch] = useState("");
@@ -478,6 +514,166 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
       notify("error", err.message || "Unable to update Karunada Vaibhava schedule.");
     } finally {
       setScheduleSaving(false);
+    }
+  };
+
+  // Highlights Management Handlers (Superadmin Client-Side Managed)
+  const loadHighlights = async (forceFresh = false) => {
+    try {
+      setHighlightsLoading(true);
+      const data = await api.getHighlights(forceFresh);
+      setHighlightsList(data.highlights || festivalHighlights);
+    } catch (err) {
+      notify("error", err.message || "Unable to load festival highlights.");
+    } finally {
+      setHighlightsLoading(false);
+    }
+  };
+
+  const handleSaveHighlight = async (e) => {
+    e.preventDefault();
+    if (!currentHighlight.titleEn?.trim() || !currentHighlight.descEn?.trim()) {
+      notify("error", "Please provide English Title and Description.");
+      return;
+    }
+    if (!currentHighlight.image?.trim()) {
+      notify("error", "Please upload or specify a banner image for the highlight.");
+      return;
+    }
+
+    try {
+      setHighlightsSaving(true);
+      const parseBadges = (val) => {
+        if (Array.isArray(val)) return val;
+        if (typeof val === "string") {
+          return val.split(",").map((s) => s.trim()).filter(Boolean);
+        }
+        return [];
+      };
+
+      const titleEn = currentHighlight.titleEn.trim();
+      const titleKn = currentHighlight.titleKn?.trim() || titleEn;
+      const descEn = currentHighlight.descEn.trim();
+      const descKn = currentHighlight.descKn?.trim() || descEn;
+
+      const highlightToSave = {
+        id: currentHighlight.id || `highlight-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        category: currentHighlight.category || "heritage",
+        titleEn,
+        titleKn,
+        subtitleEn: (currentHighlight.subtitleEn || "").trim(),
+        subtitleKn: (currentHighlight.subtitleKn || "").trim(),
+        tagEn: (currentHighlight.tagEn || "").trim() || "Attraction",
+        tagKn: (currentHighlight.tagKn || "").trim() || "ವಿಶೇಷ ಆಕರ್ಷಣೆ",
+        dateEn: (currentHighlight.dateEn || "").trim(),
+        dateKn: (currentHighlight.dateKn || "").trim(),
+        venueEn: (currentHighlight.venueEn || "").trim(),
+        venueKn: (currentHighlight.venueKn || "").trim(),
+        descEn,
+        descKn,
+        fullDescEn: (currentHighlight.fullDescEn || "").trim() || descEn,
+        fullDescKn: (currentHighlight.fullDescKn || "").trim() || descKn,
+        image: currentHighlight.image.trim(),
+        badgesEn: parseBadges(currentHighlight.badgesEn),
+        badgesKn: parseBadges(currentHighlight.badgesKn),
+        scheduleDay: currentHighlight.scheduleDay || "ALL DAYS",
+        color: currentHighlight.color || "from-red-600/90 to-amber-600/90"
+      };
+
+      let updatedList;
+      if (highlightModal === "new") {
+        updatedList = [highlightToSave, ...highlightsList];
+        notify("success", `New Highlight '${titleEn}' added!`);
+      } else {
+        updatedList = highlightsList.map((item) =>
+          item.id === currentHighlight.id ? highlightToSave : item
+        );
+        notify("success", `Highlight '${titleEn}' updated!`);
+      }
+
+      await api.updateHighlights(updatedList);
+      setHighlightsList(updatedList);
+      setHighlightModal(null);
+    } catch (err) {
+      notify("error", err.message || "Failed to save festival highlight.");
+    } finally {
+      setHighlightsSaving(false);
+    }
+  };
+
+  const handleDeleteHighlight = async (id, title) => {
+    if (!window.confirm(`Permanently remove highlight '${title}'?`)) return;
+    try {
+      const updatedList = highlightsList.filter((item) => item.id !== id);
+      await api.updateHighlights(updatedList);
+      setHighlightsList(updatedList);
+      notify("success", `Highlight '${title}' deleted.`);
+    } catch (err) {
+      notify("error", err.message || "Failed to delete highlight.");
+    }
+  };
+
+  const handleMoveHighlight = async (index, direction) => {
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= highlightsList.length) return;
+    const newList = [...highlightsList];
+    const temp = newList[index];
+    newList[index] = newList[targetIndex];
+    newList[targetIndex] = temp;
+    try {
+      await api.updateHighlights(newList);
+      setHighlightsList(newList);
+      notify("success", "Highlight order updated.");
+    } catch (err) {
+      notify("error", "Failed to update highlight order.");
+    }
+  };
+
+  const handleResetHighlights = async () => {
+    if (!window.confirm("Reset all festival highlights to official default catalog? Any custom additions or edits will be restored to defaults.")) return;
+    try {
+      setHighlightsSaving(true);
+      const res = await api.resetHighlightsToDefault();
+      setHighlightsList(res.highlights || festivalHighlights);
+      notify("success", "Festival highlights restored to official defaults.");
+    } catch (err) {
+      notify("error", err.message || "Failed to reset highlights.");
+    } finally {
+      setHighlightsSaving(false);
+    }
+  };
+
+  const handleExportHighlights = () => {
+    try {
+      const json = JSON.stringify(highlightsList, null, 2);
+      navigator.clipboard?.writeText(json);
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `nuditaranga_highlights_${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      notify("success", "Highlights exported! JSON copied to clipboard and downloaded.");
+    } catch (err) {
+      notify("error", "Could not export highlights: " + err.message);
+    }
+  };
+
+  const handleApplyImportJson = async () => {
+    try {
+      const parsed = JSON.parse(importJsonText);
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        notify("error", "Imported JSON must be a non-empty array of highlights.");
+        return;
+      }
+      await api.updateHighlights(parsed);
+      setHighlightsList(parsed);
+      setImportJsonModal(false);
+      setImportJsonText("");
+      notify("success", `Successfully imported ${parsed.length} highlights!`);
+    } catch (err) {
+      notify("error", "Invalid JSON format: " + err.message);
     }
   };
 
@@ -956,6 +1152,7 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
       else if (activeSection === "events" || activeSection === "exports" || activeSection === "google-sheets") await Promise.all([loadEvents(forceFresh), loadGoogleSheetsConfig()]);
       else if (activeSection === "id-cards") await loadIdCards(idCardSearch, forceFresh);
       else if (activeSection === "festival-schedule") await loadFestivalSchedule(forceFresh);
+      else if (activeSection === "festival-highlights") await loadHighlights(forceFresh);
       else if (activeSection === "audit-logs") await loadAuditLogs(forceFresh);
     } catch (err) {
       console.warn("Master refresh error:", err);
@@ -1775,6 +1972,7 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
             { id: "exports", label: "Attendance & Data Exports", icon: FileSpreadsheet },
             { id: "events", label: "Event Configurations", icon: Calendar },
             { id: "festival-schedule", label: "Karunada Vaibhava Schedule", icon: MapPin },
+            { id: "festival-highlights", label: "Nuditaranga Highlights", icon: Flame },
             { id: "audit-logs", label: "Security Audit Trail", icon: History }
           ] : [
             { id: "overview", label: "Dashboard Overview", icon: BarChart3 },
@@ -1784,7 +1982,8 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
             { id: "event-registrations", label: "Event Registrations", icon: Trophy },
             { id: "reels", label: "Reels & Posts", icon: Film },
             { id: "events", label: "Event Configurations", icon: Calendar },
-            { id: "festival-schedule", label: "Karunada Vaibhava Schedule", icon: MapPin }
+            { id: "festival-schedule", label: "Karunada Vaibhava Schedule", icon: MapPin },
+            { id: "festival-highlights", label: "Nuditaranga Highlights", icon: Flame }
           ]).map((tab) => {
             const Icon = tab.icon;
             const isActive = activeSection === tab.id;
@@ -5691,6 +5890,276 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
           )}
 
           {/* ==================================================== */}
+          {/* SECTION: FESTIVAL HIGHLIGHTS (SUPERADMIN MANAGED)    */}
+          {/* ==================================================== */}
+          {activeSection === "festival-highlights" && (
+            <div className="bg-white p-5 sm:p-7 rounded-3xl border border-stone-200 shadow-xs space-y-6 animate-fade-in">
+              {/* Header & Controls */}
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-stone-100 pb-5">
+                <div>
+                  <h3 className="font-extrabold text-base sm:text-lg text-stone-900 flex items-center gap-2">
+                    <Flame className="w-5 h-5 text-amber-500" />
+                    <span>Nuditaranga 2026 Festival Highlights ({highlightsList.length})</span>
+                  </h3>
+                  <p className="text-xs text-stone-500 mt-1 max-w-2xl leading-relaxed">
+                    Client-side management portal for Superadmins. Customize, add, edit, reorder, or delete festival highlights displayed across the public homepage and festival portal without backend database alterations.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => loadHighlights(true)}
+                    disabled={highlightsLoading}
+                    className="p-2.5 rounded-xl border border-stone-300 text-stone-700 hover:bg-stone-50 cursor-pointer disabled:opacity-50"
+                    title="Refresh Highlights"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${highlightsLoading ? "animate-spin text-kar-red" : ""}`} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleExportHighlights}
+                    className="px-3 py-2 rounded-xl border border-stone-300 text-stone-700 text-xs font-bold hover:bg-stone-50 cursor-pointer flex items-center gap-1.5"
+                    title="Export highlights data as JSON file"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Export JSON</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImportJsonText("");
+                      setImportJsonModal(true);
+                    }}
+                    className="px-3 py-2 rounded-xl border border-stone-300 text-stone-700 text-xs font-bold hover:bg-stone-50 cursor-pointer flex items-center gap-1.5"
+                    title="Import highlights from JSON"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Import JSON</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleResetHighlights}
+                    disabled={highlightsSaving}
+                    className="px-3 py-2 rounded-xl border border-amber-300 bg-amber-50 text-amber-900 text-xs font-bold hover:bg-amber-100 cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                    title="Restore official 6 default attractions"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 text-amber-700" />
+                    <span>Reset Defaults</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCurrentHighlight({
+                        id: null,
+                        category: "heritage",
+                        titleEn: "",
+                        titleKn: "",
+                        subtitleEn: "",
+                        subtitleKn: "",
+                        tagEn: "Special Attraction",
+                        tagKn: "ವಿಶೇಷ ಆಕರ್ಷಣೆ",
+                        dateEn: "November 01, 2026",
+                        dateKn: "೦೧ ನವೆಂಬರ್ ೨೦೨೬",
+                        venueEn: "Acharya Campus",
+                        venueKn: "ಆಚಾರ್ಯ ಆವರಣ",
+                        descEn: "",
+                        descKn: "",
+                        fullDescEn: "",
+                        fullDescKn: "",
+                        image: "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&w=1200&q=80",
+                        badgesEn: "Flagship, Cultural, Grand Event",
+                        badgesKn: "ಪ್ರಮುಖ, ಸಾಂಸ್ಕೃತಿಕ, ಭವ್ಯ ಕಾರ್ಯಕ್ರಮ",
+                        scheduleDay: "DAY 01",
+                        color: "from-red-600/90 to-amber-600/90"
+                      });
+                      setHighlightModal("new");
+                    }}
+                    className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-kar-red to-red-600 text-white font-extrabold text-xs shadow-md hover:shadow-lg transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add New Highlight</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Highlights Cards List */}
+              {highlightsLoading ? (
+                <div className="py-16 text-center text-stone-400 text-sm">
+                  <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-amber-500" />
+                  <span>Loading festival highlights...</span>
+                </div>
+              ) : highlightsList.length === 0 ? (
+                <div className="py-16 text-center bg-stone-50 rounded-2xl border border-stone-200 p-8 max-w-lg mx-auto">
+                  <Flame className="w-10 h-10 text-amber-500 mx-auto mb-3 opacity-60" />
+                  <h4 className="font-extrabold text-stone-800 text-base">No Highlights Configured</h4>
+                  <p className="text-xs text-stone-500 mt-1">
+                    Click "Add New Highlight" to create a custom attraction or "Reset Defaults" to restore the official 6 flagship highlights.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {highlightsList.map((item, index) => {
+                    const badgesEnList = Array.isArray(item.badgesEn) ? item.badgesEn : (item.badgesEn ? String(item.badgesEn).split(",") : []);
+                    const badgesKnList = Array.isArray(item.badgesKn) ? item.badgesKn : (item.badgesKn ? String(item.badgesKn).split(",") : []);
+
+                    return (
+                      <div
+                        key={item.id || index}
+                        className="rounded-2xl border border-stone-200 bg-white hover:border-amber-400/60 hover:shadow-lg transition-all overflow-hidden flex flex-col justify-between group"
+                      >
+                        <div>
+                          {/* Image Thumbnail with Overlay Badges */}
+                          <div className="relative h-44 w-full bg-stone-900 overflow-hidden">
+                            <img
+                              src={item.image || "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&w=800&q=80"}
+                              alt={item.titleEn}
+                              loading="lazy"
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
+
+                            {/* Top Left Day & Tag Badges */}
+                            <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5">
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-stone-900/90 text-amber-300 border border-amber-400/30 backdrop-blur-xs">
+                                {item.scheduleDay || "ALL DAYS"}
+                              </span>
+                              {item.tagEn && (
+                                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-kar-red/90 text-white backdrop-blur-xs">
+                                  {item.tagEn}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Top Right Category Pill */}
+                            <div className="absolute top-2.5 right-2.5">
+                              <span className="px-2.5 py-0.5 rounded-md text-[10px] font-extrabold uppercase bg-white/95 text-stone-800 shadow-xs backdrop-blur-xs border border-stone-200">
+                                {item.category || "attraction"}
+                              </span>
+                            </div>
+
+                            {/* Date on bottom right of image */}
+                            {item.dateEn && (
+                              <div className="absolute bottom-2.5 right-2.5 text-[10px] font-bold text-amber-300 bg-black/75 px-2 py-0.5 rounded-md backdrop-blur-xs flex items-center gap-1 border border-white/10">
+                                <Clock className="w-3 h-3 text-amber-400" />
+                                <span className="line-clamp-1">{item.dateEn}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Card Content */}
+                          <div className="p-4 space-y-2">
+                            <div>
+                              <h4 className="font-extrabold text-sm text-stone-900 leading-snug line-clamp-1 group-hover:text-kar-red transition-colors">
+                                {item.titleEn}
+                              </h4>
+                              {item.titleKn && (
+                                <p className="text-xs font-bold text-stone-600 font-kannada line-clamp-1 mt-0.5">
+                                  {item.titleKn}
+                                </p>
+                              )}
+                            </div>
+
+                            {item.subtitleEn && (
+                              <p className="text-xs text-amber-800 font-semibold line-clamp-1">
+                                {item.subtitleEn}
+                              </p>
+                            )}
+
+                            {item.venueEn && (
+                              <div className="flex items-center gap-1.5 text-[11px] text-stone-500 truncate">
+                                <MapPin className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                <span className="truncate">{item.venueEn}</span>
+                              </div>
+                            )}
+
+                            <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">
+                              {item.descEn}
+                            </p>
+
+                            {/* Key Badges preview */}
+                            {badgesEnList.length > 0 && (
+                              <div className="flex flex-wrap gap-1 pt-1">
+                                {badgesEnList.slice(0, 3).map((b, bIdx) => (
+                                  <span
+                                    key={bIdx}
+                                    className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-stone-100 text-stone-700 border border-stone-200"
+                                  >
+                                    {b.trim()}
+                                  </span>
+                                ))}
+                                {badgesEnList.length > 3 && (
+                                  <span className="text-[10px] text-stone-400 font-semibold self-center">
+                                    +{badgesEnList.length - 3} more
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Card Action Toolbar */}
+                        <div className="p-3 bg-stone-50 border-t border-stone-200 flex items-center justify-between gap-2">
+                          {/* Order controls */}
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] font-extrabold text-stone-400 px-1.5 py-0.5 bg-white border border-stone-200 rounded-md">
+                              #{index + 1}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleMoveHighlight(index, "up")}
+                              disabled={index === 0}
+                              className="p-1 rounded-lg border border-stone-200 text-stone-600 hover:bg-white disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+                              title="Move Up"
+                            >
+                              <ArrowUp className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleMoveHighlight(index, "down")}
+                              disabled={index === highlightsList.length - 1}
+                              className="p-1 rounded-lg border border-stone-200 text-stone-600 hover:bg-white disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+                              title="Move Down"
+                            >
+                              <ArrowDown className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+
+                          {/* Edit & Delete */}
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCurrentHighlight({
+                                  ...item,
+                                  badgesEn: Array.isArray(item.badgesEn) ? item.badgesEn.join(", ") : (item.badgesEn || ""),
+                                  badgesKn: Array.isArray(item.badgesKn) ? item.badgesKn.join(", ") : (item.badgesKn || "")
+                                });
+                                setHighlightModal("edit");
+                              }}
+                              className="px-2.5 py-1.5 rounded-lg border border-stone-300 hover:border-amber-400 bg-white text-stone-700 hover:text-amber-800 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
+                            >
+                              <Pencil className="w-3 h-3 text-amber-600" />
+                              <span>Edit</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteHighlight(item.id, item.titleEn)}
+                              className="p-1.5 rounded-lg text-stone-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                              title={`Delete ${item.titleEn}`}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ==================================================== */}
           {/* SECTION 8: AUDIT TRAIL                              */}
           {/* ==================================================== */}
           {activeSection === "audit-logs" && (
@@ -6839,6 +7308,361 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================== */}
+      {/* MODAL: ADD / EDIT FESTIVAL HIGHLIGHT (SUPERADMIN)    */}
+      {/* ==================================================== */}
+      {highlightModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in my-8 max-h-[92vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-stone-200 pb-3 shrink-0">
+              <h3 className="font-extrabold text-base text-stone-900 flex items-center gap-2">
+                <Flame className="w-5 h-5 text-amber-500" />
+                <span>{highlightModal === "new" ? "Add New Festival Highlight" : "Edit Festival Highlight"}</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setHighlightModal(null)}
+                className="p-1.5 text-stone-400 hover:text-stone-700 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveHighlight} className="space-y-4 text-xs overflow-y-auto pr-1">
+              {/* Highlight Image Upload */}
+              <EventImageUpload
+                imageUrl={currentHighlight.image}
+                onImageChange={(url) => setCurrentHighlight({ ...currentHighlight, image: url })}
+                label="Highlight Banner Image *"
+                required={true}
+              />
+
+              {/* Category, Schedule Day & Gradient Accent */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="font-bold text-stone-700 uppercase">Category *</label>
+                  <select
+                    value={currentHighlight.category || "heritage"}
+                    onChange={(e) => setCurrentHighlight({ ...currentHighlight, category: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 text-sm bg-white focus:ring-2 focus:ring-kar-red"
+                  >
+                    <option value="heritage">Karnataka Heritage & Flagship</option>
+                    <option value="theatre">Theatre & Yakshagana</option>
+                    <option value="jatre">Village Carnival (Jatre)</option>
+                    <option value="literary">Literary Conclave & Quiz</option>
+                    <option value="music">Music Concert & Gala</option>
+                    <option value="competitions">Competitions & Battles</option>
+                    <option value="other">Special Attraction</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-bold text-stone-700 uppercase">Schedule Day *</label>
+                  <select
+                    value={currentHighlight.scheduleDay || "ALL DAYS"}
+                    onChange={(e) => setCurrentHighlight({ ...currentHighlight, scheduleDay: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 text-sm bg-white focus:ring-2 focus:ring-kar-red"
+                  >
+                    <option value="DAY 01">DAY 01</option>
+                    <option value="DAY 02">DAY 02</option>
+                    <option value="DAY 03">DAY 03</option>
+                    <option value="DAY 04">DAY 04</option>
+                    <option value="DAY 05">DAY 05</option>
+                    <option value="DAY 06">DAY 06</option>
+                    <option value="ALL DAYS">ALL DAYS</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-bold text-stone-700 uppercase">Card Glow Accent</label>
+                  <select
+                    value={currentHighlight.color || "from-red-600/90 to-amber-600/90"}
+                    onChange={(e) => setCurrentHighlight({ ...currentHighlight, color: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 text-sm bg-white focus:ring-2 focus:ring-kar-red"
+                  >
+                    <option value="from-red-600/90 to-amber-600/90">Crimson & Amber (Flagship)</option>
+                    <option value="from-purple-700/90 to-red-600/90">Royal Purple & Red (Theatre)</option>
+                    <option value="from-amber-600/90 to-yellow-600/90">Warm Gold & Ochre (Jatre)</option>
+                    <option value="from-blue-700/90 to-cyan-700/90">Royal Blue & Cyan (Literary)</option>
+                    <option value="from-amber-500/90 to-red-700/90">Starfire Sunset (Music Gala)</option>
+                    <option value="from-emerald-700/90 to-teal-800/90">Emerald & Teal (Competitions)</option>
+                    <option value="from-rose-600/90 to-orange-600/90">Vibrant Coral</option>
+                    <option value="from-indigo-600/90 to-violet-700/90">Cosmic Indigo</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Tag / Micro-Badge */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-stone-700 uppercase">Badge / Tag (English)</label>
+                  <input
+                    type="text"
+                    value={currentHighlight.tagEn || ""}
+                    onChange={(e) => setCurrentHighlight({ ...currentHighlight, tagEn: e.target.value })}
+                    placeholder="e.g. Day 03 Flagship / Mega Carnival"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 text-sm focus:ring-2 focus:ring-kar-red"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-stone-700 uppercase">Badge / Tag (ಕನ್ನಡ / Kannada)</label>
+                  <input
+                    type="text"
+                    value={currentHighlight.tagKn || ""}
+                    onChange={(e) => setCurrentHighlight({ ...currentHighlight, tagKn: e.target.value })}
+                    placeholder="ಉದಾ. ದಿನ ೦೩ ರ ಪ್ರಮುಖ ಆಕರ್ಷಣೆ"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 text-sm font-kannada focus:ring-2 focus:ring-kar-red"
+                  />
+                </div>
+              </div>
+
+              {/* Title (English & Kannada) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-stone-700 uppercase">Title (English) *</label>
+                  <input
+                    type="text"
+                    required
+                    value={currentHighlight.titleEn || ""}
+                    onChange={(e) => setCurrentHighlight({ ...currentHighlight, titleEn: e.target.value })}
+                    placeholder="e.g. Karnataka Rajyotsava & Grand Cultural Rally"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 text-sm focus:ring-2 focus:ring-kar-red"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-stone-700 uppercase">Title (ಕನ್ನಡ / Kannada)</label>
+                  <input
+                    type="text"
+                    value={currentHighlight.titleKn || ""}
+                    onChange={(e) => setCurrentHighlight({ ...currentHighlight, titleKn: e.target.value })}
+                    placeholder="ಉದಾ. ಕರ್ನಾಟಕ ರಾಜ್ಯೋತ್ಸವ & ಭವ್ಯ ಸಾಂಸ್ಕೃತಿಕ ಮೆರವಣಿಗೆ"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 text-sm font-kannada focus:ring-2 focus:ring-kar-red"
+                  />
+                </div>
+              </div>
+
+              {/* Subtitle */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-stone-700 uppercase">Subtitle (English)</label>
+                  <input
+                    type="text"
+                    value={currentHighlight.subtitleEn || ""}
+                    onChange={(e) => setCurrentHighlight({ ...currentHighlight, subtitleEn: e.target.value })}
+                    placeholder="e.g. Ceremonial flag hoisting with Dollu Kunitha"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 text-sm focus:ring-2 focus:ring-kar-red"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-stone-700 uppercase">Subtitle (ಕನ್ನಡ / Kannada)</label>
+                  <input
+                    type="text"
+                    value={currentHighlight.subtitleKn || ""}
+                    onChange={(e) => setCurrentHighlight({ ...currentHighlight, subtitleKn: e.target.value })}
+                    placeholder="ಉದಾ. ಅಧಿಕೃತ ಕನ್ನಡ ಧ್ವಜಾರೋಹಣ, ಡೊಳ್ಳು ಕುಣಿತ ಮೆರವಣಿಗೆ"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 text-sm font-kannada focus:ring-2 focus:ring-kar-red"
+                  />
+                </div>
+              </div>
+
+              {/* Date & Time */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-stone-700 uppercase">Date & Time (English)</label>
+                  <input
+                    type="text"
+                    value={currentHighlight.dateEn || ""}
+                    onChange={(e) => setCurrentHighlight({ ...currentHighlight, dateEn: e.target.value })}
+                    placeholder="e.g. November 01, 2026 • 9:00 AM"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 text-sm focus:ring-2 focus:ring-kar-red"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-stone-700 uppercase">Date & Time (ಕನ್ನಡ / Kannada)</label>
+                  <input
+                    type="text"
+                    value={currentHighlight.dateKn || ""}
+                    onChange={(e) => setCurrentHighlight({ ...currentHighlight, dateKn: e.target.value })}
+                    placeholder="ಉದಾ. ೦೧ ನವೆಂಬರ್ ೨೦೨೬ • ಬೆಳಿಗ್ಗೆ ೦೯:೦೦"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 text-sm font-kannada focus:ring-2 focus:ring-kar-red"
+                  />
+                </div>
+              </div>
+
+              {/* Venue */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-stone-700 uppercase">Venue / Location (English)</label>
+                  <input
+                    type="text"
+                    value={currentHighlight.venueEn || ""}
+                    onChange={(e) => setCurrentHighlight({ ...currentHighlight, venueEn: e.target.value })}
+                    placeholder="e.g. Acharya Basketball Ground & Campus Boulevard"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 text-sm focus:ring-2 focus:ring-kar-red"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-stone-700 uppercase">Venue / Location (ಕನ್ನಡ / Kannada)</label>
+                  <input
+                    type="text"
+                    value={currentHighlight.venueKn || ""}
+                    onChange={(e) => setCurrentHighlight({ ...currentHighlight, venueKn: e.target.value })}
+                    placeholder="ಉದಾ. ಆಚಾರ್ಯ ಬ್ಯಾಸ್ಕೆಟ್‌ಬಾಲ್ ಮೈದಾನ & ಆವರಣ"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 text-sm font-kannada focus:ring-2 focus:ring-kar-red"
+                  />
+                </div>
+              </div>
+
+              {/* Short Descriptions (for card previews) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-stone-700 uppercase">Short Summary (English) *</label>
+                  <textarea
+                    rows={2}
+                    required
+                    value={currentHighlight.descEn || ""}
+                    onChange={(e) => setCurrentHighlight({ ...currentHighlight, descEn: e.target.value })}
+                    placeholder="2-3 lines summarized attraction details for cards..."
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 text-sm focus:ring-2 focus:ring-kar-red"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-stone-700 uppercase">Short Summary (ಕನ್ನಡ / Kannada)</label>
+                  <textarea
+                    rows={2}
+                    value={currentHighlight.descKn || ""}
+                    onChange={(e) => setCurrentHighlight({ ...currentHighlight, descKn: e.target.value })}
+                    placeholder="ಕಾರ್ಡ್‌ನಲ್ಲಿ ಕಾಣುವ ೨-೩ ಸಾಲುಗಳ ಸಂಕ್ಷಿಪ್ತ ವಿವರಣೆ..."
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 text-sm font-kannada focus:ring-2 focus:ring-kar-red"
+                  />
+                </div>
+              </div>
+
+              {/* Full Detailed Description (for modal popup) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-stone-700 uppercase">Detailed Overview (English)</label>
+                  <textarea
+                    rows={3}
+                    value={currentHighlight.fullDescEn || ""}
+                    onChange={(e) => setCurrentHighlight({ ...currentHighlight, fullDescEn: e.target.value })}
+                    placeholder="Comprehensive background, historical significance, cultural highlights shown when visitors click 'Explore'..."
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 text-sm focus:ring-2 focus:ring-kar-red"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-stone-700 uppercase">Detailed Overview (ಕನ್ನಡ / Kannada)</label>
+                  <textarea
+                    rows={3}
+                    value={currentHighlight.fullDescKn || ""}
+                    onChange={(e) => setCurrentHighlight({ ...currentHighlight, fullDescKn: e.target.value })}
+                    placeholder="ವಿವರ ವೀಕ್ಷಣೆ ಮೊಡಾಲ್‌ನಲ್ಲಿ ಕಾಣಿಸುವ ಸಂಪೂರ್ಣ ಸಾಂಸ್ಕೃತಿಕ ಮಹತ್ವ ಹಾಗೂ ವೈಭವ..."
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 text-sm font-kannada focus:ring-2 focus:ring-kar-red"
+                  />
+                </div>
+              </div>
+
+              {/* Badges / Micro-tags (Comma separated) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-stone-700 uppercase">Key Badges (English, Comma Separated)</label>
+                  <input
+                    type="text"
+                    value={currentHighlight.badgesEn || ""}
+                    onChange={(e) => setCurrentHighlight({ ...currentHighlight, badgesEn: e.target.value })}
+                    placeholder="e.g. Dollu Kunitha, Veeragase, Heritage Rally"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 text-sm focus:ring-2 focus:ring-kar-red"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-stone-700 uppercase">Key Badges (ಕನ್ನಡ, Comma Separated)</label>
+                  <input
+                    type="text"
+                    value={currentHighlight.badgesKn || ""}
+                    onChange={(e) => setCurrentHighlight({ ...currentHighlight, badgesKn: e.target.value })}
+                    placeholder="ಉದಾ. ಡೊಳ್ಳು ಕುಣಿತ, ವೀರಗಾಸೆ ಮೆರವಣಿಗೆ, ಭವ್ಯ ಜಾಥಾ"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 mt-1 text-sm font-kannada focus:ring-2 focus:ring-kar-red"
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-3 pt-3 border-t border-stone-200 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setHighlightModal(null)}
+                  className="flex-1 py-2.5 rounded-xl border border-stone-300 font-bold hover:bg-stone-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={highlightsSaving}
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-kar-red to-red-600 hover:from-red-700 hover:to-red-800 text-white font-bold shadow-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>{highlightsSaving ? "Saving..." : highlightModal === "new" ? "Save Highlight" : "Update Highlight"}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================== */}
+      {/* MODAL: IMPORT HIGHLIGHTS JSON                        */}
+      {/* ==================================================== */}
+      {importJsonModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-stone-200 animate-fade-in my-8">
+            <div className="flex items-center justify-between border-b border-stone-200 pb-3">
+              <h3 className="font-extrabold text-base text-stone-900 flex items-center gap-2">
+                <Upload className="w-5 h-5 text-amber-500" />
+                <span>Import Highlights (JSON)</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setImportJsonModal(false)}
+                className="p-1.5 text-stone-400 hover:text-stone-700 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-stone-600 leading-relaxed">
+              Paste an array of highlight JSON objects to update the highlights catalog. You can export the current catalog as a JSON backup template first.
+            </p>
+
+            <textarea
+              rows={8}
+              value={importJsonText}
+              onChange={(e) => setImportJsonText(e.target.value)}
+              placeholder="[&#10;  {&#10;    &quot;id&quot;: &quot;flag-hoisting-procession&quot;,&#10;    &quot;titleEn&quot;: &quot;Karnataka Rajyotsava&quot;,&#10;    &quot;titleKn&quot;: &quot;ಕರ್ನಾಟಕ ರಾಜ್ಯೋತ್ಸವ&quot;,&#10;    ...&#10;  }&#10;]"
+              className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono text-xs focus:ring-2 focus:ring-kar-red"
+            />
+
+            <div className="flex items-center gap-3 pt-2 border-t border-stone-100">
+              <button
+                type="button"
+                onClick={() => setImportJsonModal(false)}
+                className="flex-1 py-2.5 rounded-xl border border-stone-300 font-bold hover:bg-stone-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleApplyImportJson}
+                disabled={!importJsonText.trim()}
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-kar-red to-red-600 hover:from-red-700 hover:to-red-800 text-white font-bold shadow-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                <Check className="w-4 h-4" />
+                <span>Import & Apply</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
