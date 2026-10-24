@@ -27,11 +27,22 @@ def get_events(
         if cached is not None:
             return cached
 
-    # Self-healing: ensure all initial events (including AKV-NT-11 Reel Contest) exist in database
+    # Self-healing: ensure all initial events (that have NOT been deleted) exist in database
     try:
         from ..seed import INITIAL_EVENTS
         existing_eids = {e[0].upper() for e in db.query(Event.id).all() if e[0]}
-        missing_events = [e for e in INITIAL_EVENTS if e.get("id", "").upper() not in existing_eids]
+        deleted_eids = {
+            r[0].upper()
+            for r in db.query(AuditLog.target_id)
+            .filter(AuditLog.action == "EVENT_DELETED", AuditLog.target_type == "EVENT")
+            .all()
+            if r[0]
+        }
+        missing_events = [
+            e for e in INITIAL_EVENTS
+            if e.get("id", "").upper() not in existing_eids
+            and e.get("id", "").upper() not in deleted_eids
+        ]
         if missing_events:
             for init_ev in missing_events:
                 db.add(Event(**init_ev))
@@ -96,8 +107,13 @@ def create_event(event_in: EventCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_event)
 
-    # Audit log entry
+    # Audit log entry & clear prior EVENT_DELETED marker if re-created
     try:
+        db.query(AuditLog).filter(
+            AuditLog.action == "EVENT_DELETED",
+            AuditLog.target_type == "EVENT",
+            func.upper(AuditLog.target_id) == event_id.upper()
+        ).delete(synchronize_session=False)
         log = AuditLog(
             actor_name="Super Administrator",
             action="EVENT_CREATED",
@@ -179,32 +195,39 @@ def update_event(event_id: str, event_update: EventUpdate, db: Session = Depends
 
 @router.delete("/{event_id}")
 def delete_event(event_id: str, db: Session = Depends(get_db)):
-    event = db.query(Event).filter(Event.id == event_id).first()
+    event = db.query(Event).filter(func.lower(Event.id) == event_id.strip().lower()).first()
     if not event:
-        raise HTTPException(status_code=404, detail="Event not found")
+        raise HTTPException(status_code=404, detail=f"Event '{event_id}' not found")
     
-    # Clean up associated check-in logs and registrations to maintain consistency
-    regs = db.query(Registration).filter(Registration.event_id == event_id).all()
+    canonical_id = event.id.upper()
+    event_title = event.title_en
+
+    # Clean up associated check-in logs and registrations to maintain database integrity
+    regs = db.query(Registration).filter(func.lower(Registration.event_id) == canonical_id.lower()).all()
     reg_ids = [r.registration_id for r in regs]
     if reg_ids:
         db.query(CheckInLog).filter(CheckInLog.registration_id.in_(reg_ids)).delete(synchronize_session=False)
-    db.query(Registration).filter(Registration.event_id == event_id).delete(synchronize_session=False)
-    
-    # Audit log entry
+    db.query(Registration).filter(func.lower(Registration.event_id) == canonical_id.lower()).delete(synchronize_session=False)
+    db.flush()
+
+    # Delete the event record
+    db.delete(event)
+    db.commit()
+
+    # Audit log entry for permanent tracking so self-healing never resurrects it
     try:
         log = AuditLog(
             actor_name="Super Administrator",
             action="EVENT_DELETED",
             target_type="EVENT",
-            target_id=event_id,
-            previous_value=f"Title: {event.title_en}",
-            new_value="Deleted from festival events"
+            target_id=canonical_id,
+            previous_value=f"Title: {event_title}",
+            new_value="Deleted from festival events by Superadmin"
         )
         db.add(log)
+        db.commit()
     except Exception:
-        pass
+        db.rollback()
 
-    db.delete(event)
-    db.commit()
     fast_cache.delete_prefix("events_")
-    return {"success": True, "message": f"Event '{event.title_en}' deleted successfully"}
+    return {"success": True, "message": f"Event '{event_title}' deleted successfully", "deleted_id": canonical_id}

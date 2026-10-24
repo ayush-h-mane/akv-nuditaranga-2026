@@ -393,7 +393,7 @@ def ensure_schema_migrations(target_engine=None):
         except Exception as cleanup_err:
             print(f"[CLEANUP NOTICE] {cleanup_err}")
 
-        # Ensure all INITIAL_EVENTS (including Reel Contest) are present in the database
+        # Ensure INITIAL_EVENTS (strictly Reel Contest) is present in the database
         try:
             from .seed import INITIAL_EVENTS
             with eng.connect() as conn:

@@ -1,9 +1,14 @@
 {
-  "production_version": "2.3.40",
-  "staged_version": "2.3.41",
+  "production_version": "2.3.41",
+  "staged_version": "2.3.42",
   "status": "DEPLOYED_TO_PRODUCTION",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.41",
+      "released_at": "2026-10-24T16:21:25+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.41: Backend Event Configuration & Seeding Restricted Exclusively to Reel Contest: Configured backend seed.py INITIAL_EVENTS and frontend eventsData.js initialEvents to contain strictly the official 'Reel Contest' (AKV-NT-11). Removed all other initial festival events (AKV-NT-01 through AKV-NT-10) from backend initial seeds, startup migrations, and self-healing insertion, allowing Superadmins to manually add and configure all other festival events directly from the SuperAdmin portal.; SuperAdmin Event Deletion Fix & Auto-Resurrection Elimination: Resolved the bug where deleted events immediately reappeared in the Superadmin portal; updated backend /api/events self-healing and seed.py to check AuditLog for EVENT_DELETED, ensuring deliberately deleted events are never re-seeded or resurrected automatically.; Frontend Deleted Events Storage & Cache Invalidation: Added client-side deleted event tracking (markEventAsDeleted/getDeletedEventIds) in api.js, stopped unconstrained merging of initialEvents over live backend catalog responses, and purged memory/localStorage caches on event deletion.; Case-Insensitive Event Deletion & Foreign Key Cascading: Upgraded DELETE /api/events/{event_id} in events.py to match event IDs case-insensitively, clean up corresponding registrations and check-in logs safely to prevent PostgreSQL foreign key constraint errors, and flush before event record deletion.; SuperAdmin Portal UX & Edit Modal Deletion: Integrated a dedicated handleDeleteEvent handler in SuperAdminDashboard with confirmation dialog, event registrations refresh, and added a convenient Delete button directly inside the Edit Fest Event modal."
+    },
     {
       "version": "2.3.40",
       "released_at": "2026-10-24T11:29:25+0530",
