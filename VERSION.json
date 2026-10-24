@@ -1,9 +1,14 @@
 {
-  "production_version": "2.3.38",
-  "staged_version": "2.3.39",
+  "production_version": "2.3.39",
+  "staged_version": "2.3.40",
   "status": "DEPLOYED_TO_PRODUCTION",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.39",
+      "released_at": "2026-10-24T11:09:00+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.39: Backend Python Startup Fix: Added missing import os in backend/app/auth_deps.py and backend/app/seed.py preventing NameError crash during database seeding and superadmin initialization.; Reel Contest Event Integration & SuperAdmin Event Configuration Suite: Added official 'Reel Contest' (AKV-NT-11) event to backend seed (INITIAL_EVENTS) and database schema with cultural category, solo format, and festival guidelines; created dedicated registration form with regular participant details (Name, AUID, Institute, Department, Year, Section, Phone, Email, Gender) and Instagram submission fields (Username & Profile Link) across RegisterPage and StudentDashboard; added Instagram columns to SuperAdmin Excel and Admin CSV exports; enhanced SuperAdmin Event Configuration with prominent, robust 'Edit Event' option and feedback; preserved 100% isolation for all other events.; Student Registration Robust Response Parsing & Backend Availability: Upgraded studentRegister, forgotPassword, verifyResetOtp, and resetPassword in frontend api.js to use safe readApiResponse() instead of raw res.json(), preventing uncaught 'Unexpected end of JSON input' syntax errors when backend servers return empty or gateway error bodies; corrected isNetworkError() condition; verified live uvicorn backend on port 8000 and Vite proxy connectivity."
+    },
     {
       "version": "2.3.38",
       "released_at": "2026-10-21T00:36:12+0530",

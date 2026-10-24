@@ -21,6 +21,8 @@ class EventRegisterRequest(BaseModel):
     is_team: bool = False
     team_name: Optional[str] = None
     team_members: Optional[List[TeamMemberSchema]] = []
+    instagram_username: Optional[str] = None
+    instagram_profile_link: Optional[str] = None
 
 class ChangePasswordRequest(BaseModel):
     current_password: str
@@ -48,6 +50,8 @@ def get_student_dashboard(
                 Registration.is_team,
                 Registration.team_name,
                 Registration.status,
+                Registration.instagram_username,
+                Registration.instagram_profile_link,
                 Registration.created_at,
                 Registration.checkin_time,
             ),
@@ -83,6 +87,8 @@ def get_student_dashboard(
             "is_team": reg.is_team,
             "team_name": reg.team_name,
             "status": reg.status,
+            "instagram_username": reg.instagram_username,
+            "instagram_profile_link": reg.instagram_profile_link,
             "registered_at": reg.created_at.isoformat() if reg.created_at else None,
             "checkin_time": reg.checkin_time.isoformat() if reg.checkin_time else None
         })
@@ -250,6 +256,8 @@ def get_my_registrations(
                 Registration.is_team,
                 Registration.team_name,
                 Registration.team_members,
+                Registration.instagram_username,
+                Registration.instagram_profile_link,
                 Registration.status,
                 Registration.created_at,
                 Registration.checkin_time,
@@ -294,6 +302,8 @@ def get_my_registrations(
             "is_team": r.is_team,
             "team_name": r.team_name,
             "team_members": r.team_members,
+            "instagram_username": r.instagram_username,
+            "instagram_profile_link": r.instagram_profile_link,
             "status": r.status,
             "registered_at": r.created_at.isoformat() if r.created_at else None,
             "checkin_time": r.checkin_time.isoformat() if r.checkin_time else None,
@@ -390,6 +400,8 @@ def student_register_event(
         is_team=payload.is_team,
         team_name=payload.team_name.strip() if payload.team_name else None,
         team_members=team_members_str,
+        instagram_username=payload.instagram_username.strip() if payload.instagram_username else None,
+        instagram_profile_link=payload.instagram_profile_link.strip() if payload.instagram_profile_link else None,
         status="Registered"
     )
 
@@ -417,7 +429,9 @@ def student_register_event(
         "event_title": event.title_en,
         "venue": event.venue,
         "event_date": event.event_date,
-        "event_time": event.event_time
+        "event_time": event.event_time,
+        "instagram_username": new_reg.instagram_username,
+        "instagram_profile_link": new_reg.instagram_profile_link
     }
 
 

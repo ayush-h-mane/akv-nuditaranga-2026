@@ -1,5 +1,6 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import Event, Registration, CheckInLog, AuditLog
@@ -102,10 +103,10 @@ def create_event(event_in: EventCreate, db: Session = Depends(get_db)):
 
 @router.put("/{event_id}", response_model=EventOut)
 def update_event(event_id: str, event_update: EventUpdate, db: Session = Depends(get_db)):
-    event = db.query(Event).filter(Event.id == event_id).first()
+    event = db.query(Event).filter(func.lower(Event.id) == event_id.lower()).first()
     if not event:
         from ..seed import INITIAL_EVENTS
-        init_ev = next((e for e in INITIAL_EVENTS if e.get("id") == event_id), None)
+        init_ev = next((e for e in INITIAL_EVENTS if str(e.get("id", "")).lower() == event_id.lower()), None)
         if init_ev:
             init_data = dict(init_ev)
             update_data = event_update.model_dump(exclude_unset=True)

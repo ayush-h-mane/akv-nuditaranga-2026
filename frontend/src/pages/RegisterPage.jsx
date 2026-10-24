@@ -23,8 +23,10 @@ import {
   Trash2, 
   Calendar, 
   MapPin, 
-  ShieldCheck 
+  ShieldCheck
 } from "lucide-react";
+import { Instagram } from "../components/InstagramIcon";
+import { isReelContestEvent } from "../config/eventsData";
 
 export const RegisterPage = ({ 
   selectedEventId, 
@@ -56,6 +58,8 @@ export const RegisterPage = ({
     email: user?.email || "",
     phone: user?.phone || "",
     gender: user?.gender || "Male",
+    instagramUsername: "",
+    instagramProfileLink: "",
     teamName: "",
     teamMembers: []
   });
@@ -148,6 +152,7 @@ export const RegisterPage = ({
   }
 
   const selectedEvent = events.find(e => e.id === formData.eventId);
+  const isReelContest = isReelContestEvent(selectedEvent);
 
   const isTeamRegistration = selectedEvent?.format === "both" 
     ? participationMode === "group" 
@@ -211,6 +216,33 @@ export const RegisterPage = ({
       return lang === "kn" 
         ? "ಅಕ್ಷರ ಮತ್ತು ಅಂಕಿಗಳನ್ನು ಮಾತ್ರ ಹೊಂದಿರುವ ಮಾನ್ಯ AUID ನಮೂದಿಸಿ (ಉದಾ: AIT23BEAI129)."
         : "Enter an alphanumeric AUID using letters and numbers only (e.g., AIT23BEAI129).";
+    }
+
+    // Reel Contest Validations
+    if (isReelContest) {
+      if (!formData.institute?.trim()) {
+        return lang === "kn" ? "ದಯವಿಟ್ಟು ನಿಮ್ಮ ಸಂಸ್ಥೆಯ ಹೆಸರನ್ನು ನಮೂದಿಸಿ." : "Please enter your Institute.";
+      }
+      if (!formData.department?.trim()) {
+        return lang === "kn" ? "ದಯವಿಟ್ಟು ನಿಮ್ಮ ವಿಭಾಗವನ್ನು ನಮೂದಿಸಿ." : "Please enter your Department.";
+      }
+      if (!formData.phone?.trim()) {
+        return lang === "kn" ? "ದಯವಿಟ್ಟು ನಿಮ್ಮ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ." : "Please enter your contact phone number.";
+      }
+      if (!formData.email?.trim() || !formData.email.includes("@")) {
+        return lang === "kn" ? "ದಯವಿಟ್ಟು ಮಾನ್ಯವಾದ ಇಮೇಲ್ ವಿಳಾಸವನ್ನು ನಮೂದಿಸಿ." : "Please enter a valid email address.";
+      }
+      if (!formData.instagramUsername?.trim()) {
+        return lang === "kn" 
+          ? "ದಯವಿಟ್ಟು ನಿಮ್ಮ ಇನ್‌ಸ್ಟಾಗ್ರಾಮ್ ಬಳಕೆದಾರ ಹೆಸರು (Instagram Username) ನಮೂದಿಸಿ." 
+          : "Please enter your Instagram username (e.g. @your_handle).";
+      }
+      if (!formData.instagramProfileLink?.trim()) {
+        return lang === "kn" 
+          ? "ದಯವಿಟ್ಟು ನಿಮ್ಮ ಇನ್‌ಸ್ಟಾಗ್ರಾಮ್ ಪ್ರೊಫೈಲ್ ಲಿಂಕ್ (Instagram Profile Link) ನಮೂದಿಸಿ." 
+          : "Please provide your Instagram profile link (e.g. https://instagram.com/your_handle).";
+      }
+      return null;
     }
 
     // Team Validations if event is team or group mode selected
@@ -311,9 +343,9 @@ export const RegisterPage = ({
         email: formData.email.trim(),
         phone: formData.phone.trim(),
         gender: formData.gender,
-        is_team: isTeamRegistration,
-        team_name: isTeamRegistration ? formData.teamName.trim() : null,
-        team_members: isTeamRegistration 
+        is_team: isReelContest ? false : isTeamRegistration,
+        team_name: (!isReelContest && isTeamRegistration) ? formData.teamName.trim() : null,
+        team_members: (!isReelContest && isTeamRegistration) 
           ? formData.teamMembers.map(m => ({
               name: m.name.trim(),
               auid: (m.auid || m.usn || "").trim().toUpperCase(),
@@ -321,7 +353,9 @@ export const RegisterPage = ({
               department: (m.department || "").trim(),
               phone: (m.phone || "").trim()
             }))
-          : []
+          : [],
+        instagram_username: isReelContest ? (formData.instagramUsername?.trim() || null) : null,
+        instagram_profile_link: isReelContest ? (formData.instagramProfileLink?.trim() || null) : null
       };
 
       const result = await api.createRegistration(payload);
@@ -579,8 +613,233 @@ export const RegisterPage = ({
               </div>
             )}
 
-            {/* Solo Confirmation or Group Registration Details */}
-            {!isTeamRegistration ? (
+            {/* Solo Confirmation, Group Registration Details, OR Reel Contest Details */}
+            {isReelContest ? (
+              /* REEL CONTEST REGISTRATION DETAILS */
+              <div className="space-y-5 animate-fade-in">
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-pink-50 via-rose-50 to-amber-50 border border-pink-200 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-yellow-500 via-pink-600 to-purple-600 text-white flex items-center justify-center font-bold shadow-sm">
+                      <Instagram className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-pink-700 block">
+                        {lang === "kn" ? "ರೀಲ್ ಸ್ಪರ್ಧೆ ನೋಂದಣಿ" : "Reel Contest Registration"}
+                      </span>
+                      <h4 className="text-base font-extrabold text-stone-900 font-display">
+                        {lang === "kn" ? "ಸ್ಪರ್ಧಿ ಹಾಗೂ ಇನ್‌ಸ್ಟಾಗ್ರಾಮ್ ವಿವರಗಳು" : "Participant & Instagram Details"}
+                      </h4>
+                    </div>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-pink-100 text-pink-900 border border-pink-200">
+                    Solo Entry
+                  </span>
+                </div>
+
+                {/* Regular Registration Details */}
+                <div className="p-5 rounded-3xl bg-stone-50 border border-stone-200 space-y-4">
+                  <span className="text-xs font-black uppercase tracking-wider text-stone-600 block border-b border-stone-200 pb-2">
+                    {lang === "kn" ? "ಸಾಮಾನ್ಯ ನೋಂದಣಿ ವಿವರಗಳು (Regular Registration Details)" : "Regular Registration Details"}
+                  </span>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Name */}
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1">
+                        {lang === "kn" ? "ಪೂರ್ಣ ಹೆಸರು (Name)" : "Full Name"} *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.fullName}
+                        onChange={(e) => setFormData(prev => ({ ...prev, fullName: e.target.value }))}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs sm:text-sm bg-white font-medium focus:ring-2 focus:ring-kar-red"
+                        placeholder="Your full name"
+                      />
+                    </div>
+
+                    {/* AUID */}
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1">
+                        AUID / Faculty ID *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.auid}
+                        onChange={(e) => setFormData(prev => ({ ...prev, auid: e.target.value.toUpperCase(), usn: e.target.value.toUpperCase() }))}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs sm:text-sm bg-white font-mono font-bold focus:ring-2 focus:ring-kar-red"
+                        placeholder="e.g. AIT23BEAI129"
+                      />
+                    </div>
+
+                    {/* Institute */}
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1">
+                        {lang === "kn" ? "ಸಂಸ್ಥೆ (Institute)" : "Institute"} *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.institute}
+                        onChange={(e) => setFormData(prev => ({ ...prev, institute: e.target.value }))}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs sm:text-sm bg-white font-medium focus:ring-2 focus:ring-kar-red"
+                        placeholder="Acharya Institute of Technology"
+                      />
+                    </div>
+
+                    {/* Department */}
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1">
+                        {lang === "kn" ? "ವಿಭಾಗ (Department)" : "Department"} *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.department}
+                        onChange={(e) => setFormData(prev => ({ ...prev, department: e.target.value }))}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs sm:text-sm bg-white font-medium focus:ring-2 focus:ring-kar-red"
+                        placeholder="e.g. CSE / ISE / ECE"
+                      />
+                    </div>
+
+                    {/* Year / Semester */}
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1">
+                        {lang === "kn" ? "ವರ್ಷ (Year of Study)" : "Year of Study"}
+                      </label>
+                      <select
+                        value={formData.semester}
+                        onChange={(e) => setFormData(prev => ({ ...prev, semester: Number(e.target.value) }))}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs sm:text-sm bg-white font-medium focus:ring-2 focus:ring-kar-red"
+                      >
+                        {[1, 2, 3, 4, 5, 6].map(y => (
+                          <option key={y} value={y}>Year {y} {lang === "kn" ? `(${toKannadaDigits(y)}ನೇ ವರ್ಷ)` : ""}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Section */}
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1">
+                        {lang === "kn" ? "ವಿಭಾಗ (Section)" : "Section"}
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.section}
+                        onChange={(e) => setFormData(prev => ({ ...prev, section: e.target.value.toUpperCase() }))}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs sm:text-sm bg-white font-medium focus:ring-2 focus:ring-kar-red"
+                        placeholder="A / B / C"
+                      />
+                    </div>
+
+                    {/* Phone */}
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1">
+                        {lang === "kn" ? "ಮೊಬೈಲ್ ಸಂಖ್ಯೆ (Phone Number)" : "Phone Number"} *
+                      </label>
+                      <input
+                        type="tel"
+                        required
+                        value={formData.phone}
+                        onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs sm:text-sm bg-white font-mono focus:ring-2 focus:ring-kar-red"
+                        placeholder="10-digit mobile number"
+                      />
+                    </div>
+
+                    {/* Email */}
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1">
+                        {lang === "kn" ? "ಇಮೇಲ್ (Email ID)" : "Email ID"} *
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        value={formData.email}
+                        onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value.toLowerCase() }))}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs sm:text-sm bg-white focus:ring-2 focus:ring-kar-red"
+                        placeholder="yourname@acharya.ac.in"
+                      />
+                    </div>
+
+                    {/* Gender */}
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-bold text-stone-700 mb-1">
+                        {lang === "kn" ? "ಲಿಂಗ (Gender)" : "Gender"}
+                      </label>
+                      <select
+                        value={formData.gender}
+                        onChange={(e) => setFormData(prev => ({ ...prev, gender: e.target.value }))}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs sm:text-sm bg-white font-medium focus:ring-2 focus:ring-kar-red"
+                      >
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Instagram Specific Details Card */}
+                <div className="p-5 rounded-3xl bg-gradient-to-br from-pink-50/90 via-purple-50/50 to-amber-50/80 border-2 border-pink-300/80 shadow-xs space-y-4">
+                  <div className="flex items-center gap-2 text-pink-900 border-b border-pink-200/80 pb-2">
+                    <Instagram className="w-4 h-4 text-pink-600" />
+                    <span className="text-xs font-black uppercase tracking-wider">
+                      {lang === "kn" ? "ಇನ್‌ಸ್ಟಾಗ್ರಾಮ್ ವಿವರಗಳು (Instagram Handles)" : "Instagram Contest Submission Details"} *
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Instagram Username */}
+                    <div>
+                      <label className="block text-xs font-bold text-stone-800 mb-1">
+                        {lang === "kn" ? "ಇನ್‌ಸ್ಟಾಗ್ರಾಮ್ ಬಳಕೆದಾರ ಹೆಸರು (Instagram Username)" : "Instagram Username"} *
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 font-bold text-xs">@</span>
+                        <input
+                          type="text"
+                          required
+                          value={formData.instagramUsername?.replace(/^@/, "")}
+                          onChange={(e) => setFormData(prev => ({ ...prev, instagramUsername: e.target.value.trim().replace(/^@/, "") }))}
+                          className="w-full pl-8 pr-3.5 py-2.5 rounded-xl border border-pink-300 bg-white text-xs sm:text-sm font-semibold focus:ring-2 focus:ring-pink-500"
+                          placeholder="your_handle"
+                        />
+                      </div>
+                      <p className="text-[10px] text-stone-500 mt-1">
+                        {lang === "kn" ? "ರೀಲ್ ಅಪ್‌ಲೋಡ್ ಮಾಡುವ ನಿಮ್ಮ ಅಧಿಕೃತ ಇನ್‌ಸ್ಟಾಗ್ರಾಮ್ ಹ್ಯಾಂಡಲ್" : "The Instagram handle from which you will upload your reel."}
+                      </p>
+                    </div>
+
+                    {/* Instagram Profile Link */}
+                    <div>
+                      <label className="block text-xs font-bold text-stone-800 mb-1">
+                        {lang === "kn" ? "ಇನ್‌ಸ್ಟಾಗ್ರಾಮ್ ಪ್ರೊಫೈಲ್ ಲಿಂಕ್ (Profile Link)" : "Instagram Profile Link"} *
+                      </label>
+                      <input
+                        type="url"
+                        required
+                        value={formData.instagramProfileLink}
+                        onChange={(e) => setFormData(prev => ({ ...prev, instagramProfileLink: e.target.value.trim() }))}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-pink-300 bg-white text-xs sm:text-sm font-mono focus:ring-2 focus:ring-pink-500"
+                        placeholder="https://instagram.com/your_handle"
+                      />
+                      <p className="text-[10px] text-stone-500 mt-1">
+                        {lang === "kn" ? "ನಿಮ್ಮ ಇನ್‌ಸ್ಟಾಗ್ರಾಮ್ ಪ್ರೊಫೈಲ್‌ಗೆ ನೇರ ಲಿಂಕ್" : "Direct URL to your Instagram profile."}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-2xl bg-white/80 border border-pink-200 text-[11px] text-stone-700 space-y-1">
+                    <p className="font-bold text-pink-900">📌 Reel Contest Guidelines:</p>
+                    <p>• Post your creative reel on Instagram with official hashtags: <strong>#Nuditaranga2026 #AcharyaAKV #NuditarangaReels</strong></p>
+                    <p>• Tag the official festival handle: <strong>@acharya_habba</strong> / <strong>@acharya_kannada_vedike</strong></p>
+                    <p>• Keep your profile public during the evaluation period for judges to verify.</p>
+                  </div>
+                </div>
+              </div>
+            ) : !isTeamRegistration ? (
               /* SOLO REGISTRATION: Don't ask for any info, use verified account profile */
               <div className="p-6 rounded-3xl bg-gradient-to-br from-amber-50/90 via-white to-red-50/60 border border-amber-200/90 shadow-sm space-y-4 animate-fade-in">
                 <div className="flex items-center gap-3 border-b border-amber-100 pb-3">
@@ -857,6 +1116,28 @@ export const RegisterPage = ({
                     <span className="text-stone-400 block text-xs">{t("registration.email")}:</span>
                     <span className="font-semibold text-stone-800">{formData.email}</span>
                   </div>
+                  {isReelContest && (
+                    <div className="col-span-2 pt-3 mt-1 border-t border-stone-200">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-pink-700 block mb-1">
+                        {lang === "kn" ? "ಇನ್‌ಸ್ಟಾಗ್ರಾಮ್ ಸ್ಪರ್ಧಾ ವಿವರಗಳು" : "Instagram Contest Details"}
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        <div className="p-2.5 rounded-xl bg-pink-50 border border-pink-200">
+                          <span className="text-stone-500 block text-[10px]">Instagram Username:</span>
+                          <span className="font-bold text-pink-700 flex items-center gap-1">
+                            <Instagram className="w-3.5 h-3.5" />
+                            @{formData.instagramUsername?.replace(/^@/, "")}
+                          </span>
+                        </div>
+                        <div className="p-2.5 rounded-xl bg-pink-50 border border-pink-200">
+                          <span className="text-stone-500 block text-[10px]">Profile Link:</span>
+                          <a href={formData.instagramProfileLink} target="_blank" rel="noopener noreferrer" className="font-mono text-pink-700 underline truncate block">
+                            {formData.instagramProfileLink}
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

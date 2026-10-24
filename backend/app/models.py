@@ -179,6 +179,8 @@ class Registration(Base):
     checkin_time = Column(DateTime, nullable=True)
     checked_in_by = Column(String, nullable=True)
     photo_url = Column(Text, nullable=True)
+    instagram_username = Column(String, nullable=True)
+    instagram_profile_link = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     event = relationship("Event", back_populates="registrations")
