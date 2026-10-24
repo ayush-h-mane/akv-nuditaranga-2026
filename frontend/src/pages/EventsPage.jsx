@@ -50,10 +50,13 @@ export const EventsPage = ({ setCurrentView, setSelectedEventId }) => {
 
   const handleRegisterEvent = (eventId) => {
     setSelectedEventId(eventId);
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("akv_pending_event_id", eventId);
+    }
     if (user) {
-      setCurrentView("student-dashboard");
+      setCurrentView("register");
     } else {
-      setCurrentView("auth");
+      setCurrentView("student", { subMode: "register" });
     }
     window.scrollTo({ top: 0, behavior: "smooth" });
   };

@@ -196,7 +196,23 @@ export function AppContent() {
   // Primary URL Route State
   const [route, setRoute] = useState(parseRouteFromLocation);
   const [resetToken, setResetToken] = useState("");
-  const [selectedEventId, setSelectedEventId] = useState(null);
+  const [selectedEventId, setSelectedEventId] = useState(() => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem("akv_pending_event_id") || null;
+    }
+    return null;
+  });
+
+  const handleSetSelectedEventId = useCallback((eventId) => {
+    setSelectedEventId(eventId);
+    if (typeof window !== "undefined") {
+      if (eventId) {
+        sessionStorage.setItem("akv_pending_event_id", eventId);
+      } else {
+        sessionStorage.removeItem("akv_pending_event_id");
+      }
+    }
+  }, []);
   const [confirmedRegistration, setConfirmedRegistration] = useState(null);
   const [maintenanceBypassed, setMaintenanceBypassed] = useState(() => {
     if (typeof window !== "undefined") {
@@ -344,22 +360,28 @@ export function AppContent() {
 
   // When user successfully authenticates
   const handleAuthSuccess = (authenticatedUser) => {
+    const pendingEvent = selectedEventId || (typeof window !== "undefined" ? sessionStorage.getItem("akv_pending_event_id") : null);
+
     if (route.portal === "superadmin" || authenticatedUser.role === "SUPERADMIN") {
       navigatePath("/superadmin");
     } else if (route.portal === "faculty") {
       navigatePath("/faculty");
     } else if (route.portal === "admin" || authenticatedUser.role === "ADMIN") {
       navigatePath("/admin");
+    } else if (pendingEvent) {
+      handleSetSelectedEventId(pendingEvent);
+      navigatePath("/register");
     } else {
       navigatePath("/student");
     }
   };
 
   const handleRegisterNav = (eventId = null) => {
-    setSelectedEventId(eventId);
+    handleSetSelectedEventId(eventId);
     if (user) {
       if (role === "ADMIN") navigatePath("/admin");
       else if (role === "SUPERADMIN") navigatePath("/superadmin");
+      else if (eventId) navigatePath("/register");
       else navigatePath("/student");
     } else {
       navigatePath("/student", { subMode: "register" });
@@ -413,6 +435,8 @@ export function AppContent() {
             initialSubMode={route.subMode}
             onExplorePublic={() => navigatePath("/")}
             onAuthSuccess={handleAuthSuccess}
+            selectedEventId={selectedEventId}
+            onClearPendingEvent={() => handleSetSelectedEventId(null)}
             onOpenResetView={(tok) => {
               setResetToken(tok);
               setRoute({ path: "/reset-password", portal: null, subMode: "login" });
@@ -450,6 +474,8 @@ export function AppContent() {
           <React.Suspense fallback={<PortalLoadingFallback message="ಲೋಡ್ ಆಗುತ್ತಿದೆ... Loading Student Workspace..." />}>
             <StudentDashboard
               onNavigateHome={() => navigatePath("/")}
+              initialEventId={selectedEventId}
+              onClearInitialEventId={() => handleSetSelectedEventId(null)}
             />
           </React.Suspense>
         </main>
@@ -679,7 +705,7 @@ export function AppContent() {
           {route.path === "/" && (
             <HomePage
               setCurrentView={navigatePath}
-              setSelectedEventId={setSelectedEventId}
+              setSelectedEventId={handleSetSelectedEventId}
               onOpenAuthTab={(tab) => {
                 if (tab === "student-register") {
                   navigatePath("/student", { subMode: "register" });
@@ -736,7 +762,7 @@ export function AppContent() {
             <React.Suspense fallback={<PortalLoadingFallback message="ಲೋಡ್ ಆಗುತ್ತಿದೆ... Loading Festival Events..." />}>
               <EventsPage
                 setCurrentView={navigatePath}
-                setSelectedEventId={setSelectedEventId}
+                setSelectedEventId={handleSetSelectedEventId}
               />
             </React.Suspense>
           )}
@@ -769,7 +795,7 @@ export function AppContent() {
             <React.Suspense fallback={<PortalLoadingFallback message="ಲೋಡ್ ಆಗುತ್ತಿದೆ... Loading Event Registration..." />}>
               <RegisterPage
                 selectedEventId={selectedEventId}
-                setSelectedEventId={setSelectedEventId}
+                setSelectedEventId={handleSetSelectedEventId}
                 setCurrentView={navigatePath}
                 setConfirmedRegistration={setConfirmedRegistration}
               />

@@ -37,7 +37,8 @@ export const RegisterPage = ({
   const { lang, t } = useLanguage();
   const { user } = useAuth();
   const { showError, showWarning } = useModalAlert();
-  const [currentStep, setCurrentStep] = useState(1);
+  const effectiveEventId = selectedEventId || (typeof window !== "undefined" ? sessionStorage.getItem("akv_pending_event_id") : "") || "";
+  const [currentStep, setCurrentStep] = useState(() => (effectiveEventId ? 2 : 1));
   const [events, setEvents] = useState(() => api.getCachedEvents());
   const [loadingEvents, setLoadingEvents] = useState(() => !api.hasCachedEvents());
   const [submitting, setSubmitting] = useState(false);
@@ -47,7 +48,7 @@ export const RegisterPage = ({
 
   // Form Fields
   const [formData, setFormData] = useState({
-    eventId: selectedEventId || "",
+    eventId: effectiveEventId,
     fullName: user?.name || "",
     auid: user?.auid || "",
     usn: user?.auid || "",
@@ -82,24 +83,39 @@ export const RegisterPage = ({
   }, [user]);
 
   useEffect(() => {
-    const loadEvents = async () => {
-      const cached = api.getCachedEvents();
-      if (cached && cached.length > 0) {
-        setEvents(cached);
-        setLoadingEvents(false);
+    const applyEventSelection = (dataList, evId) => {
+      if (!evId || !Array.isArray(dataList) || dataList.length === 0) return;
+      const targetEvent = dataList.find(e => e.id === evId);
+      if (targetEvent) {
+        setFormData(prev => ({ ...prev, eventId: evId }));
+        if (targetEvent.format === "team") {
+          setParticipationMode("group");
+        } else {
+          setParticipationMode("solo");
+        }
+        setCurrentStep(2);
       }
+    };
+
+    const targetId = effectiveEventId;
+
+    const cached = api.getCachedEvents();
+    if (cached && cached.length > 0) {
+      setEvents(cached);
+      setLoadingEvents(false);
+      if (targetId) {
+        applyEventSelection(cached, targetId);
+      }
+    }
+
+    const loadEvents = async () => {
       try {
         const data = await api.getEvents();
-        setEvents(data);
-        if (selectedEventId) {
-          setFormData(prev => ({ ...prev, eventId: selectedEventId }));
-          const pre = data.find(e => e.id === selectedEventId);
-          if (pre?.format === "team") {
-            setParticipationMode("group");
-          } else {
-            setParticipationMode("solo");
+        if (Array.isArray(data)) {
+          setEvents(data);
+          if (targetId) {
+            applyEventSelection(data, targetId);
           }
-          setCurrentStep(2); // If already clicked an event from previous page, jump to step 2
         }
       } catch (e) {
         console.error("Error loading events in registration:", e);
@@ -108,7 +124,7 @@ export const RegisterPage = ({
       }
     };
     loadEvents();
-  }, [selectedEventId]);
+  }, [effectiveEventId]);
 
   // Requirement 11: In the web, don't give option to register to event without registering to the portal.
   if (!user) {
@@ -133,7 +149,12 @@ export const RegisterPage = ({
 
           <div className="space-y-2 pt-2">
             <button
-              onClick={() => setCurrentView("auth")}
+              onClick={() => {
+                if (effectiveEventId && typeof window !== "undefined") {
+                  sessionStorage.setItem("akv_pending_event_id", effectiveEventId);
+                }
+                setCurrentView("student", { subMode: "register" });
+              }}
               className="w-full py-3 rounded-xl bg-gradient-to-r from-kar-red to-red-600 text-white font-extrabold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <span>Register / Sign In to Student Portal</span>
@@ -369,6 +390,14 @@ export const RegisterPage = ({
           colors: ['#dc2626', '#fbbf24', '#f59e0b', '#10b981']
         });
       } catch (e) {}
+
+      // Clear any pending event once successfully registered
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("akv_pending_event_id");
+      }
+      if (setSelectedEventId) {
+        setSelectedEventId(null);
+      }
 
       // Save confirmed registration and switch to confirmation page
       setConfirmedRegistration(result);

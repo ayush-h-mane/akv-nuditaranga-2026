@@ -37,10 +37,38 @@ export const AuthPortal = ({
   onOpenResetView, 
   initialTab = "student-login",
   portalType = "student",
-  initialSubMode = "login"
+  initialSubMode = "login",
+  selectedEventId = null,
+  onClearPendingEvent = null
 }) => {
   const { login } = useAuth();
   const { showError, showInfo } = useModalAlert();
+
+  const pendingEventId = selectedEventId || (typeof window !== "undefined" ? sessionStorage.getItem("akv_pending_event_id") : null);
+  const [pendingEventDetails, setPendingEventDetails] = useState(() => {
+    if (!pendingEventId) return null;
+    const cached = api.getCachedEvents();
+    return cached?.find(e => e.id === pendingEventId) || null;
+  });
+
+  useEffect(() => {
+    if (!pendingEventId) {
+      setPendingEventDetails(null);
+      return;
+    }
+    const cached = api.getCachedEvents();
+    const found = cached?.find(e => e.id === pendingEventId);
+    if (found) {
+      setPendingEventDetails(found);
+    } else {
+      api.getEvents().then((list) => {
+        if (Array.isArray(list)) {
+          const match = list.find(e => e.id === pendingEventId);
+          if (match) setPendingEventDetails(match);
+        }
+      }).catch(() => {});
+    }
+  }, [pendingEventId]);
 
   const getInitialActiveTab = (portal, tab) => {
     if (portal === "superadmin") return "superadmin";
@@ -508,6 +536,40 @@ export const AuthPortal = ({
             {/* ==================================================== */}
             {activeTab === "student" && (
               <div className="space-y-4">
+                {/* Pending Event Registration Alert Banner */}
+                {pendingEventId && !successData && (
+                  <div className="p-3.5 bg-gradient-to-r from-red-50 via-amber-50 to-orange-50 border border-amber-300 rounded-2xl flex items-center justify-between gap-3 text-left animate-fade-in shadow-xs">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-kar-red text-white flex items-center justify-center shrink-0 shadow-xs">
+                        <Trophy className="w-5 h-5 text-amber-200" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-kar-red block">
+                          EVENT REGISTRATION PENDING • ಸ್ಪರ್ಧಾ ನೋಂದಣಿ
+                        </span>
+                        <p className="text-xs sm:text-sm font-extrabold text-stone-900 truncate">
+                          {pendingEventDetails ? (pendingEventDetails.title_en || pendingEventDetails.id) : pendingEventId}
+                        </p>
+                        <span className="text-[11px] text-stone-600 block">
+                          {studentMode === "register" 
+                            ? "Register your student account below to proceed to the event." 
+                            : "Sign in to complete your registration for this event."}
+                        </span>
+                      </div>
+                    </div>
+                    {onClearPendingEvent && (
+                      <button
+                        type="button"
+                        onClick={onClearPendingEvent}
+                        className="text-xs font-bold text-stone-500 hover:text-kar-red underline shrink-0 px-2 py-1 cursor-pointer"
+                        title="Cancel event selection"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 {/* Seamless Sub-mode switcher for Student */}
                 {!successData && (
                   <div className="flex bg-stone-100 p-1 rounded-2xl mb-5 max-w-xs mx-auto border border-stone-200 shadow-inner">
@@ -679,10 +741,28 @@ export const AuthPortal = ({
                           onClick={() => {
                             if (onAuthSuccess) onAuthSuccess(successData.user);
                           }}
-                          className="w-full py-3 rounded-xl bg-gradient-to-r from-kar-red to-red-600 text-white font-extrabold text-sm shadow-md hover:shadow-lg transition-all"
+                          className="w-full py-3 rounded-xl bg-gradient-to-r from-kar-red to-red-600 text-white font-extrabold text-sm shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2"
                         >
-                          Enter Student Dashboard &rarr;
+                          <span>
+                            {pendingEventId 
+                              ? `Continue Event Registration for ${pendingEventDetails?.title_en || "Chosen Event"}`
+                              : "Enter Student Dashboard"}
+                          </span>
+                          <ArrowRight className="w-4 h-4" />
                         </button>
+                        {pendingEventId && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (typeof window !== "undefined") sessionStorage.removeItem("akv_pending_event_id");
+                              if (onClearPendingEvent) onClearPendingEvent();
+                              if (onAuthSuccess) onAuthSuccess(successData.user);
+                            }}
+                            className="w-full py-2 text-xs font-bold text-stone-500 hover:text-stone-800 transition-colors cursor-pointer"
+                          >
+                            Skip to Student Profile &rarr;
+                          </button>
+                        )}
                       </div>
                     ) : (
                       /* Detailed Registration Form */
