@@ -3,7 +3,7 @@ import { useLanguage } from "../context/LanguageContext";
 import { siteConfig } from "../config/siteConfig";
 import { api } from "../services/api";
 import { toKannadaDigits } from "../utils/kannadaUtils";
-import { ExternalLink, Heart, MessageCircle, Send, Play } from "lucide-react";
+import { ExternalLink, Heart, MessageCircle, Send, Play, Sparkles, ArrowRight } from "lucide-react";
 
 const InstagramIcon = ({ className = "w-4 h-4" }) => (
   <svg className={className} fill="currentColor" viewBox="0 0 24 24">
@@ -17,7 +17,7 @@ const ReelsBadgeIcon = ({ className = "w-3.5 h-3.5" }) => (
   </svg>
 );
 
-export const InstagramSection = () => {
+export const InstagramSection = ({ onRegisterReelContest }) => {
   const { lang, t } = useLanguage();
 
   const originalReels = [
@@ -128,6 +128,35 @@ export const InstagramSection = () => {
             <span>{t("social.followBtn")}</span>
             <ExternalLink className="w-4 h-4 ml-1" />
           </a>
+        </div>
+
+        {/* Nuditaranga Official Reel Contest Spotlight Card */}
+        <div className="mb-10 p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-stone-900 via-purple-950 to-pink-950 text-white shadow-xl relative overflow-hidden border border-pink-500/20">
+          <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-pink-600/20 rounded-full blur-2xl pointer-events-none" />
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-pink-500/20 border border-pink-400/30 text-pink-300 text-xs font-black uppercase tracking-wider">
+                <Sparkles className="w-3.5 h-3.5 text-pink-400" />
+                <span>{lang === "kn" ? "ಅಧಿಕೃತ ರೀಲ್ ಸ್ಪರ್ಧೆ ೨೦೨೬" : "Official Reel Contest 2026"}</span>
+              </div>
+              <h3 className="text-xl sm:text-2xl font-black font-display text-white">
+                {lang === "kn" ? "ನುಡಿತರಂಗ ರೀಲ್ ಸ್ಪರ್ಧೆ: ನಿಮ್ಮ ಪ್ರತಿಭೆ ತೋರಿಸಿ, ಗೆಲ್ಲಿರಿ!" : "Nuditaranga Reel Contest: Showcase Your Creative Reels & Win!"}
+              </h3>
+              <p className="text-xs sm:text-sm text-stone-300 font-kannada max-w-2xl leading-relaxed">
+                {lang === "kn"
+                  ? "ಕನ್ನಡ ನಾಡು-ನುಡಿ, ಸಾಂಸ್ಕೃತಿಕ ವೈಭವ ಮತ್ತು ನುಡಿತರಂಗ ಹಬ್ಬದ ಸೃಜನಾತ್ಮಕ ಕ್ಷಣಗಳ ಕಿರು ವಿಡಿಯೋ (Reels) ತಯಾರಿಸಿ ಇನ್‌ಸ್ಟಾಗ್ರಾಮ್‌ನಲ್ಲಿ ಹಂಚಿಕೊಳ್ಳಿ. ಅಧಿಕೃತ ಸ್ಪರ್ಧೆಗೆ ನೋಂದಾಯಿಸಿ ಆಕರ್ಷಕ ಬಹುಮಾನಗಳನ್ನು ಗೆಲ್ಲಿರಿ."
+                  : "Create captivating short video reels celebrating Karnataka culture and Nuditaranga fest vibes. Post on Instagram, submit your profile link and username, and compete for exciting prizes!"}
+              </p>
+            </div>
+            <button
+              onClick={() => onRegisterReelContest && onRegisterReelContest("AKV-NT-11")}
+              className="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-amber-500 text-white font-extrabold text-xs sm:text-sm shadow-lg shadow-pink-500/30 hover:shadow-pink-500/50 hover:scale-[1.02] active:scale-95 transition-all flex-shrink-0 cursor-pointer"
+            >
+              <InstagramIcon className="w-4 h-4" />
+              <span>{lang === "kn" ? "ರೀಲ್ ಸ್ಪರ್ಧೆಗೆ ನೋಂದಾಯಿಸಿ" : "Register for Reel Contest"}</span>
+              <ArrowRight className="w-4 h-4 ml-0.5" />
+            </button>
+          </div>
         </div>
 
         {/* Instagram Interactive Reel Cards */}

@@ -2929,12 +2929,20 @@ export const api = {
           const data = await res.json();
 
           if (Array.isArray(data)) {
-            // Only a full-list response replaces the local events dataset.
-            if (normalizedCategory === "all") {
-              saveLocalEvents(data);
+            // Ensure all initial events (including AKV-NT-11 Reel Contest) are present
+            const existingIds = new Set(data.map(e => e.id));
+            const merged = [...data];
+            for (const initEv of initialEvents) {
+              if (!existingIds.has(initEv.id)) {
+                merged.push(initEv);
+              }
             }
 
-            let result = [...data];
+            if (normalizedCategory === "all") {
+              saveLocalEvents(merged);
+            }
+
+            let result = [...merged];
 
             if (activeOnly) {
               result = result.filter(e => e.is_active !== false);
