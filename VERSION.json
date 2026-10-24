@@ -1,9 +1,14 @@
 {
-  "production_version": "2.3.42",
-  "staged_version": "2.3.43",
+  "production_version": "2.3.43",
+  "staged_version": "2.3.44",
   "status": "DEPLOYED_TO_PRODUCTION",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.43",
+      "released_at": "2026-10-24T19:19:34+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.43: Reel Contest Unique Identifier (AKV-NT-REEL) Disambiguation: Resolved collision where ID 'AKV-NT-11' was already registered to the manually created 'Painting' event in production PostgreSQL; assigned dedicated canonical ID 'AKV-NT-REEL' across seed.py, eventsData.js, HomePage, and InstagramSection.; Database Self-Healing & Title Check: Updated /api/events to check both event ID and title_en to guarantee 'Reel Contest' is seeded and kept active without overwriting existing manually created competitions.; Registration Data Safety Migration: Added automatic query migrating any previous reel contest registrations from 'AKV-NT-11' to 'AKV-NT-REEL'.; Frontend Storage Cache Bump (v4): Bumped STORAGE_EVENTS_KEY to akv_events_cache_v4 to immediately invalidate stale browser caches and display the Reel Contest alongside all manually created events."
+    },
     {
       "version": "2.3.42",
       "released_at": "2026-10-24T18:52:47+0530",

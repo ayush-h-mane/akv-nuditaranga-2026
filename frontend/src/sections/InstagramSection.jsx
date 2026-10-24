@@ -149,7 +149,7 @@ export const InstagramSection = ({ onRegisterReelContest }) => {
               </p>
             </div>
             <button
-              onClick={() => onRegisterReelContest && onRegisterReelContest("AKV-NT-11")}
+              onClick={() => onRegisterReelContest && onRegisterReelContest("AKV-NT-REEL")}
               className="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-amber-500 text-white font-extrabold text-xs sm:text-sm shadow-lg shadow-pink-500/30 hover:shadow-pink-500/50 hover:scale-[1.02] active:scale-95 transition-all flex-shrink-0 cursor-pointer"
             >
               <InstagramIcon className="w-4 h-4" />

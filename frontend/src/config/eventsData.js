@@ -1,6 +1,6 @@
 export const initialEvents = [
   {
-    "id": "AKV-NT-11",
+    "id": "AKV-NT-REEL",
     "title_en": "Reel Contest",
     "title_kn": "ರೀಲ್ ಸ್ಪರ್ಧೆ (Reel Contest)",
     "category": "cultural",
@@ -29,8 +29,8 @@ export const isReelContestEvent = (eventOrId) => {
   if (typeof eventOrId === "object") {
     const id = (eventOrId.id || "").toLowerCase();
     const title = (eventOrId.title_en || "").toLowerCase();
-    return id === "akv-nt-11" || id.includes("reel") || title.includes("reel");
+    return id === "akv-nt-reel" || id.includes("reel") || title.includes("reel");
   }
   const str = String(eventOrId).toLowerCase();
-  return str === "akv-nt-11" || str.includes("reel");
+  return str === "akv-nt-reel" || str.includes("reel");
 };

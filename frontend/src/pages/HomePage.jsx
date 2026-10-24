@@ -66,7 +66,7 @@ export const HomePage = ({ setCurrentView, setSelectedEventId, onOpenAuthTab }) 
       <StatsSection />
       <GallerySection />
       <InstagramSection
-        onRegisterReelContest={(eventId) => handleRegisterFromHome(eventId || "AKV-NT-11")}
+        onRegisterReelContest={(eventId) => handleRegisterFromHome(eventId || "AKV-NT-REEL")}
       />
       <ContactSection />
     </div>

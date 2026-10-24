@@ -6,7 +6,7 @@ import json
 
 INITIAL_EVENTS = [
     {
-        'id': 'AKV-NT-11',
+        'id': 'AKV-NT-REEL',
         'title_en': 'Reel Contest',
         'title_kn': 'ರೀಲ್ ಸ್ಪರ್ಧೆ (Reel Contest)',
         'category': 'cultural',

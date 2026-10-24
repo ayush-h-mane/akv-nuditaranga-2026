@@ -27,15 +27,17 @@ def get_events(
         if cached is not None:
             return cached
 
-    # Self-healing: ensure all initial events (specifically Reel Contest AKV-NT-11) exist and remain active in database
+    # Self-healing: ensure all initial events (specifically Reel Contest AKV-NT-REEL) exist and remain active in database
     try:
         from ..seed import INITIAL_EVENTS
         existing_eids = {e[0].upper() for e in db.query(Event.id).all() if e[0]}
+        existing_titles = {e[0].lower() for e in db.query(Event.title_en).all() if e[0]}
         needs_commit = False
 
         for init_ev in INITIAL_EVENTS:
             eid = init_ev.get("id", "").upper()
-            if eid not in existing_eids:
+            title = init_ev.get("title_en", "").lower()
+            if eid not in existing_eids and title not in existing_titles:
                 # Purge any stale EVENT_DELETED markers in AuditLog for official initial events
                 db.query(AuditLog).filter(
                     AuditLog.action == "EVENT_DELETED",
@@ -45,13 +47,27 @@ def get_events(
 
                 db.add(Event(**init_ev))
                 existing_eids.add(eid)
+                existing_titles.add(title)
                 needs_commit = True
             else:
                 # Ensure existing initial event is active
-                ev_record = db.query(Event).filter(func.upper(Event.id) == eid).first()
+                ev_record = db.query(Event).filter(
+                    (func.upper(Event.id) == eid) | (func.lower(Event.title_en) == title)
+                ).first()
                 if ev_record and not ev_record.is_active:
                     ev_record.is_active = True
                     needs_commit = True
+
+        # Safety migration: If any reel registrations were submitted to AKV-NT-11, migrate to AKV-NT-REEL
+        try:
+            from sqlalchemy import text
+            db.execute(text(
+                "UPDATE registrations SET event_id = 'AKV-NT-REEL' "
+                "WHERE LOWER(event_id) = 'akv-nt-11' AND instagram_username IS NOT NULL AND instagram_username != ''"
+            ))
+            needs_commit = True
+        except Exception:
+            pass
 
         if needs_commit:
             db.commit()
@@ -77,6 +93,8 @@ def get_event(event_id: str, response: Response, db: Session = Depends(get_db)):
     if not event:
         from ..seed import INITIAL_EVENTS
         init_ev = next((e for e in INITIAL_EVENTS if str(e.get("id", "")).strip().upper() == event_id.strip().upper()), None)
+        if not init_ev and "reel" in event_id.lower():
+            init_ev = next((e for e in INITIAL_EVENTS if "reel" in str(e.get("id", "")).lower()), None)
         if init_ev:
             try:
                 new_ev = Event(**init_ev)
@@ -222,10 +240,10 @@ def delete_event(event_id: str, db: Session = Depends(get_db)):
     event_title = event.title_en
 
     # Protect the official system-configured Reel Contest from being deleted
-    if canonical_id == "AKV-NT-11":
+    if canonical_id in ["AKV-NT-REEL"] or "reel" in event_title.lower():
         raise HTTPException(
             status_code=400,
-            detail="The Reel Contest (AKV-NT-11) is the festival's official base event configured by the system. It cannot be permanently deleted. If you need to suspend entries, please edit the event and toggle 'Active' to Off."
+            detail="The Reel Contest (AKV-NT-REEL) is the festival's official base event configured by the system. It cannot be permanently deleted. If you need to suspend entries, please edit the event and toggle 'Active' to Off."
         )
 
     # Clean up associated check-in logs and registrations safely without full model projection
