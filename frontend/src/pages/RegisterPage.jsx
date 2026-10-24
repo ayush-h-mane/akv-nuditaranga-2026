@@ -400,7 +400,11 @@ export const RegisterPage = ({
       }
 
       // Save confirmed registration and switch to confirmation page
-      setConfirmedRegistration(result);
+      const enrichedResult = {
+        ...result,
+        event: result?.event || selectedEvent
+      };
+      setConfirmedRegistration(enrichedResult);
       setCurrentView("confirmation");
       window.scrollTo({ top: 0, behavior: "smooth" });
 

@@ -17,7 +17,8 @@ import {
   Maximize2, 
   X, 
   ArrowRight,
-  CheckCircle2
+  CheckCircle2,
+  Download
 } from "lucide-react";
 import { api } from "../services/api";
 import { useHistoryModal } from "../utils/useHistoryModal";
@@ -27,6 +28,12 @@ export const KarunadaVaibhavaSchedule = ({ onRegisterClick }) => {
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const [posterModalOpen, setPosterModalOpen] = useState(false);
   const [activeDialogDay, setActiveDialogDay] = useState(null);
+  const [activeView, setActiveView] = useState("schedule");
+  const [posterLang, setPosterLang] = useState(() => (lang === "kn" ? "kn" : "en"));
+
+  useEffect(() => {
+    setPosterLang(lang === "kn" ? "kn" : "en");
+  }, [lang]);
 
   useHistoryModal(posterModalOpen, () => setPosterModalOpen(false));
   useHistoryModal(Boolean(activeDialogDay), () => setActiveDialogDay(null));
@@ -106,20 +113,49 @@ export const KarunadaVaibhavaSchedule = ({ onRegisterClick }) => {
               : "Grand Heritage & Cultural Confluence at Acharya Institutes (30/10/2026 - 04/11/2026)"}
           </p>
 
-          {/* Action to view the uploaded Draft Poster */}
-          <div className="flex items-center justify-center gap-4">
+          {/* Action buttons & View Mode Switcher */}
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            {/* View Mode Switcher */}
+            <div className="inline-flex p-1 rounded-2xl bg-stone-950/80 border border-stone-800 shadow-xl backdrop-blur-md">
+              <button
+                type="button"
+                onClick={() => setActiveView("schedule")}
+                className={`inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold transition-all cursor-pointer ${
+                  activeView === "schedule"
+                    ? "bg-gradient-to-r from-kar-red to-amber-600 text-white shadow-md shadow-red-950/40"
+                    : "text-stone-400 hover:text-stone-200"
+                }`}
+              >
+                <Clock className="w-4 h-4 text-kar-yellow" />
+                <span>{lang === "kn" ? "ದಿನವಾರು ವೇಳಾಪಟ್ಟಿ" : "5-Day Schedule"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveView("calendar")}
+                className={`inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold transition-all cursor-pointer ${
+                  activeView === "calendar"
+                    ? "bg-gradient-to-r from-kar-red to-amber-600 text-white shadow-md shadow-red-950/40"
+                    : "text-stone-400 hover:text-stone-200"
+                }`}
+              >
+                <Calendar className="w-4 h-4 text-kar-yellow" />
+                <span>{lang === "kn" ? "ಅಧಿಕೃತ ಕ್ಯಾಲೆಂಡರ್" : "Official Calendar"}</span>
+              </button>
+            </div>
+
             <button
               onClick={() => setPosterModalOpen(true)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-amber-400/40 text-amber-300 hover:text-white text-xs font-extrabold transition-all shadow-sm group"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-amber-400/40 text-amber-300 hover:text-white text-xs sm:text-sm font-extrabold transition-all shadow-sm group cursor-pointer"
             >
               <Maximize2 className="w-4 h-4 text-kar-yellow group-hover:scale-110 transition-transform" />
-              <span>{lang === "kn" ? "ಮೂಲ ಪೋಸ್ಟರ್ ವೀಕ್ಷಿಸಿ" : "View Official Draft Poster"}</span>
+              <span>{lang === "kn" ? "ಅಧಿಕೃತ ಪೋಸ್ಟರ್ ವೀಕ್ಷಿಸಿ" : "View Official Plan Poster"}</span>
             </button>
 
             {onRegisterClick && (
               <button
                 onClick={onRegisterClick}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-kar-red hover:bg-red-700 text-white text-xs font-extrabold transition-all shadow-md"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-kar-red hover:bg-red-700 text-white text-xs sm:text-sm font-extrabold transition-all shadow-md cursor-pointer"
               >
                 <span>{lang === "kn" ? "ಸ್ಪರ್ಧೆಗೆ ನೋಂದಾಯಿಸಿ" : "Register Now"}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -128,7 +164,103 @@ export const KarunadaVaibhavaSchedule = ({ onRegisterClick }) => {
           </div>
         </div>
 
-        {/* Mobile View: Event cards */}
+        {/* View Mode: Official Plan Calendar */}
+        {activeView === "calendar" && (
+          <div className="bg-stone-900/90 rounded-3xl border-2 border-amber-400/40 p-4 sm:p-8 shadow-2xl relative overflow-hidden backdrop-blur-md animate-fade-in mb-10">
+            <div className="absolute top-0 left-0 right-0 h-1.5 karnataka-ribbon" />
+
+            {/* Calendar Controls */}
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b border-stone-800">
+              <div className="flex items-center gap-3">
+                <span className="w-3 h-3 rounded-full bg-kar-red animate-pulse shrink-0" />
+                <div>
+                  <h3 className="text-lg sm:text-2xl font-black text-white font-display">
+                    {lang === "kn" ? "ಕರುನಾಡ ವೈಭವ ೨೦೨೬ - ಅಧಿಕೃತ ಪೋಸ್ಟರ್" : "Karunada Vaibhava 2026 - Official Plan Poster"}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-stone-400 font-kannada">
+                    {lang === "kn" 
+                      ? "೫ ದಿನಗಳ ಮಹೋತ್ಸವದ ಅಧಿಕೃತ ಕ್ಯಾಲೆಂಡರ್ ಹಾಗೂ ಕಾರ್ಯಕ್ರಮ ರೂಪುರೇಷೆ" 
+                      : "Official 5-Day Cultural Confluence Calendar & Schedule"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <div className="inline-flex rounded-xl bg-stone-950 p-1 border border-stone-800">
+                  <button
+                    type="button"
+                    onClick={() => setPosterLang("kn")}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                      posterLang === "kn"
+                        ? "bg-gradient-to-r from-kar-red to-amber-600 text-white shadow-sm"
+                        : "text-stone-400 hover:text-white"
+                    }`}
+                  >
+                    ಕನ್ನಡ ಆವೃತ್ತಿ
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPosterLang("en")}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                      posterLang === "en"
+                        ? "bg-gradient-to-r from-kar-red to-amber-600 text-white shadow-sm"
+                        : "text-stone-400 hover:text-white"
+                    }`}
+                  >
+                    English Version
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setPosterModalOpen(true)}
+                  className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-amber-400/40 text-amber-300 text-xs font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <Maximize2 className="w-3.5 h-3.5" />
+                  <span>{lang === "kn" ? "ಪೂರ್ಣ ಪರದೆ" : "Fullscreen"}</span>
+                </button>
+
+                <a
+                  href={posterLang === "kn" ? "/images/calendar-2026-kannada.png" : "/images/calendar-2026.png"}
+                  download={posterLang === "kn" ? "Karunada_Vaibhava_2026_Calender_Kannada.png" : "Karunada_Vaibhava_2026_Calender_English.png"}
+                  className="px-3.5 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-all"
+                >
+                  <Download className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{lang === "kn" ? "HD ಡೌನ್‌ಲೋಡ್" : "Download HD"}</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Poster Preview Frame */}
+            <div 
+              onClick={() => setPosterModalOpen(true)}
+              className="group relative cursor-pointer rounded-2xl overflow-hidden bg-black/95 border border-stone-800 p-2 sm:p-6 flex flex-col items-center justify-center transition-all hover:border-amber-400/60 shadow-inner"
+            >
+              <div className="absolute top-4 right-4 z-20 px-3 py-1.5 rounded-xl bg-black/80 backdrop-blur-md border border-white/20 text-white text-xs font-bold opacity-90 group-hover:opacity-100 transition-opacity flex items-center gap-2">
+                <Maximize2 className="w-3.5 h-3.5 text-kar-yellow" />
+                <span>{lang === "kn" ? "ದೊಡ್ಡದಾಗಿ ವೀಕ್ಷಿಸಲು ಕ್ಲಿಕ್ ಮಾಡಿ" : "Click to view full size"}</span>
+              </div>
+
+              <picture className="w-full flex justify-center">
+                <source
+                  srcSet={posterLang === "kn" ? "/images/calendar-2026-kannada.webp" : "/images/calendar-2026.webp"}
+                  type="image/webp"
+                />
+                <img
+                  src={posterLang === "kn" ? "/images/calendar-2026-kannada.png" : "/images/calendar-2026.png"}
+                  alt={posterLang === "kn" ? "ಕರುನಾಡ ವೈಭವ ೨೦೨೬ - ಅಧಿಕೃತ ಪೋಸ್ಟರ್" : "Karunada Vaibhava 2026 - Official Plan Poster"}
+                  className="max-h-[75vh] w-auto max-w-full rounded-xl shadow-2xl object-contain transform group-hover:scale-[1.01] transition-transform duration-300"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </picture>
+            </div>
+          </div>
+        )}
+
+        {/* View Mode: Day-by-Day Schedule */}
+        {activeView === "schedule" && (
+          <>
         <div className="flex sm:hidden flex-col gap-3 mb-8">
           {scheduleDays.map((item, idx) => {
             const isDay3Rajyotsava = idx === 1;
@@ -312,6 +444,8 @@ export const KarunadaVaibhavaSchedule = ({ onRegisterClick }) => {
             </div>
           </div>
         )}
+          </>
+        )}
 
       </div>
 
@@ -412,76 +546,107 @@ export const KarunadaVaibhavaSchedule = ({ onRegisterClick }) => {
       {/* Modal for Full-Size Poster Inspection */}
       {posterModalOpen && typeof document !== "undefined" && createPortal(
         <div 
-          className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-fade-in overflow-y-auto"
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-6 bg-black/90 backdrop-blur-md animate-fade-in overflow-y-auto"
           onClick={() => setPosterModalOpen(false)}
         >
-          {/* Mobile version: Coming soon... with close option */}
           <div 
-            className="block sm:hidden relative max-w-sm w-[92%] bg-stone-950 rounded-3xl overflow-hidden border border-amber-400/40 shadow-2xl p-6 text-center my-auto"
+            className="relative w-[96%] sm:w-full max-w-3xl bg-stone-950 rounded-3xl overflow-hidden border-2 border-amber-400/50 shadow-2xl flex flex-col max-h-[92vh] my-auto animate-scale-up"
             onClick={(e) => e.stopPropagation()}
           >
-            <button
-              onClick={() => setPosterModalOpen(false)}
-              className="absolute top-4 right-4 p-1.5 rounded-xl hover:bg-stone-800 text-stone-400 hover:text-white transition-colors cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-400/30 flex items-center justify-center mx-auto mb-4 text-amber-400">
-              <Sparkles className="w-7 h-7" />
-            </div>
-            <h4 className="text-base font-bold text-white mb-2">
-              {lang === "kn" ? "ಕರಡು ಪೋಸ್ಟರ್" : "Official Draft Poster"}
-            </h4>
-            <p className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-kar-yellow via-amber-300 to-kar-red font-mono tracking-wider mb-2">
-              Coming soon.......
-            </p>
-            <p className="text-xs text-stone-400 font-kannada mb-5">
-              {lang === "kn" 
-                ? "ಅಧಿಕೃತ ಕರಡು ಪೋಸ್ಟರ್ ಶೀಘ್ರದಲ್ಲೇ ಅಪ್‌ಲೋಡ್ ಆಗಲಿದೆ." 
-                : "The official draft poster will be updated and released shortly."}
-            </p>
-            <button
-              onClick={() => setPosterModalOpen(false)}
-              className="w-full py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-white text-xs font-bold transition-colors cursor-pointer"
-            >
-              {lang === "kn" ? "ಮುಚ್ಚಿ" : "Close"}
-            </button>
-          </div>
+            {/* Top Ribbon */}
+            <div className="h-1.5 w-full karnataka-ribbon shrink-0" />
 
-          {/* Desktop/Laptop version: Unchanged with original poster image */}
-          <div 
-            className="hidden sm:flex relative max-w-2xl w-full bg-stone-950 rounded-3xl overflow-hidden border border-amber-400/40 shadow-2xl flex-col max-h-[90vh] my-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-4 bg-stone-900 border-b border-stone-800 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-kar-red" />
-                <h4 className="text-sm font-bold text-white">
-                  {lang === "kn" ? "ಕರುನಾಡ ವೈಭವ ೨೦೨೬ - ಅಧಿಕೃತ ಕರಡು ಪೋಸ್ಟರ್" : "Karunada Vaibhava 2026 - Official Draft Plan Poster"}
+            {/* Modal Header */}
+            <div className="p-3 sm:p-5 bg-stone-900 border-b border-stone-800 flex items-center justify-between gap-2 sm:gap-4 shrink-0">
+              <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                <span className="w-2.5 h-2.5 rounded-full bg-kar-red animate-pulse shrink-0" />
+                <h4 className="text-xs sm:text-base font-extrabold text-white truncate">
+                  {lang === "kn" ? "ಕರುನಾಡ ವೈಭವ ೨೦೨೬ - ಅಧಿಕೃತ ಪೋಸ್ಟರ್" : "Karunada Vaibhava 2026 - Official Plan Poster"}
                 </h4>
               </div>
-              <button
-                onClick={() => setPosterModalOpen(false)}
-                className="p-1.5 rounded-xl hover:bg-stone-800 text-stone-400 hover:text-white transition-colors cursor-pointer"
+
+              {/* Action controls: Language toggle, HD Download, Close */}
+              <div className="flex items-center gap-2 shrink-0">
+                <div className="inline-flex rounded-xl bg-stone-800 p-0.5 sm:p-1 border border-stone-700/80">
+                  <button
+                    type="button"
+                    onClick={() => setPosterLang("kn")}
+                    className={`px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                      posterLang === "kn"
+                        ? "bg-gradient-to-r from-kar-red to-amber-600 text-white shadow-sm"
+                        : "text-stone-400 hover:text-white"
+                    }`}
+                  >
+                    ಕನ್ನಡ
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPosterLang("en")}
+                    className={`px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                      posterLang === "en"
+                        ? "bg-gradient-to-r from-kar-red to-amber-600 text-white shadow-sm"
+                        : "text-stone-400 hover:text-white"
+                    }`}
+                  >
+                    English
+                  </button>
+                </div>
+
+                <a
+                  href={posterLang === "kn" ? "/images/calendar-2026-kannada.png" : "/images/calendar-2026.png"}
+                  download={posterLang === "kn" ? "Karunada_Vaibhava_2026_Calender_Kannada.png" : "Karunada_Vaibhava_2026_Calender_English.png"}
+                  className="p-1.5 sm:p-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-amber-400 hover:text-amber-300 transition-colors hidden sm:inline-flex items-center gap-1.5 text-xs font-bold"
+                  title={lang === "kn" ? "ಮೂಲ ಪೋಸ್ಟರ್ ಡೌನ್‌ಲೋಡ್ (HD)" : "Download Original HD Poster"}
+                >
+                  <Download className="w-4 h-4" />
+                  <span className="hidden md:inline">{lang === "kn" ? "ಡೌನ್‌ಲೋಡ್" : "Download"}</span>
+                </a>
+
+                <button
+                  type="button"
+                  onClick={() => setPosterModalOpen(false)}
+                  className="p-1.5 sm:p-2 rounded-xl hover:bg-stone-800 text-stone-400 hover:text-white transition-colors cursor-pointer"
+                  aria-label={lang === "kn" ? "ಮುಚ್ಚಿ" : "Close"}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Poster Image Container */}
+            <div className="p-2 sm:p-4 overflow-y-auto flex items-center justify-center bg-black/95 flex-1 relative">
+              <picture className="flex items-center justify-center max-w-full">
+                <source
+                  srcSet={posterLang === "kn" ? "/images/calendar-2026-kannada.webp" : "/images/calendar-2026.webp"}
+                  type="image/webp"
+                />
+                <img
+                  src={posterLang === "kn" ? "/images/calendar-2026-kannada.png" : "/images/calendar-2026.png"}
+                  alt={posterLang === "kn" ? "ಕರುನಾಡ ವೈಭವ ೨೦೨೬ - ಅಧಿಕೃತ ಪೋಸ್ಟರ್" : "Karunada Vaibhava 2026 - Official Plan Poster"}
+                  className="max-h-[70vh] sm:max-h-[78vh] w-auto max-w-full rounded-2xl shadow-2xl border border-stone-800 object-contain mx-auto select-none"
+                  loading="eager"
+                  decoding="async"
+                />
+              </picture>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-3 sm:p-4 bg-stone-900 border-t border-stone-800 flex flex-wrap items-center justify-between gap-2 text-xs text-stone-400 shrink-0">
+              <span className="truncate">
+                {lang === "kn" 
+                  ? "ಆಚಾರ್ಯ ಇನ್‌ಸ್ಟಿಟ್ಯೂಟ್ಸ್ • ಆಚಾರ್ಯ ಕನ್ನಡ ವೇದಿಕೆ • ೩೦/೧೦/೨೦೨೬ ರಿಂದ ೦೪/೧೧/೨೦೨೬"
+                  : "Acharya Institutes • Acharya Kannada Vedike • 30/10/2026 to 04/11/2026"}
+              </span>
+              <a
+                href={posterLang === "kn" ? "/images/calendar-2026-kannada.png" : "/images/calendar-2026.png"}
+                download={posterLang === "kn" ? "Karunada_Vaibhava_2026_Calender_Kannada.png" : "Karunada_Vaibhava_2026_Calender_English.png"}
+                className="text-amber-400 hover:text-amber-300 font-bold inline-flex items-center gap-1.5 sm:hidden"
               >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-4 overflow-y-auto flex items-center justify-center bg-black flex-1">
-              <img
-                src="/images/rajyotsava-draft-poster.jpg"
-                alt="Nuditaranga 2026 Karunada Vaibhava Plan"
-                className="max-h-[75vh] w-auto rounded-xl shadow-lg border border-stone-800"
-                loading="lazy"
-                decoding="async"
-              />
-            </div>
-
-            <div className="p-3 bg-stone-900 border-t border-stone-800 text-center text-xs text-stone-400 shrink-0">
-              {lang === "kn" 
-                ? "ಆಚಾರ್ಯ ಇನ್‌ಸ್ಟಿಟ್ಯೂಟ್ಸ್ • ಆಚಾರ್ಯ ಕನ್ನಡ ವೇದಿಕೆ • ೩೦/೧೦/೨೦೨೬ ರಿಂದ ೦೪/೧೧/೨೦೨೬"
-                : "Acharya Institutes • Acharya Kannada Vedike • 30/10/2026 to 04/11/2026"}
+                <Download className="w-3.5 h-3.5" />
+                <span>{lang === "kn" ? "HD ಡೌನ್‌ಲೋಡ್" : "Download HD"}</span>
+              </a>
             </div>
           </div>
         </div>,

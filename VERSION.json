@@ -1,9 +1,14 @@
 {
-  "production_version": "2.3.44",
-  "staged_version": "2.3.45",
+  "production_version": "2.3.45",
+  "staged_version": "2.3.46",
   "status": "DEPLOYED_TO_PRODUCTION",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.45",
+      "released_at": "2026-10-25T02:21:15+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.45: Official 2026 Calendar & Plan Poster Integration: Converted and optimized user-provided Kannada and English calendars into high-resolution WebP and PNG formats (calendar-2026.webp, calendar-2026-kannada.webp, calendar-2026.png, calendar-2026-kannada.png, rajyotsava-draft-poster.jpg).; Header & Modal Title Update: Updated text from 'Karunada Vaibhava 2026 - Official Draft Plan Poster' to 'Karunada Vaibhava 2026 - Official Plan Poster' (and Kannada equivalent '\u0c95\u0cb0\u0cc1\u0ca8\u0cbe\u0ca1 \u0cb5\u0cc8\u0cad\u0cb5 \u0ce8\u0ce6\u0ce8\u0cec - \u0c85\u0ca7\u0cbf\u0c95\u0cc3\u0ca4 \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd') across KarunadaVaibhavaSchedule.jsx, siteConfig.js, and index.html.; Bilingual Calendar Viewer & HD Download: Added one-tap Kannada/English language switcher and direct 300 DPI HD download button directly inside the full-screen poster modal for both mobile and desktop.; Direct Inline Calendar Tab: Added a tabbed view in the Karunada Vaibhava Schedule section allowing users to switch between the 5-day schedule cards and the inline Official Plan Calendar showcase without needing to open a popup.; Mobile Modal Upgrade: Replaced mobile 'Coming soon...' placeholder with the live responsive calendar viewer.; Post-Registration WhatsApp Group Popup & Persistent Access: Created WhatsAppGroupModal.jsx and config/whatsappGroups.js mapping event registrations (Reel Contest, Sketching Competition, Painting Competition, Rangoli Competition, Mehendi Competition) to official WhatsApp groups. Automatically displays an interactive popup modal upon each registration in ConfirmationPage and StudentDashboard, accompanied by direct WhatsApp access buttons in DigitalPass and registered event rosters."
+    },
     {
       "version": "2.3.44",
       "released_at": "2026-10-24T19:58:29+0530",

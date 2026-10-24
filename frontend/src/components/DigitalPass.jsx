@@ -4,11 +4,13 @@ import { api } from "../services/api";
 import { useLanguage } from "../context/LanguageContext";
 import { siteConfig } from "../config/siteConfig";
 import { formatKannadaDate, formatKannadaTime, formatKannadaVenue, formatKannadaStatus, toKannadaDigits } from "../utils/kannadaUtils";
-import { Printer, Download, CheckCircle, Calendar, MapPin, Clock, User, ShieldCheck, ArrowLeft } from "lucide-react";
+import { Printer, Download, CheckCircle, Calendar, MapPin, Clock, User, ShieldCheck, ArrowLeft, MessageCircle } from "lucide-react";
+import { getEventWhatsAppGroup } from "../config/whatsappGroups";
 
 export const DigitalPass = ({ registration, onBack }) => {
   const { lang, t } = useLanguage();
   const passRef = useRef(null);
+  const whatsAppGroup = getEventWhatsAppGroup(registration);
 
   const handleDownload = async () => {
     try {
@@ -64,16 +66,28 @@ export const DigitalPass = ({ registration, onBack }) => {
         </button>
 
         <div className="flex items-center gap-2">
+          {whatsAppGroup && (
+            <a
+              href={whatsAppGroup.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white text-xs font-bold transition-all shadow-sm cursor-pointer"
+              title={lang === "kn" ? "ವಾಟ್ಸಾಪ್ ಗ್ರೂಪ್‌ಗೆ ಸೇರಿ" : "Join WhatsApp Group"}
+            >
+              <MessageCircle className="w-4 h-4 fill-current" />
+              <span className="hidden sm:inline">{lang === "kn" ? "ವಾಟ್ಸಾಪ್ ಗ್ರೂಪ್" : "WhatsApp Group"}</span>
+            </a>
+          )}
           <button
             onClick={handleDownload}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 text-stone-900 text-xs font-bold hover:bg-amber-400 transition-colors shadow-md"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 text-stone-900 text-xs font-bold hover:bg-amber-400 transition-colors shadow-md cursor-pointer"
           >
             <Download className="w-4 h-4" />
             <span>{t("registration.downloadPass")}</span>
           </button>
           <button
             onClick={handlePrint}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-stone-900 text-white text-xs font-bold hover:bg-stone-800 transition-colors shadow-md"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-stone-900 text-white text-xs font-bold hover:bg-stone-800 transition-colors shadow-md cursor-pointer"
           >
             <Printer className="w-4 h-4 text-amber-400" />
             <span>{t("registration.printPass")}</span>
