@@ -32,7 +32,11 @@ import { Instagram } from "../components/InstagramIcon";
 import { VolunteerIDCardModal } from "../components/VolunteerIDCardModal";
 import { isReelContestEvent } from "../config/eventsData";
 
-export const StudentDashboard = ({ onNavigateHome }) => {
+export const StudentDashboard = ({ 
+  onNavigateHome,
+  initialEventId = null,
+  onClearInitialEventId = null
+}) => {
   const { user, logout } = useAuth();
   const { showError, showSuccess, showWarning, showInfo } = useModalAlert();
   const [activeTab, setActiveTab] = useState("overview"); // overview, my-events, browse-events, account
@@ -116,6 +120,24 @@ export const StudentDashboard = ({ onNavigateHome }) => {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Auto-open event quick registration modal if initialEventId is passed
+  useEffect(() => {
+    const targetId = initialEventId || (typeof window !== "undefined" ? sessionStorage.getItem("akv_pending_event_id") : null);
+    if (!targetId || !eventsList || eventsList.length === 0) return;
+
+    const targetEvent = eventsList.find(e => e.id === targetId);
+    if (targetEvent) {
+      setActiveTab("browse-events");
+      handleQuickRegister(targetEvent);
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("akv_pending_event_id");
+      }
+      if (onClearInitialEventId) {
+        onClearInitialEventId();
+      }
+    }
+  }, [initialEventId, eventsList]);
 
   // Event Registration Flow: Show Rules & Confirmation First
   const handleQuickRegister = async (event) => {
