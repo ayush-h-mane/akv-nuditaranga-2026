@@ -1128,6 +1128,30 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
     }
   };
 
+  const handleDeleteEvent = async (ev) => {
+    if (!ev || !ev.id) return;
+    const eventTitle = ev.title_en || ev.id;
+    if (!window.confirm(`Are you sure you want to delete '${eventTitle}' (${ev.id})?\n\nThis will permanently remove the event and all associated participant registrations. This action cannot be undone.`)) {
+      return;
+    }
+    try {
+      setEventsList(prev => prev.filter(item => item.id !== ev.id));
+      if (eventModal === "edit") {
+        setEventModal(null);
+        setEditEvent(null);
+      }
+      await api.deleteEvent(ev.id);
+      notify("success", `Event '${eventTitle}' (${ev.id}) deleted permanently.`);
+      await Promise.all([
+        loadEvents(true),
+        loadEventRegistrations(true).catch(() => {})
+      ]);
+    } catch (err) {
+      notify("error", err.message || "Failed to delete event");
+      await loadEvents(true);
+    }
+  };
+
   const loadMyAccount = async (forceFresh = false) => {
     setMyAccountLoading(true);
     setMyAccountError("");
@@ -5918,21 +5942,10 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                       </button>
                       <button
                         type="button"
-                        onClick={async () => {
-                          if (window.confirm(`Delete event '${ev.title_en}'?`)) {
-                            try {
-                              setEventsList(prev => prev.filter(item => item.id !== ev.id));
-                              await api.deleteEvent(ev.id);
-                              notify("success", `Event '${ev.title_en}' deleted successfully.`);
-                              await loadEvents(true);
-                            } catch (err) {
-                              notify("error", err.message || "Failed to delete event");
-                              await loadEvents(true);
-                            }
-                          }
-                        }}
-                        className="p-1.5 text-stone-400 hover:text-red-600 transition-colors cursor-pointer"
+                        onClick={() => handleDeleteEvent(ev)}
+                        className="p-1.5 text-stone-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
                         title="Delete Event"
+                        aria-label={`Delete ${ev.title_en || ev.id}`}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -7141,7 +7154,17 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                 </button>
               </div>
 
-              <div className="flex items-center gap-3 pt-3">
+              <div className="flex items-center gap-2 pt-3 border-t border-stone-100">
+                <button
+                  type="button"
+                  onClick={() => handleDeleteEvent(editEvent)}
+                  className="px-3 py-2.5 rounded-xl border border-rose-200 text-rose-600 font-bold hover:bg-rose-50 cursor-pointer flex items-center justify-center gap-1.5 transition-colors"
+                  title="Delete this event"
+                  aria-label={`Delete event ${editEvent.title_en || editEvent.id}`}
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span className="hidden sm:inline">Delete</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => {

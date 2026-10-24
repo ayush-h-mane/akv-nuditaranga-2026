@@ -285,36 +285,50 @@ function saveLocalAttendance(att) {
   } catch (e) {}
 }
 
+const STORAGE_DELETED_EVENTS_KEY = "akv_deleted_event_ids_v1";
+
+function getDeletedEventIds() {
+  const ids = readLocalJson(STORAGE_DELETED_EVENTS_KEY, []);
+  return new Set(Array.isArray(ids) ? ids.map(id => String(id).toUpperCase()) : []);
+}
+
+function markEventAsDeleted(id) {
+  if (!id) return;
+  const current = getDeletedEventIds();
+  current.add(String(id).toUpperCase());
+  writeLocalJson(STORAGE_DELETED_EVENTS_KEY, Array.from(current));
+}
+
+function unmarkEventAsDeleted(id) {
+  if (!id) return;
+  const current = getDeletedEventIds();
+  current.delete(String(id).toUpperCase());
+  writeLocalJson(STORAGE_DELETED_EVENTS_KEY, Array.from(current));
+}
+
 function getLocalEvents() {
   if (memCache.has("events")) {
     return memCache.get("events");
   }
+  const deletedIds = getDeletedEventIds();
   const data = readLocalJson(STORAGE_EVENTS_KEY, null);
   if (data && Array.isArray(data) && data.length > 0) {
-    const existingIds = new Set(data.map(e => e.id));
-    let merged = [...data];
-    let added = false;
-    for (const initEv of initialEvents) {
-      if (!existingIds.has(initEv.id)) {
-        merged.push(initEv);
-        added = true;
-      }
-    }
-    if (added) {
-      writeLocalJson(STORAGE_EVENTS_KEY, merged);
-    }
-    memCache.set("events", merged);
-    return merged;
+    const filtered = data.filter(e => !deletedIds.has(String(e.id).toUpperCase()));
+    memCache.set("events", filtered);
+    return filtered;
   }
-  memCache.set("events", [...initialEvents]);
-  writeLocalJson(STORAGE_EVENTS_KEY, initialEvents);
-  return [...initialEvents];
+  const filteredInitials = initialEvents.filter(e => !deletedIds.has(String(e.id).toUpperCase()));
+  memCache.set("events", [...filteredInitials]);
+  writeLocalJson(STORAGE_EVENTS_KEY, filteredInitials);
+  return [...filteredInitials];
 }
 
 function saveLocalEvents(events) {
   if (!events || !Array.isArray(events)) return;
-  memCache.set("events", events);
-  writeLocalJson(STORAGE_EVENTS_KEY, events);
+  const deletedIds = getDeletedEventIds();
+  const filtered = events.filter(e => !deletedIds.has(String(e.id).toUpperCase()));
+  memCache.set("events", filtered);
+  writeLocalJson(STORAGE_EVENTS_KEY, filtered);
 }
 
 function getLocalRegistrations() {
@@ -2929,20 +2943,14 @@ export const api = {
           const data = await res.json();
 
           if (Array.isArray(data)) {
-            // Ensure all initial events (including AKV-NT-11 Reel Contest) are present
-            const existingIds = new Set(data.map(e => e.id));
-            const merged = [...data];
-            for (const initEv of initialEvents) {
-              if (!existingIds.has(initEv.id)) {
-                merged.push(initEv);
-              }
-            }
+            const deletedIds = getDeletedEventIds();
+            const filtered = data.filter(e => !deletedIds.has(String(e.id).toUpperCase()));
 
             if (normalizedCategory === "all") {
-              saveLocalEvents(merged);
+              saveLocalEvents(filtered);
             }
 
-            let result = [...merged];
+            let result = [...filtered];
 
             if (activeOnly) {
               result = result.filter(e => e.is_active !== false);
@@ -2977,13 +2985,13 @@ export const api = {
 
   async getEvent(id) {
     try {
-      const res = await fetch(`${API_BASE_URL}/events/${id}`);
+      const res = await fetch(`${API_BASE_URL}/events/${encodeURIComponent(id)}`);
       if (res.ok) return await res.json();
     } catch (err) {
       console.warn("Backend unavailable, using client dataset for event:", err.message);
     }
     const list = getLocalEvents();
-    const ev = list.find(e => e.id === id);
+    const ev = list.find(e => String(e.id).toUpperCase() === String(id).toUpperCase());
     if (!ev) throw new Error("Event not found");
     return ev;
   },
@@ -3013,6 +3021,7 @@ export const api = {
     }
     const list = getLocalEvents();
     const newId = (createdEvent && createdEvent.id) || eventData.id || `AKV-NT-${String(list.length + 1).padStart(2, "0")}`;
+    unmarkEventAsDeleted(newId);
     const newEvent = createdEvent || {
       ...eventData,
       id: newId,
@@ -3023,6 +3032,7 @@ export const api = {
     saveLocalEvents(list);
     invalidateMemCache("events_api_");
     invalidateMemCache("events_");
+    memCache.delete("events");
     inflightRequests.delete("events_all");
     for (const k of inflightRequests.keys()) {
       if (k.startsWith("events_")) inflightRequests.delete(k);
@@ -3033,7 +3043,7 @@ export const api = {
   async updateEvent(id, eventData) {
     let updatedEvent = null;
     try {
-      const res = await fetch(`${API_BASE_URL}/events/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/events/${encodeURIComponent(id)}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -3054,7 +3064,7 @@ export const api = {
       }
     }
     const list = getLocalEvents();
-    const idx = list.findIndex(e => e.id === id);
+    const idx = list.findIndex(e => String(e.id).toUpperCase() === String(id).toUpperCase());
     const finalEvent = updatedEvent ? { ...(idx !== -1 ? list[idx] : {}), ...updatedEvent } : { ...(idx !== -1 ? list[idx] : {}), ...eventData, id };
     if (idx !== -1) {
       list[idx] = finalEvent;
@@ -3064,6 +3074,7 @@ export const api = {
     saveLocalEvents(list);
     invalidateMemCache("events_api_");
     invalidateMemCache("events_");
+    memCache.delete("events");
     inflightRequests.delete("events_all");
     for (const k of inflightRequests.keys()) {
       if (k.startsWith("events_")) inflightRequests.delete(k);
@@ -3072,8 +3083,12 @@ export const api = {
   },
 
   async deleteEvent(id) {
+    if (!id) return { success: false };
+    const upperId = String(id).toUpperCase();
+    markEventAsDeleted(upperId);
+
     try {
-      const res = await fetch(`${API_BASE_URL}/events/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/events/${encodeURIComponent(id)}`, {
         method: "DELETE",
         headers: { ...getAuthHeaders() }
       });
@@ -3088,10 +3103,11 @@ export const api = {
       }
     }
     let list = getLocalEvents();
-    list = list.filter(e => e.id !== id);
+    list = list.filter(e => String(e.id).toUpperCase() !== upperId);
     saveLocalEvents(list);
     invalidateMemCache("events_api_");
     invalidateMemCache("events_");
+    memCache.delete("events");
     inflightRequests.delete("events_all");
     for (const k of inflightRequests.keys()) {
       if (k.startsWith("events_")) inflightRequests.delete(k);

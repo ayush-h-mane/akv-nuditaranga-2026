@@ -2,7 +2,12 @@
   "production_version": "2.3.40",
   "staged_version": "2.3.41",
   "status": "STAGED_DEVELOPMENT",
-  "pending_changes": [],
+  "pending_changes": [
+    "SuperAdmin Event Deletion Fix & Auto-Resurrection Elimination: Resolved the bug where deleted events immediately reappeared in the Superadmin portal; updated backend /api/events self-healing and seed.py to check AuditLog for EVENT_DELETED, ensuring deliberately deleted events are never re-seeded or resurrected automatically.",
+    "Frontend Deleted Events Storage & Cache Invalidation: Added client-side deleted event tracking (markEventAsDeleted/getDeletedEventIds) in api.js, stopped unconstrained merging of initialEvents over live backend catalog responses, and purged memory/localStorage caches on event deletion.",
+    "Case-Insensitive Event Deletion & Foreign Key Cascading: Upgraded DELETE /api/events/{event_id} in events.py to match event IDs case-insensitively, clean up corresponding registrations and check-in logs safely to prevent PostgreSQL foreign key constraint errors, and flush before event record deletion.",
+    "SuperAdmin Portal UX & Edit Modal Deletion: Integrated a dedicated handleDeleteEvent handler in SuperAdminDashboard with confirmation dialog, event registrations refresh, and added a convenient Delete button directly inside the Edit Fest Event modal."
+  ],
   "history": [
     {
       "version": "2.3.40",

@@ -1,5 +1,5 @@
 from .database import SessionLocal, engine, Base
-from .models import Event, Registration, Activity, GalleryItem, SocialPost
+from .models import Event, Registration, Activity, GalleryItem, SocialPost, AuditLog
 import os
 import datetime
 import json
@@ -342,9 +342,20 @@ def seed_database():
 
     db = SessionLocal()
     try:
-        # Seed events: single batch query for all existing event IDs
-        existing_event_ids = {r[0] for r in db.query(Event.id).all()}
-        missing_events = [ev for ev in INITIAL_EVENTS if ev["id"] not in existing_event_ids]
+        # Seed events: single batch query for all existing event IDs, skipping deleted ones
+        existing_event_ids = {r[0].upper() for r in db.query(Event.id).all() if r[0]}
+        deleted_eids = {
+            r[0].upper()
+            for r in db.query(AuditLog.target_id)
+            .filter(AuditLog.action == "EVENT_DELETED", AuditLog.target_type == "EVENT")
+            .all()
+            if r[0]
+        }
+        missing_events = [
+            ev for ev in INITIAL_EVENTS
+            if ev["id"].upper() not in existing_event_ids
+            and ev["id"].upper() not in deleted_eids
+        ]
         if missing_events:
             for ev in missing_events:
                 db.add(Event(**ev))
