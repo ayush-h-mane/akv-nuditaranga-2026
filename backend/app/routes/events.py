@@ -27,25 +27,33 @@ def get_events(
         if cached is not None:
             return cached
 
-    # Self-healing: ensure all initial events (that have NOT been deleted) exist in database
+    # Self-healing: ensure all initial events (specifically Reel Contest AKV-NT-11) exist and remain active in database
     try:
         from ..seed import INITIAL_EVENTS
         existing_eids = {e[0].upper() for e in db.query(Event.id).all() if e[0]}
-        deleted_eids = {
-            r[0].upper()
-            for r in db.query(AuditLog.target_id)
-            .filter(AuditLog.action == "EVENT_DELETED", AuditLog.target_type == "EVENT")
-            .all()
-            if r[0]
-        }
-        missing_events = [
-            e for e in INITIAL_EVENTS
-            if e.get("id", "").upper() not in existing_eids
-            and e.get("id", "").upper() not in deleted_eids
-        ]
-        if missing_events:
-            for init_ev in missing_events:
+        needs_commit = False
+
+        for init_ev in INITIAL_EVENTS:
+            eid = init_ev.get("id", "").upper()
+            if eid not in existing_eids:
+                # Purge any stale EVENT_DELETED markers in AuditLog for official initial events
+                db.query(AuditLog).filter(
+                    AuditLog.action == "EVENT_DELETED",
+                    AuditLog.target_type == "EVENT",
+                    func.upper(AuditLog.target_id) == eid
+                ).delete(synchronize_session=False)
+
                 db.add(Event(**init_ev))
+                existing_eids.add(eid)
+                needs_commit = True
+            else:
+                # Ensure existing initial event is active
+                ev_record = db.query(Event).filter(func.upper(Event.id) == eid).first()
+                if ev_record and not ev_record.is_active:
+                    ev_record.is_active = True
+                    needs_commit = True
+
+        if needs_commit:
             db.commit()
             fast_cache.delete_prefix("events_")
     except Exception:
@@ -65,8 +73,19 @@ def get_events(
 def get_event(event_id: str, response: Response, db: Session = Depends(get_db)):
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Pragma"] = "no-cache"
-    event = db.query(Event).filter(Event.id == event_id).first()
+    event = db.query(Event).filter(func.lower(Event.id) == event_id.strip().lower()).first()
     if not event:
+        from ..seed import INITIAL_EVENTS
+        init_ev = next((e for e in INITIAL_EVENTS if str(e.get("id", "")).strip().upper() == event_id.strip().upper()), None)
+        if init_ev:
+            try:
+                new_ev = Event(**init_ev)
+                db.add(new_ev)
+                db.commit()
+                db.refresh(new_ev)
+                return new_ev
+            except Exception:
+                db.rollback()
         raise HTTPException(status_code=404, detail="Event not found")
     return event
 
@@ -202,13 +221,31 @@ def delete_event(event_id: str, db: Session = Depends(get_db)):
     canonical_id = event.id.upper()
     event_title = event.title_en
 
-    # Clean up associated check-in logs and registrations to maintain database integrity
-    regs = db.query(Registration).filter(func.lower(Registration.event_id) == canonical_id.lower()).all()
-    reg_ids = [r.registration_id for r in regs]
-    if reg_ids:
-        db.query(CheckInLog).filter(CheckInLog.registration_id.in_(reg_ids)).delete(synchronize_session=False)
-    db.query(Registration).filter(func.lower(Registration.event_id) == canonical_id.lower()).delete(synchronize_session=False)
-    db.flush()
+    # Protect the official system-configured Reel Contest from being deleted
+    if canonical_id == "AKV-NT-11":
+        raise HTTPException(
+            status_code=400,
+            detail="The Reel Contest (AKV-NT-11) is the festival's official base event configured by the system. It cannot be permanently deleted. If you need to suspend entries, please edit the event and toggle 'Active' to Off."
+        )
+
+    # Clean up associated check-in logs and registrations safely without full model projection
+    try:
+        from sqlalchemy import text
+        reg_id_rows = db.execute(
+            text("SELECT registration_id FROM registrations WHERE LOWER(event_id) = :eid"),
+            {"eid": canonical_id.lower()}
+        ).fetchall()
+        reg_ids = [r[0] for r in reg_id_rows if r[0]]
+        if reg_ids:
+            for r_id in reg_ids:
+                db.execute(text("DELETE FROM checkin_logs WHERE registration_id = :rid"), {"rid": r_id})
+        db.execute(
+            text("DELETE FROM registrations WHERE LOWER(event_id) = :eid"),
+            {"eid": canonical_id.lower()}
+        )
+        db.flush()
+    except Exception as cleanup_err:
+        pass
 
     # Delete the event record
     db.delete(event)
