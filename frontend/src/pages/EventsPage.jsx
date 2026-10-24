@@ -24,7 +24,7 @@ export const EventsPage = ({ setCurrentView, setSelectedEventId }) => {
     let isMounted = true;
     api.getEvents("all", true)
       .then((data) => {
-        if (isMounted && Array.isArray(data) && data.length > 0) {
+        if (isMounted && Array.isArray(data)) {
           setEvents(data);
         }
       })
@@ -38,7 +38,7 @@ export const EventsPage = ({ setCurrentView, setSelectedEventId }) => {
     try {
       setRefreshing(true);
       const data = await api.getEvents("all", true, true);
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         setEvents(data);
       }
     } catch (err) {

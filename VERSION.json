@@ -1,9 +1,14 @@
 {
-  "production_version": "2.3.41",
-  "staged_version": "2.3.42",
+  "production_version": "2.3.42",
+  "staged_version": "2.3.43",
   "status": "DEPLOYED_TO_PRODUCTION",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.42",
+      "released_at": "2026-10-24T18:52:47+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.42: PostgreSQL Schema Auto-Migration Fix: Bumped CURRENT_SCHEMA_VERSION to 5 in database.py, enabled fast-path check in ensure_schema_migrations() on Vercel, and hooked migration check into get_db() and on_startup to guarantee newly defined columns (such as registrations.instagram_username and registrations.instagram_profile_link) are automatically provisioned in production PostgreSQL without container timeouts.; Event Deletion Registration Cleanup Hardening: Upgraded DELETE /api/events/{event_id} in events.py to query only registration_id using targeted raw SQL instead of projecting full Registration ORM models, eliminating psycopg.errors.UndefinedColumn errors during event deletions.; Reel Contest Event Website Display & Backend Self-Healing Resilience: Enhanced backend /api/events self-healing to guarantee that the official Reel Contest (AKV-NT-11) is always present and active, purging any conflicting AuditLog EVENT_DELETED markers, and added on-the-fly healing in /api/events/{event_id}.; Frontend Cache & Local Storage Upgrade: Bumped STORAGE_EVENTS_KEY to akv_events_cache_v3 and STORAGE_DELETED_EVENTS_KEY to v2; updated getLocalEvents() and getEvents() to permanently ensure initialEvents (Reel Contest) can never be suppressed by stale client cache; protected Reel Contest from accidental client-side deletion; and updated EventsPage.jsx to reliably render events on revalidation."
+    },
     {
       "version": "2.3.41",
       "released_at": "2026-10-24T16:21:25+0530",

@@ -204,7 +204,7 @@ export function normalizeAttendanceDates(data) {
 }
 
 // Local fallback storage keys
-const STORAGE_EVENTS_KEY = "akv_events_cache_v2";
+const STORAGE_EVENTS_KEY = "akv_events_cache_v3";
 const STORAGE_REGS_KEY = "akv_registrations_cache_v2";
 const STORAGE_USERS_KEY = "akv_users_cache_v2";
 const STORAGE_ADMINS_KEY = "akv_admins_cache_v2";
@@ -285,17 +285,35 @@ function saveLocalAttendance(att) {
   } catch (e) {}
 }
 
-const STORAGE_DELETED_EVENTS_KEY = "akv_deleted_event_ids_v1";
+const STORAGE_DELETED_EVENTS_KEY = "akv_deleted_event_ids_v2";
 
 function getDeletedEventIds() {
   const ids = readLocalJson(STORAGE_DELETED_EVENTS_KEY, []);
-  return new Set(Array.isArray(ids) ? ids.map(id => String(id).toUpperCase()) : []);
+  const set = new Set(Array.isArray(ids) ? ids.map(id => String(id).toUpperCase()) : []);
+  // Initial system-configured events (e.g. Reel Contest AKV-NT-11) can NEVER be marked as deleted
+  for (const init of initialEvents) {
+    if (init && init.id) {
+      set.delete(String(init.id).toUpperCase());
+    }
+  }
+  // Clean up legacy v1 key if present so it cannot pollute client state
+  try {
+    if (localStorage.getItem("akv_deleted_event_ids_v1")) {
+      localStorage.removeItem("akv_deleted_event_ids_v1");
+    }
+  } catch {}
+  return set;
 }
 
 function markEventAsDeleted(id) {
   if (!id) return;
+  const upperId = String(id).toUpperCase();
+  // Protect initialEvents (Reel Contest) from being marked deleted
+  if (initialEvents.some(init => String(init.id).toUpperCase() === upperId)) {
+    return;
+  }
   const current = getDeletedEventIds();
-  current.add(String(id).toUpperCase());
+  current.add(upperId);
   writeLocalJson(STORAGE_DELETED_EVENTS_KEY, Array.from(current));
 }
 
@@ -308,25 +326,49 @@ function unmarkEventAsDeleted(id) {
 
 function getLocalEvents() {
   if (memCache.has("events")) {
-    return memCache.get("events");
+    const memList = memCache.get("events");
+    if (Array.isArray(memList) && memList.length > 0) {
+      return memList;
+    }
   }
   const deletedIds = getDeletedEventIds();
   const data = readLocalJson(STORAGE_EVENTS_KEY, null);
   if (data && Array.isArray(data) && data.length > 0) {
-    const filtered = data.filter(e => !deletedIds.has(String(e.id).toUpperCase()));
+    const filtered = data.filter(e => {
+      const eid = String(e.id).toUpperCase();
+      if (initialEvents.some(init => String(init.id).toUpperCase() === eid)) return true;
+      return !deletedIds.has(eid);
+    });
+    // Ensure official initialEvents (Reel Contest) are always present
+    for (const init of initialEvents) {
+      if (!filtered.some(e => String(e.id).toUpperCase() === String(init.id).toUpperCase())) {
+        filtered.push(init);
+      }
+    }
     memCache.set("events", filtered);
     return filtered;
   }
   const filteredInitials = initialEvents.filter(e => !deletedIds.has(String(e.id).toUpperCase()));
-  memCache.set("events", [...filteredInitials]);
-  writeLocalJson(STORAGE_EVENTS_KEY, filteredInitials);
-  return [...filteredInitials];
+  const fallback = filteredInitials.length > 0 ? filteredInitials : [...initialEvents];
+  memCache.set("events", [...fallback]);
+  writeLocalJson(STORAGE_EVENTS_KEY, fallback);
+  return [...fallback];
 }
 
 function saveLocalEvents(events) {
   if (!events || !Array.isArray(events)) return;
   const deletedIds = getDeletedEventIds();
-  const filtered = events.filter(e => !deletedIds.has(String(e.id).toUpperCase()));
+  const filtered = events.filter(e => {
+    const eid = String(e.id).toUpperCase();
+    if (initialEvents.some(init => String(init.id).toUpperCase() === eid)) return true;
+    return !deletedIds.has(eid);
+  });
+  // Ensure official initialEvents (Reel Contest) are always preserved
+  for (const init of initialEvents) {
+    if (!filtered.some(e => String(e.id).toUpperCase() === String(init.id).toUpperCase())) {
+      filtered.push(init);
+    }
+  }
   memCache.set("events", filtered);
   writeLocalJson(STORAGE_EVENTS_KEY, filtered);
 }
@@ -2944,7 +2986,18 @@ export const api = {
 
           if (Array.isArray(data)) {
             const deletedIds = getDeletedEventIds();
-            const filtered = data.filter(e => !deletedIds.has(String(e.id).toUpperCase()));
+            const filtered = data.filter(e => {
+              const eid = String(e.id).toUpperCase();
+              if (initialEvents.some(init => String(init.id).toUpperCase() === eid)) return true;
+              return !deletedIds.has(eid);
+            });
+
+            // Ensure initialEvents (Reel Contest) are always present
+            for (const init of initialEvents) {
+              if (!filtered.some(e => String(e.id).toUpperCase() === String(init.id).toUpperCase())) {
+                filtered.push(init);
+              }
+            }
 
             if (normalizedCategory === "all") {
               saveLocalEvents(filtered);
@@ -3085,7 +3138,11 @@ export const api = {
   async deleteEvent(id) {
     if (!id) return { success: false };
     const upperId = String(id).toUpperCase();
-    markEventAsDeleted(upperId);
+
+    // Prevent deletion of core base event (Reel Contest)
+    if (initialEvents.some(init => String(init.id).toUpperCase() === upperId)) {
+      throw new Error("The Reel Contest is the festival's official base event configured by the system. It cannot be deleted. If you need to suspend it, edit the event and toggle 'Active' to Off.");
+    }
 
     try {
       const res = await fetch(`${API_BASE_URL}/events/${encodeURIComponent(id)}`, {
@@ -3096,6 +3153,8 @@ export const api = {
         const errJson = await res.json().catch(() => ({}));
         throw new Error(errJson.detail || `Failed to delete event (HTTP ${res.status})`);
       }
+      // Only mark as deleted locally if deletion succeeded
+      markEventAsDeleted(upperId);
     } catch (err) {
       console.warn("Backend delete error:", err.message);
       if (err.message && !err.message.includes("Failed to fetch") && !err.message.includes("NetworkError")) {

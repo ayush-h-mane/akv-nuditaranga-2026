@@ -95,15 +95,11 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, expire_on_commit=
 Base = declarative_base()
 
 _MIGRATIONS_DONE = False
-CURRENT_SCHEMA_VERSION = 4
+CURRENT_SCHEMA_VERSION = 5
 
 def ensure_schema_migrations(target_engine=None):
     global _MIGRATIONS_DONE
     if _MIGRATIONS_DONE and not target_engine:
-        return
-    # In Vercel serverless containers, bypass runtime DDL to prevent request invocation timeouts
-    if os.environ.get("VERCEL") and not target_engine:
-        _MIGRATIONS_DONE = True
         return
     eng = target_engine or engine
     try:
@@ -436,6 +432,12 @@ def ensure_schema_migrations(target_engine=None):
 # Migrations are safely executed during FastAPI on_startup, not at module import time.
 
 def get_db():
+    global _MIGRATIONS_DONE
+    if not _MIGRATIONS_DONE:
+        try:
+            ensure_schema_migrations()
+        except Exception as e:
+            logger.debug(f"[GET_DB MIGRATION NOTICE] {e}")
     db = SessionLocal()
     try:
         yield db
