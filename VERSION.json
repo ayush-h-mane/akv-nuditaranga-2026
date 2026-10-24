@@ -1,15 +1,14 @@
 {
-  "production_version": "2.3.43",
-  "staged_version": "2.3.44",
-  "status": "STAGED_DEVELOPMENT",
-  "pending_changes": [
-    "Event Selection Memory & Post-Auth Automatic Redirection: Stored selectedEventId in sessionStorage ('akv_pending_event_id') whenever a user taps 'Register Now' on any event card, modal, or banner, preventing lost selections across pages and reloads.",
-    "EventsPage One-Click Event Registration Routing: Upgraded handleRegisterEvent in EventsPage.jsx to route directly to '/register' with preloaded event details if authenticated, or to '/student?mode=register' when unauthenticated.",
-    "AuthPortal Event-Aware Onboarding: Added pending event banner in AuthPortal.jsx displaying the competition title being registered for, and dynamically customized post-registration success button to 'Continue Event Registration for [Event Name]' routing straight to the event form.",
-    "RegisterPage Immediate Step 2 Restoration: Configured RegisterPage.jsx to automatically populate candidate details from the newly registered user session, jump straight to Step 2 for the chosen event, and purge pending session keys upon successful submission.",
-    "StudentDashboard Modal Auto-Trigger: Added initialEventId handling to StudentDashboard.jsx to automatically trigger quick registration modals (Reel Contest, Solo rules, or Team modal) if an event ID is passed into the dashboard."
-  ],
+  "production_version": "2.3.44",
+  "staged_version": "2.3.45",
+  "status": "DEPLOYED_TO_PRODUCTION",
+  "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.44",
+      "released_at": "2026-10-24T19:58:29+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.44: Event Selection Memory & Post-Auth Automatic Redirection: Stored selectedEventId in sessionStorage ('akv_pending_event_id') whenever a user taps 'Register Now' on any event card, modal, or banner, preventing lost selections across pages and reloads.; EventsPage One-Click Event Registration Routing: Upgraded handleRegisterEvent in EventsPage.jsx to route directly to '/register' with preloaded event details if authenticated, or to '/student?mode=register' when unauthenticated.; AuthPortal Event-Aware Onboarding: Added pending event banner in AuthPortal.jsx displaying the competition title being registered for, and dynamically customized post-registration success button to 'Continue Event Registration for [Event Name]' routing straight to the event form.; RegisterPage Immediate Step 2 Restoration: Configured RegisterPage.jsx to automatically populate candidate details from the newly registered user session, jump straight to Step 2 for the chosen event, and purge pending session keys upon successful submission.; StudentDashboard Modal Auto-Trigger: Added initialEventId handling to StudentDashboard.jsx to automatically trigger quick registration modals (Reel Contest, Solo rules, or Team modal) if an event ID is passed into the dashboard."
+    },
     {
       "version": "2.3.43",
       "released_at": "2026-10-24T19:19:34+0530",
