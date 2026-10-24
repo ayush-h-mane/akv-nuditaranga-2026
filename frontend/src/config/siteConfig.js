@@ -20,7 +20,11 @@ export const siteConfig = {
     acharya: "/images/acharya-logo.png?v=2026",
     acharyaWhite: "/images/acharya-logo-white.png?v=2026",
     akv: "/images/akv-logo.png?v=2026",
-    draftPoster: "/images/rajyotsava-draft-poster.jpg"
+    planPoster: "/images/calendar-2026.webp",
+    planPosterKn: "/images/calendar-2026-kannada.webp",
+    calendarEn: "/images/calendar-2026.webp",
+    calendarKn: "/images/calendar-2026-kannada.webp",
+    draftPoster: "/images/calendar-2026.webp"
   },
   festival: {
     name: "Nuditaranga 2026",

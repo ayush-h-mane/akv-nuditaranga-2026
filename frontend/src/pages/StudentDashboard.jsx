@@ -26,10 +26,14 @@ import {
   X,
   Plus,
   RefreshCw,
-  CreditCard
+  CreditCard,
+  MessageCircle,
+  ExternalLink
 } from "lucide-react";
 import { Instagram } from "../components/InstagramIcon";
 import { VolunteerIDCardModal } from "../components/VolunteerIDCardModal";
+import { WhatsAppGroupModal } from "../components/WhatsAppGroupModal";
+import { getEventWhatsAppGroup } from "../config/whatsappGroups";
 import { isReelContestEvent } from "../config/eventsData";
 
 export const StudentDashboard = ({ 
@@ -66,11 +70,15 @@ export const StudentDashboard = ({
   const [reelInstaProfileLink, setReelInstaProfileLink] = useState("");
   const [reelRulesAccepted, setReelRulesAccepted] = useState(false);
 
+  // Post-Registration WhatsApp Group Modal State
+  const [whatsAppModalData, setWhatsAppModalData] = useState(null);
+
   // Bind modals to browser back button history
   useHistoryModal(Boolean(viewingPassReg), () => setViewingPassReg(null));
   useHistoryModal(Boolean(teamModalEvent), () => setTeamModalEvent(null));
   useHistoryModal(Boolean(soloConfirmEvent), () => setSoloConfirmEvent(null));
   useHistoryModal(Boolean(reelContestModal), () => setReelContestModal(null));
+  useHistoryModal(Boolean(whatsAppModalData), () => setWhatsAppModalData(null));
 
   // Change Password State
   const [pwForm, setPwForm] = useState({
@@ -197,6 +205,10 @@ export const StudentDashboard = ({
       const successMsg = res.message || `Successfully registered for ${reelContestModal.title_en}!`;
       setActionMessage({ type: "success", text: successMsg });
       showSuccess(successMsg, "Reel Contest Registration Confirmed");
+      const matchedGroup = getEventWhatsAppGroup(reelContestModal);
+      if (matchedGroup) {
+        setWhatsAppModalData({ group: matchedGroup, eventTitle: reelContestModal.title_en });
+      }
       setReelContestModal(null);
       await loadData();
     } catch (err) {
@@ -223,6 +235,10 @@ export const StudentDashboard = ({
       const successMsg = res.message || `Successfully registered for ${soloConfirmEvent.title_en}!`;
       setActionMessage({ type: "success", text: successMsg });
       showSuccess(successMsg, "Registration Confirmed");
+      const matchedGroup = getEventWhatsAppGroup(soloConfirmEvent);
+      if (matchedGroup) {
+        setWhatsAppModalData({ group: matchedGroup, eventTitle: soloConfirmEvent.title_en });
+      }
       setSoloConfirmEvent(null);
       await loadData();
     } catch (err) {
@@ -254,6 +270,10 @@ export const StudentDashboard = ({
       const successMsg = res.message || "Team registered successfully!";
       setActionMessage({ type: "success", text: successMsg });
       showSuccess(successMsg, "Team Registration Confirmed");
+      const matchedGroup = getEventWhatsAppGroup(teamModalEvent);
+      if (matchedGroup) {
+        setWhatsAppModalData({ group: matchedGroup, eventTitle: teamModalEvent.title_en });
+      }
       setTeamModalEvent(null);
       await loadData();
     } catch (err) {
@@ -737,13 +757,27 @@ export const StudentDashboard = ({
                         </div>
                       </div>
 
-                      <button
-                        onClick={() => setViewingPassReg(r)}
-                        className="shrink-0 p-2.5 rounded-xl bg-white border border-stone-200 text-stone-700 hover:text-kar-red hover:border-kar-red transition-all shadow-xs"
-                        title="View Digital Pass"
-                      >
-                        <QrCode className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {getEventWhatsAppGroup(r) && (
+                          <a
+                            href={getEventWhatsAppGroup(r).url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200 transition-all shadow-xs"
+                            title="Join WhatsApp Group"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MessageCircle className="w-4 h-4 fill-current" />
+                          </a>
+                        )}
+                        <button
+                          onClick={() => setViewingPassReg(r)}
+                          className="p-2.5 rounded-xl bg-white border border-stone-200 text-stone-700 hover:text-kar-red hover:border-kar-red transition-all shadow-xs cursor-pointer"
+                          title="View Digital Pass"
+                        >
+                          <QrCode className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -841,13 +875,26 @@ export const StudentDashboard = ({
                       )}
                     </div>
 
-                    <button
-                      onClick={() => setViewingPassReg(reg)}
-                      className="shrink-0 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-stone-900 hover:bg-black text-white text-xs font-extrabold shadow-sm transition-all"
-                    >
-                      <QrCode className="w-4 h-4 text-amber-300" />
-                      <span>View Digital Pass</span>
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {getEventWhatsAppGroup(reg) && (
+                        <a
+                          href={getEventWhatsAppGroup(reg).url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white text-xs font-extrabold shadow-sm transition-all cursor-pointer"
+                        >
+                          <MessageCircle className="w-4 h-4 fill-current" />
+                          <span>WhatsApp Group ↗</span>
+                        </a>
+                      )}
+                      <button
+                        onClick={() => setViewingPassReg(reg)}
+                        className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-stone-900 hover:bg-black text-white text-xs font-extrabold shadow-sm transition-all cursor-pointer"
+                      >
+                        <QrCode className="w-4 h-4 text-amber-300" />
+                        <span>View Digital Pass</span>
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1499,6 +1546,15 @@ export const StudentDashboard = ({
         isOpen={showVolunteerIdModal}
         onClose={() => setShowVolunteerIdModal(false)}
       />
+
+      {/* Post-Registration WhatsApp Group Modal */}
+      {whatsAppModalData && (
+        <WhatsAppGroupModal
+          group={whatsAppModalData.group}
+          eventTitle={whatsAppModalData.eventTitle}
+          onClose={() => setWhatsAppModalData(null)}
+        />
+      )}
 
     </div>
   );
