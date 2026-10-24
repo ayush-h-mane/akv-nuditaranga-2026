@@ -93,6 +93,8 @@ class RegistrationCreate(BaseModel):
     is_team: bool = False
     team_name: Optional[str] = None
     team_members: Optional[List[TeamMemberSchema]] = []
+    instagram_username: Optional[str] = None
+    instagram_profile_link: Optional[str] = None
 
     @field_validator("email")
     @classmethod
@@ -152,6 +154,8 @@ class RegistrationOut(BaseModel):
     is_team: bool
     team_name: Optional[str] = None
     team_members: Optional[str] = None
+    instagram_username: Optional[str] = None
+    instagram_profile_link: Optional[str] = None
     status: str
     checkin_time: Optional[datetime] = None
     checked_in_by: Optional[str] = None
@@ -195,6 +199,8 @@ class SuperAdminRegistrationUpdate(BaseModel):
     is_team: Optional[bool] = None
     team_name: Optional[str] = None
     team_members: Optional[List[TeamMemberSchema]] = None
+    instagram_username: Optional[str] = None
+    instagram_profile_link: Optional[str] = None
     status: Optional[str] = None
 
 class CheckInRequest(BaseModel):

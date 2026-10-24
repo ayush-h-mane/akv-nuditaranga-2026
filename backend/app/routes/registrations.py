@@ -120,6 +120,8 @@ def register_participant(
         is_team=reg_data.is_team,
         team_name=reg_data.team_name.strip() if reg_data.team_name else None,
         team_members=team_members_str,
+        instagram_username=reg_data.instagram_username.strip() if reg_data.instagram_username else None,
+        instagram_profile_link=reg_data.instagram_profile_link.strip() if reg_data.instagram_profile_link else None,
         status="Registered"
     )
     

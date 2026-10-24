@@ -344,9 +344,8 @@ function getAuthHeaders() {
 
 function isNetworkError(err) {
   if (!err) return false;
-  // If the browser is online, never treat server errors or syntax parsing errors as offline
-  if (typeof window !== "undefined" && window.navigator && window.navigator.onLine) {
-    return false;
+  if (typeof window !== "undefined" && window.navigator && window.navigator.onLine === false) {
+    return true;
   }
   const msg = (err.message || "").toLowerCase();
   return (
@@ -354,7 +353,9 @@ function isNetworkError(err) {
     msg.includes("failed to fetch") ||
     msg.includes("networkerror") ||
     msg.includes("load failed") ||
-    msg.includes("network request failed")
+    msg.includes("network request failed") ||
+    msg.includes("gateway") ||
+    msg.includes("unexpected end of json")
   );
 }
 
@@ -423,9 +424,12 @@ export const api = {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
-      const data = await res.json();
+      const data = await readApiResponse(res);
       if (!res.ok) {
-        throw new Error(data.detail || "Student registration failed");
+        if (res.status === 502 || res.status === 504 || res.status === 503) {
+          throw new Error(`Server is temporarily unavailable (HTTP ${res.status}). Please make sure the backend server is running.`);
+        }
+        throw new Error(data.detail || `Student registration failed (${res.status})`);
       }
       return data;
     } catch (err) {
@@ -534,7 +538,7 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ identifier })
     });
-    const data = await res.json();
+    const data = await readApiResponse(res);
     if (!res.ok) {
       throw new Error(data.detail || "Failed to send the password reset email.");
     }
@@ -547,7 +551,7 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ identifier, otp })
     });
-    const data = await res.json();
+    const data = await readApiResponse(res);
     if (!res.ok) {
       throw new Error(data.detail || "Invalid or expired OTP code.");
     }
@@ -565,7 +569,7 @@ export const api = {
         confirm_password: confirmPassword
       })
     });
-    const data = await res.json();
+    const data = await readApiResponse(res);
     if (!res.ok) {
       throw new Error(data.detail || "Failed to reset password.");
     }
@@ -582,7 +586,7 @@ export const api = {
         confirm_password: confirmPassword
       })
     });
-    const data = await res.json();
+    const data = await readApiResponse(res);
     if (!res.ok) {
       throw new Error(data.detail || "Failed to reset password");
     }

@@ -1561,7 +1561,10 @@ def create_event_registration(
         email=str(registration_data.email).strip().lower(), phone=registration_data.phone,
         gender=registration_data.gender, is_team=registration_data.is_team,
         team_name=registration_data.team_name.strip() if registration_data.team_name else None,
-        team_members=team_members, status="Registered"
+        team_members=team_members,
+        instagram_username=registration_data.instagram_username.strip() if registration_data.instagram_username else None,
+        instagram_profile_link=registration_data.instagram_profile_link.strip() if registration_data.instagram_profile_link else None,
+        status="Registered"
     )
     db.add(registration)
     event.registered_count = (event.registered_count or 0) + 1
@@ -1614,6 +1617,10 @@ def update_event_registration(
         updates["section"] = updates["section"].strip().upper()
     if "team_members" in updates:
         updates["team_members"] = json.dumps([member.model_dump() for member in updates["team_members"]]) if updates["team_members"] else None
+    if "instagram_username" in updates:
+        updates["instagram_username"] = updates["instagram_username"].strip() if updates["instagram_username"] else None
+    if "instagram_profile_link" in updates:
+        updates["instagram_profile_link"] = updates["instagram_profile_link"].strip() if updates["instagram_profile_link"] else None
 
     previous_event_id = registration.event_id
     old_values = {key: getattr(registration, key) for key in updates if key not in {"team_members"}}
@@ -1747,8 +1754,9 @@ def export_event_registrations_xlsx(
     headers = [
         "Event", "Event ID", "Registration ID", "Record ID", "Full Name", "AUID", "USN",
         "Institute", "Department", "Year", "Email", "Phone",
-        "Gender", "Team Registration", "Team Name", "Team Members (JSON)", "Photo URL",
-        "Status", "Check-In Time", "Checked In By", "Account User ID", "Registered At",
+        "Gender", "Team Registration", "Team Name", "Team Members (JSON)",
+        "Instagram Username", "Instagram Profile Link",
+        "Photo URL", "Status", "Check-In Time", "Checked In By", "Account User ID", "Registered At",
     ]
     header_fill = PatternFill(start_color="991B1B", end_color="991B1B", fill_type="solid")
     header_font = Font(bold=True, color="FFFFFF")
@@ -1782,6 +1790,8 @@ def export_event_registrations_xlsx(
                 "Yes" if registration.is_team else "No",
                 registration.team_name or "",
                 registration.team_members or "",
+                registration.instagram_username or "",
+                registration.instagram_profile_link or "",
                 registration.photo_url or "",
                 registration.status or "",
                 registration.checkin_time.isoformat(sep=" ") if registration.checkin_time else "",

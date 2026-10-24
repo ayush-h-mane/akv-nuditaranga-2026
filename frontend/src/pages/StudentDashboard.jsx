@@ -28,7 +28,9 @@ import {
   RefreshCw,
   CreditCard
 } from "lucide-react";
+import { Instagram } from "../components/InstagramIcon";
 import { VolunteerIDCardModal } from "../components/VolunteerIDCardModal";
+import { isReelContestEvent } from "../config/eventsData";
 
 export const StudentDashboard = ({ onNavigateHome }) => {
   const { user, logout } = useAuth();
@@ -54,10 +56,17 @@ export const StudentDashboard = ({ onNavigateHome }) => {
   const [soloConfirmEvent, setSoloConfirmEvent] = useState(null);
   const [soloRulesAccepted, setSoloRulesAccepted] = useState(false);
 
+  // Reel Contest Modal State
+  const [reelContestModal, setReelContestModal] = useState(null);
+  const [reelInstaUsername, setReelInstaUsername] = useState("");
+  const [reelInstaProfileLink, setReelInstaProfileLink] = useState("");
+  const [reelRulesAccepted, setReelRulesAccepted] = useState(false);
+
   // Bind modals to browser back button history
   useHistoryModal(Boolean(viewingPassReg), () => setViewingPassReg(null));
   useHistoryModal(Boolean(teamModalEvent), () => setTeamModalEvent(null));
   useHistoryModal(Boolean(soloConfirmEvent), () => setSoloConfirmEvent(null));
+  useHistoryModal(Boolean(reelContestModal), () => setReelContestModal(null));
 
   // Change Password State
   const [pwForm, setPwForm] = useState({
@@ -110,6 +119,14 @@ export const StudentDashboard = ({ onNavigateHome }) => {
 
   // Event Registration Flow: Show Rules & Confirmation First
   const handleQuickRegister = async (event) => {
+    if (isReelContestEvent(event)) {
+      setReelContestModal(event);
+      setReelInstaUsername("");
+      setReelInstaProfileLink("");
+      setReelRulesAccepted(false);
+      return;
+    }
+
     if (event.is_team || event.format === "team") {
       // Open team modal
       setTeamModalEvent(event);
@@ -121,6 +138,52 @@ export const StudentDashboard = ({ onNavigateHome }) => {
     // Open rules confirmation modal before registering solo
     setSoloConfirmEvent(event);
     setSoloRulesAccepted(false);
+  };
+
+  const handleConfirmReelRegister = async (e) => {
+    if (e) e.preventDefault();
+    if (!reelContestModal) return;
+
+    const cleanUsername = reelInstaUsername.trim().replace(/^@/, "");
+    const cleanProfileLink = reelInstaProfileLink.trim();
+
+    if (!cleanUsername) {
+      showWarning("Please enter your Instagram username for the Reel Contest.", "Instagram Handle Required");
+      return;
+    }
+    if (!cleanProfileLink) {
+      showWarning("Please enter your Instagram profile link.", "Profile Link Required");
+      return;
+    }
+    if (!reelRulesAccepted) {
+      showWarning("Please read and accept the contest guidelines before confirming.", "Guidelines Acceptance Required");
+      return;
+    }
+
+    setRegisteringEventId(reelContestModal.id);
+    setActionMessage({ type: "", text: "" });
+
+    try {
+      const res = await api.studentRegisterEvent({
+        event_id: reelContestModal.id,
+        is_team: false,
+        instagram_username: cleanUsername,
+        instagram_profile_link: cleanProfileLink
+      });
+
+      confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+      const successMsg = res.message || `Successfully registered for ${reelContestModal.title_en}!`;
+      setActionMessage({ type: "success", text: successMsg });
+      showSuccess(successMsg, "Reel Contest Registration Confirmed");
+      setReelContestModal(null);
+      await loadData();
+    } catch (err) {
+      const errorMsg = err.message || "Registration failed.";
+      setActionMessage({ type: "error", text: errorMsg });
+      showError(errorMsg, "Registration Problem");
+    } finally {
+      setRegisteringEventId(null);
+    }
   };
 
   const handleConfirmSoloRegister = async () => {
@@ -736,6 +799,24 @@ export const StudentDashboard = ({ onNavigateHome }) => {
                           Team: <strong>{reg.team_name || "Team Registered"}</strong>
                         </p>
                       )}
+
+                      {reg.instagram_username && (
+                        <div className="flex items-center gap-2 text-xs font-semibold text-pink-700 bg-pink-50/80 border border-pink-200 px-2.5 py-1 rounded-xl w-fit">
+                          <Instagram className="w-3.5 h-3.5 text-pink-600 shrink-0" />
+                          <span>@{reg.instagram_username.replace(/^@/, "")}</span>
+                          {reg.instagram_profile_link && (
+                            <a
+                              href={reg.instagram_profile_link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[11px] underline text-pink-800 hover:text-pink-950 font-mono"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              Profile ↗
+                            </a>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <button
@@ -1055,6 +1136,167 @@ export const StudentDashboard = ({ onNavigateHome }) => {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reel Contest Registration Modal */}
+      {reelContestModal && (
+        <div 
+          role="dialog" 
+          aria-modal="true" 
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-sm animate-fade-in overflow-y-auto"
+          onClick={() => setReelContestModal(null)}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-lg w-[94%] sm:w-full p-4 sm:p-6 border border-pink-200 shadow-2xl my-auto max-h-[88dvh] sm:max-h-[90vh] flex flex-col text-left"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between border-b border-pink-100 pb-3 mb-3 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-yellow-500 via-pink-600 to-purple-600 text-white flex items-center justify-center font-bold shadow-xs">
+                  <Instagram className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-pink-100 text-pink-900">
+                    REEL CONTEST ENTRY
+                  </span>
+                  <h3 className="font-extrabold text-base text-stone-900">
+                    {reelContestModal.title_en}
+                  </h3>
+                  {reelContestModal.title_kn && (
+                    <p className="text-xs text-pink-900 font-bold font-kannada">{reelContestModal.title_kn}</p>
+                  )}
+                </div>
+              </div>
+              <button 
+                onClick={() => setReelContestModal(null)}
+                className="p-1 rounded-lg hover:bg-stone-100 text-stone-500 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmReelRegister} className="space-y-4 overflow-y-auto flex-1 pr-1 text-xs">
+              {/* Participant Regular Details Card */}
+              <div className="p-3.5 bg-stone-50 rounded-2xl border border-stone-200 space-y-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500 block border-b border-stone-200 pb-1">
+                  Participant Verified Details (Your Profile)
+                </span>
+                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                  <div>
+                    <span className="text-stone-400 block">Name:</span>
+                    <span className="font-bold text-stone-800">{user?.name}</span>
+                  </div>
+                  <div>
+                    <span className="text-stone-400 block">AUID / Faculty ID:</span>
+                    <span className="font-bold text-kar-red font-mono">{user?.auid}</span>
+                  </div>
+                  <div>
+                    <span className="text-stone-400 block">Institute:</span>
+                    <span className="font-semibold text-stone-800 truncate block">{user?.institute || "Acharya Institute"}</span>
+                  </div>
+                  <div>
+                    <span className="text-stone-400 block">Department & Year:</span>
+                    <span className="font-semibold text-stone-800">{user?.department || "General"} {user?.semester ? `(Yr ${user?.semester})` : ""}</span>
+                  </div>
+                  <div>
+                    <span className="text-stone-400 block">Contact Phone:</span>
+                    <span className="font-semibold text-stone-800 font-mono">{user?.phone}</span>
+                  </div>
+                  <div>
+                    <span className="text-stone-400 block">Email:</span>
+                    <span className="font-semibold text-stone-800 truncate block">{user?.email}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Instagram Input Section */}
+              <div className="p-3.5 bg-gradient-to-br from-pink-50/90 to-purple-50/70 rounded-2xl border-2 border-pink-300 space-y-3">
+                <div className="flex items-center gap-1.5 font-black text-pink-900 text-xs">
+                  <Instagram className="w-4 h-4 text-pink-600" />
+                  <span>Instagram Contest Details *</span>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-stone-800 mb-1">
+                    Instagram Username *
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 font-bold text-xs">@</span>
+                    <input
+                      type="text"
+                      required
+                      value={reelInstaUsername.replace(/^@/, "")}
+                      onChange={(e) => setReelInstaUsername(e.target.value.replace(/^@/, ""))}
+                      placeholder="your_handle"
+                      className="w-full pl-7 pr-3 py-2 rounded-xl border border-pink-300 bg-white text-xs font-semibold focus:ring-2 focus:ring-pink-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-stone-800 mb-1">
+                    Instagram Profile Link *
+                  </label>
+                  <input
+                    type="url"
+                    required
+                    value={reelInstaProfileLink}
+                    onChange={(e) => setReelInstaProfileLink(e.target.value)}
+                    placeholder="https://instagram.com/your_handle"
+                    className="w-full px-3 py-2 rounded-xl border border-pink-300 bg-white text-xs font-mono focus:ring-2 focus:ring-pink-500"
+                  />
+                </div>
+              </div>
+
+              {/* Rules & Guidelines */}
+              <div className="p-3 bg-stone-50 rounded-2xl border border-stone-200 space-y-1.5 text-[11px] text-stone-700 font-kannada">
+                <div className="flex items-center gap-1 font-bold text-stone-900 text-xs font-sans">
+                  <AlertCircle className="w-3.5 h-3.5 text-kar-red" />
+                  <span>ಸ್ಪರ್ಧಾ ನಿಯಮಾವಳಿಗಳು & ಮಾರ್ಗಸೂಚಿಗಳು:</span>
+                </div>
+                <p>• ರೀಲ್ ಅನ್ನು ಕನ್ನಡ ಸಂಸ್ಕೃತಿ, ಆಚಾರ್ಯ ಕ್ಯಾಂಪಸ್ ಹಾಗೂ ನುಡಿತರಂಗ ಹಬ್ಬದ ಥೀಮ್‌ನಲ್ಲಿ ರಚಿಸಿರಿ.</p>
+                <p>• #Nuditaranga2026 #AcharyaAKV ಹ್ಯಾಶ್‌ಟ್ಯಾಗ್ ಬಳಸಿ, ಅಧಿಕೃತ ಪೇಜ್ ಟ್ಯಾಗ್ ಮಾಡುವುದು ಕಡ್ಡಾಯ.</p>
+                <p>• ಮೌಲ್ಯಮಾಪನದ ಸಮಯದಲ್ಲಿ ನಿಮ್ಮ ಇನ್‌ಸ್ಟಾಗ್ರಾಮ್ ಖಾತೆಯನ್ನು ಸಾರ್ವಜನಿಕವಾಗಿ (Public) ಇರಿಸಿ.</p>
+              </div>
+
+              {/* Agreement Checkbox */}
+              <label className="flex items-start gap-2.5 p-3 rounded-xl bg-pink-50 border border-pink-300 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={reelRulesAccepted}
+                  onChange={(e) => setReelRulesAccepted(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 text-pink-600 rounded border-pink-400 focus:ring-pink-500 cursor-pointer"
+                />
+                <span className="text-xs font-bold text-stone-800 leading-snug font-kannada">
+                  ನಾನು ರೀಲ್ ಸ್ಪರ್ಧೆಯ ಎಲ್ಲಾ ನಿಯಮಾವಳಿಗಳನ್ನು ಓದಿದ್ದೇನೆ ಮತ್ತು ಪಾಲಿಸಲು ಒಪ್ಪಿಕೊಳ್ಳುತ್ತೇನೆ (I agree to abide by the Reel Contest rules).
+                </span>
+              </label>
+
+              {/* Actions */}
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setReelContestModal(null)}
+                  className="flex-1 py-2.5 rounded-xl border border-stone-300 text-xs font-bold text-stone-700 hover:bg-stone-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!reelRulesAccepted || registeringEventId === reelContestModal.id}
+                  className={`flex-1 py-2.5 rounded-xl text-white text-xs font-extrabold shadow-sm transition-all ${
+                    reelRulesAccepted && registeringEventId !== reelContestModal.id
+                      ? "bg-gradient-to-r from-pink-600 via-rose-600 to-amber-600 hover:shadow-md cursor-pointer"
+                      : "bg-stone-300 cursor-not-allowed opacity-60"
+                  }`}
+                >
+                  {registeringEventId === reelContestModal.id ? "Registering..." : "Confirm Reel Registration"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

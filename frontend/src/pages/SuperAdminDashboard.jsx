@@ -58,6 +58,7 @@ import {
   ArrowDown,
   Upload
 } from "lucide-react";
+import { Instagram } from "../components/InstagramIcon";
 import { festivalHighlights } from "../config/highlightsData";
 import { EventImageUpload } from "../components/EventImageUpload";
 import { MyProfileAttendance } from "../components/MyProfileAttendance";
@@ -724,6 +725,7 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
   const [markData, setMarkData] = useState({ volunteer_user_id: "", date: new Date().toISOString().split("T")[0], status: "PRESENT", notes: "" });
   const [eventModal, setEventModal] = useState(null); // null, "new", or "edit"
   const [editEvent, setEditEvent] = useState(null);
+  const [isSavingEvent, setIsSavingEvent] = useState(false);
   const [newEvent, setNewEvent] = useState({
     title_en: "",
     title_kn: "",
@@ -1066,6 +1068,8 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
       is_team: Boolean(registration?.is_team),
       team_name: registration?.team_name || "",
       team_members_json: JSON.stringify(Array.isArray(teamMembers) ? teamMembers : [], null, 2),
+      instagram_username: registration?.instagram_username || "",
+      instagram_profile_link: registration?.instagram_profile_link || "",
       status: registration?.status || "Registered"
     });
   };
@@ -1091,7 +1095,9 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
         gender: registrationEditor.gender,
         is_team: Boolean(registrationEditor.is_team),
         team_name: registrationEditor.team_name.trim() || null,
-        team_members: registrationEditor.is_team ? teamMembers : []
+        team_members: registrationEditor.is_team ? teamMembers : [],
+        instagram_username: registrationEditor.instagram_username?.trim() || null,
+        instagram_profile_link: registrationEditor.instagram_profile_link?.trim() || null
       };
       if (registrationEditor.id) {
         payload.status = registrationEditor.status;
@@ -1849,6 +1855,7 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
   const handleEditEventSubmit = async (e) => {
     e.preventDefault();
     if (!editEvent || !editEvent.id) return;
+    setIsSavingEvent(true);
     try {
       const isTeam = editEvent.format === "group" || editEvent.format === "both" || editEvent.format === "duet" || Boolean(editEvent.is_team);
       const updatePayload = {
@@ -1863,7 +1870,7 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
         event_date: editEvent.event_date,
         event_time: editEvent.event_time,
         reporting_time: editEvent.reporting_time,
-        max_slots: Number(editEvent.max_slots),
+        max_slots: Number(editEvent.max_slots) || 50,
         format: editEvent.format,
         is_team: isTeam,
         min_team_size: editEvent.format === "solo" ? 1 : (editEvent.format === "duet" ? 2 : (parseInt(editEvent.min_team_size) || (editEvent.format === "both" ? 1 : 2))),
@@ -1885,6 +1892,8 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
     } catch (err) {
       notify("error", err.message || "Failed to update event");
       loadEvents(true);
+    } finally {
+      setIsSavingEvent(false);
     }
   };
 
@@ -3522,6 +3531,25 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                                 <span className="text-[11px] text-stone-500 font-mono">
                                   {reg.phone} {reg.email ? `• ${reg.email}` : ""}
                                 </span>
+                                {reg.instagram_username && (
+                                  <div className="mt-1 flex items-center gap-1.5 text-[11px]">
+                                    <span className="font-bold text-pink-700 bg-pink-50 border border-pink-200 px-1.5 py-0.5 rounded-md inline-flex items-center gap-1">
+                                      <Instagram className="w-3 h-3 text-pink-600" />
+                                      {reg.instagram_username.startsWith("@") ? reg.instagram_username : `@${reg.instagram_username}`}
+                                    </span>
+                                    {reg.instagram_profile_link && (
+                                      <a
+                                        href={reg.instagram_profile_link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-pink-600 hover:text-pink-900 underline text-[10px]"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        Profile ↗
+                                      </a>
+                                    )}
+                                  </div>
+                                )}
                               </td>
                               <td className="py-3 px-3 font-mono font-bold text-stone-800">
                                 {reg.auid || reg.usn}
@@ -3637,6 +3665,12 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                         <select value={registrationEditor.gender} onChange={(e) => setRegistrationEditor({ ...registrationEditor, gender: e.target.value })} className="w-full mt-1 p-2.5 border border-stone-300 rounded-xl bg-white">
                           {["Other", "Male", "Female"].map((gender) => <option key={gender}>{gender}</option>)}
                         </select>
+                      </label>
+                      <label className="text-xs font-bold text-stone-700">Instagram Username
+                        <input value={registrationEditor.instagram_username || ""} onChange={(e) => setRegistrationEditor({ ...registrationEditor, instagram_username: e.target.value })} placeholder="e.g. your_handle" className="w-full mt-1 p-2.5 border border-stone-300 rounded-xl" />
+                      </label>
+                      <label className="text-xs font-bold text-stone-700">Instagram Profile Link
+                        <input value={registrationEditor.instagram_profile_link || ""} onChange={(e) => setRegistrationEditor({ ...registrationEditor, instagram_profile_link: e.target.value })} placeholder="https://instagram.com/your_handle" className="w-full mt-1 p-2.5 border border-stone-300 rounded-xl" />
                       </label>
                       {registrationEditor.id && <label className="text-xs font-bold text-stone-700">Registration status
                         <select value={registrationEditor.status} onChange={(e) => setRegistrationEditor({ ...registrationEditor, status: e.target.value })} className="w-full mt-1 p-2.5 border border-stone-300 rounded-xl bg-white">
@@ -5857,11 +5891,12 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                           setEditEvent({ ...ev });
                           setEventModal("edit");
                         }}
-                        className="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100 flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
-                        title="Edit Event Details"
+                        className="px-3.5 py-1.5 rounded-xl text-xs font-black bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white flex items-center gap-1.5 shadow-sm transition-all cursor-pointer ring-1 ring-amber-600/30"
+                        title="Edit Event Configuration & Details"
+                        aria-label={`Edit ${ev.title_en || ev.id}`}
                       >
-                        <Pencil className="w-3.5 h-3.5 text-amber-700" />
-                        <span>Edit</span>
+                        <Pencil className="w-3.5 h-3.5" />
+                        <span>Edit Event</span>
                       </button>
                       <button
                         type="button"
@@ -7119,10 +7154,20 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-kar-red to-red-600 hover:from-red-700 hover:to-red-800 text-white font-bold shadow-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                  disabled={isSavingEvent}
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-kar-red to-red-600 hover:from-red-700 hover:to-red-800 text-white font-bold shadow-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
-                  <Check className="w-4 h-4" />
-                  <span>Save Changes</span>
+                  {isSavingEvent ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Saving Changes...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>Save Changes</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>

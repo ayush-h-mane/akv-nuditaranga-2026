@@ -95,7 +95,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, expire_on_commit=
 Base = declarative_base()
 
 _MIGRATIONS_DONE = False
-CURRENT_SCHEMA_VERSION = 3
+CURRENT_SCHEMA_VERSION = 4
 
 def ensure_schema_migrations(target_engine=None):
     global _MIGRATIONS_DONE
@@ -133,8 +133,13 @@ def ensure_schema_migrations(target_engine=None):
             with eng.connect() as conn:
                 # 1. registrations table
                 reg_cols = [c[1] for c in conn.exec_driver_sql("PRAGMA table_info(registrations)").fetchall()]
-                if reg_cols and "user_id" not in reg_cols:
-                    conn.exec_driver_sql("ALTER TABLE registrations ADD COLUMN user_id INTEGER REFERENCES users(id)")
+                if reg_cols:
+                    if "user_id" not in reg_cols:
+                        conn.exec_driver_sql("ALTER TABLE registrations ADD COLUMN user_id INTEGER REFERENCES users(id)")
+                    if "instagram_username" not in reg_cols:
+                        conn.exec_driver_sql("ALTER TABLE registrations ADD COLUMN instagram_username VARCHAR")
+                    if "instagram_profile_link" not in reg_cols:
+                        conn.exec_driver_sql("ALTER TABLE registrations ADD COLUMN instagram_profile_link VARCHAR")
 
                 # 2. users table
                 user_cols = [c[1] for c in conn.exec_driver_sql("PRAGMA table_info(users)").fetchall()]
@@ -291,6 +296,8 @@ def ensure_schema_migrations(target_engine=None):
                             print(f"[PG MIGRATE COL NOTICE] {table}.{col}: {col_err}")
 
                 add_pg_col("registrations", "user_id", "INTEGER REFERENCES users(id)")
+                add_pg_col("registrations", "instagram_username", "VARCHAR")
+                add_pg_col("registrations", "instagram_profile_link", "VARCHAR")
                 add_pg_col("users", "photo_url", "TEXT")
                 add_pg_col("users", "volunteer_domain", "VARCHAR")
                 add_pg_col("users", "admin_type", "VARCHAR")
@@ -385,6 +392,21 @@ def ensure_schema_migrations(target_engine=None):
                 conn.commit()
         except Exception as cleanup_err:
             print(f"[CLEANUP NOTICE] {cleanup_err}")
+
+        # Ensure all INITIAL_EVENTS (including Reel Contest) are present in the database
+        try:
+            from .seed import INITIAL_EVENTS
+            with eng.connect() as conn:
+                existing_eids = {row[0].upper() for row in conn.exec_driver_sql("SELECT id FROM events").fetchall() if row[0]}
+                for ev in INITIAL_EVENTS:
+                    if ev["id"].upper() not in existing_eids:
+                        cols = ", ".join(ev.keys())
+                        placeholders = ", ".join([f":{k}" for k in ev.keys()])
+                        conn.exec_driver_sql(f"INSERT INTO events ({cols}) VALUES ({placeholders})", ev)
+                        existing_eids.add(ev["id"].upper())
+                conn.commit()
+        except Exception as event_seed_err:
+            logger.debug(f"[EVENT SEED MIGRATION NOTICE] {event_seed_err}")
 
         # Record migration version completion so future boots are instantaneous
         try:
