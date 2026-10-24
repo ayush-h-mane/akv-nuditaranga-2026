@@ -204,7 +204,7 @@ export function normalizeAttendanceDates(data) {
 }
 
 // Local fallback storage keys
-const STORAGE_EVENTS_KEY = "akv_events_cache_v3";
+const STORAGE_EVENTS_KEY = "akv_events_cache_v4";
 const STORAGE_REGS_KEY = "akv_registrations_cache_v2";
 const STORAGE_USERS_KEY = "akv_users_cache_v2";
 const STORAGE_ADMINS_KEY = "akv_admins_cache_v2";
@@ -290,12 +290,14 @@ const STORAGE_DELETED_EVENTS_KEY = "akv_deleted_event_ids_v2";
 function getDeletedEventIds() {
   const ids = readLocalJson(STORAGE_DELETED_EVENTS_KEY, []);
   const set = new Set(Array.isArray(ids) ? ids.map(id => String(id).toUpperCase()) : []);
-  // Initial system-configured events (e.g. Reel Contest AKV-NT-11) can NEVER be marked as deleted
+  // Initial system-configured events (e.g. Reel Contest AKV-NT-REEL) can NEVER be marked as deleted
   for (const init of initialEvents) {
     if (init && init.id) {
       set.delete(String(init.id).toUpperCase());
     }
   }
+  set.delete("AKV-NT-REEL");
+  set.delete("AKV-NT-11");
   // Clean up legacy v1 key if present so it cannot pollute client state
   try {
     if (localStorage.getItem("akv_deleted_event_ids_v1")) {
