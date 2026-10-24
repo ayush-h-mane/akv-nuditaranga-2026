@@ -1,9 +1,14 @@
 {
-  "production_version": "2.3.39",
-  "staged_version": "2.3.40",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.3.40",
+  "staged_version": "2.3.41",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.40",
+      "released_at": "2026-10-24T11:29:25+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.40: Reel Contest Website Discoverability & Universal Catalog Synchronization: Synchronized all 11 official festival events (AKV-NT-01 through AKV-NT-11) into frontend eventsData.js initialEvents and backend seed.py INITIAL_EVENTS; added self-healing auto-insertion in backend /events API ensuring Reel Contest is dynamically seeded into production PostgreSQL databases without requiring cold-start migrations; added prominent Reel Contest 2026 Spotlight Banner in InstagramSection on the homepage with 1-click registration routing; updated Day 6 festival schedule in siteConfig.js to showcase Reel Contest; preserved seamless cache merging in api.js."
+    },
     {
       "version": "2.3.39",
       "released_at": "2026-10-24T11:09:00+0530",

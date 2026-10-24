@@ -27,6 +27,19 @@ def get_events(
         if cached is not None:
             return cached
 
+    # Self-healing: ensure all initial events (including AKV-NT-11 Reel Contest) exist in database
+    try:
+        from ..seed import INITIAL_EVENTS
+        existing_eids = {e[0].upper() for e in db.query(Event.id).all() if e[0]}
+        missing_events = [e for e in INITIAL_EVENTS if e.get("id", "").upper() not in existing_eids]
+        if missing_events:
+            for init_ev in missing_events:
+                db.add(Event(**init_ev))
+            db.commit()
+            fast_cache.delete_prefix("events_")
+    except Exception:
+        db.rollback()
+
     query = db.query(Event)
     if active_only:
         query = query.filter(Event.is_active == True)
