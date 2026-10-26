@@ -39,11 +39,27 @@ export const EventImageUpload = ({ imageUrl, onImageChange, label = "Event / Act
 
     try {
       const uploadedUrl = await api.uploadImage(file);
-
-      // Store the URL, not the Base64 image data.
+      // Store the URL
       onImageChange(uploadedUrl);
     } catch (err) {
-      setUploadError(err.message || "Image upload failed.");
+      console.warn("Cloud image upload failed, falling back to local data URL:", err);
+      try {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          if (ev.target?.result) {
+            onImageChange(ev.target.result);
+            setUploadError("");
+          } else {
+            setUploadError(err.message || "Image upload failed.");
+          }
+        };
+        reader.onerror = () => {
+          setUploadError(err.message || "Image upload failed.");
+        };
+        reader.readAsDataURL(file);
+      } catch (_) {
+        setUploadError(err.message || "Image upload failed.");
+      }
     } finally {
       setUploading(false);
       input.value = "";

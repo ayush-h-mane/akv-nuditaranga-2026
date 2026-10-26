@@ -26,12 +26,10 @@ import {
   X,
   Plus,
   RefreshCw,
-  CreditCard,
   MessageCircle,
   ExternalLink
 } from "lucide-react";
 import { Instagram } from "../components/InstagramIcon";
-import { VolunteerIDCardModal } from "../components/VolunteerIDCardModal";
 import { WhatsAppGroupModal } from "../components/WhatsAppGroupModal";
 import { getEventWhatsAppGroup } from "../config/whatsappGroups";
 import { isReelContestEvent } from "../config/eventsData";
@@ -48,7 +46,6 @@ export const StudentDashboard = ({
   const [eventsList, setEventsList] = useState(() => api.getCachedEvents("all", true));
   const [loading, setLoading] = useState(() => !api.hasCachedStudentDashboard(user?.auid));
   const [refreshing, setRefreshing] = useState(false);
-  const [showVolunteerIdModal, setShowVolunteerIdModal] = useState(false);
   const [registeringEventId, setRegisteringEventId] = useState(null);
   const [actionMessage, setActionMessage] = useState({ type: "", text: "" });
   
@@ -484,18 +481,6 @@ export const StudentDashboard = ({
                       Today's Attendance
                     </span>
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowVolunteerIdModal(true)}
-                    className="bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-2xl px-4 py-3 border border-white/30 text-center transition-all cursor-pointer flex flex-col items-center justify-center hover:scale-[1.02] active:scale-[0.98] shadow-sm"
-                    title="View Official Volunteer ID Card"
-                  >
-                    <CreditCard className="w-5 h-5 text-amber-200 mb-0.5" />
-                    <span className="text-[10px] uppercase font-black text-white tracking-wider">
-                      View ID Card
-                    </span>
-                  </button>
                 </>
               )}
             </div>
@@ -838,11 +823,11 @@ export const StudentDashboard = ({
                         </span>
                         <span className="flex items-center gap-1 text-stone-500">
                           <Calendar className="w-3.5 h-3.5" />
-                          {reg.event_date || "March 2026"}
+                          {reg.event_date || "02-11-2026"}
                         </span>
                         <span className="flex items-center gap-1 text-stone-500">
                           <Clock className="w-3.5 h-3.5" />
-                          {reg.event_time || "Morning Session"}
+                          {reg.event_time || "10:00 AM - 01:00 PM"}
                         </span>
                         <span className="flex items-center gap-1 text-stone-500">
                           <MapPin className="w-3.5 h-3.5" />
@@ -1539,13 +1524,6 @@ export const StudentDashboard = ({
           </div>
         </div>
       )}
-
-      {/* Official Volunteer ID Card Modal */}
-      <VolunteerIDCardModal
-        volunteer={profile}
-        isOpen={showVolunteerIdModal}
-        onClose={() => setShowVolunteerIdModal(false)}
-      />
 
       {/* Post-Registration WhatsApp Group Modal */}
       {whatsAppModalData && (

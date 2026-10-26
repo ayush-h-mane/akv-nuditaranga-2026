@@ -6,6 +6,7 @@ import { siteConfig } from "../config/siteConfig";
 import { formatKannadaDate, formatKannadaTime, formatKannadaVenue, formatKannadaStatus, toKannadaDigits } from "../utils/kannadaUtils";
 import { Printer, Download, CheckCircle, Calendar, MapPin, Clock, User, ShieldCheck, ArrowLeft, MessageCircle } from "lucide-react";
 import { getEventWhatsAppGroup } from "../config/whatsappGroups";
+import { initialEvents } from "../config/eventsData";
 
 export const DigitalPass = ({ registration, onBack }) => {
   const { lang, t } = useLanguage();
@@ -23,23 +24,31 @@ export const DigitalPass = ({ registration, onBack }) => {
 
   if (!registration) return null;
 
-  const eventTitle = registration.event 
-    ? (lang === "kn" ? registration.event.title_kn : registration.event.title_en)
-    : registration.event_id;
+  const cachedEvents = (typeof api.getCachedEvents === "function" ? api.getCachedEvents() : []) || [];
+  const eventObj = registration.event 
+    || cachedEvents.find(e => e.id === registration.event_id)
+    || initialEvents.find(e => e.id === registration.event_id)
+    || null;
 
-  const venue = registration.event 
-    ? (lang === "kn" ? (registration.event.venue_kn || formatKannadaVenue(registration.event.venue)) : registration.event.venue)
-    : (lang === "kn" ? "ಆಚಾರ್ಯ ಆವರಣ" : "Acharya Campus");
+  const eventTitle = (lang === "kn"
+    ? (registration.event_title_kn || eventObj?.title_kn || eventObj?.title_en || registration.event_title_en)
+    : (registration.event_title_en || eventObj?.title_en || registration.event_title_kn || eventObj?.title_kn))
+    || registration.event_id;
 
-  const eventDate = registration.event 
-    ? (lang === "kn" ? formatKannadaDate(registration.event.event_date) : registration.event.event_date) 
-    : (lang === "kn" ? "ಮಾರ್ಚ್ ೨೦೨೬" : "March 2026");
-  const eventTime = registration.event 
-    ? (lang === "kn" ? formatKannadaTime(registration.event.event_time) : registration.event.event_time) 
-    : (lang === "kn" ? "ಬೆಳಗಿನ ಅವಧಿ" : "Morning Session");
-  const reportingTime = registration.event 
-    ? (lang === "kn" ? formatKannadaTime(registration.event.reporting_time) : registration.event.reporting_time) 
-    : (lang === "kn" ? "೩೦ ನಿಮಿಷ ಮುಂಚಿತವಾಗಿ" : "30 mins prior");
+  const venue = (lang === "kn" 
+    ? (registration.venue_kn || (registration.venue ? formatKannadaVenue(registration.venue) : null)) 
+    : registration.venue)
+    || (eventObj ? (lang === "kn" ? (eventObj.venue_kn || formatKannadaVenue(eventObj.venue)) : eventObj.venue) : null)
+    || (lang === "kn" ? "ಆಚಾರ್ಯ ಆವರಣ" : "Acharya Campus");
+
+  const rawDate = registration.event_date || eventObj?.event_date || "02-11-2026";
+  const eventDate = lang === "kn" ? formatKannadaDate(rawDate) : rawDate;
+
+  const rawTime = registration.event_time || eventObj?.event_time || "10:00 AM - 01:00 PM";
+  const eventTime = lang === "kn" ? formatKannadaTime(rawTime) : rawTime;
+
+  const rawReporting = registration.reporting_time || eventObj?.reporting_time || "09:30 AM";
+  const reportingTime = lang === "kn" ? formatKannadaTime(rawReporting) : rawReporting;
 
   const qrPayload = JSON.stringify({
     reg_id: registration.registration_id,

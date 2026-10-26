@@ -11,11 +11,9 @@ import {
   ShieldAlert,
   Save,
   Info,
-  QrCode,
-  CreditCard
+  QrCode
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { VolunteerIDCardModal } from "./VolunteerIDCardModal";
 import { InstituteDepartmentSelect } from "./InstituteDepartmentSelect";
 import { CandidatePhotoUpload } from "./CandidatePhotoUpload";
 import { AKV_DOMAINS } from "../config/institutesData";
@@ -42,7 +40,6 @@ export const MyProfileAttendance = ({ profile, attendanceData, loading, error, o
 
   // Modal State
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showVolunteerIdCard, setShowVolunteerIdCard] = useState(false);
   const [confirmedOneTime, setConfirmedOneTime] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [editError, setEditError] = useState("");
@@ -310,16 +307,6 @@ export const MyProfileAttendance = ({ profile, attendanceData, loading, error, o
                     </span>
                   </>
                 )}
-              </div>
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowVolunteerIdCard(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-red-600 via-amber-600 to-red-700 hover:from-red-500 hover:to-amber-500 text-white font-black text-xs shadow-md transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
-                >
-                  <CreditCard className="w-4 h-4 text-amber-200" />
-                  <span>View Official ID Card (Front & Back)</span>
-                </button>
               </div>
             </div>
 
@@ -762,12 +749,6 @@ export const MyProfileAttendance = ({ profile, attendanceData, loading, error, o
         </div>
       )}
 
-      {/* Official Volunteer ID Card Modal (Front & Back) */}
-      <VolunteerIDCardModal
-        volunteer={activeProfile}
-        isOpen={showVolunteerIdCard}
-        onClose={() => setShowVolunteerIdCard(false)}
-      />
     </div>
   );
 };

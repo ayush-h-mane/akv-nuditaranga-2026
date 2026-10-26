@@ -509,7 +509,8 @@ def generate_candidate_id_card_pdf(data: Dict[str, Any]) -> bytes:
     c.setFillColor(colors.HexColor(CARD_GOLD_LIGHT))
     c.roundRect(details_x, details_top_y - 42, content_right - details_x, 20, 5, fill=1, stroke=0)
     c.setFillColor(colors.HexColor(CARD_RED_DARK))
-    _draw_wrapped(c, volunteer_domain, details_x + 7, details_top_y - 35, content_right - details_x - 14, ENGLISH_BOLD_FONT, 7.5, 8, colors.HexColor(CARD_RED_DARK))
+    badge_label = str(data.get("event_title") or volunteer_domain).strip()
+    _draw_wrapped(c, badge_label, details_x + 7, details_top_y - 35, content_right - details_x - 14, ENGLISH_BOLD_FONT, 7.5, 8, colors.HexColor(CARD_RED_DARK))
 
     c.setFillColor(colors.HexColor("#1C1917"))
     c.setFont(ENGLISH_BOLD_FONT, 14)
@@ -526,9 +527,14 @@ def generate_candidate_id_card_pdf(data: Dict[str, Any]) -> bytes:
     c.setFillColor(colors.HexColor(CARD_MUTED))
     detail_y = _draw_wrapped(c, f"Institute: {institute}", content_left, detail_y, content_right - content_left, ENGLISH_BOLD_FONT, 8.5, 11, colors.HexColor(CARD_MUTED))
     detail_y = _draw_wrapped(c, f"Department: {department}", content_left, detail_y - 2, content_right - content_left, ENGLISH_BOLD_FONT, 8.5, 11, colors.HexColor(CARD_MUTED))
-    year_text = f"Year {semester}" if semester else ""
-    if year_text:
-        _draw_wrapped(c, year_text, content_left, detail_y - 2, content_right - content_left, ENGLISH_FONT, 8, 10, colors.HexColor(CARD_MUTED))
+    
+    event_info = f"Date: {data.get('event_date')} • {data.get('venue')}" if data.get("event_date") else ""
+    if event_info:
+        detail_y = _draw_wrapped(c, event_info, content_left, detail_y - 2, content_right - content_left, ENGLISH_BOLD_FONT, 7.5, 10, colors.HexColor("#B91C1C"))
+    else:
+        year_text = f"Year {semester}" if semester else ""
+        if year_text:
+            _draw_wrapped(c, year_text, content_left, detail_y - 2, content_right - content_left, ENGLISH_FONT, 8, 10, colors.HexColor(CARD_MUTED))
 
     c.setStrokeColor(colors.HexColor("#E7E5E4"))
     c.setLineWidth(1)
@@ -542,6 +548,7 @@ def generate_candidate_id_card_pdf(data: Dict[str, Any]) -> bytes:
         "akv_domain": volunteer_domain,
         "institute": institute,
         "dept": department,
+        "event": data.get("event_title") or data.get("event_id"),
         "verified_by": "Acharya Kannada Vedike Nuditaranga 2026",
     }
 

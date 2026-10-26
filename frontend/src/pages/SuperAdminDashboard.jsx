@@ -5362,7 +5362,7 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                             <td className="py-3 px-4 text-right">
                               <div className="flex items-center justify-end gap-1.5">
                                 {/* Direct Present / Absent Action Buttons */}
-                                {(!wcAttendanceSession?.is_submitted || wcAttendanceSession?.is_unlocked) ? (
+                                {(!wcAttendanceSession?.is_submitted || wcAttendanceSession?.is_unlocked || user?.role === "SUPERADMIN" || user?.role === "DEVELOPER" || isDeveloperMode) ? (
                                   <>
                                     <button
                                       type="button"
