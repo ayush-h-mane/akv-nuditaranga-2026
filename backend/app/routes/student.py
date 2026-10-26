@@ -75,22 +75,40 @@ def get_student_dashboard(
     for reg in registrations:
         registered_event_ids.add(reg.event_id)
         ev = reg.event
+        event_dict = {
+            "id": ev.id if ev else reg.event_id,
+            "title_en": ev.title_en if ev else reg.event_id,
+            "title_kn": ev.title_kn if ev else (ev.title_en if ev else reg.event_id),
+            "category": ev.category if ev else "",
+            "category_kn": ev.category_kn if ev else "",
+            "venue": ev.venue if ev else "Acharya Campus",
+            "venue_kn": ev.venue_kn if ev else "ಆಚಾರ್ಯ ಆವರಣ",
+            "event_date": ev.event_date if ev else "02-11-2026",
+            "event_time": ev.event_time if ev else "10:00 AM - 01:00 PM",
+            "reporting_time": ev.reporting_time if ev else "09:30 AM",
+            "rules_en": ev.rules_en if ev else "",
+            "rules_kn": ev.rules_kn if ev else "",
+        } if ev else None
+
         registered_events.append({
             "registration_id": reg.registration_id,
             "event_id": reg.event_id,
             "event_title_en": ev.title_en if ev else reg.event_id,
             "event_title_kn": ev.title_kn if ev else "",
             "category": ev.category if ev else "",
-            "venue": ev.venue if ev else "",
-            "event_date": ev.event_date if ev else "",
-            "event_time": ev.event_time if ev else "",
+            "venue": ev.venue if ev else "Acharya Campus",
+            "venue_kn": ev.venue_kn if ev else "ಆಚಾರ್ಯ ಆವರಣ",
+            "event_date": ev.event_date if ev else "02-11-2026",
+            "event_time": ev.event_time if ev else "10:00 AM - 01:00 PM",
+            "reporting_time": ev.reporting_time if ev else "09:30 AM",
             "is_team": reg.is_team,
             "team_name": reg.team_name,
             "status": reg.status,
             "instagram_username": reg.instagram_username,
             "instagram_profile_link": reg.instagram_profile_link,
             "registered_at": reg.created_at.isoformat() if reg.created_at else None,
-            "checkin_time": reg.checkin_time.isoformat() if reg.checkin_time else None
+            "checkin_time": reg.checkin_time.isoformat() if reg.checkin_time else None,
+            "event": event_dict
         })
 
     # Available events for registration
@@ -452,6 +470,7 @@ def download_event_pass(
     if not reg:
         raise HTTPException(status_code=404, detail="Event pass not found for this account.")
 
+    ev = reg.event
     pdf_payload = {
         "name": reg.full_name,
         "auid": reg.auid or reg.usn,
@@ -465,6 +484,11 @@ def download_event_pass(
         "phone": reg.phone or current_user.phone,
         "photo_url": reg.photo_url or current_user.photo_url,
         "volunteer_domain": current_user.volunteer_domain,
+        "event_id": reg.event_id,
+        "event_title": ev.title_en if ev else reg.event_id,
+        "event_date": ev.event_date if ev else "02-11-2026",
+        "event_time": ev.event_time if ev else "10:00 AM",
+        "venue": ev.venue if ev else "Acharya Campus",
     }
     pdf_bytes = generate_candidate_id_card_pdf(pdf_payload)
     filename = f"AKV_Pass_{reg.registration_id}.pdf"

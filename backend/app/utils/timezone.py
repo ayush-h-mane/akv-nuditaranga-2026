@@ -77,3 +77,56 @@ def dmy_to_iso_date(dmy_str: str) -> str:
     except Exception:
         pass
     return dmy_str
+
+def parse_ist_time_string_to_utc(time_str: Optional[str], date_str: Optional[str] = None) -> Optional[datetime.datetime]:
+    """
+    Parses a user-supplied time string (e.g. '09:35:22 AM', '9:35 AM', '16:42:17', '16:42', or ISO datetime string)
+    and combines it with `date_str` (YYYY-MM-DD in IST), converting it to a naive UTC datetime suitable for database storage.
+    """
+    if not time_str or not str(time_str).strip() or str(time_str).strip() in ("--", "None", "null"):
+        return None
+
+    clean = str(time_str).strip()
+
+    # Check if it's already an ISO datetime string
+    if "T" in clean or (len(clean) >= 19 and clean[4] == "-" and clean[7] == "-"):
+        try:
+            dt = datetime.datetime.fromisoformat(clean.replace("Z", "+00:00"))
+            if dt.tzinfo is not None:
+                return dt.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+            return dt
+        except Exception:
+            pass
+
+    # Extract or fallback to date
+    ref_date = date_str if date_str else get_current_ist_date_str()
+    try:
+        d_parts = [int(p) for p in ref_date.split("-")]
+        year, month, day = d_parts[0], d_parts[1], d_parts[2]
+    except Exception:
+        today_ist = get_current_ist_datetime()
+        year, month, day = today_ist.year, today_ist.month, today_ist.day
+
+    # Try common 12-hour and 24-hour time formats
+    formats = [
+        "%I:%M:%S %p",
+        "%I:%M %p",
+        "%H:%M:%S",
+        "%H:%M"
+    ]
+    parsed_time = None
+    for fmt in formats:
+        try:
+            parsed_time = datetime.datetime.strptime(clean, fmt).time()
+            break
+        except ValueError:
+            continue
+
+    if parsed_time is None:
+        return get_current_utc_datetime()
+
+    # Combine with date in IST timezone, then convert to naive UTC
+    ist_dt = datetime.datetime(year, month, day, parsed_time.hour, parsed_time.minute, parsed_time.second, tzinfo=IST)
+    utc_dt = ist_dt.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+    return utc_dt
+
