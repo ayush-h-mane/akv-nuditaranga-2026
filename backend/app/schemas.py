@@ -31,10 +31,10 @@ class EventBase(BaseModel):
     description_kn: Optional[str] = ""
     is_team: bool = False
     format: Optional[str] = "solo"  # solo, team, both
-    min_team_size: int = 1
-    max_team_size: int = 1
-    max_slots: int = Field(default=50, ge=0, le=10000)
-    registered_count: int = 0
+    min_team_size: Optional[int] = 1
+    max_team_size: Optional[int] = 1
+    max_slots: Optional[int] = Field(default=50, ge=0, le=10000)
+    registered_count: Optional[int] = 0
     venue: str
     venue_kn: Optional[str] = ""
     event_date: str

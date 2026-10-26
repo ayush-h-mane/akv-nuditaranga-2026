@@ -58,23 +58,62 @@ def get_events(
                     ev_record.is_active = True
                     needs_commit = True
 
-        # Deactivate removed competitions without deleting any historical registration data
-        removed_eids = {"AKV-NT-SKETCH", "AKV-NT-PAINT", "AKV-NT-RANGOLI", "AKV-NT-MEHENDI"}
-        removed_titles = {
-            "sketching competition", "painting competition", "rangoli competition", "mehendi competition",
-            "sketching", "painting", "rangoli", "mehendi"
+        # Deduplication & Registration Migration for Repeated Competitions
+        migration_map = {
+            "AKV-NT-MEHENDI": "AKV-NT-10",
+            "AKV-NT-PAINT": "AKV-NT-11",
+            "AKV-NT-RANGOLI": "AKV-NT-12",
+            "AKV-NT-SKETCH": "AKV-NT-17",
         }
-        events_to_deactivate = db.query(Event).filter(
+        from sqlalchemy import text
+        for backend_eid, portal_eid in migration_map.items():
+            dup_ev = db.query(Event).filter(func.upper(Event.id) == backend_eid).first()
+            if dup_ev:
+                # Migrate any registrations to the portal event
+                db.execute(text(
+                    f"UPDATE registrations SET event_id = '{portal_eid}' WHERE UPPER(event_id) = '{backend_eid}'"
+                ))
+                # Delete duplicate backend event so it never repeats
+                db.delete(dup_ev)
+                needs_commit = True
+
+        # Open the 6 requested competitions for registrations
+        OPEN_EVENT_IDS = ["AKV-NT-REEL", "AKV-NT-09", "AKV-NT-10", "AKV-NT-11", "AKV-NT-12", "AKV-NT-17"]
+        title_mapping = {
+            "AKV-NT-10": ("Mehendi Competition", "ಮೆಹಂದಿ ಸ್ಪರ್ಧೆ (Mehendi)"),
+            "AKV-NT-11": ("Painting Competition", "ಚಿತ್ರಕಲೆ ಸ್ಪರ್ಧೆ (Painting)"),
+            "AKV-NT-12": ("Rangoli Competition", "ರಂಗೋಲಿ ಸ್ಪರ್ಧೆ (Rangoli)"),
+            "AKV-NT-17": ("Sketching Competition", "ಸ್ಕೆಚಿಂಗ್ ಸ್ಪರ್ಧೆ (Sketching)"),
+        }
+        for eid in OPEN_EVENT_IDS:
+            ev = db.query(Event).filter(func.upper(Event.id) == eid).first()
+            if ev:
+                if not ev.is_active:
+                    ev.is_active = True
+                    needs_commit = True
+                if eid in title_mapping:
+                    t_en, t_kn = title_mapping[eid]
+                    if ev.title_en != t_en:
+                        ev.title_en = t_en
+                        ev.title_kn = t_kn
+                        needs_commit = True
+                # Refresh registered_count
+                reg_cnt = db.execute(text(f"SELECT COUNT(*) FROM registrations WHERE UPPER(event_id) = '{eid}'")).scalar() or 0
+                if ev.registered_count != reg_cnt:
+                    ev.registered_count = reg_cnt
+                    needs_commit = True
+
+        # Ensure all other events are closed (Break Dance, Flag hoist, Open air, etc.)
+        other_active_events = db.query(Event).filter(
             Event.is_active == True,
-            (func.upper(Event.id).in_(removed_eids) | func.lower(Event.title_en).in_(removed_titles))
+            ~func.upper(Event.id).in_(OPEN_EVENT_IDS)
         ).all()
-        for ev_to_deact in events_to_deactivate:
-            ev_to_deact.is_active = False
+        for other_ev in other_active_events:
+            other_ev.is_active = False
             needs_commit = True
 
         # Safety migration: If any reel registrations were submitted to AKV-NT-11, migrate to AKV-NT-REEL
         try:
-            from sqlalchemy import text
             db.execute(text(
                 "UPDATE registrations SET event_id = 'AKV-NT-REEL' "
                 "WHERE LOWER(event_id) = 'akv-nt-11' AND instagram_username IS NOT NULL AND instagram_username != ''"
@@ -103,11 +142,21 @@ def get_events(
 def get_event(event_id: str, response: Response, db: Session = Depends(get_db)):
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Pragma"] = "no-cache"
-    event = db.query(Event).filter(func.lower(Event.id) == event_id.strip().lower()).first()
+    
+    # Map legacy backend IDs to canonical portal IDs
+    legacy_map = {
+        "akv-nt-mehendi": "AKV-NT-10",
+        "akv-nt-paint": "AKV-NT-11",
+        "akv-nt-rangoli": "AKV-NT-12",
+        "akv-nt-sketch": "AKV-NT-17"
+    }
+    resolved_id = legacy_map.get(event_id.strip().lower(), event_id.strip())
+    
+    event = db.query(Event).filter(func.lower(Event.id) == resolved_id.lower()).first()
     if not event:
         from ..seed import INITIAL_EVENTS
-        init_ev = next((e for e in INITIAL_EVENTS if str(e.get("id", "")).strip().upper() == event_id.strip().upper()), None)
-        if not init_ev and "reel" in event_id.lower():
+        init_ev = next((e for e in INITIAL_EVENTS if str(e.get("id", "")).strip().upper() == resolved_id.upper()), None)
+        if not init_ev and "reel" in resolved_id.lower():
             init_ev = next((e for e in INITIAL_EVENTS if "reel" in str(e.get("id", "")).lower()), None)
         if init_ev:
             try:

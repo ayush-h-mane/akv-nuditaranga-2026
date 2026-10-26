@@ -204,7 +204,7 @@ export function normalizeAttendanceDates(data) {
 }
 
 // Local fallback storage keys
-const STORAGE_EVENTS_KEY = "akv_events_cache_v4";
+const STORAGE_EVENTS_KEY = "akv_events_cache_v5";
 const STORAGE_REGS_KEY = "akv_registrations_cache_v2";
 const STORAGE_USERS_KEY = "akv_users_cache_v2";
 const STORAGE_ADMINS_KEY = "akv_admins_cache_v2";
@@ -333,11 +333,13 @@ function getLocalEvents() {
       return memList;
     }
   }
+  const duplicateBackendIds = new Set(["AKV-NT-MEHENDI", "AKV-NT-PAINT", "AKV-NT-RANGOLI", "AKV-NT-SKETCH"]);
   const deletedIds = getDeletedEventIds();
   const data = readLocalJson(STORAGE_EVENTS_KEY, null);
   if (data && Array.isArray(data) && data.length > 0) {
     const filtered = data.filter(e => {
       const eid = String(e.id).toUpperCase();
+      if (duplicateBackendIds.has(eid)) return false;
       if (initialEvents.some(init => String(init.id).toUpperCase() === eid)) return true;
       return !deletedIds.has(eid);
     });
@@ -350,7 +352,10 @@ function getLocalEvents() {
     memCache.set("events", filtered);
     return filtered;
   }
-  const filteredInitials = initialEvents.filter(e => !deletedIds.has(String(e.id).toUpperCase()));
+  const filteredInitials = initialEvents.filter(e => {
+    const eid = String(e.id).toUpperCase();
+    return !duplicateBackendIds.has(eid) && !deletedIds.has(eid);
+  });
   const fallback = filteredInitials.length > 0 ? filteredInitials : [...initialEvents];
   memCache.set("events", [...fallback]);
   writeLocalJson(STORAGE_EVENTS_KEY, fallback);
@@ -359,9 +364,11 @@ function getLocalEvents() {
 
 function saveLocalEvents(events) {
   if (!events || !Array.isArray(events)) return;
+  const duplicateBackendIds = new Set(["AKV-NT-MEHENDI", "AKV-NT-PAINT", "AKV-NT-RANGOLI", "AKV-NT-SKETCH"]);
   const deletedIds = getDeletedEventIds();
   const filtered = events.filter(e => {
     const eid = String(e.id).toUpperCase();
+    if (duplicateBackendIds.has(eid)) return false;
     if (initialEvents.some(init => String(init.id).toUpperCase() === eid)) return true;
     return !deletedIds.has(eid);
   });
@@ -2986,10 +2993,11 @@ export const api = {
         if (res.ok) {
           const data = await res.json();
 
-          if (Array.isArray(data)) {
+            const duplicateBackendIds = new Set(["AKV-NT-MEHENDI", "AKV-NT-PAINT", "AKV-NT-RANGOLI", "AKV-NT-SKETCH"]);
             const deletedIds = getDeletedEventIds();
             const filtered = data.filter(e => {
               const eid = String(e.id).toUpperCase();
+              if (duplicateBackendIds.has(eid)) return false;
               if (initialEvents.some(init => String(init.id).toUpperCase() === eid)) return true;
               return !deletedIds.has(eid);
             });
@@ -3018,7 +3026,6 @@ export const api = {
             setInMemCache(responseCacheKey, result);
             return result;
           }
-        }
       } catch (err) {
         console.warn(
           "Backend unavailable, using client dataset for events:",
