@@ -58,6 +58,20 @@ def get_events(
                     ev_record.is_active = True
                     needs_commit = True
 
+        # Deactivate removed competitions without deleting any historical registration data
+        removed_eids = {"AKV-NT-SKETCH", "AKV-NT-PAINT", "AKV-NT-RANGOLI", "AKV-NT-MEHENDI"}
+        removed_titles = {
+            "sketching competition", "painting competition", "rangoli competition", "mehendi competition",
+            "sketching", "painting", "rangoli", "mehendi"
+        }
+        events_to_deactivate = db.query(Event).filter(
+            Event.is_active == True,
+            (func.upper(Event.id).in_(removed_eids) | func.lower(Event.title_en).in_(removed_titles))
+        ).all()
+        for ev_to_deact in events_to_deactivate:
+            ev_to_deact.is_active = False
+            needs_commit = True
+
         # Safety migration: If any reel registrations were submitted to AKV-NT-11, migrate to AKV-NT-REEL
         try:
             from sqlalchemy import text
@@ -246,9 +260,43 @@ def delete_event(event_id: str, db: Session = Depends(get_db)):
             detail="The Reel Contest (AKV-NT-REEL) is the festival's official base event configured by the system. It cannot be permanently deleted. If you need to suspend entries, please edit the event and toggle 'Active' to Off."
         )
 
-    # Clean up associated check-in logs and registrations safely without full model projection
+    # Protect participant registrations: Check if event has registrations before attempting deletion
+    from sqlalchemy import text
     try:
-        from sqlalchemy import text
+        reg_count = db.execute(
+            text("SELECT COUNT(*) FROM registrations WHERE LOWER(event_id) = :eid"),
+            {"eid": canonical_id.lower()}
+        ).scalar() or 0
+    except Exception:
+        reg_count = 0
+
+    if reg_count > 0:
+        # Prevent irreversible data loss! Soft-deactivate the event so participant registrations remain 100% intact
+        event.is_active = False
+        db.commit()
+        fast_cache.delete_prefix("events_")
+        try:
+            log = AuditLog(
+                actor_name="Super Administrator",
+                action="EVENT_DEACTIVATED",
+                target_type="EVENT",
+                target_id=canonical_id,
+                previous_value=f"Title: {event_title}",
+                new_value=f"Event closed/removed from active list; preserved {reg_count} participant registrations"
+            )
+            db.add(log)
+            db.commit()
+        except Exception:
+            db.rollback()
+        return {
+            "success": True,
+            "message": f"Event '{event_title}' has {reg_count} participant registrations. It has been closed and removed from active fest events to protect registration data.",
+            "deleted_id": canonical_id,
+            "registrations_preserved": reg_count
+        }
+
+    # Only when 0 registrations exist, clean up check-in logs and delete empty event record safely
+    try:
         reg_id_rows = db.execute(
             text("SELECT registration_id FROM registrations WHERE LOWER(event_id) = :eid"),
             {"eid": canonical_id.lower()}
@@ -265,7 +313,7 @@ def delete_event(event_id: str, db: Session = Depends(get_db)):
     except Exception as cleanup_err:
         pass
 
-    # Delete the event record
+    # Delete the empty event record
     db.delete(event)
     db.commit()
 
@@ -277,7 +325,7 @@ def delete_event(event_id: str, db: Session = Depends(get_db)):
             target_type="EVENT",
             target_id=canonical_id,
             previous_value=f"Title: {event_title}",
-            new_value="Deleted from festival events by Superadmin"
+            new_value="Deleted from festival events by Superadmin (0 registrations)"
         )
         db.add(log)
         db.commit()

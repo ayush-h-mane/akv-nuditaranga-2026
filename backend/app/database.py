@@ -95,7 +95,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, expire_on_commit=
 Base = declarative_base()
 
 _MIGRATIONS_DONE = False
-CURRENT_SCHEMA_VERSION = 5
+CURRENT_SCHEMA_VERSION = 6
 
 def ensure_schema_migrations(target_engine=None):
     global _MIGRATIONS_DONE
@@ -403,6 +403,20 @@ def ensure_schema_migrations(target_engine=None):
                 conn.commit()
         except Exception as event_seed_err:
             logger.debug(f"[EVENT SEED MIGRATION NOTICE] {event_seed_err}")
+
+        # Safe deactivation of removed competitions (Rangoli, Sketching, Painting, Mehendi) to preserve registration history without data loss
+        try:
+            with eng.connect() as conn:
+                conn.exec_driver_sql(
+                    "UPDATE events SET is_active = :val WHERE is_active = :active_val AND ("
+                    "  UPPER(id) IN ('AKV-NT-RANGOLI', 'AKV-NT-SKETCH', 'AKV-NT-PAINT', 'AKV-NT-MEHENDI') OR "
+                    "  LOWER(title_en) IN ('rangoli competition', 'sketching competition', 'painting competition', 'mehendi competition', 'rangoli', 'sketching', 'painting', 'mehendi')"
+                    ")",
+                    {"val": False, "active_val": True}
+                )
+                conn.commit()
+        except Exception as deact_err:
+            logger.debug(f"[EVENT DEACTIVATION NOTICE] {deact_err}")
 
         # Record migration version completion so future boots are instantaneous
         try:

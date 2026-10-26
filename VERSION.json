@@ -1,9 +1,14 @@
 {
-  "production_version": "2.3.46",
-  "staged_version": "2.3.47",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.3.47",
+  "staged_version": "2.3.48",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.47",
+      "released_at": "2026-10-26T20:11:57+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.47: Backend Event Seeding Restricted Exclusively to Reel Contest: Cleanly removed Rangoli Competition (AKV-NT-RANGOLI), Sketching Competition (AKV-NT-SKETCH), Painting Competition (AKV-NT-PAINT), and Mehendi Competition (AKV-NT-MEHENDI) from backend INITIAL_EVENTS in seed.py, ensuring only the official base Reel Contest is seeded.; Comprehensive Data Safety & Registration Preservation: Enforced strict zero-data-loss protection across schema migrations (database.py) and event self-healing (events.py) by safely deactivating existing competition entries (setting is_active = False) rather than executing destructive hard deletes, preserving 100% of participant registrations, USNs, AUIDs, team compositions, digital passes, and admin Excel export capabilities.; Hardened Event Deletion with Registration Safeguard: Enhanced DELETE /api/events/{event_id} in events.py to verify if registrations exist for the event; if participant registrations are present, the endpoint automatically soft-deactivates the event and preserves all registration and check-in records intact, preventing accidental database wipes."
+    },
     {
       "version": "2.3.46",
       "released_at": "2026-10-26T08:25:13+0530",
