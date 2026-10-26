@@ -5888,7 +5888,9 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {eventsList.map((ev) => (
+                {eventsList
+                  .filter(ev => !["AKV-NT-MEHENDI", "AKV-NT-PAINT", "AKV-NT-RANGOLI", "AKV-NT-SKETCH"].includes(String(ev.id).toUpperCase()))
+                  .map((ev) => (
                   <div key={ev.id} className="p-4 rounded-2xl border border-stone-200 bg-stone-50/50 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="font-mono text-xs font-bold text-stone-500">{ev.id}</span>

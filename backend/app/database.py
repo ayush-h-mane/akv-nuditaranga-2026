@@ -95,7 +95,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, expire_on_commit=
 Base = declarative_base()
 
 _MIGRATIONS_DONE = False
-CURRENT_SCHEMA_VERSION = 6
+CURRENT_SCHEMA_VERSION = 7
 
 def ensure_schema_migrations(target_engine=None):
     global _MIGRATIONS_DONE
@@ -404,19 +404,171 @@ def ensure_schema_migrations(target_engine=None):
         except Exception as event_seed_err:
             logger.debug(f"[EVENT SEED MIGRATION NOTICE] {event_seed_err}")
 
-        # Safe deactivation of removed competitions (Rangoli, Sketching, Painting, Mehendi) to preserve registration history without data loss
+        # Deduplication & Portal Event Registration Migration:
+        # Move registrations from duplicate backend IDs to portal IDs, ensure portal competitions are Open, and delete backend duplicates
         try:
             with eng.connect() as conn:
+                portal_competitions = [
+                    {
+                        "id": "AKV-NT-09",
+                        "title_en": "Pottery",
+                        "title_kn": "ಮಣ್ಣಿನ ಮಡಕೆ ತಯಾರಿಕೆ",
+                        "category": "traditional",
+                        "category_kn": "ಸಾಂಪ್ರದಾಯಿಕ",
+                        "venue": "I Love Acharya",
+                        "venue_kn": "ಐ ಲವ್ ಆಚಾರ್ಯ, ಆವರಣ",
+                        "event_date": "November 03, 2026",
+                        "event_time": "12:00 PM",
+                        "reporting_time": "11:30 AM",
+                        "max_slots": 200,
+                        "format": "solo",
+                        "is_team": False,
+                        "is_active": True,
+                        "rules_en": "1. Clay and pottery wheel setup provided.\n2. Shape and model within the time limit.\n3. Judge decisions are final.",
+                        "rules_kn": "೧. ಜೇಡಿಮಣ್ಣು ಮತ್ತು ಮಡಕೆ ಮಾಡುವ ಸಾಧನಗಳನ್ನು ಒದಗಿಸಲಾಗುತ್ತದೆ.\n೨. ನಿಗದಿತ ಸಮಯದಲ್ಲಿ ಮಡಕೆ ರೂಪಿಸಬೇಕು.\n೩. ತೀರ್ಪುಗಾರರ ತೀರ್ಮಾನವೇ ಅಂತಿಮ.",
+                        "description_en": "Traditional clay pottery craftsmanship contest celebrating indigenous Kannada art.",
+                        "description_kn": "ಸಾಂಪ್ರದಾಯಿಕ ಮಣ್ಣಿನ ಮಡಕೆ ತಯಾರಿಕೆಯ ಕಲಾ ಸ್ಪರ್ಧೆ."
+                    },
+                    {
+                        "id": "AKV-NT-10",
+                        "title_en": "Mehendi Competition",
+                        "title_kn": "ಮೆಹಂದಿ ಸ್ಪರ್ಧೆ (Mehendi)",
+                        "category": "traditional",
+                        "category_kn": "ಸಾಂಪ್ರದಾಯಿಕ",
+                        "venue": "Ana Block, Acharya IT",
+                        "venue_kn": "ಅನಾ ಬ್ಲಾಕ್, ಆಚಾರ್ಯ ಐ.ಟಿ",
+                        "event_date": "November 03, 2026",
+                        "event_time": "2:00 PM",
+                        "reporting_time": "01:30 PM",
+                        "max_slots": 100,
+                        "format": "solo",
+                        "is_team": False,
+                        "is_active": True,
+                        "rules_en": "1. One participant must apply mehendi on hand.\n2. Participants must bring their own organic mehendi cones.\n3. Time limit: 1.5 hours.\n4. Creativity and neatness will be judged.",
+                        "rules_kn": "೧. ಒಬ್ಬ ಸ್ಪರ್ಧಿ ಕೈಗೆ ಮೆಹಂದಿ ಹಾಕಬೇಕು.\n೨. ನೈಸರ್ಗಿಕ ಮೆಹಂದಿ ಕೋನ್‌ಗಳನ್ನು ತಾವೇ ತರಬೇಕು.\n೩. ಸಮಯದ ಮಿತಿ: ೧.೫ ಗಂಟೆಗಳು.\n೪. ಕಲಾತ್ಮಕತೆ ಮತ್ತು ಅಚ್ಚುಕಟ್ಟುತನಕ್ಕೆ ಅಂಕಗಳು.",
+                        "description_en": "Craft intricate bridal, Arabic, and traditional Kannada floral henna designs.",
+                        "description_kn": "ಸಾಂಪ್ರದಾಯಿಕ ನವಿರಾದ ಮೆಹಂದಿ ವಿನ್ಯಾಸಗಳು ಮತ್ತು ಹಬ್ಬದ ಕಲಾತ್ಮಕತೆಯನ್ನು ಬಿಂಬಿಸುವ ಸ್ಪರ್ಧೆ."
+                    },
+                    {
+                        "id": "AKV-NT-11",
+                        "title_en": "Painting Competition",
+                        "title_kn": "ಚಿತ್ರಕಲೆ ಸ್ಪರ್ಧೆ (Painting)",
+                        "category": "fine_arts",
+                        "category_kn": "ಲಲಿತಕಲೆ",
+                        "venue": "Cya Stairs, Acharya",
+                        "venue_kn": "ಸಿಯಾ ಮೆಟ್ಟಿಲುಗಳು, ಆಚಾರ್ಯ",
+                        "event_date": "October 28, 2026",
+                        "event_time": "2:00 PM",
+                        "reporting_time": "01:30 PM",
+                        "max_slots": 100,
+                        "format": "solo",
+                        "is_team": False,
+                        "is_active": True,
+                        "rules_en": "1. Drawing sheets will be provided; bring your own colors and brushes.\n2. Time limit: 2 hours.\n3. Theme will be provided before commencement.\n4. Cleanliness and originality will be evaluated.",
+                        "rules_kn": "೧. ಚಿತ್ರಕಲೆಯ ಹಾಳೆಯನ್ನು ಒದಗಿಸಲಾಗುವುದು; ಬಣ್ಣಗಳು ಮತ್ತು ಕುಂಚಗಳನ್ನು ಸ್ವತಃ ತರಬೇಕು.\n೨. ಸಮಯದ ಮಿತಿ: ೨ ಗಂಟೆಗಳು.\n೩. ವಿಷಯವನ್ನು ಆರಂಭಕ್ಕೂ ಮುನ್ನ ನೀಡಲಾಗುವುದು.\n೪. ಸ್ವಂತಿಕೆ ಮತ್ತು ಕಲಾತ್ಮಕತೆಗೆ ಆದ್ಯತೆ.",
+                        "description_en": "Express Karnataka's folk colors and cultural vibrance with water, acrylic, or poster colors on canvas.",
+                        "description_kn": "ಕರ್ನಾಟಕದ ಜಾನಪದ ಬಣ್ಣಗಳು ಹಾಗೂ ಸಾಂಸ್ಕೃತಿಕ ಸಿರಿಯನ್ನು ಕ್ಯಾನ್ವಾಸ್ ಮೇಲೆ ಅರಳಿಸುವ ಚಿತ್ರಕಲೆ ಸ್ಪರ್ಧೆ."
+                    },
+                    {
+                        "id": "AKV-NT-12",
+                        "title_en": "Rangoli Competition",
+                        "title_kn": "ರಂಗೋಲಿ ಸ್ಪರ್ಧೆ (Rangoli)",
+                        "category": "traditional",
+                        "category_kn": "ಸಾಂಪ್ರದಾಯಿಕ",
+                        "venue": "Acharya Streets, Acharya IT",
+                        "venue_kn": "ಆಚಾರ್ಯ ರಸ್ತೆಗಳು, ಆಚಾರ್ಯ ಐ.ಟಿ",
+                        "event_date": "November 03, 2026",
+                        "event_time": "3:00 PM",
+                        "reporting_time": "02:30 PM",
+                        "max_slots": 100,
+                        "format": "solo",
+                        "is_team": False,
+                        "is_active": True,
+                        "rules_en": "1. Space provided per participant.\n2. Bring your own rangoli powders/materials; stencils are not permitted.\n3. Time limit: 2 hours.\n4. Decisions of the judges are final.",
+                        "rules_kn": "೧. ಪ್ರತಿ ಸ್ಪರ್ಧಿಗೆ ನಿಗದಿತ ಜಾಗ ನೀಡಲಾಗುತ್ತದೆ.\n೨. ರಂಗೋಲಿ ಬಣ್ಣಗಳನ್ನು ತಾವೇ ತರಬೇಕು; ಯಾವುದೇ ಸ್ಟೆನ್ಸಿಲ್‌ಗಳಿಗೆ ಅನುಮತಿ ಇಲ್ಲ.\n೩. ಸಮಯದ ಮಿತಿ: ೨ ಗಂಟೆಗಳು.\n೪. ತೀರ್ಪುಗಾರರ ತೀರ್ಮಾನವೇ ಅಂತಿಮ.",
+                        "description_en": "Showcase the rich heritage of traditional Kannada patterns, floral designs, and folk motifs using vibrant rangoli powders.",
+                        "description_kn": "ಕನ್ನಡ ನಾಡಿನ ಸಾಂಪ್ರದಾಯಿಕ ರಂಗೋಲಿ ವಿನ್ಯಾಸಗಳು ಮತ್ತು ಹೂವಿನ ಚಿತ್ತಾರಗಳನ್ನು ವರ್ಣಮಯವಾಗಿ ಬಿಂಬಿಸುವ ಸ್ಪರ್ಧೆ."
+                    },
+                    {
+                        "id": "AKV-NT-17",
+                        "title_en": "Sketching Competition",
+                        "title_kn": "ಸ್ಕೆಚಿಂಗ್ ಸ್ಪರ್ಧೆ (Sketching)",
+                        "category": "fine_arts",
+                        "category_kn": "ಲಲಿತಕಲೆ",
+                        "venue": "Admin Stairs",
+                        "venue_kn": "ಆಡಳಿತ ಕಚೇರಿ ಮೆಟ್ಟಿಲುಗಳು, ಆಚಾರ್ಯ",
+                        "event_date": "October 28, 2026",
+                        "event_time": "3:00 PM - 04:00 PM",
+                        "reporting_time": "02:30 PM",
+                        "max_slots": 100,
+                        "format": "solo",
+                        "is_team": False,
+                        "is_active": True,
+                        "rules_en": "1. Sketching paper will be provided; participants must bring their own sketching pencils and erasers.\n2. Time limit: 1 hour.\n3. Theme will be announced at the venue.\n4. Decisions of the judges are final.",
+                        "rules_kn": "೧. ಸ್ಕೆಚಿಂಗ್ ಹಾಳೆಯನ್ನು ಆಯೋಜಕರೇ ನೀಡುತ್ತಾರೆ; ಸ್ಪರ್ಧಿಗಳು ತಮ್ಮದೇ ಪೆನ್ಸಿಲ್ ಮತ್ತು ರಬ್ಬರ್ ತರಬೇಕು.\n೨. ಸಮಯದ ಮಿತಿ: ೧ ಗಂಟೆ.\n೩. ವಿಷಯವನ್ನು ಸ್ಥಳದಲ್ಲೇ ಪ್ರಕಟಿಸಲಾಗುವುದು.\n೪. ತೀರ್ಪುಗಾರರ ನಿರ್ಧಾರವೇ ಅಂತಿಮ.",
+                        "description_en": "Unleash your pencil sketches capturing the essence of Karnataka's architectural wonders, poets, and historic monuments.",
+                        "description_kn": "ಕರ್ನಾಟಕದ ವಾಸ್ತುಶಿಲ್ಪ, ಕವಿಗಳು ಹಾಗೂ ಐತಿಹಾಸಿಕ ಸ್ಮಾರಕಗಳ ವೈಭವವನ್ನು ಬಿಂಬಿಸುವ ಸೃಜನಶೀಲ ಸ್ಕೆಚಿಂಗ್ ಸ್ಪರ್ಧೆ."
+                    }
+                ]
+                existing_eids = {row[0].upper() for row in conn.exec_driver_sql("SELECT id FROM events").fetchall() if row[0]}
+                for p_ev in portal_competitions:
+                    if p_ev["id"].upper() not in existing_eids:
+                        cols = ", ".join(p_ev.keys())
+                        placeholders = ", ".join([f":{k}" for k in p_ev.keys()])
+                        conn.exec_driver_sql(f"INSERT INTO events ({cols}) VALUES ({placeholders})", p_ev)
+                        existing_eids.add(p_ev["id"].upper())
+                    else:
+                        conn.exec_driver_sql(
+                            "UPDATE events SET is_active = :val, title_en = :title, title_kn = :title_kn WHERE UPPER(id) = :eid",
+                            {"val": True, "title": p_ev["title_en"], "title_kn": p_ev["title_kn"], "eid": p_ev["id"].upper()}
+                        )
+
+                # Migrate registrations from backend duplicate IDs to portal canonical IDs
+                migration_pairs = [
+                    ("AKV-NT-MEHENDI", "AKV-NT-10"),
+                    ("AKV-NT-PAINT", "AKV-NT-11"),
+                    ("AKV-NT-RANGOLI", "AKV-NT-12"),
+                    ("AKV-NT-SKETCH", "AKV-NT-17"),
+                ]
+                for (backend_id, portal_id) in migration_pairs:
+                    conn.exec_driver_sql(
+                        "UPDATE registrations SET event_id = :portal_id WHERE UPPER(event_id) = :backend_id",
+                        {"portal_id": portal_id, "backend_id": backend_id}
+                    )
+                    count_row = conn.exec_driver_sql(
+                        "SELECT COUNT(*) FROM registrations WHERE UPPER(event_id) = :portal_id",
+                        {"portal_id": portal_id}
+                    ).fetchone()
+                    reg_cnt = count_row[0] if count_row else 0
+                    conn.exec_driver_sql(
+                        "UPDATE events SET registered_count = :cnt WHERE UPPER(id) = :portal_id",
+                        {"cnt": reg_cnt, "portal_id": portal_id}
+                    )
+                    conn.exec_driver_sql(
+                        "DELETE FROM events WHERE UPPER(id) = :backend_id",
+                        {"backend_id": backend_id}
+                    )
+
+                # Ensure Reel Contest and Pottery are Active
                 conn.exec_driver_sql(
-                    "UPDATE events SET is_active = :val WHERE is_active = :active_val AND ("
-                    "  UPPER(id) IN ('AKV-NT-RANGOLI', 'AKV-NT-SKETCH', 'AKV-NT-PAINT', 'AKV-NT-MEHENDI') OR "
-                    "  LOWER(title_en) IN ('rangoli competition', 'sketching competition', 'painting competition', 'mehendi competition', 'rangoli', 'sketching', 'painting', 'mehendi')"
-                    ")",
-                    {"val": False, "active_val": True}
+                    "UPDATE events SET is_active = :val WHERE UPPER(id) IN ('AKV-NT-REEL', 'AKV-NT-09')",
+                    {"val": True}
                 )
+
+                # Close all non-target events (Break Dance, Flag hoist, Open air, etc.)
+                conn.exec_driver_sql(
+                    "UPDATE events SET is_active = :val WHERE UPPER(id) NOT IN ('AKV-NT-REEL', 'AKV-NT-09', 'AKV-NT-10', 'AKV-NT-11', 'AKV-NT-12', 'AKV-NT-17')",
+                    {"val": False}
+                )
+
+                # Ensure non-null integrity for numeric fields
+                conn.exec_driver_sql("UPDATE events SET min_team_size = 1 WHERE min_team_size IS NULL")
+                conn.exec_driver_sql("UPDATE events SET max_team_size = 1 WHERE max_team_size IS NULL")
+                conn.exec_driver_sql("UPDATE events SET registered_count = 0 WHERE registered_count IS NULL")
+
                 conn.commit()
-        except Exception as deact_err:
-            logger.debug(f"[EVENT DEACTIVATION NOTICE] {deact_err}")
+        except Exception as dedup_err:
+            logger.debug(f"[EVENT DEDUPLICATION MIGRATION NOTICE] {dedup_err}")
 
         # Record migration version completion so future boots are instantaneous
         try:

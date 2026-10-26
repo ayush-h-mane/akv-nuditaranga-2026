@@ -1,9 +1,14 @@
 {
-  "production_version": "2.3.47",
-  "staged_version": "2.3.48",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.3.48",
+  "staged_version": "2.3.49",
+  "status": "DEPLOYED_TO_PRODUCTION",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.48",
+      "released_at": "2026-10-26T20:46:08+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.48: Portal & Backend Competition Deduplication: Combined duplicate backend competitions (AKV-NT-MEHENDI, AKV-NT-PAINT, AKV-NT-RANGOLI, AKV-NT-SKETCH) into canonical portal entries (AKV-NT-10, AKV-NT-11, AKV-NT-12, AKV-NT-17), strictly adopting portal-defined venue, date, time, format, and capacity details while combining Kannada and English titles.; Zero-Data-Loss Registration Migration: Safely migrated 100% of existing registrations from duplicate backend event IDs into canonical portal event entries, dynamically synchronizing registered_count and eliminating redundant backend records without data loss.; Selective Registration Activation: Enforced is_active = True strictly for the 6 requested competitions (Rangoli Competition, Painting Competition, Mehendi Competition, Sketching Competition, Pottery, Reel Contest), while ensuring all non-target events (Break Dance, Flag hoist, Open air, etc.) remain closed.; Legacy Event ID Compatibility: Integrated transparent redirection in backend /api/events/{event_id} mapping legacy backend event IDs to canonical portal IDs.; Frontend Cache Busting & Dashboard Deduplication: Bumped client cache key to akv_events_cache_v5 and filtered out duplicate backend identifiers across api.js and SuperAdminDashboard.jsx."
+    },
     {
       "version": "2.3.47",
       "released_at": "2026-10-26T20:11:57+0530",
