@@ -1,9 +1,13 @@
 {
-  "production_version": "2.3.48",
-  "staged_version": "2.3.49",
-  "status": "STAGED_DEVELOPMENT",
+  "production_version": "2.3.49",
+  "staged_version": "2.3.50",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.49",
+      "released_at": "2026-10-28T01:06:07+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.49: Attendance Submit & Lock Restricted Exclusively to Superadmin: Revoked attendance submission and locking capabilities from standard Admins in AdminPage and enforced require_superadmin authorization on POST /attendance/submit in backend/app/routes/attendance.py, preventing domain coordinators and normal administrators from prematurely submitting and locking attendance rosters.; SuperAdmin Official Volunteer Attendance Submission Suite: Empowered Superadmins to directly finalize, submit, and lock official volunteer attendance sessions from SuperAdminDashboard with instant feedback, unlocking controls, and audit trail logging."
+    },
     {
       "version": "2.3.48",
       "released_at": "2026-10-26T20:46:08+0530",
@@ -585,5 +589,6 @@
       "commit": "c74d0ea",
       "description": "Production PostgreSQL migration, authentication improvements, and architecture documentation."
     }
-  ]
+  ],
+  "status": "DEPLOYED_TO_PRODUCTION"
 }
