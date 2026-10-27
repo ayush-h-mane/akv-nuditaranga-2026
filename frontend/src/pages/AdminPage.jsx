@@ -457,8 +457,12 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
     }
   };
 
-  // Submit Attendance Handler
+  // Submit Attendance Handler (Superadmin Only)
   const handleSubmitAttendance = async () => {
+    if (role !== "SUPERADMIN") {
+      notify("error", "Only Super Administrators can submit and lock attendance sessions.");
+      return;
+    }
     setSubmitLoading(true);
     try {
       const res = await api.submitAttendance(selectedDate, submitNotes);
@@ -849,11 +853,11 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
                 </button>
 
                 {attendanceSession.is_submitted ? (
-                  <div className="px-3.5 py-2 rounded-xl text-xs font-bold text-stone-500 bg-stone-100 border border-stone-200 flex items-center gap-1.5 cursor-not-allowed">
+                  <div className="px-3.5 py-2 rounded-xl text-xs font-bold text-stone-500 bg-stone-100 border border-stone-200 flex items-center gap-1.5 cursor-not-allowed" title="Attendance session is finalized and locked by Superadmin">
                     <Lock className="w-3.5 h-3.5 text-stone-400" />
-                    <span>Attendance Submitted</span>
+                    <span>Attendance Locked</span>
                   </div>
-                ) : (
+                ) : role === "SUPERADMIN" ? (
                   <button
                     type="button"
                     onClick={() => setShowSubmitModal(true)}
@@ -862,7 +866,7 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
                     <CheckSquare className="w-4 h-4 text-amber-300" />
                     <span>SUBMIT ATTENDANCE</span>
                   </button>
-                )}
+                ) : null}
               </div>
             </div>
 
@@ -1463,8 +1467,8 @@ export const AdminPage = ({ onNavigateHome, onOpenSuperAdmin }) => {
           </div>
         )}
 
-        {/* Submit Attendance Confirmation Modal */}
-        {showSubmitModal && (
+        {/* Submit Attendance Confirmation Modal (Superadmin Only) */}
+        {showSubmitModal && role === "SUPERADMIN" && (
           <div 
             role="dialog"
             aria-modal="true"

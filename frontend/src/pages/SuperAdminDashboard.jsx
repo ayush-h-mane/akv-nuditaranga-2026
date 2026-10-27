@@ -1545,6 +1545,18 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
     }
   };
 
+  const handleSuperAdminSubmitAttendance = async () => {
+    if (!window.confirm(`Submit and lock official volunteer attendance for ${selectedOfficialDate}? Normal admins will no longer be able to mark or edit records.`)) return;
+    try {
+      const res = await api.submitAttendance(selectedOfficialDate, "Official Attendance finalized by Super Admin");
+      notify("success", res.message || "Attendance submitted and locked!");
+      loadOfficialAttendance();
+      loadAuditLogs();
+    } catch (err) {
+      notify("error", err.message || "Failed to submit attendance.");
+    }
+  };
+
   const handleOfficialExcelExport = async () => {
     setOfficialExportLoading(true);
     try {
@@ -4367,7 +4379,7 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                     <span>{officialExportLoading ? "Exporting..." : "Export Attendance Excel"}</span>
                   </button>
 
-                  {officialAttendanceSession.is_submitted && (
+                  {officialAttendanceSession.is_submitted ? (
                     <button
                       type="button"
                       onClick={() => setUnlockModal({ date: selectedOfficialDate, reason: "" })}
@@ -4375,6 +4387,17 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                     >
                       <Unlock className="w-4 h-4 text-amber-700" />
                       <span>Unlock Session</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleSuperAdminSubmitAttendance}
+                      disabled={isAttendanceCutoffPassed}
+                      className="px-3.5 py-2 rounded-xl text-xs font-extrabold text-white bg-kar-red hover:bg-red-700 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                      title="Submit & Lock Volunteer Attendance for this Date (Superadmin Only)"
+                    >
+                      <Lock className="w-3.5 h-3.5 text-amber-300" />
+                      <span>Submit & Lock Attendance</span>
                     </button>
                   )}
                 </div>

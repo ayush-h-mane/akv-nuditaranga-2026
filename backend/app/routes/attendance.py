@@ -953,11 +953,11 @@ def scan_volunteer_attendance(
 @router.post("/submit")
 def submit_attendance(
     payload: SubmitAttendanceRequest,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_superadmin),
     db: Session = Depends(get_db)
 ):
     """
-    Submits and finalizes attendance for the given date.
+    SUPERADMIN ONLY: Submits and finalizes attendance for the given date.
     Locks the date for normal admins immediately on backend.
     """
     target_date = payload.date.strip()
