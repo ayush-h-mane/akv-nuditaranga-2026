@@ -590,5 +590,5 @@
       "description": "Production PostgreSQL migration, authentication improvements, and architecture documentation."
     }
   ],
-  "status": "DEPLOYED_TO_PRODUCTION"
+  "status": "STAGED_DEVELOPMENT"
 }
