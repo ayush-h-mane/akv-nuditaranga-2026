@@ -50,6 +50,9 @@ const ConfirmationPage = React.lazy(() =>
 const RulesPage = React.lazy(() =>
   import("./pages/RulesPage").then((m) => ({ default: m.RulesPage }))
 );
+const RateReelPage = React.lazy(() =>
+  import("./pages/RateReelPage").then((m) => ({ default: m.RateReelPage }))
+);
 
 // Direct Sections
 import { AboutSection } from "./sections/AboutSection";
@@ -181,7 +184,7 @@ const parseRouteFromLocation = () => {
   const validPublicPaths = [
     "/about", "/activities", "/nuditaranga", "/events", 
     "/rules", "/gallery", "/contact", "/register", 
-    "/confirmation", "/checkin"
+    "/confirmation", "/checkin", "/rate-reel", "/rate-reels"
   ];
   if (validPublicPaths.includes(pathname)) {
     return { path: pathname, portal: null, subMode: "login" };
@@ -814,6 +817,12 @@ export function AppContent() {
           {route.path === "/checkin" && (
             <React.Suspense fallback={<PortalLoadingFallback message="ಲೋಡ್ ಆಗುತ್ತಿದೆ... Loading Check-In Desk..." />}>
               <CheckInPage />
+            </React.Suspense>
+          )}
+
+          {(route.path === "/rate-reel" || route.path === "/rate-reels") && (
+            <React.Suspense fallback={<PortalLoadingFallback message="ಲೋಡ್ ಆಗುತ್ತಿದೆ... Loading Reel Contest Ratings..." />}>
+              <RateReelPage onBackToHome={() => navigatePath("/")} />
             </React.Suspense>
           )}
         </div>

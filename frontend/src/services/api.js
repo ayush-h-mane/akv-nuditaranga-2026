@@ -204,7 +204,7 @@ export function normalizeAttendanceDates(data) {
 }
 
 // Local fallback storage keys
-const STORAGE_EVENTS_KEY = "akv_events_cache_v6";
+const STORAGE_EVENTS_KEY = "akv_events_cache_v7";
 const STORAGE_REGS_KEY = "akv_registrations_cache_v2";
 const STORAGE_USERS_KEY = "akv_users_cache_v2";
 const STORAGE_ADMINS_KEY = "akv_admins_cache_v2";
@@ -349,6 +349,15 @@ function getLocalEvents() {
         filtered.push(init);
       }
     }
+    for (const ev of filtered) {
+      if (String(ev.id).toUpperCase() === "AKV-NT-REEL" || (ev.title_en || "").toLowerCase().includes("reel")) {
+        ev.category = "social_media";
+        ev.category_kn = "ಸೋಷಿಯಲ್ ಮೀಡಿಯಾ";
+      } else if (String(ev.id).toUpperCase() === "AKV-NT-10" || String(ev.id).toUpperCase() === "AKV-NT-12") {
+        ev.category = "fine_arts";
+        ev.category_kn = "ಲಲಿತಕಲೆ";
+      }
+    }
     memCache.set("events", filtered);
     return filtered;
   }
@@ -376,6 +385,15 @@ function saveLocalEvents(events) {
   for (const init of initialEvents) {
     if (!filtered.some(e => String(e.id).toUpperCase() === String(init.id).toUpperCase())) {
       filtered.push(init);
+    }
+  }
+  for (const ev of filtered) {
+    if (String(ev.id).toUpperCase() === "AKV-NT-REEL" || (ev.title_en || "").toLowerCase().includes("reel")) {
+      ev.category = "social_media";
+      ev.category_kn = "ಸೋಷಿಯಲ್ ಮೀಡಿಯಾ";
+    } else if (String(ev.id).toUpperCase() === "AKV-NT-10" || String(ev.id).toUpperCase() === "AKV-NT-12") {
+      ev.category = "fine_arts";
+      ev.category_kn = "ಲಲಿತಕಲೆ";
     }
   }
   memCache.set("events", filtered);
@@ -4348,6 +4366,72 @@ export const api = {
     const data = await readApiResponse(res);
     if (!res.ok) throw new Error(data.detail || "Failed to fetch sync payload preview");
     return data;
+  },
+
+  // ==========================================
+  // REEL CONTEST & EVALUATION APIS
+  // ==========================================
+  async getReelContestSubmission(registrationId, viewerAuid = "") {
+    const params = new URLSearchParams();
+    if (viewerAuid) params.set("viewer_auid", viewerAuid);
+    const qs = params.toString() ? `?${params.toString()}` : "";
+    const res = await fetch(`${API_BASE_URL}/reel-contest/submissions/${encodeURIComponent(registrationId)}${qs}`, {
+      headers: { ...getAuthHeaders() }
+    });
+    const data = await readApiResponse(res);
+    if (!res.ok) throw new Error(data.detail || "Failed to load reel submission");
+    return data;
+  },
+
+  async updateReelContestLinks(registrationId, payload) {
+    const res = await fetch(`${API_BASE_URL}/reel-contest/submissions/${encodeURIComponent(registrationId)}/reels`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+      body: JSON.stringify(payload)
+    });
+    const data = await readApiResponse(res);
+    if (!res.ok) throw new Error(data.detail || "Failed to update reel links");
+    return data;
+  },
+
+  async submitReelRating(payload) {
+    const res = await fetch(`${API_BASE_URL}/reel-contest/rate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+      body: JSON.stringify(payload)
+    });
+    const data = await readApiResponse(res);
+    if (!res.ok) throw new Error(data.detail || "Failed to submit rating");
+    return data;
+  },
+
+  async getAllReelContestSubmissions() {
+    const res = await fetch(`${API_BASE_URL}/reel-contest/all-submissions`, {
+      headers: { ...getAuthHeaders() }
+    });
+    const data = await readApiResponse(res);
+    if (!res.ok) throw new Error(data.detail || "Failed to load reel contest submissions");
+    return data;
+  },
+
+  async downloadReelContestXlsx() {
+    const res = await fetch(`${API_BASE_URL}/reel-contest/export-xlsx`, {
+      headers: { ...getAuthHeaders() }
+    });
+    if (!res.ok) {
+      const err = await readApiResponse(res);
+      throw new Error(err.detail || "Failed to export Reel Contest Excel sheet");
+    }
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `AKV_Nuditaranga_Reel_Contest_Evaluation_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+    return true;
   },
 
   invalidateMemCache(prefix = "") {

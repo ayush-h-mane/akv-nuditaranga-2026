@@ -525,8 +525,12 @@ export const RegisterPage = ({
                     >
                       <div>
                         <div className="flex items-center justify-between gap-2 mb-2">
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-700 uppercase">
-                            {lang === "kn" ? ev.category_kn : ev.category}
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-700">
+                            {isReelContestEvent(ev) || ev.category === "social_media"
+                              ? (lang === "kn" ? (ev.category_kn || "ಸೋಷಿಯಲ್ ಮೀಡಿಯಾ") : "Social Media")
+                              : (ev.category === "fine_arts"
+                                ? (lang === "kn" ? (ev.category_kn || "ಲಲಿತಕಲೆ") : "FINE_ARTS")
+                                : (lang === "kn" ? ev.category_kn : (ev.category || "").toUpperCase()))}
                           </span>
                           <span className="text-[11px] font-semibold text-stone-500">
                             {ev.format === "both" 

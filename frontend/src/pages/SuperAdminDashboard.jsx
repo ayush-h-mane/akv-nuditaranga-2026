@@ -259,6 +259,7 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
   const [idCardDownloading, setIdCardDownloading] = useState("");
   const [registrationExportEvent, setRegistrationExportEvent] = useState("all");
   const [registrationExportLoading, setRegistrationExportLoading] = useState(false);
+  const [reelContestExportLoading, setReelContestExportLoading] = useState(false);
 
   // Cultural Event Registrations State
   const [eventRegistrations, setEventRegistrations] = useState(() => api.getCachedRegistrations() || []);
@@ -1227,6 +1228,18 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
       notify("error", err.message || "Failed to export event registrations.");
     } finally {
       setRegistrationExportLoading(false);
+    }
+  };
+
+  const handleReelContestExcelExport = async () => {
+    setReelContestExportLoading(true);
+    try {
+      await api.downloadReelContestXlsx();
+      notify("success", "Reel Contest evaluation workbook (.xlsx) downloaded successfully!");
+    } catch (err) {
+      notify("error", err.message || "Failed to export Reel Contest Excel sheet.");
+    } finally {
+      setReelContestExportLoading(false);
     }
   };
 
@@ -5848,6 +5861,35 @@ export const SuperAdminDashboard = ({ onNavigateHome, isDeveloperMode = false })
                   >
                     <Download className="w-4 h-4" />
                     <span>{wcExportLoading ? "Generating WC Workbook..." : "Download Working Committee XLSX"}</span>
+                  </button>
+                </div>
+
+                {/* Reel Contest Evaluation Excel XLSX Export Card */}
+                <div className="p-6 rounded-3xl border-2 border-rose-200 bg-rose-50/50 space-y-4 flex flex-col justify-between">
+                  <div className="space-y-4">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-600 to-amber-500 text-white flex items-center justify-center shadow-md">
+                      <Film className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-extrabold text-base text-stone-900">Reel Contest Evaluations (.xlsx)</h4>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-200 text-rose-900 font-mono">
+                          Nov 4, 17:30
+                        </span>
+                      </div>
+                      <p className="text-xs text-stone-600 mt-1 leading-relaxed">
+                        Multi-sheet workbook containing all registered participants, uploaded Instagram reel links 1 to 4, reach & audience insights, and detailed community rating audit log.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleReelContestExcelExport}
+                    disabled={reelContestExportLoading}
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-rose-600 via-pink-600 to-amber-600 hover:brightness-110 text-white font-extrabold text-xs shadow-md flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>{reelContestExportLoading ? "Generating Workbook..." : "Download Reel Contest XLSX"}</span>
                   </button>
                 </div>
 

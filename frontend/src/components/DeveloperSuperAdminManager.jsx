@@ -26,7 +26,9 @@ import {
   UserCheck,
   Users,
   GraduationCap,
-  Sparkles
+  Sparkles,
+  Download,
+  Film
 } from "lucide-react";
 import { AKV_DOMAINS } from "../config/institutesData";
 
@@ -43,6 +45,21 @@ export const DeveloperSuperAdminManager = ({ showError, showSuccess }) => {
   // Visibility toggle for plaintext passwords by id
   const [visiblePasswords, setVisiblePasswords] = useState({});
   const [copiedId, setCopiedId] = useState(null);
+
+  // Reel Contest Excel Export State
+  const [reelExportLoading, setReelExportLoading] = useState(false);
+
+  const handleDownloadReelContestXlsx = async () => {
+    try {
+      setReelExportLoading(true);
+      await api.downloadReelContestXlsx();
+      if (showSuccess) showSuccess("Reel Contest participant submissions & evaluations (.xlsx) downloaded!", "Excel Export Complete");
+    } catch (err) {
+      if (showError) showError(err.message || "Failed to download Reel Contest Excel.", "Export Failed");
+    } finally {
+      setReelExportLoading(false);
+    }
+  };
 
   // Superadmin Modal States
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -333,7 +350,17 @@ export const DeveloperSuperAdminManager = ({ showError, showSuccess }) => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <button
+              onClick={handleDownloadReelContestXlsx}
+              disabled={reelExportLoading}
+              className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 via-pink-600 to-amber-600 hover:brightness-110 text-white font-black text-xs transition-all shadow-md cursor-pointer disabled:opacity-50"
+              title="Download Reel Contest Participant Entries, Reach Insights & Ratings (.XLSX)"
+            >
+              <Download className={`w-4 h-4 ${reelExportLoading ? "animate-bounce" : ""}`} />
+              <span>{reelExportLoading ? "Generating XLSX..." : "Download Reel Contest XLSX"}</span>
+            </button>
+
             <button
               onClick={() => {
                 if (activeSubTab === "superadmins") loadSuperAdmins();
