@@ -93,6 +93,30 @@ def get_current_user(
 
     return user
 
+def get_current_user_optional(
+    auth: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    db: Session = Depends(get_db)
+) -> Optional[User]:
+    if not auth or not auth.credentials:
+        return None
+    payload = decode_access_token(auth.credentials)
+    if not payload:
+        return None
+    user_id = payload.get("sub")
+    if user_id is None:
+        return None
+    try:
+        user_id_int = int(user_id)
+        user = db.query(User).filter(User.id == user_id_int).first()
+    except (ValueError, TypeError):
+        if str(user_id).lower() == "superadmin" or payload.get("role") == "SUPERADMIN":
+            user = db.query(User).filter(User.role == "SUPERADMIN").first()
+        else:
+            return None
+    if not user and payload.get("role") == "SUPERADMIN":
+        user = db.query(User).filter(User.role == "SUPERADMIN").first()
+    return user
+
 def require_student(current_user: User = Depends(get_current_user)) -> User:
     allowed_roles = ["VOLUNTEER", "PARTICIPANT", "STUDENT", "WORKING_COMMITTEE", "ADMIN", "SUPERADMIN"]
     if current_user.role not in allowed_roles:

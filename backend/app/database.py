@@ -95,7 +95,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, expire_on_commit=
 Base = declarative_base()
 
 _MIGRATIONS_DONE = False
-CURRENT_SCHEMA_VERSION = 8
+CURRENT_SCHEMA_VERSION = 9
 
 def ensure_schema_migrations(target_engine=None):
     global _MIGRATIONS_DONE
@@ -136,6 +136,14 @@ def ensure_schema_migrations(target_engine=None):
                         conn.exec_driver_sql("ALTER TABLE registrations ADD COLUMN instagram_username VARCHAR")
                     if "instagram_profile_link" not in reg_cols:
                         conn.exec_driver_sql("ALTER TABLE registrations ADD COLUMN instagram_profile_link VARCHAR")
+                    if "instagram_reel_link" not in reg_cols:
+                        conn.exec_driver_sql("ALTER TABLE registrations ADD COLUMN instagram_reel_link VARCHAR")
+                    if "reel_links" not in reg_cols:
+                        conn.exec_driver_sql("ALTER TABLE registrations ADD COLUMN reel_links TEXT")
+                    if "reel_reach_insights" not in reg_cols:
+                        conn.exec_driver_sql("ALTER TABLE registrations ADD COLUMN reel_reach_insights TEXT")
+                    if "reel_submitted_at" not in reg_cols:
+                        conn.exec_driver_sql("ALTER TABLE registrations ADD COLUMN reel_submitted_at TIMESTAMP")
 
                 # 2. users table
                 user_cols = [c[1] for c in conn.exec_driver_sql("PRAGMA table_info(users)").fetchall()]
@@ -229,8 +237,33 @@ def ensure_schema_migrations(target_engine=None):
                     "CREATE INDEX IF NOT EXISTS ix_audit_logs_action_id ON audit_logs(action, id DESC)",
                     "CREATE INDEX IF NOT EXISTS ix_audit_logs_created_at ON audit_logs(created_at DESC)",
                     "CREATE INDEX IF NOT EXISTS ix_audit_logs_target ON audit_logs(target_type, target_id)",
-                    "CREATE INDEX IF NOT EXISTS ix_audit_logs_user_id ON audit_logs(user_id)"
+                    "CREATE INDEX IF NOT EXISTS ix_audit_logs_user_id ON audit_logs(user_id)",
+                    "CREATE INDEX IF NOT EXISTS ix_reel_ratings_reg_idx ON reel_ratings(registration_id, reel_index)",
+                    "CREATE INDEX IF NOT EXISTS ix_reel_ratings_user ON reel_ratings(user_id)",
+                    "CREATE INDEX IF NOT EXISTS ix_reel_ratings_auid ON reel_ratings(rater_auid)"
                 ]
+
+                # Ensure reel_ratings table exists for SQLite
+                conn.exec_driver_sql("""
+                    CREATE TABLE IF NOT EXISTS reel_ratings (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        registration_id VARCHAR NOT NULL,
+                        reel_index INTEGER DEFAULT 1,
+                        reel_url VARCHAR,
+                        user_id INTEGER REFERENCES users(id),
+                        rater_auid VARCHAR,
+                        rater_name VARCHAR,
+                        rater_email VARCHAR,
+                        rater_ip VARCHAR,
+                        rating FLOAT NOT NULL,
+                        criteria_creativity FLOAT,
+                        criteria_heritage FLOAT,
+                        criteria_overall FLOAT,
+                        feedback TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+
                 for idx_sql in perf_indexes:
                     try:
                         conn.exec_driver_sql(idx_sql)
@@ -239,6 +272,32 @@ def ensure_schema_migrations(target_engine=None):
 
         elif eng.dialect.name == "postgresql":
             with eng.connect() as conn:
+                # Ensure reel_ratings table exists for PostgreSQL
+                try:
+                    conn.exec_driver_sql("""
+                        CREATE TABLE IF NOT EXISTS public.reel_ratings (
+                            id SERIAL PRIMARY KEY,
+                            registration_id VARCHAR NOT NULL,
+                            reel_index INTEGER DEFAULT 1,
+                            reel_url VARCHAR,
+                            user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                            rater_auid VARCHAR,
+                            rater_name VARCHAR,
+                            rater_email VARCHAR,
+                            rater_ip VARCHAR,
+                            rating FLOAT NOT NULL,
+                            criteria_creativity FLOAT,
+                            criteria_heritage FLOAT,
+                            criteria_overall FLOAT,
+                            feedback TEXT,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
+                    """)
+                    conn.commit()
+                except Exception as tbl_err:
+                    conn.rollback()
+                    logger.debug(f"[PG CREATE REEL RATINGS NOTICE] {tbl_err}")
+
                 # These tables are managed through the backend API. Enable RLS
                 # so direct PostgREST roles have no row access unless explicit
                 # policies are added. The table-owner role retains backend access.
@@ -262,6 +321,7 @@ def ensure_schema_migrations(target_engine=None):
                     "working_committee_day_sessions",
                     "working_committee_audit_logs",
                     "karunada_schedule_days",
+                    "reel_ratings",
                 ):
                     try:
                         conn.exec_driver_sql(
@@ -294,6 +354,10 @@ def ensure_schema_migrations(target_engine=None):
                 add_pg_col("registrations", "user_id", "INTEGER REFERENCES users(id)")
                 add_pg_col("registrations", "instagram_username", "VARCHAR")
                 add_pg_col("registrations", "instagram_profile_link", "VARCHAR")
+                add_pg_col("registrations", "instagram_reel_link", "VARCHAR")
+                add_pg_col("registrations", "reel_links", "TEXT")
+                add_pg_col("registrations", "reel_reach_insights", "TEXT")
+                add_pg_col("registrations", "reel_submitted_at", "TIMESTAMP")
                 add_pg_col("users", "photo_url", "TEXT")
                 add_pg_col("users", "volunteer_domain", "VARCHAR")
                 add_pg_col("users", "admin_type", "VARCHAR")
@@ -433,8 +497,8 @@ def ensure_schema_migrations(target_engine=None):
                         "id": "AKV-NT-10",
                         "title_en": "Mehendi Competition",
                         "title_kn": "ಮೆಹಂದಿ ಸ್ಪರ್ಧೆ (Mehendi)",
-                        "category": "traditional",
-                        "category_kn": "ಸಾಂಪ್ರದಾಯಿಕ",
+                        "category": "fine_arts",
+                        "category_kn": "ಲಲಿತಕಲೆ",
                         "venue": "Ana Block, Acharya IT",
                         "venue_kn": "ಅನಾ ಬ್ಲಾಕ್, ಆಚಾರ್ಯ ಐ.ಟಿ",
                         "event_date": "November 03, 2026",
@@ -473,8 +537,8 @@ def ensure_schema_migrations(target_engine=None):
                         "id": "AKV-NT-12",
                         "title_en": "Rangoli Competition",
                         "title_kn": "ರಂಗೋಲಿ ಸ್ಪರ್ಧೆ (Rangoli)",
-                        "category": "traditional",
-                        "category_kn": "ಸಾಂಪ್ರದಾಯಿಕ",
+                        "category": "fine_arts",
+                        "category_kn": "ಲಲಿತಕಲೆ",
                         "venue": "Acharya Streets, Acharya IT",
                         "venue_kn": "ಆಚಾರ್ಯ ರಸ್ತೆಗಳು, ಆಚಾರ್ಯ ಐ.ಟಿ",
                         "event_date": "November 03, 2026",
@@ -519,8 +583,8 @@ def ensure_schema_migrations(target_engine=None):
                         existing_eids.add(p_ev["id"].upper())
                     else:
                         conn.exec_driver_sql(
-                            "UPDATE events SET is_active = :val, title_en = :title, title_kn = :title_kn WHERE UPPER(id) = :eid",
-                            {"val": p_ev.get("is_active", False), "title": p_ev["title_en"], "title_kn": p_ev["title_kn"], "eid": p_ev["id"].upper()}
+                            "UPDATE events SET is_active = :val, title_en = :title, title_kn = :title_kn, category = :cat, category_kn = :cat_kn WHERE UPPER(id) = :eid",
+                            {"val": p_ev.get("is_active", False), "title": p_ev["title_en"], "title_kn": p_ev["title_kn"], "cat": p_ev["category"], "cat_kn": p_ev["category_kn"], "eid": p_ev["id"].upper()}
                         )
 
                 # Migrate registrations from backend duplicate IDs to portal canonical IDs
@@ -553,6 +617,14 @@ def ensure_schema_migrations(target_engine=None):
                 conn.exec_driver_sql(
                     "UPDATE events SET is_active = :val WHERE UPPER(id) IN ('AKV-NT-REEL', 'AKV-NT-09', 'AKV-NT-10', 'AKV-NT-12')",
                     {"val": True}
+                )
+
+                # Ensure Reel Contest has Social Media category and Mehendi/Rangoli are Fine Arts
+                conn.exec_driver_sql(
+                    "UPDATE events SET category = 'social_media', category_kn = 'ಸೋಷಿಯಲ್ ಮೀಡಿಯಾ' WHERE UPPER(id) = 'AKV-NT-REEL'"
+                )
+                conn.exec_driver_sql(
+                    "UPDATE events SET category = 'fine_arts', category_kn = 'ಲಲಿತಕಲೆ' WHERE UPPER(id) IN ('AKV-NT-10', 'AKV-NT-12')"
                 )
 
                 # Explicitly close Painting and Sketching competitions

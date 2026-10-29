@@ -2,6 +2,7 @@ import React from "react";
 import { useLanguage } from "../context/LanguageContext";
 import { Users, User, Calendar, MapPin, Clock, BookOpen, ArrowRight } from "lucide-react";
 import { formatKannadaDate, formatKannadaTime, formatKannadaVenue, toKannadaDigits } from "../utils/kannadaUtils";
+import { isReelContestEvent } from "../config/eventsData";
 
 export const EventCard = ({ event, onOpenRules, onRegister }) => {
   const { lang, t } = useLanguage();
@@ -9,7 +10,20 @@ export const EventCard = ({ event, onOpenRules, onRegister }) => {
   const title = lang === "kn" ? event.title_kn : event.title_en;
   const description = lang === "kn" ? event.description_kn : event.description_en;
   const venue = lang === "kn" ? (event.venue_kn || formatKannadaVenue(event.venue)) : event.venue;
-  const categoryLabel = lang === "kn" ? event.category_kn : event.category.toUpperCase();
+  
+  const isReel = isReelContestEvent(event) || (event.category || "").toLowerCase() === "social_media";
+  const isFineArts = !isReel && ((event.category || "").toLowerCase() === "fine_arts" || (event.category || "").toLowerCase().includes("fine"));
+
+  let categoryLabel = "";
+  if (isReel) {
+    categoryLabel = lang === "kn" ? (event.category_kn || "ಸೋಷಿಯಲ್ ಮೀಡಿಯಾ") : "Social Media";
+  } else if (isFineArts) {
+    categoryLabel = lang === "kn" ? (event.category_kn || "ಲಲಿತಕಲೆ") : "FINE_ARTS";
+  } else {
+    categoryLabel = lang === "kn" ? (event.category_kn || event.category) : (event.category || "").toUpperCase();
+  }
+
+  const categoryKey = isReel ? "social_media" : isFineArts ? "fine_arts" : (event.category || "").toLowerCase();
 
   const slotsAvailable = Math.max(0, event.max_slots - (event.registered_count || 0));
   const isFull = slotsAvailable <= 0;
@@ -19,6 +33,8 @@ export const EventCard = ({ event, onOpenRules, onRegister }) => {
     literary: "bg-red-50 text-kar-red border-red-200",
     cultural: "bg-amber-50 text-amber-800 border-amber-200",
     traditional: "bg-orange-50 text-orange-800 border-orange-200",
+    fine_arts: "bg-stone-50 text-stone-800 border-stone-300 font-bold",
+    social_media: "bg-gradient-to-r from-pink-50 to-rose-50 text-rose-700 border-rose-300 font-bold shadow-xs",
   };
 
   return (
@@ -30,7 +46,7 @@ export const EventCard = ({ event, onOpenRules, onRegister }) => {
       <div className="p-6 flex-1 flex flex-col">
         {/* Badges Row */}
         <div className="flex items-center justify-between gap-2 mb-3">
-          <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${categoryColorMap[event.category] || "bg-stone-100 text-stone-700"}`}>
+          <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${categoryColorMap[categoryKey] || "bg-stone-100 text-stone-700"}`}>
             {categoryLabel}
           </span>
 

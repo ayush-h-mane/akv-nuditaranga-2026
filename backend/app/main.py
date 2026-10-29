@@ -26,6 +26,7 @@ from .routes import (
     developer,
     google_sheets,
     media,
+    reel_contest,
 )
 
 app = FastAPI(
@@ -114,6 +115,7 @@ app.include_router(contact.router, prefix=settings.API_PREFIX)
 app.include_router(developer.router, prefix=settings.API_PREFIX)
 app.include_router(google_sheets.router, prefix=settings.API_PREFIX)
 app.include_router(media.router, prefix=settings.API_PREFIX)
+app.include_router(reel_contest.router, prefix=settings.API_PREFIX)
 
 @app.get("/api/health")
 def health_check():

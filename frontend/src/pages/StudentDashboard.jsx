@@ -27,8 +27,13 @@ import {
   Plus,
   RefreshCw,
   MessageCircle,
-  ExternalLink
+  ExternalLink,
+  Film,
+  Copy,
+  Check,
+  Share2
 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { Instagram } from "../components/InstagramIcon";
 import { WhatsAppGroupModal } from "../components/WhatsAppGroupModal";
 import { getEventWhatsAppGroup } from "../config/whatsappGroups";
@@ -70,12 +75,27 @@ export const StudentDashboard = ({
   // Post-Registration WhatsApp Group Modal State
   const [whatsAppModalData, setWhatsAppModalData] = useState(null);
 
+  // Reel Contest Upload & QR Modals
+  const [reelManageReg, setReelManageReg] = useState(null);
+  const [reelLinksInput, setReelLinksInput] = useState({
+    reel_link_1: "",
+    reel_link_2: "",
+    reel_link_3: "",
+    reel_link_4: "",
+    reel_reach_insights: ""
+  });
+  const [savingReels, setSavingReels] = useState(false);
+  const [reelShareModalReg, setReelShareModalReg] = useState(null);
+  const [reelLinkCopied, setReelLinkCopied] = useState(false);
+
   // Bind modals to browser back button history
   useHistoryModal(Boolean(viewingPassReg), () => setViewingPassReg(null));
   useHistoryModal(Boolean(teamModalEvent), () => setTeamModalEvent(null));
   useHistoryModal(Boolean(soloConfirmEvent), () => setSoloConfirmEvent(null));
   useHistoryModal(Boolean(reelContestModal), () => setReelContestModal(null));
   useHistoryModal(Boolean(whatsAppModalData), () => setWhatsAppModalData(null));
+  useHistoryModal(Boolean(reelManageReg), () => setReelManageReg(null));
+  useHistoryModal(Boolean(reelShareModalReg), () => setReelShareModalReg(null));
 
   // Change Password State
   const [pwForm, setPwForm] = useState({
@@ -330,6 +350,64 @@ export const StudentDashboard = ({
 
   const handleRemoveMember = (index) => {
     setTeamMembers(teamMembers.filter((_, i) => i !== index));
+  };
+
+  // Open Reel Management Modal
+  const handleOpenReelManage = (reg) => {
+    setReelManageReg(reg);
+    let r1 = reg.instagram_reel_link || "";
+    let r2 = "";
+    let r3 = "";
+    let r4 = "";
+    if (reg.reel_links) {
+      try {
+        const parsed = typeof reg.reel_links === "string" ? JSON.parse(reg.reel_links) : reg.reel_links;
+        if (Array.isArray(parsed)) {
+          const m1 = parsed.find(x => Number(x.reel_index) === 1);
+          const m2 = parsed.find(x => Number(x.reel_index) === 2);
+          const m3 = parsed.find(x => Number(x.reel_index) === 3);
+          const m4 = parsed.find(x => Number(x.reel_index) === 4);
+          if (m1) r1 = m1.url;
+          if (m2) r2 = m2.url;
+          if (m3) r3 = m3.url;
+          if (m4) r4 = m4.url;
+        }
+      } catch (e) {}
+    }
+    setReelLinksInput({
+      reel_link_1: r1,
+      reel_link_2: r2,
+      reel_link_3: r3,
+      reel_link_4: r4,
+      reel_reach_insights: reg.reel_reach_insights || ""
+    });
+  };
+
+  // Save Reel Links & Insights
+  const handleSaveReelLinks = async (e) => {
+    if (e) e.preventDefault();
+    if (!reelManageReg) return;
+    setSavingReels(true);
+    try {
+      const res = await api.updateReelContestLinks(reelManageReg.registration_id, reelLinksInput);
+      showSuccess(res.message || "Reel links and insights successfully submitted for evaluation!", "Reels Updated 🎬");
+      setReelManageReg(null);
+      await loadData(true);
+    } catch (err) {
+      showError(err.message || "Failed to save reel contest links.", "Save Failed");
+    } finally {
+      setSavingReels(false);
+    }
+  };
+
+  const handleCopyReelShareLink = (reg) => {
+    if (typeof window !== "undefined") {
+      const url = `${window.location.origin}/rate-reel?id=${encodeURIComponent(reg.registration_id)}`;
+      navigator.clipboard.writeText(url);
+      setReelLinkCopied(true);
+      setTimeout(() => setReelLinkCopied(false), 2500);
+      showSuccess("Personalized rating link copied to clipboard! Share it with classmates.", "Link Copied");
+    }
   };
 
   if (loading && !dashboardData) {
@@ -740,6 +818,25 @@ export const StudentDashboard = ({
                             {r.venue || "Acharya IT"}
                           </span>
                         </div>
+
+                        {isReelContestEvent(r) && (
+                          <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); handleOpenReelManage(r); }}
+                              className="text-[10px] font-extrabold px-2.5 py-1 rounded-lg bg-rose-100 text-rose-800 hover:bg-rose-200 transition-colors cursor-pointer"
+                            >
+                              🎬 Manage Reels
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setReelShareModalReg(r); }}
+                              className="text-[10px] font-extrabold px-2.5 py-1 rounded-lg bg-amber-100 text-amber-900 hover:bg-amber-200 transition-colors cursor-pointer"
+                            >
+                              ⭐ QR & Rating
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-1.5 shrink-0">
@@ -856,6 +953,52 @@ export const StudentDashboard = ({
                               Profile ↗
                             </a>
                           )}
+                        </div>
+                      )}
+
+                      {/* Reel Contest Action Panel */}
+                      {isReelContestEvent(reg) && (
+                        <div className="p-3.5 bg-gradient-to-r from-purple-50/90 via-pink-50/90 to-amber-50/90 rounded-2xl border border-pink-200 space-y-2 mt-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-600 text-white">
+                              🎬 Reel Contest Entry • Evaluation Nov 4th, 17:30 IST
+                            </span>
+                            {reg.instagram_reel_link && (
+                              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100/90 border border-emerald-300 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                <span>Reels Uploaded</span>
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-stone-600 leading-snug">
+                            Upload up to 4 Instagram reel links and reach insights. You will be evaluated on Nov 4th, 2026 at 5:30 PM (17:30 IST) based on uploaded reels, reach & insights, and community ratings.
+                          </p>
+                          <div className="flex flex-wrap items-center gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenReelManage(reg)}
+                              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 text-white font-extrabold text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <Instagram className="w-3.5 h-3.5" />
+                              <span>{reg.instagram_reel_link ? "Update Reels (1-4) & Insights" : "Upload Latest Reel Links & Insights"}</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setReelShareModalReg(reg)}
+                              className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-950 font-extrabold text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <QrCode className="w-3.5 h-3.5" />
+                              <span>Show QR & Rating Link</span>
+                            </button>
+                            <a
+                              href={`/rate-reel?id=${encodeURIComponent(reg.registration_id)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-2.5 py-1.5 rounded-xl bg-white border border-stone-200 hover:bg-stone-50 text-stone-800 font-bold text-xs transition-all flex items-center gap-1"
+                            >
+                              <span>Preview Rating Page ↗</span>
+                            </a>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1532,6 +1675,212 @@ export const StudentDashboard = ({
           eventTitle={whatsAppModalData.eventTitle}
           onClose={() => setWhatsAppModalData(null)}
         />
+      )}
+
+      {/* Reel Contest Upload & Insights Modal */}
+      {reelManageReg && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-sm animate-fade-in overflow-y-auto"
+          onClick={() => setReelManageReg(null)}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 border border-stone-200 shadow-2xl relative my-auto space-y-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setReelManageReg(null)}
+              className="absolute top-4 right-4 p-2 rounded-full bg-stone-100 text-stone-600 hover:bg-stone-200 z-10 cursor-pointer"
+              title="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="space-y-1">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-100 text-rose-800 border border-rose-200">
+                Reel Contest Entry • {reelManageReg.registration_id}
+              </span>
+              <h3 className="text-xl font-black text-stone-900">Upload / Update Reel Links & Reach Insights</h3>
+              <p className="text-xs text-stone-500">
+                You can upload up to 4 Instagram reel links to be evaluated by the judges and community.
+              </p>
+            </div>
+
+            {/* Evaluation Cutoff Banner */}
+            <div className="p-3.5 bg-gradient-to-r from-red-50 to-amber-50 rounded-2xl border border-red-200 text-xs text-stone-700 space-y-1">
+              <div className="flex items-center gap-1.5 font-black text-kar-red text-[11px] uppercase tracking-wider">
+                <Clock className="w-3.5 h-3.5" />
+                <span>Evaluation Deadline: Nov 4th, 2026 at 17:30 PM IST (5:30 PM)</span>
+              </div>
+              <p className="text-[11px] text-stone-600 leading-snug">
+                Judges will evaluate your performance on November 4th based on your uploaded reels, reach/insights metrics, and community ratings.
+              </p>
+            </div>
+
+            <form onSubmit={handleSaveReelLinks} className="space-y-4">
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-bold text-stone-800 block mb-1">
+                    Reel #1 Link (Latest / Primary Entry) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="url"
+                    required
+                    value={reelLinksInput.reel_link_1}
+                    onChange={(e) => setReelLinksInput({ ...reelLinksInput, reel_link_1: e.target.value })}
+                    placeholder="https://www.instagram.com/reel/..."
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-stone-800 block mb-1">
+                    Reel #2 Link (Optional)
+                  </label>
+                  <input
+                    type="url"
+                    value={reelLinksInput.reel_link_2}
+                    onChange={(e) => setReelLinksInput({ ...reelLinksInput, reel_link_2: e.target.value })}
+                    placeholder="https://www.instagram.com/reel/..."
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-stone-800 block mb-1">
+                    Reel #3 Link (Optional)
+                  </label>
+                  <input
+                    type="url"
+                    value={reelLinksInput.reel_link_3}
+                    onChange={(e) => setReelLinksInput({ ...reelLinksInput, reel_link_3: e.target.value })}
+                    placeholder="https://www.instagram.com/reel/..."
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-stone-800 block mb-1">
+                    Reel #4 Link (Optional)
+                  </label>
+                  <input
+                    type="url"
+                    value={reelLinksInput.reel_link_4}
+                    onChange={(e) => setReelLinksInput({ ...reelLinksInput, reel_link_4: e.target.value })}
+                    placeholder="https://www.instagram.com/reel/..."
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-stone-800 block mb-1">
+                    Reach & Insights Summary (Optional / Recommended)
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={reelLinksInput.reel_reach_insights}
+                    onChange={(e) => setReelLinksInput({ ...reelLinksInput, reel_reach_insights: e.target.value })}
+                    placeholder="e.g. Views: 24.5K, Likes: 3.1K, Shares: 480, Comments: 120, 92% Karnataka audience."
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setReelManageReg(null)}
+                  className="flex-1 py-2.5 rounded-xl border border-stone-300 text-xs font-bold text-stone-700 hover:bg-stone-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingReels}
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 via-pink-600 to-amber-600 hover:brightness-110 text-white font-extrabold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {savingReels ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Saving Reels...</span>
+                    </>
+                  ) : (
+                    <span>Save Reels for Evaluation</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Reel QR Code & Share Modal */}
+      {reelShareModalReg && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-sm animate-fade-in overflow-y-auto"
+          onClick={() => setReelShareModalReg(null)}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-sm w-full p-6 sm:p-7 border border-stone-200 shadow-2xl relative my-auto text-center space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setReelShareModalReg(null)}
+              className="absolute top-4 right-4 p-2 rounded-full bg-stone-100 text-stone-600 hover:bg-stone-200 z-10 cursor-pointer"
+              title="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="space-y-1">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300">
+                Official Contest QR
+              </span>
+              <h3 className="text-lg font-black text-stone-900">{reelShareModalReg.full_name || profile?.name}</h3>
+              <p className="text-xs text-stone-500">
+                Share this QR code with friends and classmates. Scanning this will open your reel showcase where they can rate your 4 reels!
+              </p>
+            </div>
+
+            {/* QR Code SVG */}
+            <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200 inline-block shadow-inner">
+              <QRCodeSVG
+                value={`${typeof window !== "undefined" ? window.location.origin : ""}/rate-reel?id=${encodeURIComponent(reelShareModalReg.registration_id)}`}
+                size={200}
+                level="H"
+                includeMargin={true}
+              />
+            </div>
+
+            <div className="p-2.5 bg-stone-50 rounded-xl border border-stone-200 text-stone-600 font-mono text-[11px] truncate">
+              ID: <strong>{reelShareModalReg.registration_id}</strong>
+            </div>
+
+            <div className="space-y-2 pt-1">
+              <button
+                type="button"
+                onClick={() => handleCopyReelShareLink(reelShareModalReg)}
+                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-kar-red to-red-600 hover:brightness-110 text-white font-extrabold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {reelLinkCopied ? <Check className="w-4 h-4 text-emerald-300" /> : <Copy className="w-4 h-4" />}
+                <span>{reelLinkCopied ? "Link Copied!" : "Copy Rating Link"}</span>
+              </button>
+
+              <a
+                href={`/rate-reel?id=${encodeURIComponent(reelShareModalReg.registration_id)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold text-xs transition-all flex items-center justify-center gap-2"
+              >
+                <ExternalLink className="w-4 h-4" />
+                <span>Open Rating Page in New Tab</span>
+              </a>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

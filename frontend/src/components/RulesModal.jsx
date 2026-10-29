@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useLanguage } from "../context/LanguageContext";
 import { X, CheckCircle2, AlertCircle, Clock, MapPin } from "lucide-react";
 import { formatKannadaTime, formatKannadaVenue, toKannadaDigits } from "../utils/kannadaUtils";
+import { isReelContestEvent } from "../config/eventsData";
 
 export const RulesModal = ({ event, isOpen, onClose, onRegister }) => {
   const { lang, t } = useLanguage();
@@ -11,6 +12,18 @@ export const RulesModal = ({ event, isOpen, onClose, onRegister }) => {
 
   const rulesText = lang === "kn" ? (event.rules_kn || event.rules_en) : event.rules_en;
   const rulesList = rulesText.split("\n").filter(r => r.trim().length > 0);
+
+  const isReel = isReelContestEvent(event) || (event.category || "").toLowerCase() === "social_media";
+  const isFineArts = !isReel && ((event.category || "").toLowerCase() === "fine_arts" || (event.category || "").toLowerCase().includes("fine"));
+
+  let categoryLabel = "";
+  if (isReel) {
+    categoryLabel = lang === "kn" ? (event.category_kn || "ಸೋಷಿಯಲ್ ಮೀಡಿಯಾ") : "Social Media";
+  } else if (isFineArts) {
+    categoryLabel = lang === "kn" ? (event.category_kn || "ಲಲಿತಕಲೆ") : "FINE_ARTS";
+  } else {
+    categoryLabel = lang === "kn" ? (event.category_kn || event.category) : (event.category || "").toUpperCase();
+  }
 
   const modalContent = (
     <div 
@@ -29,8 +42,14 @@ export const RulesModal = ({ event, isOpen, onClose, onRegister }) => {
         {/* Modal Header */}
         <div className="p-4 sm:p-6 border-b border-stone-100 flex items-start justify-between shrink-0">
           <div>
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 mb-1.5">
-              {lang === "kn" ? event.category_kn : event.category.toUpperCase()}
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold mb-1.5 border ${
+              isReel 
+                ? "bg-rose-50 text-rose-700 border-rose-300" 
+                : isFineArts 
+                ? "bg-stone-50 text-stone-800 border-stone-300" 
+                : "bg-amber-100 text-amber-900 border-amber-200"
+            }`}>
+              {categoryLabel}
             </span>
             <h3 className="text-xl font-extrabold text-stone-900 font-display">
               {lang === "kn" ? event.title_kn : event.title_en}

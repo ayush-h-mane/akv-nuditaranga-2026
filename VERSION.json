@@ -1,8 +1,13 @@
 {
-  "production_version": "2.3.50",
-  "staged_version": "2.3.51",
+  "production_version": "2.3.51",
+  "staged_version": "2.3.52",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.51",
+      "released_at": "2026-10-29T06:39:48+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.51: Reel Contest Multi-Reel Uploads & Reach Insights: Enabled registered Reel Contest profiles (AKV-NT-REEL) to upload and manage up to 4 Instagram reel links along with reach, impressions, and engagement insights for official evaluation.; November 4th 2026 17:30 IST Evaluation Deadline: Enforced evaluation cutoff on November 4, 2026, at 5:30 PM IST with live countdown timer and prominent badges across participant dashboards, rating portals, and exports.; Public Community Rating Page (/rate-reel): Created responsive, branded reel rating page featuring participant details, direct Instagram links, live star ratings, and detailed evaluation criteria (Creativity, Kannada Heritage, Editing).; Personalized Participant QR Code Generator: Generated unique QR codes for each registered reel contest participant, directing scanning users straight to their 4-reel showcase and voting interface.; Strict 1-Rating-Per-Profile Security: Enforced strict validation ensuring each user profile / student AUID is permitted exactly one rating per reel, blocking duplicate votes and self-ratings.; Developer & SuperAdmin Multi-Sheet Excel Export (.xlsx): Added dedicated 1-click download options in the Developer Portal and SuperAdmin Exports section producing formatted workbooks with participant reel links 1-4, reach insights, and detailed community rating audit logs.; Reel Contest Category Standardization ('Social Media'): Mentioned 'Social Media' instead of 'Culturals' for Reel Contest (AKV-NT-REEL) across event cards, registration flows, and rules modals with customized category styling.; Events Page Category Filter Simplification: Streamlined event category tabs strictly to 'All Events', 'FINE_ARTS', and 'Social Media', removing Literary, Cultural, and Folk/Traditional filters for clear, focused competition discovery.; Frontend Events Cache Bump (v7): Bumped client-side storage cache key to akv_events_cache_v7 with automatic category normalization for instant client reflection."
+    },
     {
       "version": "2.3.50",
       "released_at": "2026-10-29T05:35:11+0530",

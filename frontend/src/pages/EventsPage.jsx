@@ -5,6 +5,7 @@ import { api } from "../services/api";
 import { useHistoryModal } from "../utils/useHistoryModal";
 import { EventCard } from "../components/EventCard";
 import { RulesModal } from "../components/RulesModal";
+import { isReelContestEvent } from "../config/eventsData";
 import { Search, Filter, Sparkles, RefreshCw, ShieldAlert, ArrowRight } from "lucide-react";
 
 export const EventsPage = ({ setCurrentView, setSelectedEventId }) => {
@@ -63,10 +64,19 @@ export const EventsPage = ({ setCurrentView, setSelectedEventId }) => {
 
   const filteredEvents = events.filter((ev) => {
     if (selectedCategory !== "all") {
-      const evCat = (ev.category || "").toLowerCase();
-      const selCat = selectedCategory.toLowerCase();
-      if (evCat !== selCat && !evCat.includes(selCat)) {
-        return false;
+      const isReel = isReelContestEvent(ev) || (ev.category || "").toLowerCase() === "social_media";
+      const isFineArts = !isReel && ((ev.category || "").toLowerCase() === "fine_arts" || (ev.category || "").toLowerCase().includes("fine"));
+
+      if (selectedCategory === "social_media") {
+        if (!isReel) return false;
+      } else if (selectedCategory === "fine_arts") {
+        if (!isFineArts) return false;
+      } else {
+        const evCat = (ev.category || "").toLowerCase();
+        const selCat = selectedCategory.toLowerCase();
+        if (evCat !== selCat && !evCat.includes(selCat)) {
+          return false;
+        }
       }
     }
     const titleMatch = (lang === "kn" ? ev.title_kn : ev.title_en)
@@ -79,10 +89,9 @@ export const EventsPage = ({ setCurrentView, setSelectedEventId }) => {
   });
 
   const categoryTabs = [
-    { id: "all", label: t("events.filterAll") },
-    { id: "literary", label: t("events.filterLiterary") },
-    { id: "cultural", label: t("events.filterCultural") },
-    { id: "traditional", label: t("events.filterTraditional") },
+    { id: "all", label: t("events.filterAll") || "All Events" },
+    { id: "fine_arts", label: t("events.filterFineArts") || "FINE_ARTS" },
+    { id: "social_media", label: t("events.filterSocialMedia") || "Social Media" },
   ];
 
   return (

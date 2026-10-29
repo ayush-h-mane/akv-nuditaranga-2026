@@ -99,6 +99,18 @@ def get_events(
                         ev.title_en = t_en
                         ev.title_kn = t_kn
                         needs_commit = True
+                # Ensure correct categories
+                if eid == "AKV-NT-REEL":
+                    if ev.category != "social_media":
+                        ev.category = "social_media"
+                        ev.category_kn = "ಸೋಷಿಯಲ್ ಮೀಡಿಯಾ"
+                        needs_commit = True
+                elif eid in ["AKV-NT-10", "AKV-NT-12"]:
+                    if ev.category != "fine_arts":
+                        ev.category = "fine_arts"
+                        ev.category_kn = "ಲಲಿತಕಲೆ"
+                        needs_commit = True
+
                 # Refresh registered_count
                 reg_cnt = db.execute(text(f"SELECT COUNT(*) FROM registrations WHERE UPPER(event_id) = '{eid}'")).scalar() or 0
                 if ev.registered_count != reg_cnt:

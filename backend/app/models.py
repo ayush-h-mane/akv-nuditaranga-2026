@@ -1,5 +1,5 @@
 import datetime
-from sqlalchemy import Column, Integer, String, Boolean, Text, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Boolean, Text, DateTime, ForeignKey, UniqueConstraint, Float
 from sqlalchemy.orm import relationship
 from .database import Base
 
@@ -181,10 +181,36 @@ class Registration(Base):
     photo_url = Column(Text, nullable=True)
     instagram_username = Column(String, nullable=True)
     instagram_profile_link = Column(String, nullable=True)
+    instagram_reel_link = Column(String, nullable=True)
+    reel_links = Column(Text, nullable=True)  # JSON formatted array of up to 4 reel URLs
+    reel_reach_insights = Column(Text, nullable=True)  # Metrics & reach details for Nov 4 evaluation
+    reel_submitted_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     event = relationship("Event", back_populates="registrations")
     user = relationship("User", back_populates="event_registrations")
+
+
+class ReelRating(Base):
+    __tablename__ = "reel_ratings"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    registration_id = Column(String, index=True, nullable=False)
+    reel_index = Column(Integer, default=1, index=True)  # 1 to 4
+    reel_url = Column(String, nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    rater_auid = Column(String, nullable=True, index=True)
+    rater_name = Column(String, nullable=True)
+    rater_email = Column(String, nullable=True)
+    rater_ip = Column(String, nullable=True)
+    rating = Column(Float, nullable=False)  # 1.0 - 5.0
+    criteria_creativity = Column(Float, nullable=True)
+    criteria_heritage = Column(Float, nullable=True)
+    criteria_overall = Column(Float, nullable=True)
+    feedback = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, index=True)
+
+    user = relationship("User", foreign_keys=[user_id])
 
 
 class CheckInLog(Base):
