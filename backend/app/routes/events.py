@@ -77,8 +77,10 @@ def get_events(
                 db.delete(dup_ev)
                 needs_commit = True
 
-        # Open the 6 requested competitions for registrations
-        OPEN_EVENT_IDS = ["AKV-NT-REEL", "AKV-NT-09", "AKV-NT-10", "AKV-NT-11", "AKV-NT-12", "AKV-NT-17"]
+        # Active open competitions for registrations
+        OPEN_EVENT_IDS = ["AKV-NT-REEL", "AKV-NT-09", "AKV-NT-10", "AKV-NT-12"]
+        # Explicitly closed competitions (Painting, Sketching)
+        CLOSED_EVENT_IDS = ["AKV-NT-11", "AKV-NT-17", "AKV-NT-PAINT", "AKV-NT-SKETCH"]
         title_mapping = {
             "AKV-NT-10": ("Mehendi Competition", "ಮೆಹಂದಿ ಸ್ಪರ್ಧೆ (Mehendi)"),
             "AKV-NT-11": ("Painting Competition", "ಚಿತ್ರಕಲೆ ಸ್ಪರ್ಧೆ (Painting)"),
@@ -98,6 +100,24 @@ def get_events(
                         ev.title_kn = t_kn
                         needs_commit = True
                 # Refresh registered_count
+                reg_cnt = db.execute(text(f"SELECT COUNT(*) FROM registrations WHERE UPPER(event_id) = '{eid}'")).scalar() or 0
+                if ev.registered_count != reg_cnt:
+                    ev.registered_count = reg_cnt
+                    needs_commit = True
+
+        # Explicitly enforce closed status for closed competitions (Painting, Sketching)
+        for eid in CLOSED_EVENT_IDS:
+            ev = db.query(Event).filter(func.upper(Event.id) == eid).first()
+            if ev:
+                if ev.is_active:
+                    ev.is_active = False
+                    needs_commit = True
+                if eid in title_mapping:
+                    t_en, t_kn = title_mapping[eid]
+                    if ev.title_en != t_en:
+                        ev.title_en = t_en
+                        ev.title_kn = t_kn
+                        needs_commit = True
                 reg_cnt = db.execute(text(f"SELECT COUNT(*) FROM registrations WHERE UPPER(event_id) = '{eid}'")).scalar() or 0
                 if ev.registered_count != reg_cnt:
                     ev.registered_count = reg_cnt
