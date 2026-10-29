@@ -204,7 +204,7 @@ export function normalizeAttendanceDates(data) {
 }
 
 // Local fallback storage keys
-const STORAGE_EVENTS_KEY = "akv_events_cache_v5";
+const STORAGE_EVENTS_KEY = "akv_events_cache_v6";
 const STORAGE_REGS_KEY = "akv_registrations_cache_v2";
 const STORAGE_USERS_KEY = "akv_users_cache_v2";
 const STORAGE_ADMINS_KEY = "akv_admins_cache_v2";

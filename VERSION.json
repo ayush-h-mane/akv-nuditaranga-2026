@@ -1,8 +1,13 @@
 {
-  "production_version": "2.3.49",
-  "staged_version": "2.3.50",
+  "production_version": "2.3.50",
+  "staged_version": "2.3.51",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.50",
+      "released_at": "2026-10-29T05:35:11+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.50: Painting and Sketching Competitions Registration Closure: Officially closed Painting Competition (AKV-NT-11 / AKV-NT-PAINT) and Sketching Competition (AKV-NT-17 / AKV-NT-SKETCH) by setting is_active = False in database migrations and backend event self-healing.; Zero-Data-Loss Safeguard for Closed Competitions: Preserved 100% of existing student registrations, participant USNs, team records, digital passes, and admin exports for Painting and Sketching while preventing any new registrations.; Active Competition Catalog Synchronization: Maintained active registration status exclusively for the remaining open competitions (Reel Contest, Pottery, Mehendi Competition, Rangoli Competition).; Frontend Cache Busting (v6): Bumped client cache key to akv_events_cache_v6 to immediately invalidate stale browser event caches and reflect the closed status across the portal and SuperAdmin dashboard."
+    },
     {
       "version": "2.3.49",
       "released_at": "2026-10-28T01:06:07+0530",

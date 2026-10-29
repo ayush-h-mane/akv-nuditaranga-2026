@@ -95,7 +95,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, expire_on_commit=
 Base = declarative_base()
 
 _MIGRATIONS_DONE = False
-CURRENT_SCHEMA_VERSION = 7
+CURRENT_SCHEMA_VERSION = 8
 
 def ensure_schema_migrations(target_engine=None):
     global _MIGRATIONS_DONE
@@ -463,7 +463,7 @@ def ensure_schema_migrations(target_engine=None):
                         "max_slots": 100,
                         "format": "solo",
                         "is_team": False,
-                        "is_active": True,
+                        "is_active": False,
                         "rules_en": "1. Drawing sheets will be provided; bring your own colors and brushes.\n2. Time limit: 2 hours.\n3. Theme will be provided before commencement.\n4. Cleanliness and originality will be evaluated.",
                         "rules_kn": "೧. ಚಿತ್ರಕಲೆಯ ಹಾಳೆಯನ್ನು ಒದಗಿಸಲಾಗುವುದು; ಬಣ್ಣಗಳು ಮತ್ತು ಕುಂಚಗಳನ್ನು ಸ್ವತಃ ತರಬೇಕು.\n೨. ಸಮಯದ ಮಿತಿ: ೨ ಗಂಟೆಗಳು.\n೩. ವಿಷಯವನ್ನು ಆರಂಭಕ್ಕೂ ಮುನ್ನ ನೀಡಲಾಗುವುದು.\n೪. ಸ್ವಂತಿಕೆ ಮತ್ತು ಕಲಾತ್ಮಕತೆಗೆ ಆದ್ಯತೆ.",
                         "description_en": "Express Karnataka's folk colors and cultural vibrance with water, acrylic, or poster colors on canvas.",
@@ -503,7 +503,7 @@ def ensure_schema_migrations(target_engine=None):
                         "max_slots": 100,
                         "format": "solo",
                         "is_team": False,
-                        "is_active": True,
+                        "is_active": False,
                         "rules_en": "1. Sketching paper will be provided; participants must bring their own sketching pencils and erasers.\n2. Time limit: 1 hour.\n3. Theme will be announced at the venue.\n4. Decisions of the judges are final.",
                         "rules_kn": "೧. ಸ್ಕೆಚಿಂಗ್ ಹಾಳೆಯನ್ನು ಆಯೋಜಕರೇ ನೀಡುತ್ತಾರೆ; ಸ್ಪರ್ಧಿಗಳು ತಮ್ಮದೇ ಪೆನ್ಸಿಲ್ ಮತ್ತು ರಬ್ಬರ್ ತರಬೇಕು.\n೨. ಸಮಯದ ಮಿತಿ: ೧ ಗಂಟೆ.\n೩. ವಿಷಯವನ್ನು ಸ್ಥಳದಲ್ಲೇ ಪ್ರಕಟಿಸಲಾಗುವುದು.\n೪. ತೀರ್ಪುಗಾರರ ನಿರ್ಧಾರವೇ ಅಂತಿಮ.",
                         "description_en": "Unleash your pencil sketches capturing the essence of Karnataka's architectural wonders, poets, and historic monuments.",
@@ -520,7 +520,7 @@ def ensure_schema_migrations(target_engine=None):
                     else:
                         conn.exec_driver_sql(
                             "UPDATE events SET is_active = :val, title_en = :title, title_kn = :title_kn WHERE UPPER(id) = :eid",
-                            {"val": True, "title": p_ev["title_en"], "title_kn": p_ev["title_kn"], "eid": p_ev["id"].upper()}
+                            {"val": p_ev.get("is_active", False), "title": p_ev["title_en"], "title_kn": p_ev["title_kn"], "eid": p_ev["id"].upper()}
                         )
 
                 # Migrate registrations from backend duplicate IDs to portal canonical IDs
@@ -549,15 +549,21 @@ def ensure_schema_migrations(target_engine=None):
                         {"backend_id": backend_id}
                     )
 
-                # Ensure Reel Contest and Pottery are Active
+                # Ensure remaining open competitions (Reel Contest, Pottery, Mehendi, Rangoli) are Active
                 conn.exec_driver_sql(
-                    "UPDATE events SET is_active = :val WHERE UPPER(id) IN ('AKV-NT-REEL', 'AKV-NT-09')",
+                    "UPDATE events SET is_active = :val WHERE UPPER(id) IN ('AKV-NT-REEL', 'AKV-NT-09', 'AKV-NT-10', 'AKV-NT-12')",
                     {"val": True}
+                )
+
+                # Explicitly close Painting and Sketching competitions
+                conn.exec_driver_sql(
+                    "UPDATE events SET is_active = :val WHERE UPPER(id) IN ('AKV-NT-11', 'AKV-NT-17', 'AKV-NT-PAINT', 'AKV-NT-SKETCH')",
+                    {"val": False}
                 )
 
                 # Close all non-target events (Break Dance, Flag hoist, Open air, etc.)
                 conn.exec_driver_sql(
-                    "UPDATE events SET is_active = :val WHERE UPPER(id) NOT IN ('AKV-NT-REEL', 'AKV-NT-09', 'AKV-NT-10', 'AKV-NT-11', 'AKV-NT-12', 'AKV-NT-17')",
+                    "UPDATE events SET is_active = :val WHERE UPPER(id) NOT IN ('AKV-NT-REEL', 'AKV-NT-09', 'AKV-NT-10', 'AKV-NT-12')",
                     {"val": False}
                 )
 
