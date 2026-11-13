@@ -45,8 +45,10 @@ def register_participant(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
-    # 1. Check Event Existence
-    event = db.query(Event).filter(Event.id == reg_data.event_id).first()
+    raise HTTPException(
+        status_code=400,
+        detail="Registrations Closed: All event and competition registrations for AKV Nuditaranga 2026 are officially closed."
+    )
     if not event:
         event = Event(
             id=reg_data.event_id,

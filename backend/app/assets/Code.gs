@@ -445,6 +445,50 @@ function syncWorkingCommitteeSheet(ss, wcMembers, dates, attendanceLookup, baseU
 }
 
 /**
+ * Build a single member's row and photo formula for the consolidated attendance sheet.
+ */
+function buildConsolidatedMemberRow(slNo, memberType, member, regIdPrefix, roleText, dates, attendanceLookup, baseUrl) {
+  var photoUrl = getVolunteerPhotoUrl(member, baseUrl);
+  var photoFormula = photoUrl ? '=HYPERLINK("' + photoUrl + '", "View")' : '--';
+
+  var row = [
+    slNo,
+    memberType,
+    member.registration_id || (regIdPrefix + (member.id || "")),
+    member.name || "--",
+    (member.auid || "--").toUpperCase(),
+    member.department || "--",
+    roleText || "--",
+    "",
+    member.phone || "--"
+  ];
+
+  var daysPresent = 0;
+  dates.forEach(function(d) {
+    var key = (member.auid || "").toUpperCase() + "_" + d;
+    var keyId = (member.id || "") + "_" + d;
+    var att = attendanceLookup[key] || attendanceLookup[keyId] || null;
+
+    var checkIn = "--";
+    var checkOut = "--";
+
+    if (att) {
+      checkIn = att.check_in_time || (att.status === "PRESENT" ? "Present" : "--");
+      checkOut = att.check_out_time || (att.status === "PRESENT" ? "Present" : "--");
+      if (att.is_present || att.status === "PRESENT" || att.status === "COMPLETED") {
+        daysPresent++;
+      }
+    }
+
+    row.push(checkIn);
+    row.push(checkOut);
+  });
+
+  row.push(daysPresent);
+  return { row: row, photoFormula: [photoFormula] };
+}
+
+/**
  * 4. Synchronize Master Consolidated Sheet
  */
 function syncConsolidatedSheet(ss, volunteers, wcMembers, dates, attendanceLookup, baseUrl) {
@@ -464,7 +508,8 @@ function syncConsolidatedSheet(ss, volunteers, wcMembers, dates, attendanceLooku
   ];
 
   dates.forEach(function(d) {
-    headers.push(d + " (Status)");
+    headers.push(d + " (In)");
+    headers.push(d + " (Out)");
   });
 
   headers.push("Total Days Present");
@@ -477,78 +522,17 @@ function syncConsolidatedSheet(ss, volunteers, wcMembers, dates, attendanceLooku
 
   // Department volunteers
   volunteers.forEach(function(v) {
-    var photoUrl = getVolunteerPhotoUrl(v, baseUrl);
-    var photoFormula = photoUrl ? '=HYPERLINK("' + photoUrl + '", "View")' : '--';
-
-    var row = [
-      slNo++,
-      "VOLUNTEER",
-      v.registration_id || ("VOL-" + (v.id || "")),
-      v.name || "--",
-      (v.auid || "--").toUpperCase(),
-      v.department || "--",
-      v.volunteer_domain || "--",
-      "",
-      v.phone || "--"
-    ];
-
-    var daysPresent = 0;
-    dates.forEach(function(d) {
-      var key = (v.auid || "").toUpperCase() + "_" + d;
-      var keyId = (v.id || "") + "_" + d;
-      var att = attendanceLookup[key] || attendanceLookup[keyId] || null;
-
-      var statusStr = "--";
-      if (att) {
-        statusStr = att.status || (att.is_present ? "PRESENT" : "--");
-        if (att.is_present || att.status === "PRESENT" || att.status === "COMPLETED") {
-          daysPresent++;
-        }
-      }
-      row.push(statusStr);
-    });
-
-    row.push(daysPresent);
-    rows.push(row);
-    photoFormulas.push([photoFormula]);
+    var entry = buildConsolidatedMemberRow(slNo++, "VOLUNTEER", v, "VOL-", v.volunteer_domain || "--", dates, attendanceLookup, baseUrl);
+    rows.push(entry.row);
+    photoFormulas.push(entry.photoFormula);
   });
 
   // Working committee
   wcMembers.forEach(function(m) {
-    var photoUrl = getVolunteerPhotoUrl(m, baseUrl);
-    var photoFormula = photoUrl ? '=HYPERLINK("' + photoUrl + '", "View")' : '--';
-
-    var row = [
-      slNo++,
-      "WORKING COMMITTEE",
-      m.registration_id || ("WC-" + (m.id || "")),
-      m.name || "--",
-      (m.auid || "--").toUpperCase(),
-      m.department || "--",
-      m.working_committee_role || m.admin_type || "Committee Member",
-      "",
-      m.phone || "--"
-    ];
-
-    var daysPresent = 0;
-    dates.forEach(function(d) {
-      var key = (m.auid || "").toUpperCase() + "_" + d;
-      var keyId = (m.id || "") + "_" + d;
-      var att = attendanceLookup[key] || attendanceLookup[keyId] || null;
-
-      var statusStr = "--";
-      if (att) {
-        statusStr = att.status || (att.is_present ? "PRESENT" : "--");
-        if (att.is_present || att.status === "PRESENT" || att.status === "COMPLETED") {
-          daysPresent++;
-        }
-      }
-      row.push(statusStr);
-    });
-
-    row.push(daysPresent);
-    rows.push(row);
-    photoFormulas.push([photoFormula]);
+    var wcRole = m.working_committee_role || m.admin_type || "Committee Member";
+    var entry = buildConsolidatedMemberRow(slNo++, "WORKING COMMITTEE", m, "WC-", wcRole, dates, attendanceLookup, baseUrl);
+    rows.push(entry.row);
+    photoFormulas.push(entry.photoFormula);
   });
 
   if (rows.length > 0) {
@@ -557,6 +541,10 @@ function syncConsolidatedSheet(ss, volunteers, wcMembers, dates, attendanceLooku
   }
 
   formatDataRows(sheet, 5, rows.length, headers.length);
+  if (dates.length > 0) {
+    sheet.setColumnWidths(10, dates.length * 2, 105);
+    sheet.setColumnWidth(headers.length, 110);
+  }
   sheet.setFrozenRows(4);
 }
 

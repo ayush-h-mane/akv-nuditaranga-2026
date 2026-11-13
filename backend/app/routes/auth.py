@@ -234,8 +234,10 @@ def register_student(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
-    if payload.password != payload.confirm_password:
-        raise HTTPException(status_code=400, detail="Passwords do not match.")
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Registrations Closed: All Volunteer, Participant, and Student registrations for AKV Nuditaranga 2026 are officially closed."
+    )
 
     if payload.role == "VOLUNTEER" and not payload.volunteer_domain:
         raise HTTPException(status_code=400, detail="AKV domain is required for volunteers.")
@@ -764,8 +766,10 @@ def register_admin(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
-    if payload.password != payload.confirm_password:
-        raise HTTPException(status_code=400, detail="Passwords do not match.")
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Registrations Closed: All Coordinator and Working Committee registrations for AKV Nuditaranga 2026 are officially closed."
+    )
 
     # Resolve username, faculty ID, and AUID based on admin_type
     admin_type = payload.admin_type or "WORKING_COMMITTEE"

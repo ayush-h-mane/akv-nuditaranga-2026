@@ -26,7 +26,7 @@ INITIAL_EVENTS = [
         'reporting_time': '09:30 AM',
         'rules_en': '1. Reel must be original and celebrate Kannada culture, heritage, or AKV Nuditaranga fest vibes.\n2. Participants must provide their active Instagram username and public profile link.\n3. Tag @acharyakannadavedike and use #AKVNuditaranga2026 in the reel caption.\n4. Decisions of the jury will be final and binding.',
         'rules_kn': '೧. ರೀಲ್ಸ್ ಸ್ವಂತದ್ದಾಗಿರಬೇಕು ಹಾಗೂ ಕನ್ನಡ ಸಂಸ್ಕೃತಿ, ನಾಡು-ನುಡಿ ಅಥವಾ ನುಡಿತರಂಗ ಹಬ್ಬಕ್ಕೆ ಸಂಬಂಧಿಸಿರಬೇಕು.\n೨. ಸ್ಪರ್ಧಿಗಳು ತಮ್ಮ ಸಕ್ರಿಯ ಇನ್‌ಸ್ಟಾಗ್ರಾಮ್ ಬಳಕೆದಾರ ಹೆಸರು (Username) ಮತ್ತು ಪ್ರೊಫೈಲ್ ಲಿಂಕ್ ನೀಡುವುದು ಕಡ್ಡಾಯ.\n೩. ರೀಲ್‌ನಲ್ಲಿ @acharyakannadavedike ಟ್ಯಾಗ್ ಮಾಡಬೇಕು ಹಾಗೂ #AKVNuditaranga2026 ಹ್ಯಾಶ್‌ಟ್ಯಾಗ್ ಬಳಸಬೇಕು.\n೪. ತೀರ್ಪುಗಾರರ ತೀರ್ಮಾನವೇ ಅಂತಿಮ.',
-        'is_active': True,
+        'is_active': False,
     },
 ]
 

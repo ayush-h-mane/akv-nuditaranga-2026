@@ -348,8 +348,10 @@ def student_register_event(
     Profile details (Name, AUID, Email, Phone, Dept, etc.) are automatically 
     populated from the student's authenticated account without redundant input.
     """
-    # 1. Event verification
-    event = db.query(Event).filter(Event.id == payload.event_id).first()
+    raise HTTPException(
+        status_code=400,
+        detail="Registrations Closed: All event and competition registrations for AKV Nuditaranga 2026 are officially closed."
+    )
     if not event:
         event = Event(
             id=payload.event_id,

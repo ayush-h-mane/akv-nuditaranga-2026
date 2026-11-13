@@ -69,7 +69,7 @@ export const Navbar = ({ currentView, setCurrentView, onOpenAuthTab }) => {
     if (user) {
       handleDashboardNav();
     } else {
-      setCurrentView("/student", { subMode: "register" });
+      setCurrentView("/student", { subMode: "login" });
       setMobileMenuOpen(false);
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
@@ -201,13 +201,13 @@ export const Navbar = ({ currentView, setCurrentView, onOpenAuthTab }) => {
             </button>
           )}
 
-          {/* Primary CTA: Login/Register */}
+          {/* Primary CTA: Login/Dashboard */}
           <button
             onClick={handleRegisterCTA}
             className="shrink-0 px-2.5 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-extrabold text-white shadow-md hover:shadow-lg transition-all transform active:scale-95 bg-gradient-to-r from-kar-red via-red-600 to-kar-yellow flex items-center gap-1.5 whitespace-nowrap max-w-[145px]"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-200" />
-            <span className="truncate">{user ? "My Dashboard" : t("nav.registerNow")}</span>
+            <span className="truncate">{user ? "My Dashboard" : (lang === "kn" ? "ವಿದ್ಯಾರ್ಥಿ ಲಾಗಿನ್" : "Student Login")}</span>
           </button>
         </div>
 
@@ -289,7 +289,7 @@ export const Navbar = ({ currentView, setCurrentView, onOpenAuthTab }) => {
               className="w-full mt-2 py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-kar-red to-kar-yellow shadow-md flex items-center justify-center gap-2"
             >
               <Sparkles className="w-4 h-4 text-amber-200" />
-              <span>{user ? "My Dashboard" : t("nav.registerNow")}</span>
+              <span>{user ? "My Dashboard" : (lang === "kn" ? "ವಿದ್ಯಾರ್ಥಿ ಲಾಗಿನ್" : "Student Login")}</span>
             </button>
           </div>
         </div>

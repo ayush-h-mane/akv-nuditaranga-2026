@@ -126,6 +126,53 @@ export const RegisterPage = ({
     loadEvents();
   }, [effectiveEventId]);
 
+  // All Event, Competition, Volunteer & Participant Registrations are officially closed
+  return (
+    <div className="pt-28 pb-20 min-h-screen bg-stone-50 flex items-center justify-center px-4">
+      <div className="max-w-lg w-full bg-white rounded-3xl p-8 border border-stone-200 shadow-xl text-center space-y-5 animate-fade-in">
+        <div className="w-16 h-16 rounded-full bg-red-50 text-kar-red flex items-center justify-center mx-auto shadow-inner">
+          <AlertCircle className="w-8 h-8" />
+        </div>
+        <div>
+          <span className="px-3.5 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-red-100 text-kar-red border border-red-200">
+            REGISTRATIONS CLOSED • ನೋಂದಣಿ ಮುಕ್ತಾಯಗೊಂಡಿದೆ
+          </span>
+          <h3 className="text-2xl font-extrabold text-stone-900 mt-3 tracking-tight">
+            {lang === "kn"
+              ? "ಎಲ್ಲಾ ಸ್ಪರ್ಧೆ ಹಾಗೂ ನೋಂದಣಿಗಳು ಮುಕ್ತಾಯಗೊಂಡಿವೆ"
+              : "All Event & Competition Registrations Are Closed"}
+          </h3>
+          <p className="text-xs sm:text-sm text-stone-600 mt-2 leading-relaxed font-kannada">
+            {lang === "kn"
+              ? "ಆಚಾರ್ಯ ಕನ್ನಡ ವೇದಿಕೆಯ 'ನುಡಿತರಂಗ ೨೦೨೬' ರ ಎಲ್ಲಾ ಸ್ಪರ್ಧೆಗಳು, ಸ್ವಯಂಸೇವಕರು ಮತ್ತು ಸ್ಪರ್ಧಿಗಳ ನೋಂದಣಿ ಅಧಿಕೃತವಾಗಿ ಮುಕ್ತಾಯಗೊಂಡಿದೆ. ಈಗಾಗಲೇ ನೋಂದಾಯಿಸಿಕೊಂಡಿರುವ ವಿದ್ಯಾರ್ಥಿಗಳು ತಮ್ಮ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್ ಮತ್ತು ಡಿಜಿಟಲ್ ಪಾಸ್ ವೀಕ್ಷಿಸಲು ಲಾಗಿನ್ ಆಗಬಹುದು."
+              : "All Volunteer, Participant, Event, and Competition registrations for Acharya Kannada Vedike Nuditaranga 2026 are now officially closed. Existing registered students and volunteers can sign in to view their dashboard, digital passes, and attendance."}
+          </p>
+        </div>
+
+        <div className="space-y-2.5 pt-2">
+          <button
+            onClick={() => {
+              if (typeof window !== "undefined") {
+                sessionStorage.removeItem("akv_pending_event_id");
+              }
+              setCurrentView("student", { subMode: "login" });
+            }}
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-kar-red to-red-600 text-white font-extrabold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <span>{user ? (lang === "kn" ? "ವಿದ್ಯಾರ್ಥಿ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್‌ಗೆ ಹೋಗಿ" : "Go to Student Dashboard") : (lang === "kn" ? "ವಿದ್ಯಾರ್ಥಿ ಪೋರ್ಟಲ್ ಲಾಗಿನ್" : "Student Portal Login")}</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setCurrentView("home")}
+            className="w-full py-2.5 rounded-xl border border-stone-200 text-stone-700 hover:bg-stone-50 font-bold text-xs transition-colors cursor-pointer"
+          >
+            {lang === "kn" ? "ಮುಖಪುಟಕ್ಕೆ ಹಿಂತಿರುಗಿ" : "Return to Homepage"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   // Requirement 11: In the web, don't give option to register to event without registering to the portal.
   if (!user) {
     return (

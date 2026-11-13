@@ -12,7 +12,7 @@ export const EventsPage = ({ setCurrentView, setSelectedEventId }) => {
   const { lang, t } = useLanguage();
   const { user } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [events, setEvents] = useState(() => api.getCachedEvents("all", true));
+  const [events, setEvents] = useState(() => api.getCachedEvents("all", false));
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -23,7 +23,7 @@ export const EventsPage = ({ setCurrentView, setSelectedEventId }) => {
   // Silent background revalidation: updates cards in-place without flashing spinners
   useEffect(() => {
     let isMounted = true;
-    api.getEvents("all", true)
+    api.getEvents("all", false)
       .then((data) => {
         if (isMounted && Array.isArray(data)) {
           setEvents(data);
@@ -38,7 +38,7 @@ export const EventsPage = ({ setCurrentView, setSelectedEventId }) => {
   const handleRefreshEvents = async () => {
     try {
       setRefreshing(true);
-      const data = await api.getEvents("all", true, true);
+      const data = await api.getEvents("all", false, true);
       if (Array.isArray(data)) {
         setEvents(data);
       }
@@ -99,9 +99,9 @@ export const EventsPage = ({ setCurrentView, setSelectedEventId }) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Page Header */}
-        <div className="text-center max-w-3xl mx-auto mb-10">
-          <span className="px-3.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 uppercase tracking-wider">
-            {t("events.badge")}
+        <div className="text-center max-w-3xl mx-auto mb-8">
+          <span className="px-3.5 py-1 rounded-full text-xs font-bold bg-red-100 text-kar-red border border-red-300 uppercase tracking-wider">
+            {lang === "kn" ? "ಎಲ್ಲಾ ನೋಂದಣಿಗಳು ಮುಕ್ತಾಯಗೊಂಡಿವೆ" : "ALL REGISTRATIONS CLOSED"}
           </span>
           <h1 className="text-3xl sm:text-5xl font-black text-stone-900 font-display mt-3 mb-3">
             {t("events.heading")}
@@ -109,6 +109,34 @@ export const EventsPage = ({ setCurrentView, setSelectedEventId }) => {
           <p className="text-xs sm:text-base text-stone-600 font-kannada">
             {t("events.subheading")}
           </p>
+        </div>
+
+        {/* Official Registrations Closed Banner */}
+        <div className="mb-8 p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-kar-red via-red-700 to-amber-700 text-white shadow-lg border border-amber-300 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-start sm:items-center gap-3.5 text-left">
+            <div className="p-2.5 rounded-2xl bg-white/15 shrink-0">
+              <ShieldAlert className="w-6 h-6 text-amber-200" />
+            </div>
+            <div>
+              <h3 className="text-sm sm:text-base font-extrabold text-white">
+                {lang === "kn"
+                  ? "ನುಡಿತರಂಗ ೨೦೨೬ ರ ಎಲ್ಲಾ ಸ್ಪರ್ಧೆ ಹಾಗೂ ಸ್ವಯಂಸೇವಕರ ನೋಂದಣಿ ಅಧಿಕೃತವಾಗಿ ಮುಕ್ತಾಯಗೊಂಡಿದೆ"
+                  : "All Event, Competition, Volunteer & Participant Registrations Are Officially Closed"}
+              </h3>
+              <p className="text-xs text-amber-100 mt-0.5 font-kannada">
+                {lang === "kn"
+                  ? "ನೀವು ಕೆಳಗೆ ಸ್ಪರ್ಧೆಗಳ ಸಮಯ, ಸ್ಥಳ ಮತ್ತು ನಿಯಮಗಳನ್ನು ವೀಕ್ಷಿಸಬಹುದು. ಈಗಾಗಲೇ ನೋಂದಾಯಿತ ವಿದ್ಯಾರ್ಥಿಗಳು ತಮ್ಮ ಡಿಜಿಟಲ್ ಪಾಸ್‌ಗಾಗಿ ವಿದ್ಯಾರ್ಥಿ ಪೋರ್ಟಲ್‌ಗೆ ಲಾಗಿನ್ ಆಗಿ."
+                  : "You may still view competition schedules, venues, and rules below. Already registered students can sign in to view their Digital Passes."}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setCurrentView("student", { subMode: "login" })}
+            className="shrink-0 px-5 py-2.5 rounded-xl bg-white text-kar-red font-extrabold text-xs shadow hover:bg-amber-50 transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>{user ? (lang === "kn" ? "ವಿದ್ಯಾರ್ಥಿ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್" : "Student Dashboard") : (lang === "kn" ? "ವಿದ್ಯಾರ್ಥಿ ಲಾಗಿನ್" : "Student Login")}</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
         </div>
 
         {/* Search & Category Filter Bar */}
