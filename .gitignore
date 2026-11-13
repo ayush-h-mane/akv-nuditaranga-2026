@@ -41,3 +41,4 @@ Thumbs.db
 
 .vercel
 scratch/
+backend/app/assets/google_sheets_config.json

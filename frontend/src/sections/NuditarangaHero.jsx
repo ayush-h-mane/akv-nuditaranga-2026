@@ -166,14 +166,12 @@ export const NuditarangaHero = ({ onRegister, onViewEvents }) => {
 
         {/* Dual Actions */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <button
-            onClick={onRegister}
-            className="w-full sm:w-auto px-8 py-4 rounded-2xl text-sm sm:text-base font-extrabold text-white shadow-xl shadow-red-600/30 hover:shadow-2xl transition-all transform hover:-translate-y-0.5 active:scale-95 bg-gradient-to-r from-kar-red to-kar-yellow flex items-center justify-center gap-2"
+          <span
+            className="w-full sm:w-auto px-8 py-4 rounded-2xl text-sm sm:text-base font-extrabold text-amber-200 bg-white/10 border border-amber-400/30 flex items-center justify-center gap-2 select-none"
           >
-            <Sparkles className="w-5 h-5 text-amber-200" />
-            <span>{t("nuditaranga.registerBtn")}</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+            <ShieldAlert className="w-5 h-5 text-amber-300" />
+            <span>{lang === "kn" ? "ಎಲ್ಲಾ ನೋಂದಣಿಗಳು ಮುಕ್ತಾಯಗೊಂಡಿವೆ" : "All Registrations Closed"}</span>
+          </span>
 
           <button
             onClick={onViewEvents}

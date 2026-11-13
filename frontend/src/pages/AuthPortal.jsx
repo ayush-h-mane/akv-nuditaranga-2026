@@ -465,22 +465,22 @@ export const AuthPortal = ({
 
       {/* Main Authentication Portal Card Container */}
       <main className="relative z-10 w-full max-w-2xl mx-auto px-4 py-6 my-auto">
-        {/* Reopened Profile Edit Notification Banner */}
-        <div className="mb-4 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 text-white p-3.5 sm:p-4 shadow-lg border border-amber-300 flex items-start gap-3">
+        {/* Official Registrations Closed Notification Banner */}
+        <div className="mb-4 rounded-2xl bg-gradient-to-r from-kar-red via-red-700 to-amber-700 text-white p-3.5 sm:p-4 shadow-lg border border-amber-300 flex items-start gap-3">
           <div className="rounded-xl bg-white/20 p-2 shrink-0">
-            <Sparkles className="w-5 h-5 text-amber-100" />
+            <Lock className="w-5 h-5 text-amber-200" />
           </div>
           <div className="flex-1 text-left">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-white text-amber-950">
-                OFFICIAL NOTICE • ಸೂಚನೆ
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-300 text-stone-950">
+                OFFICIAL NOTICE • ಅಧಿಕೃತ ಸೂಚನೆ
               </span>
               <span className="text-xs font-black text-amber-100">
-                Profile Edit Window Reopened
+                All Registrations Closed • ನೋಂದಣಿ ಮುಕ್ತಾಯಗೊಂಡಿದೆ
               </span>
             </div>
             <p className="mt-1 text-xs text-amber-50 leading-relaxed font-medium">
-              The One-Time Profile Details Update Window has been <strong>reopened until October 10, 2026, 11:59 PM IST (10/10/2026 23:59 IST)</strong>. Registered students, volunteers, and coordinators can log in to update Name, AUID, Phone, Department, Year of Study, Domain, and Photo.
+              All <strong>Volunteer, Participant, Event, Competition, and Coordinator registrations</strong> for Acharya Kannada Vedike Nuditaranga 2026 are now officially closed. Existing registered members can sign in below to access their dashboard, digital passes, and attendance records.
             </p>
           </div>
         </div>
@@ -693,340 +693,43 @@ export const AuthPortal = ({
                   </form>
                 )}
 
-                {/* Sub-view B: Student Register */}
+                {/* Sub-view B: Student Register (Officially Closed) */}
                 {studentMode === "register" && (
                   <div className="animate-fade-in">
-                    {successData ? (
-                      /* Registration Successful Card */
-                      <div className="text-center space-y-4 py-2 animate-fade-in">
-                        <div className="w-16 h-16 mx-auto rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shadow-inner">
-                          <CheckCircle2 className="w-10 h-10" />
-                        </div>
-
-                        <span className="inline-block px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-800">
-                          REGISTRATION SUCCESSFUL
-                        </span>
-
-                        <h3 className="text-xl font-extrabold text-stone-900 tracking-tight">
-                          ನಮಸ್ಕಾರ, {successData.user.name}!
-                        </h3>
-
-                        <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-2xl text-left space-y-2 text-xs sm:text-sm">
-                          <div className="flex justify-between border-b border-amber-200/60 pb-1.5">
-                            <span className="text-stone-500 font-semibold">Registration ID:</span>
-                            <span className="font-mono font-bold text-kar-red text-sm">{successData.user.registration_id}</span>
-                          </div>
-                          <div className="flex justify-between border-b border-amber-200/60 pb-1.5">
-                            <span className="text-stone-500 font-semibold">AUID:</span>
-                            <span className="font-mono font-bold text-stone-900">{successData.user.auid}</span>
-                          </div>
-                          <div className="flex justify-between border-b border-amber-200/60 pb-1.5">
-                            <span className="text-stone-500 font-semibold">College Email:</span>
-                            <span className="font-bold text-stone-900">{successData.user.email}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-stone-500 font-semibold">Registered Role:</span>
-                            <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-kar-red text-white uppercase">
-                              {successData.user.role}
-                            </span>
-                          </div>
-                        </div>
-
-                        <p className="text-xs text-stone-600 leading-relaxed">
-                          A confirmation email will be sent to your college email.
-                          {successData.user.role === "VOLUNTEER" && " As a volunteer, your information has been automatically synchronized into the Volunteer Attendance System."}
-                        </p>
-
-                        <button
-                          onClick={() => {
-                            if (onAuthSuccess) onAuthSuccess(successData.user);
-                          }}
-                          className="w-full py-3 rounded-xl bg-gradient-to-r from-kar-red to-red-600 text-white font-extrabold text-sm shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2"
-                        >
-                          <span>
-                            {pendingEventId 
-                              ? `Continue Event Registration for ${pendingEventDetails?.title_en || "Chosen Event"}`
-                              : "Enter Student Dashboard"}
-                          </span>
-                          <ArrowRight className="w-4 h-4" />
-                        </button>
-                        {pendingEventId && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (typeof window !== "undefined") sessionStorage.removeItem("akv_pending_event_id");
-                              if (onClearPendingEvent) onClearPendingEvent();
-                              if (onAuthSuccess) onAuthSuccess(successData.user);
-                            }}
-                            className="w-full py-2 text-xs font-bold text-stone-500 hover:text-stone-800 transition-colors cursor-pointer"
-                          >
-                            Skip to Student Profile &rarr;
-                          </button>
-                        )}
+                    <div className="text-center space-y-4 py-6 px-4 bg-stone-50 rounded-2xl border border-stone-200">
+                      <div className="w-16 h-16 mx-auto rounded-full bg-red-100 flex items-center justify-center text-kar-red shadow-inner">
+                        <Lock className="w-8 h-8" />
                       </div>
-                    ) : (
-                      /* Detailed Registration Form */
-                      <form onSubmit={handleStudentRegister} className="space-y-4 text-left">
-                        {/* Candidate Photo Upload */}
-                        <div className="p-3.5 bg-stone-50 rounded-2xl border border-stone-200">
-                          <CandidatePhotoUpload
-                            photoUrl={studentRegisterForm.photo_url}
-                            onPhotoChange={(url) => setStudentRegisterForm({ ...studentRegisterForm, photo_url: url })}
-                            label="Candidate Profile Photo"
-                          />
-                        </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                          <div>
-                            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                              Full Name *
-                            </label>
-                            <input
-                              type="text"
-                              required
-                              value={studentRegisterForm.fullName}
-                              onChange={(e) => setStudentRegisterForm({ ...studentRegisterForm, fullName: e.target.value })}
-                              placeholder="e.g. Prajwal Gowda"
-                              className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm"
-                            />
-                          </div>
+                      <span className="inline-block px-3.5 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-red-100 text-kar-red border border-red-200">
+                        REGISTRATIONS CLOSED • ನೋಂದಣಿ ಮುಕ್ತಾಯಗೊಂಡಿದೆ
+                      </span>
 
-                          <div>
-                            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                              AUID (College ID) *
-                            </label>
-                            <input
-                              type="text"
-                              required
-                              minLength={3}
-                              maxLength={30}
-                              pattern="[A-Za-z0-9]{3,30}"
-                              title="Use 3–30 letters and numbers only, for example AIT23BEAI129."
-                              value={studentRegisterForm.auid}
-                              onChange={(e) => setStudentRegisterForm({ ...studentRegisterForm, auid: e.target.value.toUpperCase() })}
-                              placeholder="e.g. AIT22CS001"
-                              className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm font-mono uppercase"
-                            />
-                          </div>
-                        </div>
+                      <h3 className="text-xl font-extrabold text-stone-900 tracking-tight">
+                        All Volunteer &amp; Participant Registrations Are Closed
+                      </h3>
+                      <p className="text-sm font-bold text-kar-red font-kannada">
+                        ನುಡಿತರಂಗ ೨೦೨೬ ರ ಸ್ವಯಂಸೇವಕ ಹಾಗೂ ಸ್ಪರ್ಧಿಗಳ ನೋಂದಣಿ ಅಧಿಕೃತವಾಗಿ ಮುಕ್ತಾಯಗೊಂಡಿದೆ.
+                      </p>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                          <div>
-                            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                              College Email ID *
-                            </label>
-                            <input
-                              type="email"
-                              required
-                              value={studentRegisterForm.email}
-                              onChange={(e) => setStudentRegisterForm({ ...studentRegisterForm, email: e.target.value })}
-                              placeholder="student@acharya.ac.in"
-                              className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm"
-                            />
-                          </div>
+                      <p className="text-xs text-stone-600 leading-relaxed max-w-md mx-auto">
+                        New registrations for Volunteers, Participants, Events, and Competitions for Acharya Kannada Vedike Nuditaranga 2026 have concluded. If you have already registered, please sign in with your AUID or College Email to view your dashboard, digital pass, and attendance.
+                      </p>
 
-                          <div>
-                            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                              Contact Number *
-                            </label>
-                            <input
-                              type="tel"
-                              required
-                              value={studentRegisterForm.phone}
-                              onChange={(e) => setStudentRegisterForm({ ...studentRegisterForm, phone: e.target.value })}
-                              placeholder="10-digit mobile number"
-                              className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Institute and Department with Manual Support */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                          <InstituteDepartmentSelect
-                            institute={studentRegisterForm.institute}
-                            onInstituteChange={(val) => setStudentRegisterForm({ ...studentRegisterForm, institute: val })}
-                            department={studentRegisterForm.department}
-                            onDepartmentChange={(val) => setStudentRegisterForm({ ...studentRegisterForm, department: val })}
-                          />
-                        </div>
-
-                        {/* Year of Study Selection */}
-                        <div className="w-full">
-                          <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                            Year of Study / ವರ್ಷ *
-                          </label>
-                          <select
-                            required
-                            value={studentRegisterForm.semester}
-                            onChange={(e) => setStudentRegisterForm({ ...studentRegisterForm, semester: e.target.value ? Number(e.target.value) : "" })}
-                            className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm bg-white font-medium notranslate"
-                            translate="no"
-                          >
-                            <option value="" disabled>Select Year of Study</option>
-                            {[
-                              { val: 1, label: "1st Year (1ನೇ ವರ್ಷ)" },
-                              { val: 2, label: "2nd Year (2ನೇ ವರ್ಷ)" },
-                              { val: 3, label: "3rd Year (3ನೇ ವರ್ಷ)" },
-                              { val: 4, label: "4th Year (4ನೇ ವರ್ಷ)" },
-                              { val: 5, label: "5th Year (5ನೇ ವರ್ಷ)" },
-                              { val: 6, label: "6th Year (6ನೇ ವರ್ಷ)" }
-                            ].map((yr) => (
-                              <option key={yr.val} value={yr.val}>
-                                {yr.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {/* Participation Type Section: Radio Cards */}
-                        <div className="pt-2">
-                          <label className="block text-xs font-bold text-stone-900 uppercase tracking-wider mb-2">
-                            How are you registering? / ಭಾಗವಹಿಸುವಿಕೆ ವಿಧಾನ *
-                          </label>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                            {/* Option A: Volunteer */}
-                            <div
-                              onClick={() => setStudentRegisterForm({ ...studentRegisterForm, role: "VOLUNTEER" })}
-                              className={`cursor-pointer p-3.5 rounded-2xl border-2 transition-all flex flex-col items-center text-center ${studentRegisterForm.role === "VOLUNTEER"
-                                ? "border-kar-red bg-red-50/70 shadow-sm"
-                                : "border-stone-200 hover:border-amber-300 bg-white"
-                                }`}
-                            >
-                              <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-2 ${studentRegisterForm.role === "VOLUNTEER" ? "bg-kar-red text-white" : "bg-stone-100 text-stone-600"
-                                }`}>
-                                <HeartHandshake className="w-5 h-5" />
-                              </div>
-                              <span className="font-extrabold text-xs sm:text-sm text-stone-900">Volunteer</span>
-                              <span className="text-[10px] text-amber-900 font-bold mt-0.5">ಸ್ವಯಂಸೇವಕ</span>
-                              <p className="text-[10px] text-stone-500 mt-1 leading-tight">
-                                Event coordination & daily attendance roster.
-                              </p>
-                            </div>
-
-                            {/* Option B: Participant */}
-                            <div
-                              onClick={() => setStudentRegisterForm({ ...studentRegisterForm, role: "PARTICIPANT" })}
-                              className={`cursor-pointer p-3.5 rounded-2xl border-2 transition-all flex flex-col items-center text-center ${studentRegisterForm.role === "PARTICIPANT"
-                                ? "border-kar-red bg-red-50/70 shadow-sm"
-                                : "border-stone-200 hover:border-amber-300 bg-white"
-                                }`}
-                            >
-                              <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-2 ${studentRegisterForm.role === "PARTICIPANT" ? "bg-kar-red text-white" : "bg-stone-100 text-stone-600"
-                                }`}>
-                                <Trophy className="w-5 h-5" />
-                              </div>
-                              <span className="font-extrabold text-xs sm:text-sm text-stone-900">Participant</span>
-                              <span className="text-[10px] text-amber-900 font-bold mt-0.5">ಸ್ಪರ್ಧಿ</span>
-                              <p className="text-[10px] text-stone-500 mt-1 leading-tight">
-                                Compete in Nuditaranga cultural events.
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Volunteer Domain Selection */}
-                        {studentRegisterForm.role === "VOLUNTEER" && (
-                          <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200 space-y-2.5 animate-fade-in">
-                            <label className="block text-xs font-bold text-amber-950 uppercase tracking-wider">
-                              Choose Working Domain / ಕಾರ್ಯಕ್ಷೇತ್ರ *
-                            </label>
-                            <select
-                              required
-                              value={studentRegisterForm.volunteer_domain}
-                              onChange={(e) => setStudentRegisterForm({ ...studentRegisterForm, volunteer_domain: e.target.value })}
-                              className="w-full px-3.5 py-2.5 rounded-xl border border-amber-300 bg-white text-stone-900 text-xs sm:text-sm font-semibold shadow-xs"
-                            >
-                              <option value="" disabled>SELECT DOMAIN</option>
-                              {AKV_DOMAINS.map((dom) => (
-                                <option key={dom} value={dom}>{dom}</option>
-                              ))}
-                              <option value="Others">Others (Enter Manually)</option>
-                            </select>
-
-                            {studentRegisterForm.volunteer_domain === "Others" && (
-                              <input
-                                type="text"
-                                required
-                                value={studentRegisterForm.custom_domain}
-                                onChange={(e) => setStudentRegisterForm({ ...studentRegisterForm, custom_domain: e.target.value })}
-                                placeholder="Enter custom domain (e.g. Stage Management)"
-                                className="w-full px-3.5 py-2 rounded-xl border-2 border-kar-red/60 bg-white text-xs sm:text-sm text-stone-900"
-                              />
-                            )}
-                            <p className="text-[11px] text-amber-800">
-                              Your domain will be printed on your official Volunteer ID Card and attendance reports.
-                            </p>
-                          </div>
-                        )}
-
-                        {/* Account Passwords */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
-                          <div>
-                            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                              Password *
-                            </label>
-                            <div className="relative">
-                            <input
-                              type={showRegisterPassword ? "text" : "password"}
-                              required
-                              minLength={6}
-                              value={studentRegisterForm.password}
-                              onChange={(e) => setStudentRegisterForm({ ...studentRegisterForm, password: e.target.value })}
-                              placeholder="Min. 6 characters"
-                              className="w-full px-3.5 pr-10 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm"
-                            />
-                            <button type="button" onClick={() => setShowRegisterPassword(!showRegisterPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400" aria-label="Show or hide password">
-                              {showRegisterPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                            </button>
-                            </div>
-                          </div>
-
-                          <div>
-                            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                              Confirm Password *
-                            </label>
-                            <div className="relative">
-                            <input
-                              type={showRegisterConfirmPassword ? "text" : "password"}
-                              required
-                              minLength={6}
-                              value={studentRegisterForm.confirmPassword}
-                              onChange={(e) => setStudentRegisterForm({ ...studentRegisterForm, confirmPassword: e.target.value })}
-                              placeholder="Re-enter password"
-                              className="w-full px-3.5 pr-10 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-kar-red text-sm"
-                            />
-                            <button type="button" onClick={() => setShowRegisterConfirmPassword(!showRegisterConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400" aria-label="Show or hide password confirmation">
-                              {showRegisterConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                            </button>
-                            </div>
-                          </div>
-                        </div>
-
+                      <div className="pt-2 flex flex-col sm:flex-row gap-2.5 justify-center">
                         <button
-                          type="submit"
-                          disabled={loading}
-                          className="w-full mt-3 py-3 rounded-xl bg-gradient-to-r from-kar-red via-red-600 to-kar-yellow text-white font-extrabold text-sm shadow-md hover:shadow-lg transition-all disabled:opacity-50"
+                          type="button"
+                          onClick={() => {
+                            setStudentMode("login");
+                            setErrorMessage("");
+                          }}
+                          className="py-3 px-6 rounded-xl bg-gradient-to-r from-kar-red via-red-600 to-kar-yellow text-white font-extrabold text-xs sm:text-sm shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2"
                         >
-                          {loading ? "Processing Registration..." : "Complete Student Registration"}
+                          <User className="w-4 h-4" />
+                          <span>Already Registered? Student Login</span>
                         </button>
-
-                        <div className="pt-4 border-t border-stone-100 text-center">
-                          <p className="text-xs text-stone-600">
-                            Already registered for Nuditaranga 2026?{" "}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setStudentMode("login");
-                                setErrorMessage("");
-                              }}
-                              className="font-extrabold text-kar-red hover:underline ml-1 cursor-pointer"
-                            >
-                              Sign In here
-                            </button>
-                          </p>
-                        </div>
-                      </form>
-                    )}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1154,290 +857,28 @@ export const AuthPortal = ({
                     </button>
                   </form>
                 ) : (
-                  /* Register as Admin Form */
-                  <form onSubmit={handleAdminRegister} className="space-y-4 text-left">
-                    {/* Role Selection: Faculty Coordinator vs Working Committee Member */}
-                    <div>
-                      <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-2">
-                        Select Admin Category *
-                      </label>
-                      <div className="grid grid-cols-2 gap-3">
-                        <button
-                          type="button"
-                          onClick={() => setAdminForm({ ...adminForm, adminType: "FACULTY_COORDINATOR" })}
-                          className={`p-3 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
-                            adminForm.adminType === "FACULTY_COORDINATOR"
-                              ? "border-kar-red bg-red-50/80 text-kar-red shadow-sm ring-1 ring-kar-red"
-                              : "border-stone-200 hover:border-stone-300 text-stone-600 bg-white"
-                          }`}
-                        >
-                          <GraduationCap className="w-5 h-5" />
-                          <span className="text-xs font-bold">Faculty Co-ordinator</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setAdminForm({ ...adminForm, adminType: "WORKING_COMMITTEE" })}
-                          className={`p-3 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
-                            adminForm.adminType === "WORKING_COMMITTEE"
-                              ? "border-kar-red bg-red-50/80 text-kar-red shadow-sm ring-1 ring-kar-red"
-                              : "border-stone-200 hover:border-stone-300 text-stone-600 bg-white"
-                          }`}
-                        >
-                          <Briefcase className="w-5 h-5" />
-                          <span className="text-xs font-bold">Working Committee Member</span>
-                        </button>
-                      </div>
+                  /* Admin Registration Officially Closed */
+                  <div className="text-center space-y-4 py-6 px-4 bg-stone-50 rounded-2xl border border-stone-200 animate-fade-in">
+                    <div className="w-16 h-16 mx-auto rounded-full bg-red-100 flex items-center justify-center text-kar-red shadow-inner">
+                      <Lock className="w-8 h-8" />
                     </div>
-
-                    {/* Candidate Photo Upload */}
-                    <div className="p-3.5 bg-stone-50 rounded-2xl border border-stone-200">
-                      <CandidatePhotoUpload
-                        photoUrl={adminForm.photo_url}
-                        onPhotoChange={(url) => setAdminForm({ ...adminForm, photo_url: url })}
-                        label="Admin / Faculty Profile Photo"
-                      />
-                    </div>
-
-                    {/* If Faculty Coordinator: Name, Faculty ID, College Mail ID, Contact number, Institute, Department, Password, Confirm Password */}
-                    {adminForm.adminType === "FACULTY_COORDINATOR" ? (
-                      <>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                              Faculty Full Name *
-                            </label>
-                            <input
-                              type="text"
-                              required
-                              value={adminForm.fullName}
-                              onChange={(e) => setAdminForm({ ...adminForm, fullName: e.target.value })}
-                              placeholder="e.g. Dr. Rajeshwari S"
-                              className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                              Faculty ID *
-                            </label>
-                            <input
-                              type="text"
-                              required
-                              value={adminForm.facultyId}
-                              onChange={(e) => setAdminForm({ ...adminForm, facultyId: e.target.value.toUpperCase() })}
-                              placeholder="e.g. AIT-FAC-1042"
-                              className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm font-mono uppercase focus:ring-2 focus:ring-kar-red focus:outline-hidden"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                              College Mail ID *
-                            </label>
-                            <input
-                              type="email"
-                              required
-                              value={adminForm.email}
-                              onChange={(e) => setAdminForm({ ...adminForm, email: e.target.value })}
-                              placeholder="faculty@acharya.ac.in"
-                              className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                              Contact Number *
-                            </label>
-                            <input
-                              type="tel"
-                              required
-                              value={adminForm.phone}
-                              onChange={(e) => setAdminForm({ ...adminForm, phone: e.target.value })}
-                              placeholder="10-digit number"
-                              className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden"
-                            />
-                          </div>
-                        </div>
-                      </>
-                    ) : (
-                      /* Working Committee Member */
-                      <>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                              Full Name *
-                            </label>
-                            <input
-                              type="text"
-                              required
-                              value={adminForm.fullName}
-                              onChange={(e) => setAdminForm({ ...adminForm, fullName: e.target.value })}
-                              placeholder="Lead / Coordinator Name"
-                              className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                              AUID (College ID) *
-                            </label>
-                            <input
-                              type="text"
-                              required
-                              minLength={3}
-                              maxLength={30}
-                              pattern="[A-Za-z0-9]{3,30}"
-                              title="Use 3–30 letters and numbers only, for example AIT23BEAI129."
-                              value={adminForm.auid}
-                              onChange={(e) => setAdminForm({ ...adminForm, auid: e.target.value.toUpperCase() })}
-                              placeholder="e.g. AIT23BEAI129"
-                              className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm font-mono uppercase focus:ring-2 focus:ring-kar-red focus:outline-hidden"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                              College Mail ID *
-                            </label>
-                            <input
-                              type="email"
-                              required
-                              value={adminForm.email}
-                              onChange={(e) => setAdminForm({ ...adminForm, email: e.target.value })}
-                              placeholder="lead@acharya.ac.in"
-                              className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                              Contact Number *
-                            </label>
-                            <input
-                              type="tel"
-                              required
-                              value={adminForm.phone}
-                              onChange={(e) => setAdminForm({ ...adminForm, phone: e.target.value })}
-                              placeholder="10-digit number"
-                              className="w-full px-3 py-2 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden"
-                            />
-                          </div>
-                        </div>
-                      </>
-                    )}
-
-                    {/* Institute and Department with Manual Input support */}
-                    <InstituteDepartmentSelect
-                      institute={adminForm.institute}
-                      department={adminForm.department}
-                      onInstituteChange={(inst) => setAdminForm({ ...adminForm, institute: inst })}
-                      onDepartmentChange={(dept) => setAdminForm({ ...adminForm, department: dept })}
-                    />
-
-                    {adminForm.adminType === "WORKING_COMMITTEE" && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                            Year of Study / ವರ್ಷ *
-                          </label>
-                          <select
-                            required
-                            value={adminForm.semester}
-                            onChange={(e) => setAdminForm({ ...adminForm, semester: e.target.value ? Number(e.target.value) : "" })}
-                            className="w-full px-3 py-2 rounded-xl border border-stone-300 bg-white text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden font-medium notranslate"
-                            translate="no"
-                          >
-                            <option value="" disabled>Select Year of Study</option>
-                            {[
-                              { val: 1, label: "1st Year (1ನೇ ವರ್ಷ)" },
-                              { val: 2, label: "2nd Year (2ನೇ ವರ್ಷ)" },
-                              { val: 3, label: "3rd Year (3ನೇ ವರ್ಷ)" },
-                              { val: 4, label: "4th Year (4ನೇ ವರ್ಷ)" },
-                              { val: 5, label: "5th Year (5ನೇ ವರ್ಷ)" },
-                              { val: 6, label: "6th Year (6ನೇ ವರ್ಷ)" }
-                            ].map((yr) => (
-                              <option key={yr.val} value={yr.val}>
-                                {yr.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                            Working Committee Domain *
-                          </label>
-                          <select
-                            required
-                            value={adminForm.volunteer_domain}
-                            onChange={(e) => setAdminForm({ ...adminForm, volunteer_domain: e.target.value })}
-                            className="w-full px-3 py-2 rounded-xl border border-stone-300 bg-white text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden"
-                          >
-                            <option value="" disabled>SELECT DOMAIN</option>
-                            {AKV_DOMAINS.map((domain) => <option key={domain} value={domain}>{domain}</option>)}
-                          </select>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                          Password *
-                        </label>
-                        <div className="relative">
-                        <input
-                          type={showAdminPassword ? "text" : "password"}
-                          required
-                          minLength={6}
-                          value={adminForm.password}
-                          onChange={(e) => setAdminForm({ ...adminForm, password: e.target.value })}
-                          placeholder="Min. 6 characters"
-                          className="w-full px-3 pr-10 py-2 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden"
-                        />
-                        <button type="button" onClick={() => setShowAdminPassword(!showAdminPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400" aria-label="Show or hide password">
-                          {showAdminPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-                          Confirm Password *
-                        </label>
-                        <div className="relative">
-                        <input
-                          type={showAdminConfirmPassword ? "text" : "password"}
-                          required
-                          minLength={6}
-                          value={adminForm.confirmPassword}
-                          onChange={(e) => setAdminForm({ ...adminForm, confirmPassword: e.target.value })}
-                          placeholder="Re-enter password"
-                          className="w-full px-3 pr-10 py-2 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-kar-red focus:outline-hidden"
-                        />
-                        <button type="button" onClick={() => setShowAdminConfirmPassword(!showAdminConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400" aria-label="Show or hide password confirmation">
-                          {showAdminConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-900 leading-tight">
-                      ⚠️ Submitted admin registrations require Super Admin review and approval before login access is granted.
-                    </div>
-
+                    <span className="inline-block px-3.5 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-red-100 text-kar-red border border-red-200">
+                      REGISTRATIONS CLOSED • ನೋಂದಣಿ ಮುಕ್ತಾಯಗೊಂಡಿದೆ
+                    </span>
+                    <h3 className="text-lg font-extrabold text-stone-900">
+                      Coordinator &amp; Working Committee Registrations Closed
+                    </h3>
+                    <p className="text-xs text-stone-600 leading-relaxed max-w-md mx-auto">
+                      All Faculty Coordinator and Working Committee registrations for AKV Nuditaranga 2026 are officially closed. Approved coordinators can sign in using the Login tab.
+                    </p>
                     <button
-                      type="submit"
-                      disabled={loading}
-                      className="w-full mt-2 py-3 rounded-xl bg-gradient-to-r from-kar-red to-red-600 text-white font-extrabold text-sm shadow-md hover:shadow-lg transition-all disabled:opacity-50"
+                      type="button"
+                      onClick={() => setAdminMode("login")}
+                      className="mt-2 py-2.5 px-6 rounded-xl bg-stone-900 hover:bg-black text-white text-xs font-extrabold transition-colors cursor-pointer"
                     >
-                      {loading ? "Submitting Admin Request..." : "Submit Admin Application"}
+                      {portalType === "faculty" ? "Return to Faculty Login" : "Return to Admin Login"}
                     </button>
-                  </form>
+                  </div>
                 )}
               </div>
             )}

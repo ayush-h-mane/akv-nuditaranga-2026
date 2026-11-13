@@ -126,15 +126,11 @@ export const RulesModal = ({ event, isOpen, onClose, onRegister }) => {
           >
             {t("rulesModal.close")}
           </button>
-          <button
-            onClick={() => {
-              onClose();
-              if (onRegister) onRegister(event.id);
-            }}
-            className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-kar-red to-kar-yellow shadow-md hover:shadow-lg hover:brightness-105 transition-all duration-150 active:scale-95 cursor-pointer"
+          <span
+            className="px-4 py-2 rounded-xl text-xs font-bold text-stone-500 bg-stone-200 cursor-not-allowed"
           >
-            {t("rulesModal.understood")}
-          </button>
+            {lang === "kn" ? "ನೋಂದಣಿ ಮುಕ್ತಾಯಗೊಂಡಿದೆ" : "Registrations Closed"}
+          </span>
         </div>
       </div>
     </div>

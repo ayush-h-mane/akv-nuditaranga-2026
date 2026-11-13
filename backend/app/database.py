@@ -95,7 +95,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, expire_on_commit=
 Base = declarative_base()
 
 _MIGRATIONS_DONE = False
-CURRENT_SCHEMA_VERSION = 9
+CURRENT_SCHEMA_VERSION = 10
 
 def ensure_schema_migrations(target_engine=None):
     global _MIGRATIONS_DONE
@@ -487,7 +487,7 @@ def ensure_schema_migrations(target_engine=None):
                         "max_slots": 200,
                         "format": "solo",
                         "is_team": False,
-                        "is_active": True,
+                        "is_active": False,
                         "rules_en": "1. Clay and pottery wheel setup provided.\n2. Shape and model within the time limit.\n3. Judge decisions are final.",
                         "rules_kn": "೧. ಜೇಡಿಮಣ್ಣು ಮತ್ತು ಮಡಕೆ ಮಾಡುವ ಸಾಧನಗಳನ್ನು ಒದಗಿಸಲಾಗುತ್ತದೆ.\n೨. ನಿಗದಿತ ಸಮಯದಲ್ಲಿ ಮಡಕೆ ರೂಪಿಸಬೇಕು.\n೩. ತೀರ್ಪುಗಾರರ ತೀರ್ಮಾನವೇ ಅಂತಿಮ.",
                         "description_en": "Traditional clay pottery craftsmanship contest celebrating indigenous Kannada art.",
@@ -507,7 +507,7 @@ def ensure_schema_migrations(target_engine=None):
                         "max_slots": 100,
                         "format": "solo",
                         "is_team": False,
-                        "is_active": True,
+                        "is_active": False,
                         "rules_en": "1. One participant must apply mehendi on hand.\n2. Participants must bring their own organic mehendi cones.\n3. Time limit: 1.5 hours.\n4. Creativity and neatness will be judged.",
                         "rules_kn": "೧. ಒಬ್ಬ ಸ್ಪರ್ಧಿ ಕೈಗೆ ಮೆಹಂದಿ ಹಾಕಬೇಕು.\n೨. ನೈಸರ್ಗಿಕ ಮೆಹಂದಿ ಕೋನ್‌ಗಳನ್ನು ತಾವೇ ತರಬೇಕು.\n೩. ಸಮಯದ ಮಿತಿ: ೧.೫ ಗಂಟೆಗಳು.\n೪. ಕಲಾತ್ಮಕತೆ ಮತ್ತು ಅಚ್ಚುಕಟ್ಟುತನಕ್ಕೆ ಅಂಕಗಳು.",
                         "description_en": "Craft intricate bridal, Arabic, and traditional Kannada floral henna designs.",
@@ -547,7 +547,7 @@ def ensure_schema_migrations(target_engine=None):
                         "max_slots": 100,
                         "format": "solo",
                         "is_team": False,
-                        "is_active": True,
+                        "is_active": False,
                         "rules_en": "1. Space provided per participant.\n2. Bring your own rangoli powders/materials; stencils are not permitted.\n3. Time limit: 2 hours.\n4. Decisions of the judges are final.",
                         "rules_kn": "೧. ಪ್ರತಿ ಸ್ಪರ್ಧಿಗೆ ನಿಗದಿತ ಜಾಗ ನೀಡಲಾಗುತ್ತದೆ.\n೨. ರಂಗೋಲಿ ಬಣ್ಣಗಳನ್ನು ತಾವೇ ತರಬೇಕು; ಯಾವುದೇ ಸ್ಟೆನ್ಸಿಲ್‌ಗಳಿಗೆ ಅನುಮತಿ ಇಲ್ಲ.\n೩. ಸಮಯದ ಮಿತಿ: ೨ ಗಂಟೆಗಳು.\n೪. ತೀರ್ಪುಗಾರರ ತೀರ್ಮಾನವೇ ಅಂತಿಮ.",
                         "description_en": "Showcase the rich heritage of traditional Kannada patterns, floral designs, and folk motifs using vibrant rangoli powders.",
@@ -613,12 +613,6 @@ def ensure_schema_migrations(target_engine=None):
                         {"backend_id": backend_id}
                     )
 
-                # Ensure remaining open competitions (Reel Contest, Pottery, Mehendi, Rangoli) are Active
-                conn.exec_driver_sql(
-                    "UPDATE events SET is_active = :val WHERE UPPER(id) IN ('AKV-NT-REEL', 'AKV-NT-09', 'AKV-NT-10', 'AKV-NT-12')",
-                    {"val": True}
-                )
-
                 # Ensure Reel Contest has Social Media category and Mehendi/Rangoli are Fine Arts
                 conn.exec_driver_sql(
                     "UPDATE events SET category = 'social_media', category_kn = 'ಸೋಷಿಯಲ್ ಮೀಡಿಯಾ' WHERE UPPER(id) = 'AKV-NT-REEL'"
@@ -627,15 +621,9 @@ def ensure_schema_migrations(target_engine=None):
                     "UPDATE events SET category = 'fine_arts', category_kn = 'ಲಲಿತಕಲೆ' WHERE UPPER(id) IN ('AKV-NT-10', 'AKV-NT-12')"
                 )
 
-                # Explicitly close Painting and Sketching competitions
+                # Officially close ALL event and competition registrations while preserving all event records and existing registrations
                 conn.exec_driver_sql(
-                    "UPDATE events SET is_active = :val WHERE UPPER(id) IN ('AKV-NT-11', 'AKV-NT-17', 'AKV-NT-PAINT', 'AKV-NT-SKETCH')",
-                    {"val": False}
-                )
-
-                # Close all non-target events (Break Dance, Flag hoist, Open air, etc.)
-                conn.exec_driver_sql(
-                    "UPDATE events SET is_active = :val WHERE UPPER(id) NOT IN ('AKV-NT-REEL', 'AKV-NT-09', 'AKV-NT-10', 'AKV-NT-12')",
+                    "UPDATE events SET is_active = :val",
                     {"val": False}
                 )
 

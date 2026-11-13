@@ -50,12 +50,12 @@ def get_events(
                 existing_titles.add(title)
                 needs_commit = True
             else:
-                # Ensure existing initial event is active
+                # Ensure existing initial event is closed for new registrations
                 ev_record = db.query(Event).filter(
                     (func.upper(Event.id) == eid) | (func.lower(Event.title_en) == title)
                 ).first()
-                if ev_record and not ev_record.is_active:
-                    ev_record.is_active = True
+                if ev_record and ev_record.is_active:
+                    ev_record.is_active = False
                     needs_commit = True
 
         # Deduplication & Registration Migration for Repeated Competitions
@@ -77,47 +77,18 @@ def get_events(
                 db.delete(dup_ev)
                 needs_commit = True
 
-        # Active open competitions for registrations
-        OPEN_EVENT_IDS = ["AKV-NT-REEL", "AKV-NT-09", "AKV-NT-10", "AKV-NT-12"]
-        # Explicitly closed competitions (Painting, Sketching)
-        CLOSED_EVENT_IDS = ["AKV-NT-11", "AKV-NT-17", "AKV-NT-PAINT", "AKV-NT-SKETCH"]
+        # All competitions are now officially closed for new registrations
+        OPEN_EVENT_IDS = []
+        CLOSED_EVENT_IDS = [
+            "AKV-NT-REEL", "AKV-NT-09", "AKV-NT-10", "AKV-NT-11",
+            "AKV-NT-12", "AKV-NT-17", "AKV-NT-PAINT", "AKV-NT-SKETCH"
+        ]
         title_mapping = {
             "AKV-NT-10": ("Mehendi Competition", "ಮೆಹಂದಿ ಸ್ಪರ್ಧೆ (Mehendi)"),
             "AKV-NT-11": ("Painting Competition", "ಚಿತ್ರಕಲೆ ಸ್ಪರ್ಧೆ (Painting)"),
             "AKV-NT-12": ("Rangoli Competition", "ರಂಗೋಲಿ ಸ್ಪರ್ಧೆ (Rangoli)"),
             "AKV-NT-17": ("Sketching Competition", "ಸ್ಕೆಚಿಂಗ್ ಸ್ಪರ್ಧೆ (Sketching)"),
         }
-        for eid in OPEN_EVENT_IDS:
-            ev = db.query(Event).filter(func.upper(Event.id) == eid).first()
-            if ev:
-                if not ev.is_active:
-                    ev.is_active = True
-                    needs_commit = True
-                if eid in title_mapping:
-                    t_en, t_kn = title_mapping[eid]
-                    if ev.title_en != t_en:
-                        ev.title_en = t_en
-                        ev.title_kn = t_kn
-                        needs_commit = True
-                # Ensure correct categories
-                if eid == "AKV-NT-REEL":
-                    if ev.category != "social_media":
-                        ev.category = "social_media"
-                        ev.category_kn = "ಸೋಷಿಯಲ್ ಮೀಡಿಯಾ"
-                        needs_commit = True
-                elif eid in ["AKV-NT-10", "AKV-NT-12"]:
-                    if ev.category != "fine_arts":
-                        ev.category = "fine_arts"
-                        ev.category_kn = "ಲಲಿತಕಲೆ"
-                        needs_commit = True
-
-                # Refresh registered_count
-                reg_cnt = db.execute(text(f"SELECT COUNT(*) FROM registrations WHERE UPPER(event_id) = '{eid}'")).scalar() or 0
-                if ev.registered_count != reg_cnt:
-                    ev.registered_count = reg_cnt
-                    needs_commit = True
-
-        # Explicitly enforce closed status for closed competitions (Painting, Sketching)
         for eid in CLOSED_EVENT_IDS:
             ev = db.query(Event).filter(func.upper(Event.id) == eid).first()
             if ev:
@@ -130,16 +101,23 @@ def get_events(
                         ev.title_en = t_en
                         ev.title_kn = t_kn
                         needs_commit = True
+                if eid == "AKV-NT-REEL":
+                    if ev.category != "social_media":
+                        ev.category = "social_media"
+                        ev.category_kn = "ಸೋಷಿಯಲ್ ಮೀಡಿಯಾ"
+                        needs_commit = True
+                elif eid in ["AKV-NT-10", "AKV-NT-12"]:
+                    if ev.category != "fine_arts":
+                        ev.category = "fine_arts"
+                        ev.category_kn = "ಲಲಿತಕಲೆ"
+                        needs_commit = True
                 reg_cnt = db.execute(text(f"SELECT COUNT(*) FROM registrations WHERE UPPER(event_id) = '{eid}'")).scalar() or 0
                 if ev.registered_count != reg_cnt:
                     ev.registered_count = reg_cnt
                     needs_commit = True
 
-        # Ensure all other events are closed (Break Dance, Flag hoist, Open air, etc.)
-        other_active_events = db.query(Event).filter(
-            Event.is_active == True,
-            ~func.upper(Event.id).in_(OPEN_EVENT_IDS)
-        ).all()
+        # Ensure all events in the database are marked closed
+        other_active_events = db.query(Event).filter(Event.is_active == True).all()
         for other_ev in other_active_events:
             other_ev.is_active = False
             needs_commit = True

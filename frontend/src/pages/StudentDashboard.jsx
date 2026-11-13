@@ -7,20 +7,20 @@ import { api } from "../services/api";
 import { DigitalPass } from "../components/DigitalPass";
 import { MyProfileAttendance } from "../components/MyProfileAttendance";
 import { RoleUpdatesBanner } from "../components/RoleUpdatesBanner";
-import { 
-  User, 
-  Calendar, 
-  MapPin, 
-  Clock, 
-  HeartHandshake, 
-  Trophy, 
-  Users, 
-  Sparkles, 
-  CheckCircle2, 
-  AlertCircle, 
-  LogOut, 
-  Compass, 
-  Lock, 
+import {
+  User,
+  Calendar,
+  MapPin,
+  Clock,
+  HeartHandshake,
+  Trophy,
+  Users,
+  Sparkles,
+  CheckCircle2,
+  AlertCircle,
+  LogOut,
+  Compass,
+  Lock,
   ChevronRight,
   QrCode,
   X,
@@ -39,7 +39,7 @@ import { WhatsAppGroupModal } from "../components/WhatsAppGroupModal";
 import { getEventWhatsAppGroup } from "../config/whatsappGroups";
 import { isReelContestEvent } from "../config/eventsData";
 
-export const StudentDashboard = ({ 
+export const StudentDashboard = ({
   onNavigateHome,
   initialEventId = null,
   onClearInitialEventId = null
@@ -48,12 +48,12 @@ export const StudentDashboard = ({
   const { showError, showSuccess, showWarning, showInfo } = useModalAlert();
   const [activeTab, setActiveTab] = useState("overview"); // overview, my-events, browse-events, account
   const [dashboardData, setDashboardData] = useState(() => api.getCachedStudentDashboard(user?.auid));
-  const [eventsList, setEventsList] = useState(() => api.getCachedEvents("all", true));
+  const [eventsList, setEventsList] = useState(() => api.getCachedEvents("all", false));
   const [loading, setLoading] = useState(() => !api.hasCachedStudentDashboard(user?.auid));
   const [refreshing, setRefreshing] = useState(false);
   const [registeringEventId, setRegisteringEventId] = useState(null);
   const [actionMessage, setActionMessage] = useState({ type: "", text: "" });
-  
+
   // Selected registration for viewing digital pass
   const [viewingPassReg, setViewingPassReg] = useState(null);
 
@@ -113,7 +113,7 @@ export const StudentDashboard = ({
     try {
       const [dash, events] = await Promise.all([
         api.getStudentDashboard(forceFresh),
-        api.getEvents("all", true, forceFresh)
+        api.getEvents("all", false, forceFresh)
       ]);
       if (dash) setDashboardData(dash);
       if (events) setEventsList(events);
@@ -164,27 +164,13 @@ export const StudentDashboard = ({
     }
   }, [initialEventId, eventsList]);
 
-  // Event Registration Flow: Show Rules & Confirmation First
+  // Event Registration Flow: Officially Closed
   const handleQuickRegister = async (event) => {
-    if (isReelContestEvent(event)) {
-      setReelContestModal(event);
-      setReelInstaUsername("");
-      setReelInstaProfileLink("");
-      setReelRulesAccepted(false);
-      return;
-    }
-
-    if (event.is_team || event.format === "team") {
-      // Open team modal
-      setTeamModalEvent(event);
-      setTeamName("");
-      setTeamMembers([]);
-      return;
-    }
-
-    // Open rules confirmation modal before registering solo
-    setSoloConfirmEvent(event);
-    setSoloRulesAccepted(false);
+    showWarning(
+      "All event and competition registrations for AKV Nuditaranga 2026 are officially closed.",
+      "Registrations Closed • ನೋಂದಣಿ ಮುಕ್ತಾಯಗೊಂಡಿದೆ"
+    );
+    return;
   };
 
   const handleConfirmReelRegister = async (e) => {
@@ -372,7 +358,7 @@ export const StudentDashboard = ({
           if (m3) r3 = m3.url;
           if (m4) r4 = m4.url;
         }
-      } catch (e) {}
+      } catch (e) { }
     }
     setReelLinksInput({
       reel_link_1: r1,
@@ -429,7 +415,7 @@ export const StudentDashboard = ({
   return (
     <div className="min-h-screen pt-24 pb-16 bg-stone-50 text-stone-900 font-sans">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
-        
+
         {/* Top Breadcrumb & Quick Controls */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
           <div className="flex items-center gap-2">
@@ -474,11 +460,10 @@ export const StudentDashboard = ({
 
         {/* Global Feedback Alert */}
         {actionMessage.text && (
-          <div className={`mb-6 p-4 rounded-2xl flex items-center justify-between gap-3 text-sm font-semibold shadow-xs ${
-            actionMessage.type === "success" 
-              ? "bg-emerald-50 border border-emerald-200 text-emerald-900" 
+          <div className={`mb-6 p-4 rounded-2xl flex items-center justify-between gap-3 text-sm font-semibold shadow-xs ${actionMessage.type === "success"
+              ? "bg-emerald-50 border border-emerald-200 text-emerald-900"
               : "bg-red-50 border border-red-200 text-red-900"
-          }`}>
+            }`}>
             <div className="flex items-center gap-2.5">
               {actionMessage.type === "success" ? (
                 <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
@@ -569,11 +554,10 @@ export const StudentDashboard = ({
         <div className="flex items-center gap-2 border-b border-stone-200 mb-8 overflow-x-auto pb-2">
           <button
             onClick={() => setActiveTab("overview")}
-            className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold whitespace-nowrap transition-all flex items-center gap-2 ${
-              activeTab === "overview"
+            className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === "overview"
                 ? "bg-stone-900 text-white shadow-xs"
                 : "text-stone-600 hover:bg-stone-100"
-            }`}
+              }`}
           >
             <User className="w-4 h-4 text-amber-400" />
             <span>Profile & Overview</span>
@@ -581,11 +565,10 @@ export const StudentDashboard = ({
 
           <button
             onClick={() => setActiveTab("my-events")}
-            className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold whitespace-nowrap transition-all flex items-center gap-2 ${
-              activeTab === "my-events"
+            className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === "my-events"
                 ? "bg-stone-900 text-white shadow-xs"
                 : "text-stone-600 hover:bg-stone-100"
-            }`}
+              }`}
           >
             <Trophy className="w-4 h-4 text-amber-400" />
             <span>My Registrations ({registeredEvents.length})</span>
@@ -593,11 +576,10 @@ export const StudentDashboard = ({
 
           <button
             onClick={() => setActiveTab("my-profile")}
-            className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold whitespace-nowrap transition-all flex items-center gap-2 ${
-              activeTab === "my-profile"
+            className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === "my-profile"
                 ? "bg-stone-900 text-white shadow-xs"
                 : "text-stone-600 hover:bg-stone-100"
-            }`}
+              }`}
           >
             <Clock className="w-4 h-4 text-amber-400" />
             <span>My Profile & Attendance</span>
@@ -605,11 +587,10 @@ export const StudentDashboard = ({
 
           <button
             onClick={() => setActiveTab("browse-events")}
-            className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold whitespace-nowrap transition-all flex items-center gap-2 ${
-              activeTab === "browse-events"
+            className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === "browse-events"
                 ? "bg-stone-900 text-white shadow-xs"
                 : "text-stone-600 hover:bg-stone-100"
-            }`}
+              }`}
           >
             <Sparkles className="w-4 h-4 text-kar-red" />
             <span>1-Click Event Registration</span>
@@ -617,11 +598,10 @@ export const StudentDashboard = ({
 
           <button
             onClick={() => setActiveTab("account")}
-            className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold whitespace-nowrap transition-all flex items-center gap-2 ${
-              activeTab === "account"
+            className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === "account"
                 ? "bg-stone-900 text-white shadow-xs"
                 : "text-stone-600 hover:bg-stone-100"
-            }`}
+              }`}
           >
             <Lock className="w-4 h-4 text-stone-400" />
             <span>Account Security</span>
@@ -634,7 +614,7 @@ export const StudentDashboard = ({
         {activeTab === "overview" && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              
+
               {/* Profile Details Card */}
               <div className="md:col-span-2 bg-white rounded-3xl p-6 sm:p-7 border border-stone-200 shadow-sm space-y-4">
                 <div className="flex items-center justify-between border-b border-stone-100 pb-3">
@@ -796,7 +776,7 @@ export const StudentDashboard = ({
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                   {registeredEvents.slice(0, 4).map((r) => (
-                    <div 
+                    <div
                       key={r.registration_id}
                       className="p-4 rounded-2xl border border-stone-200 hover:border-amber-300 bg-stone-50/50 flex items-center justify-between gap-3 transition-colors"
                     >
@@ -897,7 +877,7 @@ export const StudentDashboard = ({
             ) : (
               <div className="space-y-4">
                 {registeredEvents.map((reg) => (
-                  <div 
+                  <div
                     key={reg.registration_id}
                     className="p-5 rounded-2xl border border-stone-200 bg-stone-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                   >
@@ -905,11 +885,10 @@ export const StudentDashboard = ({
                       <div className="flex items-center gap-2.5">
                         <h4 className="font-extrabold text-base text-stone-900">{reg.event_title_en}</h4>
                         <span className="text-xs font-bold text-amber-900 font-kannada">{reg.event_title_kn}</span>
-                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-extrabold ${
-                          reg.status === "Checked In" 
+                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-extrabold ${reg.status === "Checked In"
                             ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
                             : "bg-blue-50 text-blue-800 border border-blue-200"
-                        }`}>
+                          }`}>
                           {reg.status}
                         </span>
                       </div>
@@ -1031,34 +1010,36 @@ export const StudentDashboard = ({
         )}
 
         {/* ==================================================== */}
-        {/* TAB 3: 1-CLICK EVENT REGISTRATION                   */}
+        {/* TAB 3: EVENT SCHEDULE & STATUS (REGISTRATIONS CLOSED)*/}
         {/* ==================================================== */}
         {activeTab === "browse-events" && (
           <div className="bg-white rounded-3xl p-6 sm:p-8 border border-stone-200 shadow-sm space-y-6">
-            <div>
-              <h3 className="font-extrabold text-lg text-stone-900 flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-kar-red" />
-                <span>Nuditaranga 2026 Events</span>
-              </h3>
-              <p className="text-xs text-stone-500 mt-0.5">
-                Click <strong>"Register Now"</strong> to join an event immediately using your authenticated student profile.
-              </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-stone-100">
+              <div>
+                <h3 className="font-extrabold text-lg text-stone-900 flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-kar-red" />
+                  <span>Nuditaranga 2026 Competitions</span>
+                </h3>
+                <p className="text-xs text-stone-500 mt-0.5">
+                  All new competition registrations for Nuditaranga 2026 are officially closed. Your existing registrations remain active in the <strong>"My Registrations"</strong> tab.
+                </p>
+              </div>
+              <span className="px-3.5 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wider bg-red-100 text-kar-red border border-red-200 shrink-0 w-fit">
+                Registrations Closed • ನೋಂದಣಿ ಮುಕ್ತಾಯ
+              </span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {eventsList.map((ev) => {
                 const isRegistered = registeredIds.has(ev.id);
-                const isFull = ev.registered_count >= ev.max_slots;
-                const isBusy = registeringEventId === ev.id;
 
                 return (
                   <div
                     key={ev.id}
-                    className={`p-5 rounded-2xl border transition-all flex flex-col justify-between ${
-                      isRegistered 
-                        ? "border-emerald-200 bg-emerald-50/30" 
-                        : "border-stone-200 hover:border-amber-300 bg-white"
-                    }`}
+                    className={`p-5 rounded-2xl border transition-all flex flex-col justify-between ${isRegistered
+                        ? "border-emerald-200 bg-emerald-50/30"
+                        : "border-stone-200 bg-white"
+                      }`}
                   >
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
@@ -1105,25 +1086,10 @@ export const StudentDashboard = ({
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           <span>Registered</span>
                         </span>
-                      ) : isFull ? (
-                        <span className="px-3 py-1.5 rounded-xl bg-stone-100 text-stone-500 text-xs font-bold">
-                          Capacity Reached
-                        </span>
                       ) : (
-                        <button
-                          onClick={() => handleQuickRegister(ev)}
-                          disabled={isBusy}
-                          className="px-4 py-2 rounded-xl bg-gradient-to-r from-kar-red to-red-600 hover:from-red-700 hover:to-red-800 text-white text-xs font-extrabold shadow-sm transition-all disabled:opacity-50 flex items-center gap-1.5"
-                        >
-                          {isBusy ? (
-                            <span>Registering...</span>
-                          ) : (
-                            <>
-                              <span>Register Now</span>
-                              <ChevronRight className="w-3.5 h-3.5" />
-                            </>
-                          )}
-                        </button>
+                        <span className="px-3 py-1.5 rounded-xl bg-stone-200 text-stone-600 text-xs font-bold cursor-not-allowed">
+                          Registrations Closed
+                        </span>
                       )}
                     </div>
                   </div>
@@ -1158,11 +1124,10 @@ export const StudentDashboard = ({
             </div>
 
             {pwMessage.text && (
-              <div className={`p-3.5 rounded-xl text-xs font-bold flex items-center gap-2 ${
-                pwMessage.type === "success" 
-                  ? "bg-emerald-50 text-emerald-900 border border-emerald-200" 
+              <div className={`p-3.5 rounded-xl text-xs font-bold flex items-center gap-2 ${pwMessage.type === "success"
+                  ? "bg-emerald-50 text-emerald-900 border border-emerald-200"
                   : "bg-red-50 text-red-900 border border-red-200"
-              }`}>
+                }`}>
                 {pwMessage.type === "success" ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <AlertCircle className="w-4 h-4 text-kar-red" />}
                 <span>{pwMessage.text}</span>
               </div>
@@ -1228,13 +1193,13 @@ export const StudentDashboard = ({
 
       {/* Solo Event Rules & Confirmation Modal */}
       {soloConfirmEvent && (
-        <div 
-          role="dialog" 
-          aria-modal="true" 
+        <div
+          role="dialog"
+          aria-modal="true"
           className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-sm animate-fade-in overflow-y-auto"
           onClick={() => setSoloConfirmEvent(null)}
         >
-          <div 
+          <div
             className="bg-white rounded-3xl max-w-lg w-[92%] sm:w-full p-4 sm:p-6 border border-stone-200 shadow-2xl my-auto max-h-[85dvh] sm:max-h-[90vh] flex flex-col text-left"
             onClick={(e) => e.stopPropagation()}
           >
@@ -1251,7 +1216,7 @@ export const StudentDashboard = ({
                   <p className="text-xs text-amber-900 font-bold font-kannada">{soloConfirmEvent.title_kn}</p>
                 )}
               </div>
-              <button 
+              <button
                 onClick={() => setSoloConfirmEvent(null)}
                 className="p-1 rounded-lg hover:bg-stone-100 text-stone-500 cursor-pointer"
               >
@@ -1323,11 +1288,10 @@ export const StudentDashboard = ({
                   type="button"
                   onClick={handleConfirmSoloRegister}
                   disabled={!soloRulesAccepted || registeringEventId === soloConfirmEvent.id}
-                  className={`flex-1 py-2.5 rounded-xl text-white text-xs font-extrabold shadow-sm transition-all ${
-                    soloRulesAccepted && registeringEventId !== soloConfirmEvent.id
+                  className={`flex-1 py-2.5 rounded-xl text-white text-xs font-extrabold shadow-sm transition-all ${soloRulesAccepted && registeringEventId !== soloConfirmEvent.id
                       ? "bg-gradient-to-r from-kar-red to-red-600 hover:shadow-md cursor-pointer"
                       : "bg-stone-300 cursor-not-allowed opacity-60"
-                  }`}
+                    }`}
                 >
                   {registeringEventId === soloConfirmEvent.id ? "Registering..." : "Confirm Registration"}
                 </button>
@@ -1339,13 +1303,13 @@ export const StudentDashboard = ({
 
       {/* Reel Contest Registration Modal */}
       {reelContestModal && (
-        <div 
-          role="dialog" 
-          aria-modal="true" 
+        <div
+          role="dialog"
+          aria-modal="true"
           className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-sm animate-fade-in overflow-y-auto"
           onClick={() => setReelContestModal(null)}
         >
-          <div 
+          <div
             className="bg-white rounded-3xl max-w-lg w-[94%] sm:w-full p-4 sm:p-6 border border-pink-200 shadow-2xl my-auto max-h-[88dvh] sm:max-h-[90vh] flex flex-col text-left"
             onClick={(e) => e.stopPropagation()}
           >
@@ -1367,7 +1331,7 @@ export const StudentDashboard = ({
                   )}
                 </div>
               </div>
-              <button 
+              <button
                 onClick={() => setReelContestModal(null)}
                 className="p-1 rounded-lg hover:bg-stone-100 text-stone-500 cursor-pointer"
               >
@@ -1484,11 +1448,10 @@ export const StudentDashboard = ({
                 <button
                   type="submit"
                   disabled={!reelRulesAccepted || registeringEventId === reelContestModal.id}
-                  className={`flex-1 py-2.5 rounded-xl text-white text-xs font-extrabold shadow-sm transition-all ${
-                    reelRulesAccepted && registeringEventId !== reelContestModal.id
+                  className={`flex-1 py-2.5 rounded-xl text-white text-xs font-extrabold shadow-sm transition-all ${reelRulesAccepted && registeringEventId !== reelContestModal.id
                       ? "bg-gradient-to-r from-pink-600 via-rose-600 to-amber-600 hover:shadow-md cursor-pointer"
                       : "bg-stone-300 cursor-not-allowed opacity-60"
-                  }`}
+                    }`}
                 >
                   {registeringEventId === reelContestModal.id ? "Registering..." : "Confirm Reel Registration"}
                 </button>
@@ -1500,13 +1463,13 @@ export const StudentDashboard = ({
 
       {/* Team Registration Modal */}
       {teamModalEvent && (
-        <div 
-          role="dialog" 
-          aria-modal="true" 
+        <div
+          role="dialog"
+          aria-modal="true"
           className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-sm animate-fade-in overflow-y-auto"
           onClick={() => setTeamModalEvent(null)}
         >
-          <div 
+          <div
             className="bg-white rounded-3xl max-w-lg w-[92%] sm:w-full p-4 sm:p-6 border border-stone-200 shadow-2xl my-auto max-h-[85dvh] sm:max-h-[90vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
@@ -1517,7 +1480,7 @@ export const StudentDashboard = ({
                 </h3>
                 <p className="text-xs text-stone-500">Provide team-specific details below</p>
               </div>
-              <button 
+              <button
                 onClick={() => setTeamModalEvent(null)}
                 className="p-1 rounded-lg hover:bg-stone-100"
               >
@@ -1642,13 +1605,13 @@ export const StudentDashboard = ({
 
       {/* Digital Pass Viewer Modal */}
       {viewingPassReg && (
-        <div 
-          role="dialog" 
-          aria-modal="true" 
+        <div
+          role="dialog"
+          aria-modal="true"
           className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-sm animate-fade-in overflow-y-auto"
           onClick={() => setViewingPassReg(null)}
         >
-          <div 
+          <div
             className="bg-white rounded-3xl max-w-xl w-[92%] sm:w-full p-4 sm:p-6 border border-stone-200 shadow-2xl relative my-auto max-h-[86dvh] sm:max-h-[92vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >

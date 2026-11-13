@@ -204,7 +204,7 @@ export function normalizeAttendanceDates(data) {
 }
 
 // Local fallback storage keys
-const STORAGE_EVENTS_KEY = "akv_events_cache_v7";
+const STORAGE_EVENTS_KEY = "akv_events_cache_v8";
 const STORAGE_REGS_KEY = "akv_registrations_cache_v2";
 const STORAGE_USERS_KEY = "akv_users_cache_v2";
 const STORAGE_ADMINS_KEY = "akv_admins_cache_v2";
@@ -350,6 +350,7 @@ function getLocalEvents() {
       }
     }
     for (const ev of filtered) {
+      ev.is_active = false;
       if (String(ev.id).toUpperCase() === "AKV-NT-REEL" || (ev.title_en || "").toLowerCase().includes("reel")) {
         ev.category = "social_media";
         ev.category_kn = "ಸೋಷಿಯಲ್ ಮೀಡಿಯಾ";
@@ -366,6 +367,9 @@ function getLocalEvents() {
     return !duplicateBackendIds.has(eid) && !deletedIds.has(eid);
   });
   const fallback = filteredInitials.length > 0 ? filteredInitials : [...initialEvents];
+  for (const ev of fallback) {
+    ev.is_active = false;
+  }
   memCache.set("events", [...fallback]);
   writeLocalJson(STORAGE_EVENTS_KEY, fallback);
   return [...fallback];
@@ -388,6 +392,7 @@ function saveLocalEvents(events) {
     }
   }
   for (const ev of filtered) {
+    ev.is_active = false;
     if (String(ev.id).toUpperCase() === "AKV-NT-REEL" || (ev.title_en || "").toLowerCase().includes("reel")) {
       ev.category = "social_media";
       ev.category_kn = "ಸೋಷಿಯಲ್ ಮೀಡಿಯಾ";
@@ -498,68 +503,7 @@ export const api = {
   // AUTHENTICATION APIs
   // ==========================================
   async studentRegister(payload) {
-    if (!isAcharyaEmail(payload.email)) {
-      throw new Error(ACHARYA_EMAIL_ERROR);
-    }
-    try {
-      const res = await fetch(`${API_BASE_URL}/auth/register/student`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      const data = await readApiResponse(res);
-      if (!res.ok) {
-        if (res.status === 502 || res.status === 504 || res.status === 503) {
-          throw new Error(`Server is temporarily unavailable (HTTP ${res.status}). Please make sure the backend server is running.`);
-        }
-        throw new Error(data.detail || `Student registration failed (${res.status})`);
-      }
-      return data;
-    } catch (err) {
-      if (isNetworkError(err)) {
-        console.warn("[AKV Offline Fallback] Using local storage for student registration:", err.message);
-        const users = getLocalUsers();
-        const existingAuid = users.find(u => u.auid.toUpperCase() === payload.auid.trim().toUpperCase());
-        if (existingAuid) {
-          throw new Error("A student with this AUID is already registered.");
-        }
-        const existingEmail = users.find(u => u.email.toLowerCase() === payload.email.trim().toLowerCase());
-        if (existingEmail) {
-          throw new Error("This college email is already registered.");
-        }
-
-        const nextNum = users.length + 1;
-        const regId = `AKVNT${String(nextNum).padStart(4, "0")}`;
-        const newUser = {
-          id: Date.now(),
-          name: payload.full_name.trim(),
-          auid: payload.auid.trim().toUpperCase(),
-          email: payload.email.trim().toLowerCase(),
-          phone: payload.phone.trim(),
-          institute: payload.institute || "Acharya Institute of Technology",
-          department: payload.department.trim(),
-          semester: Number(payload.semester) || 1,
-          section: payload.section?.trim().toUpperCase() || "A",
-          gender: payload.gender || "Female",
-          role: payload.role?.toUpperCase() || "PARTICIPANT",
-          registration_id: regId,
-          account_status: "ACTIVE",
-          password: payload.password
-        };
-
-        users.push(newUser);
-        saveLocalUsers(users);
-
-        const token = `offline-token-${Date.now()}`;
-        return {
-          success: true,
-          message: "Registration Successful",
-          token: token,
-          user: newUser
-        };
-      }
-      throw err;
-    }
+    throw new Error("Registrations Closed: All Volunteer, Participant, and Student registrations for AKV Nuditaranga 2026 are officially closed.");
   },
 
   async studentLogin(auid, password) {
@@ -677,63 +621,7 @@ export const api = {
   },
 
   async adminRegister(payload) {
-    if (!isAcharyaEmail(payload.email)) {
-      throw new Error(ACHARYA_EMAIL_ERROR);
-    }
-    try {
-      const res = await fetch(`${API_BASE_URL}/auth/register/admin`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      let data;
-      try {
-        data = await res.json();
-      } catch (jsonErr) {
-        if (!res.ok) {
-          throw new Error(`Server returned HTTP ${res.status}: Admin registration could not be completed on server.`);
-        }
-        data = {};
-      }
-      if (!res.ok) {
-        throw new Error(data.detail || "Admin registration failed");
-      }
-      return data;
-    } catch (err) {
-      if (typeof window !== "undefined" && !window.navigator.onLine) {
-        console.warn("[AKV Offline Fallback] Using local storage for admin registration:", err.message);
-        const admins = getLocalAdmins();
-        const cleanAuid = payload.auid ? payload.auid.trim().toUpperCase() : null;
-        const cleanUname = (payload.username || cleanAuid || "").trim().toLowerCase();
-        const newAdmin = {
-          id: Date.now(),
-          user_id: Date.now(),
-          username: cleanUname,
-          auid: cleanAuid,
-          full_name: payload.full_name,
-          email: payload.email,
-          phone: payload.phone,
-          department: payload.department,
-          designation: payload.admin_type === "FACULTY_COORDINATOR" ? "Faculty Coordinator" : "Working Committee",
-          admin_type: payload.admin_type || "WORKING_COMMITTEE",
-          faculty_id: payload.faculty_id || null,
-          approval_status: "PENDING_APPROVAL",
-          account_status: "ACTIVE",
-          password: payload.password,
-          created_at: new Date().toISOString()
-        };
-        admins.push(newAdmin);
-        saveLocalAdmins(admins);
-        return {
-          success: true,
-          message: "Offline Mode: Your admin account is saved locally and will await Super Admin approval.",
-          status: "PENDING_APPROVAL",
-          username: cleanUname,
-          auid: cleanAuid
-        };
-      }
-      throw err;
-    }
+    throw new Error("Registrations Closed: All Coordinator and Working Committee registrations for AKV Nuditaranga 2026 are officially closed.");
   },
 
   async adminLogin(username, password) {
@@ -1268,49 +1156,7 @@ export const api = {
   },
 
   async studentRegisterEvent(payload) {
-    try {
-      const res = await fetch(`${API_BASE_URL}/student/register-event`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...getAuthHeaders()
-        },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Event registration failed");
-
-      invalidateCurrentStudentDashboardFreshness();
-      invalidateStudentDashboardCache();
-      invalidateMemCache("my_regs_");
-      invalidateMemCache("events_api_");
-      return data;
-    } catch (err) {
-      if (isNetworkError(err)) {
-        const rawUser = localStorage.getItem("akv_user");
-        const currentUser = rawUser ? JSON.parse(rawUser) : {};
-        const nextNum = getLocalRegistrations().length + 1;
-        const regRecord = {
-          registration_id: `AKVNT${String(nextNum).padStart(4, "0")}`,
-          event_id: payload.event_id,
-          name: currentUser.name,
-          auid: currentUser.auid,
-          email: currentUser.email,
-          phone: currentUser.phone,
-          created_at: new Date().toISOString()
-        };
-        saveLocalRegistration(regRecord);
-        invalidateCurrentStudentDashboardFreshness();
-        invalidateStudentDashboardCache();
-        invalidateMemCache("events_api_");
-        return {
-          success: true,
-          registration_id: regRecord.registration_id,
-          message: "Registered successfully"
-        };
-      }
-      throw err;
-    }
+    throw new Error("Registrations Closed: All event and competition registrations for AKV Nuditaranga 2026 are officially closed.");
   },
 
   async changeStudentPassword(currentPassword, newPassword, confirmPassword) {
@@ -3202,50 +3048,7 @@ export const api = {
   },
 
   async createRegistration(registrationData) {
-    try {
-      const res = await fetch(`${API_BASE_URL}/registrations`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(registrationData)
-      });
-      if (res.ok) {
-        const data = await res.json();
-        saveLocalRegistration(data);
-        invalidateMemCache("registrations_");
-        invalidateMemCache("sa_stats");
-        return data;
-      }
-      const errData = await res.json().catch(() => ({}));
-      if (res.status === 404 || (errData.detail && errData.detail.toLowerCase().includes("not exist"))) {
-        console.warn("Event not found on backend; saving registration to client storage:", errData.detail);
-        const nextNum = getLocalRegistrations().length + 1;
-        const fallbackReg = {
-          ...registrationData,
-          registration_id: `AKVNT${String(nextNum).padStart(4, "0")}`,
-          status: "Registered",
-          created_at: new Date().toISOString()
-        };
-        saveLocalRegistration(fallbackReg);
-        invalidateMemCache("registrations_");
-        return fallbackReg;
-      }
-      throw new Error(errData.detail || "Registration failed");
-    } catch (err) {
-      if (isNetworkError(err) || err.message?.includes("not exist") || err.message?.includes("failed to fetch")) {
-        console.warn("Backend unavailable, saving registration to local storage:", err.message);
-        const nextNum = getLocalRegistrations().length + 1;
-        const fallbackReg = {
-          ...registrationData,
-          registration_id: `AKVNT${String(nextNum).padStart(4, "0")}`,
-          status: "Registered",
-          created_at: new Date().toISOString()
-        };
-        saveLocalRegistration(fallbackReg);
-        invalidateMemCache("registrations_");
-        return fallbackReg;
-      }
-      throw err;
-    }
+    throw new Error("Registrations Closed: All event and competition registrations for AKV Nuditaranga 2026 are officially closed.");
   },
 
   async register(registrationData) {

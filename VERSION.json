@@ -1,8 +1,13 @@
 {
-  "production_version": "2.3.51",
-  "staged_version": "2.3.52",
+  "production_version": "2.3.52",
+  "staged_version": "2.3.53",
   "pending_changes": [],
   "history": [
+    {
+      "version": "2.3.52",
+      "released_at": "2026-11-13T11:39:34+0530",
+      "description": "AKV Nuditaranga 2026 v2.3.52: Universal Registration Closure (Volunteers, Participants, Events, Competitions & Coordinators): Officially closed all new account and competition registrations across the platform while preserving 100% of existing student, volunteer, and admin accounts, competition registrations, digital passes, Reel Contest uploads/ratings, attendance logs, and Excel exports.; Backend Registration Endpoint Guards: Enforced HTTP 403/400 registration closure guards on POST /api/auth/register/student, POST /api/auth/register/admin, POST /api/registrations, and POST /api/student/register-event.; Database Schema Migration v10 & Event Self-Healing Closure: Bumped CURRENT_SCHEMA_VERSION to 10 in database.py and updated seed.py and /api/events self-healing in events.py to mark all competitions (Reel Contest AKV-NT-REEL, Pottery AKV-NT-09, Mehendi AKV-NT-10, Painting AKV-NT-11, Rangoli AKV-NT-12, Sketching AKV-NT-17, and all other events) as is_active = False without deleting any records.; Frontend Bilingual Registration Closure UI & Cache Bump (v8): Bumped STORAGE_EVENTS_KEY to akv_events_cache_v8 in api.js and updated AuthPortal.jsx, RegisterPage.jsx, EventsPage.jsx, EventCard.jsx, RulesModal.jsx, StudentDashboard.jsx, Navbar.jsx, HeroSection.jsx, NuditarangaHero.jsx, and InstagramSection.jsx to display official 'Registrations Closed / \u0ca8\u0ccb\u0c82\u0ca6\u0ca3\u0cbf \u0cae\u0cc1\u0c95\u0ccd\u0ca4\u0cbe\u0caf\u0c97\u0cca\u0c82\u0ca1\u0cbf\u0ca6\u0cc6' notices while keeping Student/Admin/SuperAdmin Login and existing dashboards fully operational.; Google Sheets Consolidated Attendance Check-In & Check-Out Columns: Updated syncConsolidatedSheet and added buildConsolidatedMemberRow in Code.gs (scripts/google_apps_script/Code.gs and backend/app/assets/Code.gs) to replace single per-date Status columns with daily YYYY-MM-DD (In) and YYYY-MM-DD (Out) timestamp columns matching department and Working Committee sheets."
+    },
     {
       "version": "2.3.51",
       "released_at": "2026-10-29T06:39:48+0530",

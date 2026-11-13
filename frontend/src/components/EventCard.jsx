@@ -130,16 +130,10 @@ export const EventCard = ({ event, onOpenRules, onRegister }) => {
         </button>
 
         <button
-          disabled={isFull}
-          onClick={() => onRegister(event.id)}
-          className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold text-white shadow transition-all duration-150 flex items-center justify-center gap-1.5 ${
-            isFull
-              ? "bg-stone-300 cursor-not-allowed text-stone-500"
-              : "bg-gradient-to-r from-kar-red to-kar-yellow hover:shadow-md hover:brightness-105 active:scale-95"
-          }`}
+          disabled={true}
+          className="flex-1 py-2 px-3 rounded-xl text-xs font-bold bg-stone-200 cursor-not-allowed text-stone-500 flex items-center justify-center gap-1.5"
         >
-          <span>{isFull ? t("events.fullBadge") : t("events.registerBtn")}</span>
-          {!isFull && <ArrowRight className="w-3.5 h-3.5" />}
+          <span>{lang === "kn" ? "ನೋಂದಣಿ ಮುಕ್ತಾಯ" : "Registrations Closed"}</span>
         </button>
       </div>
     </div>
